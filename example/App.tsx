@@ -5,12 +5,9 @@
  * @format
  */
 
-import { NewAppScreen } from '@react-native/new-app-screen';
 import { useEffect, useState } from 'react';
 import {
-  StatusBar,
   StyleSheet,
-  useColorScheme,
   View,
   Text,
   ScrollView,
@@ -28,16 +25,11 @@ import {
 import type {
   TrackItem,
   QueueOperation,
-  TrackPlayerState,
-  Reason,
   PlayerState,
-  PlayerConfig,
   Playlist,
 } from '../react-native-nitro-player/src/types/PlayerQueue';
 
 function App() {
-  const isDarkMode = useColorScheme() === 'dark';
-
   return <AppContent />;
 }
 
@@ -166,10 +158,10 @@ function AppContent() {
       setLastOperation(operation);
 
       // Update current playlist if it changed
-      const currentId = PlayerQueue.getCurrentPlaylistId();
-      setCurrentPlaylistId(currentId);
-      if (currentId) {
-        const playlist = PlayerQueue.getPlaylist(currentId);
+      const updatedCurrentId = PlayerQueue.getCurrentPlaylistId();
+      setCurrentPlaylistId(updatedCurrentId);
+      if (updatedCurrentId) {
+        const playlist = PlayerQueue.getPlaylist(updatedCurrentId);
         setCurrentPlaylist(playlist);
       }
     });
@@ -183,8 +175,8 @@ function AppContent() {
       sampleTracks1[0].artwork || undefined,
     );
     PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
-    const playlists = PlayerQueue.getAllPlaylists();
-    setPlaylists(playlists);
+    const updatedPlaylists1 = PlayerQueue.getAllPlaylists();
+    setPlaylists(updatedPlaylists1);
   };
 
   const handleCreatePlaylist2 = () => {
@@ -195,8 +187,8 @@ function AppContent() {
       sampleTracks2[0].artwork || undefined,
     );
     PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks2);
-    const playlists = PlayerQueue.getAllPlaylists();
-    setPlaylists(playlists);
+    const updatedPlaylists2 = PlayerQueue.getAllPlaylists();
+    setPlaylists(updatedPlaylists2);
   };
 
   const handleLoadPlaylist = (playlistId: string) => {
@@ -230,8 +222,8 @@ function AppContent() {
       },
     ];
     PlayerQueue.addTracksToPlaylist(playlistId, newTracks);
-    const playlists = PlayerQueue.getAllPlaylists();
-    setPlaylists(playlists);
+    const updatedPlaylists3 = PlayerQueue.getAllPlaylists();
+    setPlaylists(updatedPlaylists3);
   };
 
   const handleAddTrackToPlaylist = (playlistId: string) => {
@@ -246,15 +238,15 @@ function AppContent() {
       artwork: 'https://via.placeholder.com/150/FF00FF/000000?Text=Single',
     };
     PlayerQueue.addTrackToPlaylist(playlistId, newTrack);
-    const playlists = PlayerQueue.getAllPlaylists();
-    setPlaylists(playlists);
+    const updatedPlaylists4 = PlayerQueue.getAllPlaylists();
+    setPlaylists(updatedPlaylists4);
   };
 
   const handleDeletePlaylist = (playlistId: string) => {
     console.log('Deleting playlist:', playlistId);
     PlayerQueue.deletePlaylist(playlistId);
-    const playlists = PlayerQueue.getAllPlaylists();
-    setPlaylists(playlists);
+    const updatedPlaylists5 = PlayerQueue.getAllPlaylists();
+    setPlaylists(updatedPlaylists5);
     if (currentPlaylistId === playlistId) {
       setCurrentPlaylist(null);
       setCurrentPlaylistId(null);
@@ -264,8 +256,8 @@ function AppContent() {
   const handleRemoveTrack = (playlistId: string, trackId: string) => {
     console.log('Removing track:', trackId, 'from playlist:', playlistId);
     PlayerQueue.removeTrackFromPlaylist(playlistId, trackId);
-    const playlists = PlayerQueue.getAllPlaylists();
-    setPlaylists(playlists);
+    const updatedPlaylists6 = PlayerQueue.getAllPlaylists();
+    setPlaylists(updatedPlaylists6);
     if (currentPlaylistId === playlistId) {
       const playlist = PlayerQueue.getPlaylist(playlistId);
       setCurrentPlaylist(playlist);
