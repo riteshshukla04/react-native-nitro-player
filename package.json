@@ -40,7 +40,6 @@
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.2.1",
-    "ktlint": "^1.2.1",
     "prettier": "^3.3.3",
     "release-it": "^19.0.4"
   },
