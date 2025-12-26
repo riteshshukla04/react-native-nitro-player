@@ -9,39 +9,38 @@ import java.util.concurrent.CopyOnWriteArrayList
  */
 class Queue {
     private val tracks: MutableList<TrackItem> = CopyOnWriteArrayList()
-    
+
     /**
      * Get all tracks in the queue
      */
-    fun getTracks(): List<TrackItem> {
-        return tracks.toList()
-    }
-    
+    fun getTracks(): List<TrackItem> = tracks.toList()
+
     /**
      * Get tracks as an array (for compatibility with existing API)
      */
-    fun getTracksArray(): Array<TrackItem> {
-        return tracks.toTypedArray()
-    }
-    
+    fun getTracksArray(): Array<TrackItem> = tracks.toTypedArray()
+
     /**
      * Add a single track to the queue
      */
     fun addTrack(track: TrackItem) {
         tracks.add(track)
     }
-    
+
     /**
      * Add a track at a specific index
      */
-    fun addTrackAtIndex(track: TrackItem, index: Int) {
+    fun addTrackAtIndex(
+        track: TrackItem,
+        index: Int,
+    ) {
         if (index < 0 || index > tracks.size) {
             tracks.add(track)
         } else {
             tracks.add(index, track)
         }
     }
-    
+
     /**
      * Load multiple tracks into the queue (replaces existing queue)
      */
@@ -49,59 +48,47 @@ class Queue {
         tracks.clear()
         tracks.addAll(newTracks)
     }
-    
+
     /**
      * Remove a track by ID
      * @return true if track was found and removed, false otherwise
      */
-    fun removeTrack(id: String): Boolean {
-        return tracks.removeAll { it.id == id }
-    }
-    
+    fun removeTrack(id: String): Boolean = tracks.removeAll { it.id == id }
+
     /**
      * Clear all tracks from the queue
      */
     fun clear() {
         tracks.clear()
     }
-    
+
     /**
      * Get the size of the queue
      */
-    fun size(): Int {
-        return tracks.size
-    }
-    
+    fun size(): Int = tracks.size
+
     /**
      * Check if the queue is empty
      */
-    fun isEmpty(): Boolean {
-        return tracks.isEmpty()
-    }
-    
+    fun isEmpty(): Boolean = tracks.isEmpty()
+
     /**
      * Get a track by index
      */
-    fun getTrack(index: Int): TrackItem? {
-        return if (index >= 0 && index < tracks.size) {
+    fun getTrack(index: Int): TrackItem? =
+        if (index >= 0 && index < tracks.size) {
             tracks[index]
         } else {
             null
         }
-    }
-    
+
     /**
      * Get a track by ID
      */
-    fun getTrackById(id: String): TrackItem? {
-        return tracks.find { it.id == id }
-    }
-    
+    fun getTrackById(id: String): TrackItem? = tracks.find { it.id == id }
+
     /**
      * Get the index of a track by ID
      */
-    fun getTrackIndex(id: String): Int {
-        return tracks.indexOfFirst { it.id == id }
-    }
+    fun getTrackIndex(id: String): Int = tracks.indexOfFirst { it.id == id }
 }
-

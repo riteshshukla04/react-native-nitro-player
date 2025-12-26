@@ -10,19 +10,38 @@
   ],
   "scripts": {
     "player": "bun --cwd react-native-nitro-player",
-    "specs" : "bun player specs",
-    "example" : "bun --cwd example"
-  
+    "specs": "bun player specs",
+    "example": "bun --cwd example",
+    "lint": "eslint \"**/*.{js,ts,tsx}\" --ignore-path .gitignore",
+    "lint:fix": "eslint \"**/*.{js,ts,tsx}\" --fix --ignore-path .gitignore",
+    "lint:ci": "eslint \"**/*.{js,ts,tsx}\" -f @jamesacarr/eslint-formatter-github-actions --ignore-path .gitignore",
+    "format": "prettier --write \"**/*.{js,ts,tsx,json,md}\" --ignore-path .gitignore",
+    "format:check": "prettier --check \"**/*.{js,ts,tsx,json,md}\" --ignore-path .gitignore",
+    "format:all": "npm run format && npm run format:kotlin && npm run format:swift && npm run format:cpp",
+    "format:check:all": "npm run format:check && npm run format:check:kotlin && npm run format:check:swift && npm run format:check:cpp",
+    "format:kotlin": "bash scripts/format-kotlin.sh",
+    "format:check:kotlin": "bash scripts/check-kotlin.sh",
+    "format:swift": "bash scripts/format-swift.sh",
+    "format:check:swift": "bash scripts/check-swift.sh",
+    "format:cpp": "find react-native-nitro-player/android/src/main/cpp -type f \\( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \\) -exec clang-format -i {} + || (echo 'clang-format not installed. Install with: brew install clang-format (macOS) or apt-get install clang-format (Linux)' && exit 0)",
+    "format:check:cpp": "find react-native-nitro-player/android/src/main/cpp -type f \\( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \\) -exec clang-format --dry-run --Werror {} + || (echo 'clang-format not installed. Install with: brew install clang-format (macOS) or apt-get install clang-format (Linux)' && exit 0)",
+    "release": "release-it"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.28.3",
     "@babel/preset-react": "^7.27.1",
     "@babel/preset-typescript": "^7.27.1",
     "@jamesacarr/eslint-formatter-github-actions": "^0.2.0",
+    "@react-native/eslint-config": "^0.82.0",
     "@release-it-plugins/workspaces": "^5.0.3",
     "@release-it/bumper": "^7.0.5",
     "@release-it/conventional-changelog": "^10.0.1",
     "@types/bun": "latest",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "ktlint": "^1.2.1",
+    "prettier": "^3.3.3",
     "release-it": "^19.0.4"
   },
   "release-it": {
@@ -39,7 +58,16 @@
     },
     "plugins": {
       "@release-it/bumper": {
+        "in": "package.json",
         "out": [
+          {
+            "file": "package.json",
+            "path": "version"
+          },
+          {
+            "file": "react-native-nitro-player/package.json",
+            "path": "version"
+          },
           {
             "file": "example/package.json",
             "path": "version"

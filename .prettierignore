@@ -1,0 +1,12 @@
+node_modules/
+lib/
+nitrogen/generated/
+*.generated.*
+android/
+ios/
+*.lock
+*.log
+build/
+dist/
+coverage/
+

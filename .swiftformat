@@ -1,0 +1,32 @@
+# SwiftFormat Configuration
+
+# Indentation
+--indent 2
+--tabwidth 2
+--indentcase false
+
+# Line length
+--maxwidth 120
+--wraparguments before-first
+--wrapparameters before-first
+--wrapcollections before-first
+
+# Spacing
+--operatorfunc spaced
+--nospaceoperators ...,..<
+--ranges spaced
+--trimwhitespace always
+--insertlines true
+--removelines true
+
+# Semicolons
+--semicolons never
+
+# Imports
+--importgrouping testable-bottom
+--importgrouping alphabetical
+
+# Other
+--swiftversion 5.9
+--exclude Pods,generated,nitrogen/generated
+

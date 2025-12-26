@@ -11,18 +11,11 @@ data class Playlist(
     val name: String,
     val description: String? = null,
     val artwork: String? = null,
-    val tracks: MutableList<TrackItem> = mutableListOf()
+    val tracks: MutableList<TrackItem> = mutableListOf(),
 ) {
-    fun toTrackItemArray(): Array<TrackItem> {
-        return tracks.toTypedArray()
-    }
-    
-    fun getTrackCount(): Int {
-        return tracks.size
-    }
-    
-    fun isEmpty(): Boolean {
-        return tracks.isEmpty()
-    }
-}
+    fun toTrackItemArray(): Array<TrackItem> = tracks.toTypedArray()
 
+    fun getTrackCount(): Int = tracks.size
+
+    fun isEmpty(): Boolean = tracks.isEmpty()
+}

@@ -1,15 +1,11 @@
 {
   "$schema": "https://nitro.margelo.com/nitro.schema.json",
-  "cxxNamespace": [
-    "nitroplayer"
-  ],
+  "cxxNamespace": ["nitroplayer"],
   "ios": {
     "iosModuleName": "NitroPlayer"
   },
   "android": {
-    "androidNamespace": [
-      "nitroplayer"
-    ],
+    "androidNamespace": ["nitroplayer"],
     "androidCxxLibName": "NitroPlayer"
   },
   "autolinking": {
@@ -22,7 +18,5 @@
       "kotlin": "HybridTrackPlayer"
     }
   },
-  "ignorePaths": [
-    "**/node_modules"
-  ]
+  "ignorePaths": ["**/node_modules"]
 }

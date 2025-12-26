@@ -2,15 +2,15 @@ package com.margelo.nitro.nitroplayer
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
-import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
 import com.margelo.nitro.NitroModules
-
+import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
 
 class HybridTrackPlayer : HybridTrackPlayerSpec() {
     private val core: TrackPlayerCore
 
     init {
-        val context = NitroModules.applicationContext  ?: throw IllegalStateException("React Context is not initialized")
+        val context =
+            NitroModules.applicationContext ?: throw IllegalStateException("React Context is not initialized")
         core = TrackPlayerCore.getInstance(context)
     }
 
@@ -28,7 +28,10 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
 
     @DoNotStrip
     @Keep
-    override fun playSong(songId: String, fromPlaylist: String?) {
+    override fun playSong(
+        songId: String,
+        fromPlaylist: String?,
+    ) {
         core.playSong(songId, fromPlaylist)
     }
 
@@ -52,9 +55,7 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
 
     @DoNotStrip
     @Keep
-    override fun getState(): PlayerState {
-        return core.getState()
-    }
+    override fun getState(): PlayerState = core.getState()
 
     override fun onChangeTrack(callback: (track: TrackItem, reason: Reason?) -> Unit) {
         core.onChangeTrack = callback
@@ -78,17 +79,15 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
         core.configure(
             androidAutoEnabled = config.androidAutoEnabled,
             carPlayEnabled = config.carPlayEnabled,
-            showInNotification = config.showInNotification
+            showInNotification = config.showInNotification,
         )
     }
-    
+
     @Keep
     override fun onAndroidAutoConnectionChange(callback: (Boolean) -> Unit) {
         core.onAndroidAutoConnectionChange = callback
     }
-    
+
     @Keep
-    override fun isAndroidAutoConnected(): Boolean {
-        return core.isAndroidAutoConnected()
-    }
+    override fun isAndroidAutoConnected(): Boolean = core.isAndroidAutoConnected()
 }

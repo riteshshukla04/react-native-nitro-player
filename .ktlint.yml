@@ -1,0 +1,14 @@
+editorConfigOverride: true
+disabledRules:
+  - import-ordering
+  - no-wildcard-imports
+  - standard:property-naming
+  - standard:filename
+  - standard:if-else-wrapping
+  - standard:max-line-length
+codeStyle: official
+android: true
+experimental:
+  - no-empty-first-line-in-method-block
+max_line_length: 200
+

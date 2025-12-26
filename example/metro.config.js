@@ -11,4 +11,4 @@ const config = {
   watchFolders: [path.resolve(__dirname, '..')],
 };
 
-module.exports = mergeConfig(getDefaultConfig(__dirname), config)
+module.exports = mergeConfig(getDefaultConfig(__dirname), config);

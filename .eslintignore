@@ -1,0 +1,14 @@
+node_modules/
+lib/
+nitrogen/generated/
+*.generated.*
+android/
+ios/
+*.lock
+*.log
+build/
+dist/
+coverage/
+example/node_modules/
+react-native-nitro-player/node_modules/
+

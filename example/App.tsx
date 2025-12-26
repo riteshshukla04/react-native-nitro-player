@@ -7,24 +7,38 @@
 
 import { NewAppScreen } from '@react-native/new-app-screen';
 import { useEffect, useState } from 'react';
-import { StatusBar, StyleSheet, useColorScheme, View, Text, ScrollView, TouchableOpacity } from 'react-native';
-import { 
-  PlayerQueue, 
+import {
+  StatusBar,
+  StyleSheet,
+  useColorScheme,
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+} from 'react-native';
+import {
+  PlayerQueue,
   TrackPlayer,
   useOnChangeTrack,
   useOnPlaybackStateChange,
   useOnSeek,
   useOnPlaybackProgressChange,
-  useAndroidAutoConnection
+  useAndroidAutoConnection,
 } from 'react-native-nitro-player';
-import type { TrackItem, QueueOperation, TrackPlayerState, Reason, PlayerState, PlayerConfig, Playlist } from '../react-native-nitro-player/src/types/PlayerQueue';
+import type {
+  TrackItem,
+  QueueOperation,
+  TrackPlayerState,
+  Reason,
+  PlayerState,
+  PlayerConfig,
+  Playlist,
+} from '../react-native-nitro-player/src/types/PlayerQueue';
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
 
-  return (
-    <AppContent />
-  );
+  return <AppContent />;
 }
 
 TrackPlayer.configure({
@@ -41,7 +55,8 @@ const sampleTracks1: TrackItem[] = [
     album: 'Chill Vibes',
     duration: 182.0,
     url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-    artwork: 'https://img.freepik.com/free-photo/sunset-time-tropical-beach-sea-with-coconut-palm-tree_74190-1075.jpg?semt=ais_hybrid&w=740&q=80',
+    artwork:
+      'https://img.freepik.com/free-photo/sunset-time-tropical-beach-sea-with-coconut-palm-tree_74190-1075.jpg?semt=ais_hybrid&w=740&q=80',
   },
   {
     id: '2',
@@ -87,15 +102,27 @@ const sampleTracks2: TrackItem[] = [
 function AppContent() {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [currentPlaylist, setCurrentPlaylist] = useState<Playlist | null>(null);
-  const [currentPlaylistId, setCurrentPlaylistId] = useState<string | null>(null);
-  const [lastOperation, setLastOperation] = useState<QueueOperation | undefined>(undefined);
-  const [playerState, setPlayerState] = useState<PlayerState | undefined>(undefined);
+  const [currentPlaylistId, setCurrentPlaylistId] = useState<string | null>(
+    null,
+  );
+  const [lastOperation, setLastOperation] = useState<
+    QueueOperation | undefined
+  >(undefined);
+  const [playerState, setPlayerState] = useState<PlayerState | undefined>(
+    undefined,
+  );
 
   // Use hooks to get player state directly
   const { track: currentTrack, reason: trackChangeReason } = useOnChangeTrack();
-  const { state: playbackState, reason: stateChangeReason } = useOnPlaybackStateChange();
-  const { position: lastSeekPosition, totalDuration: lastSeekDuration } = useOnSeek();
-  const { position: playbackPosition, totalDuration, isManuallySeeked } = useOnPlaybackProgressChange();
+  const { state: playbackState, reason: stateChangeReason } =
+    useOnPlaybackStateChange();
+  const { position: lastSeekPosition, totalDuration: lastSeekDuration } =
+    useOnSeek();
+  const {
+    position: playbackPosition,
+    totalDuration,
+    isManuallySeeked,
+  } = useOnPlaybackProgressChange();
   const { isConnected: isAndroidAutoConnected } = useAndroidAutoConnection();
 
   // Log changes for debugging
@@ -123,7 +150,7 @@ function AppContent() {
     // Get initial playlists
     const initialPlaylists = PlayerQueue.getAllPlaylists();
     setPlaylists(initialPlaylists);
-    
+
     // Get current playlist ID
     const currentId = PlayerQueue.getCurrentPlaylistId();
     setCurrentPlaylistId(currentId);
@@ -137,7 +164,7 @@ function AppContent() {
       console.log('Playlists changed:', operation, updatedPlaylists);
       setPlaylists(updatedPlaylists);
       setLastOperation(operation);
-      
+
       // Update current playlist if it changed
       const currentId = PlayerQueue.getCurrentPlaylistId();
       setCurrentPlaylistId(currentId);
@@ -150,7 +177,11 @@ function AppContent() {
 
   const handleCreatePlaylist1 = () => {
     console.log('Creating playlist 1');
-    const playlistId = PlayerQueue.createPlaylist('Chill Vibes', 'Relaxing music for your day', sampleTracks1[0].artwork || undefined);
+    const playlistId = PlayerQueue.createPlaylist(
+      'Chill Vibes',
+      'Relaxing music for your day',
+      sampleTracks1[0].artwork || undefined,
+    );
     PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
     const playlists = PlayerQueue.getAllPlaylists();
     setPlaylists(playlists);
@@ -158,7 +189,11 @@ function AppContent() {
 
   const handleCreatePlaylist2 = () => {
     console.log('Creating playlist 2');
-    const playlistId = PlayerQueue.createPlaylist('Nature Sounds', 'Sounds of nature', sampleTracks2[0].artwork || undefined);
+    const playlistId = PlayerQueue.createPlaylist(
+      'Nature Sounds',
+      'Sounds of nature',
+      sampleTracks2[0].artwork || undefined,
+    );
     PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks2);
     const playlists = PlayerQueue.getAllPlaylists();
     setPlaylists(playlists);
@@ -248,7 +283,7 @@ function AppContent() {
       TrackPlayer.seek(totalDuration - 10);
     }
   };
-  
+
   const handleGetState = () => {
     const state = TrackPlayer.getState();
     console.log('Player State:', state);
@@ -267,64 +302,106 @@ function AppContent() {
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.content}
+      >
         <Text style={styles.title}>Nitro Player Example</Text>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Player Controls</Text>
-          
+
           <View style={styles.infoBox}>
-            <Text style={styles.infoText}>💡 Tip: Click on any track in the playlists below to play it!</Text>
-            <Text style={styles.infoSubText}>• Click track name = Play from that playlist</Text>
-            <Text style={styles.infoSubText}>• Click 🎵 = Auto-find and play</Text>
-          </View>
-          
-          {/* Android Auto Connection Indicator */}
-          <View style={[styles.connectionIndicator, isAndroidAutoConnected && styles.connectionIndicatorConnected]}>
-            <Text style={styles.connectionText}>
-              Android Auto: {isAndroidAutoConnected ? '🚗 CONNECTED' : '📱 Disconnected'}
+            <Text style={styles.infoText}>
+              💡 Tip: Click on any track in the playlists below to play it!
+            </Text>
+            <Text style={styles.infoSubText}>
+              • Click track name = Play from that playlist
+            </Text>
+            <Text style={styles.infoSubText}>
+              • Click 🎵 = Auto-find and play
             </Text>
           </View>
-          
+
+          {/* Android Auto Connection Indicator */}
+          <View
+            style={[
+              styles.connectionIndicator,
+              isAndroidAutoConnected && styles.connectionIndicatorConnected,
+            ]}
+          >
+            <Text style={styles.connectionText}>
+              Android Auto:{' '}
+              {isAndroidAutoConnected ? '🚗 CONNECTED' : '📱 Disconnected'}
+            </Text>
+          </View>
+
           <View style={styles.controlsRow}>
-            <TouchableOpacity style={styles.controlButton} onPress={handleSkipPrevious}>
+            <TouchableOpacity
+              style={styles.controlButton}
+              onPress={handleSkipPrevious}
+            >
               <Text style={styles.buttonText}>Prev</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.controlButton} onPress={handlePlay}>
               <Text style={styles.buttonText}>Play</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.controlButton} onPress={handlePause}>
+            <TouchableOpacity
+              style={styles.controlButton}
+              onPress={handlePause}
+            >
               <Text style={styles.buttonText}>Pause</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.controlButton} onPress={handleSkipNext}>
+            <TouchableOpacity
+              style={styles.controlButton}
+              onPress={handleSkipNext}
+            >
               <Text style={styles.buttonText}>Next</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.controlsRow}>
-            <TouchableOpacity style={styles.controlButton} onPress={handleSeekTo30}>
+            <TouchableOpacity
+              style={styles.controlButton}
+              onPress={handleSeekTo30}
+            >
               <Text style={styles.buttonText}>Seek 30s</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.controlButton} onPress={handleSeekTo60}>
+            <TouchableOpacity
+              style={styles.controlButton}
+              onPress={handleSeekTo60}
+            >
               <Text style={styles.buttonText}>Seek 60s</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.controlButton} onPress={handleSeekToLast10}>
+            <TouchableOpacity
+              style={styles.controlButton}
+              onPress={handleSeekToLast10}
+            >
               <Text style={styles.buttonText}>Last 10s</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.controlsRow}>
-            <TouchableOpacity style={styles.controlButton} onPress={handleGetState}>
+            <TouchableOpacity
+              style={styles.controlButton}
+              onPress={handleGetState}
+            >
               <Text style={styles.buttonText}>Get State</Text>
             </TouchableOpacity>
           </View>
-          
-          <Text style={styles.statusText}>State: {playbackState !== undefined ? playbackState : 'None'}</Text>
+
+          <Text style={styles.statusText}>
+            State: {playbackState !== undefined ? playbackState : 'None'}
+          </Text>
           {currentTrack && (
             <View style={styles.currentTrack}>
-              <Text style={styles.currentTrackTitle}>Now Playing: {currentTrack.title}</Text>
-              <Text style={styles.currentTrackArtist}>{currentTrack.artist}</Text>
+              <Text style={styles.currentTrackTitle}>
+                Now Playing: {currentTrack.title}
+              </Text>
+              <Text style={styles.currentTrackArtist}>
+                {currentTrack.artist}
+              </Text>
             </View>
           )}
-          
+
           <View style={styles.progressSection}>
             <Text style={styles.progressLabel}>Playback Progress</Text>
             <Text style={styles.progressText}>
@@ -332,11 +409,11 @@ function AppContent() {
             </Text>
             {totalDuration > 0 && (
               <View style={styles.progressBarContainer}>
-                <View 
+                <View
                   style={[
-                    styles.progressBar, 
-                    { width: `${(playbackPosition / totalDuration) * 100}%` }
-                  ]} 
+                    styles.progressBar,
+                    { width: `${(playbackPosition / totalDuration) * 100}%` },
+                  ]}
                 />
               </View>
             )}
@@ -351,7 +428,8 @@ function AppContent() {
             <View style={styles.seekInfo}>
               <Text style={styles.seekLabel}>Last Seek Event:</Text>
               <Text style={styles.seekText}>
-                Position: {formatTime(lastSeekPosition)} / Duration: {formatTime(lastSeekDuration)}
+                Position: {formatTime(lastSeekPosition)} / Duration:{' '}
+                {formatTime(lastSeekDuration)}
               </Text>
             </View>
           )}
@@ -360,12 +438,20 @@ function AppContent() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Playlist Management</Text>
 
-          <TouchableOpacity style={styles.button} onPress={handleCreatePlaylist1}>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={handleCreatePlaylist1}
+          >
             <Text style={styles.buttonText}>Create "Chill Vibes" Playlist</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.button} onPress={handleCreatePlaylist2}>
-            <Text style={styles.buttonText}>Create "Nature Sounds" Playlist</Text>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={handleCreatePlaylist2}
+          >
+            <Text style={styles.buttonText}>
+              Create "Nature Sounds" Playlist
+            </Text>
           </TouchableOpacity>
 
           {lastOperation && (
@@ -382,7 +468,7 @@ function AppContent() {
           {playlists.length === 0 ? (
             <Text style={styles.emptyText}>No playlists created yet</Text>
           ) : (
-            playlists.map((playlist) => (
+            playlists.map(playlist => (
               <View key={playlist.id} style={styles.playlistItem}>
                 <View style={styles.playlistHeader}>
                   <View style={styles.playlistInfo}>
@@ -395,27 +481,33 @@ function AppContent() {
                     </Text>
                   </View>
                   <View style={styles.playlistActions}>
-                    <TouchableOpacity 
-                      style={[styles.smallButton, currentPlaylistId === playlist.id && styles.activeButton]}
+                    <TouchableOpacity
+                      style={[
+                        styles.smallButton,
+                        currentPlaylistId === playlist.id &&
+                          styles.activeButton,
+                      ]}
                       onPress={() => handleLoadPlaylist(playlist.id)}
                     >
                       <Text style={styles.smallButtonText}>
-                        {currentPlaylistId === playlist.id ? '✓ Playing' : 'Play'}
+                        {currentPlaylistId === playlist.id
+                          ? '✓ Playing'
+                          : 'Play'}
                       </Text>
                     </TouchableOpacity>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.smallButton}
                       onPress={() => handleAddTracksToPlaylist(playlist.id)}
                     >
                       <Text style={styles.smallButtonText}>+ Multiple</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.smallButton}
                       onPress={() => handleAddTrackToPlaylist(playlist.id)}
                     >
                       <Text style={styles.smallButtonText}>+ One</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={[styles.smallButton, styles.deleteButton]}
                       onPress={() => handleDeletePlaylist(playlist.id)}
                     >
@@ -425,26 +517,32 @@ function AppContent() {
                 </View>
                 {playlist.tracks.length > 0 && (
                   <View style={styles.tracksList}>
-                    <Text style={styles.tracksListHeader}>Tracks (tap to play):</Text>
+                    <Text style={styles.tracksListHeader}>
+                      Tracks (tap to play):
+                    </Text>
                     {playlist.tracks.map((track, index) => (
                       <View key={track.id} style={styles.trackItem}>
                         <Text style={styles.trackIndex}>{index + 1}.</Text>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                           style={styles.trackInfo}
-                          onPress={() => handlePlaySongFromPlaylist(track.id, playlist.id)}
+                          onPress={() =>
+                            handlePlaySongFromPlaylist(track.id, playlist.id)
+                          }
                         >
                           <Text style={styles.trackTitle}>{track.title}</Text>
                           <Text style={styles.trackArtist}>{track.artist}</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                           style={styles.playTrackButton}
                           onPress={() => handlePlaySongAuto(track.id)}
                         >
                           <Text style={styles.playTrackButtonText}>🎵</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                           style={styles.removeButton}
-                          onPress={() => handleRemoveTrack(playlist.id, track.id)}
+                          onPress={() =>
+                            handleRemoveTrack(playlist.id, track.id)
+                          }
                         >
                           <Text style={styles.removeButtonText}>×</Text>
                         </TouchableOpacity>
@@ -460,7 +558,9 @@ function AppContent() {
         {currentPlaylist && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Current Playlist</Text>
-            <Text style={styles.currentPlaylistName}>{currentPlaylist.name}</Text>
+            <Text style={styles.currentPlaylistName}>
+              {currentPlaylist.name}
+            </Text>
             <Text style={styles.currentPlaylistTracks}>
               {currentPlaylist.tracks.length} tracks
             </Text>
@@ -469,31 +569,43 @@ function AppContent() {
 
         {playerState && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Player State (from getState())</Text>
+            <Text style={styles.sectionTitle}>
+              Player State (from getState())
+            </Text>
             <View style={styles.stateInfo}>
               <Text style={styles.stateLabel}>Current State:</Text>
               <Text style={styles.stateValue}>{playerState.currentState}</Text>
             </View>
             <View style={styles.stateInfo}>
               <Text style={styles.stateLabel}>Current Position:</Text>
-              <Text style={styles.stateValue}>{formatTime(playerState.currentPosition)}</Text>
+              <Text style={styles.stateValue}>
+                {formatTime(playerState.currentPosition)}
+              </Text>
             </View>
             <View style={styles.stateInfo}>
               <Text style={styles.stateLabel}>Total Duration:</Text>
-              <Text style={styles.stateValue}>{formatTime(playerState.totalDuration)}</Text>
+              <Text style={styles.stateValue}>
+                {formatTime(playerState.totalDuration)}
+              </Text>
             </View>
             <View style={styles.stateInfo}>
               <Text style={styles.stateLabel}>Current Index:</Text>
               <Text style={styles.stateValue}>
-                {playerState.currentIndex >= 0 ? playerState.currentIndex : 'None'}
+                {playerState.currentIndex >= 0
+                  ? playerState.currentIndex
+                  : 'None'}
               </Text>
             </View>
             {playerState.currentTrack && (
               <View style={styles.stateInfo}>
                 <Text style={styles.stateLabel}>Current Track:</Text>
                 <View style={styles.stateTrackInfo}>
-                  <Text style={styles.stateValue}>{playerState.currentTrack.title}</Text>
-                  <Text style={styles.stateSubValue}>{playerState.currentTrack.artist}</Text>
+                  <Text style={styles.stateValue}>
+                    {playerState.currentTrack.title}
+                  </Text>
+                  <Text style={styles.stateSubValue}>
+                    {playerState.currentTrack.artist}
+                  </Text>
                 </View>
               </View>
             )}

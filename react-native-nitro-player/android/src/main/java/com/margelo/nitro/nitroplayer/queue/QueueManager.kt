@@ -9,46 +9,39 @@ import java.util.concurrent.CopyOnWriteArrayList
  * It provides thread-safe access to the queue and notifies listeners of queue changes.
  */
 class QueueManager private constructor() {
-    
     private val queue = Queue()
     private val listeners = CopyOnWriteArrayList<(List<TrackItem>, QueueOperation?) -> Unit>()
-    
+
     companion object {
         @Volatile
+        @Suppress("ktlint:standard:property-naming")
         private var INSTANCE: QueueManager? = null
-        
+
         /**
          * Get the singleton instance of QueueManager
          */
         @JvmStatic
-        fun getInstance(): QueueManager {
-            return INSTANCE ?: synchronized(this) {
+        fun getInstance(): QueueManager =
+            INSTANCE ?: synchronized(this) {
                 INSTANCE ?: QueueManager().also { INSTANCE = it }
             }
-        }
     }
-    
+
     /**
      * Get the current queue
      */
-    fun getQueue(): Queue {
-        return queue
-    }
-    
+    fun getQueue(): Queue = queue
+
     /**
      * Get all tracks in the queue
      */
-    fun getTracks(): List<TrackItem> {
-        return queue.getTracks()
-    }
-    
+    fun getTracks(): List<TrackItem> = queue.getTracks()
+
     /**
      * Get tracks as an array
      */
-    fun getTracksArray(): Array<TrackItem> {
-        return queue.getTracksArray()
-    }
-    
+    fun getTracksArray(): Array<TrackItem> = queue.getTracksArray()
+
     /**
      * Load multiple tracks into the queue (replaces existing queue)
      */
@@ -56,11 +49,14 @@ class QueueManager private constructor() {
         queue.loadTracks(tracks.toList())
         notifyListeners(QueueOperation.ADD)
     }
-    
+
     /**
      * Load a single track at a specific index
      */
-    fun loadSingleTrack(track: TrackItem, index: Double?) {
+    fun loadSingleTrack(
+        track: TrackItem,
+        index: Double?,
+    ) {
         val insertIndex = index?.toInt()
         if (insertIndex != null && insertIndex >= 0) {
             queue.addTrackAtIndex(track, insertIndex)
@@ -69,7 +65,7 @@ class QueueManager private constructor() {
         }
         notifyListeners(QueueOperation.ADD)
     }
-    
+
     /**
      * Delete a track by ID
      */
@@ -79,7 +75,7 @@ class QueueManager private constructor() {
             notifyListeners(QueueOperation.REMOVE)
         }
     }
-    
+
     /**
      * Clear all tracks from the queue
      */
@@ -87,7 +83,7 @@ class QueueManager private constructor() {
         queue.clear()
         notifyListeners(QueueOperation.CLEAR)
     }
-    
+
     /**
      * Add a listener for queue changes
      * @param listener Callback that receives (queue, operation)
@@ -97,14 +93,14 @@ class QueueManager private constructor() {
         listeners.add(listener)
         return { listeners.remove(listener) }
     }
-    
+
     /**
      * Remove a queue change listener
      */
     fun removeQueueChangeListener(listener: (List<TrackItem>, QueueOperation?) -> Unit) {
         listeners.remove(listener)
     }
-    
+
     /**
      * Notify all listeners of queue changes
      */
@@ -119,40 +115,29 @@ class QueueManager private constructor() {
             }
         }
     }
-    
+
     /**
      * Get queue size
      */
-    fun getQueueSize(): Int {
-        return queue.size()
-    }
-    
+    fun getQueueSize(): Int = queue.size()
+
     /**
      * Check if queue is empty
      */
-    fun isQueueEmpty(): Boolean {
-        return queue.isEmpty()
-    }
-    
+    fun isQueueEmpty(): Boolean = queue.isEmpty()
+
     /**
      * Get a track by index
      */
-    fun getTrack(index: Int): TrackItem? {
-        return queue.getTrack(index)
-    }
-    
+    fun getTrack(index: Int): TrackItem? = queue.getTrack(index)
+
     /**
      * Get a track by ID
      */
-    fun getTrackById(id: String): TrackItem? {
-        return queue.getTrackById(id)
-    }
-    
+    fun getTrackById(id: String): TrackItem? = queue.getTrackById(id)
+
     /**
      * Get the index of a track by ID
      */
-    fun getTrackIndex(id: String): Int {
-        return queue.getTrackIndex(id)
-    }
+    fun getTrackIndex(id: String): Int = queue.getTrackIndex(id)
 }
-

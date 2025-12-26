@@ -1,6 +1,5 @@
-export { useOnChangeTrack } from './useOnChangeTrack';
-export { useOnPlaybackStateChange } from './useOnPlaybackStateChange';
-export { useOnSeek } from './useOnSeek';
-export { useOnPlaybackProgressChange } from './useOnPlaybackProgressChange';
-export { useAndroidAutoConnection } from './useAndroidAutoConnection';
-
+export { useOnChangeTrack } from './useOnChangeTrack'
+export { useOnPlaybackStateChange } from './useOnPlaybackStateChange'
+export { useOnSeek } from './useOnSeek'
+export { useOnPlaybackProgressChange } from './useOnPlaybackProgressChange'
+export { useAndroidAutoConnection } from './useAndroidAutoConnection'

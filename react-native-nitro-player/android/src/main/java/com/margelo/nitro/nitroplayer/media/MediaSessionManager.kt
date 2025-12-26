@@ -20,9 +20,9 @@ import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.margelo.nitro.nitroplayer.TrackItem
-import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
 import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
 import com.margelo.nitro.nitroplayer.media.NitroPlayerMediaBrowserService
+import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -33,23 +33,24 @@ import java.net.URL
 class MediaSessionManager(
     private val context: Context,
     private val player: ExoPlayer,
-    private val playlistManager: PlaylistManager
+    private val playlistManager: PlaylistManager,
 ) {
     private var trackPlayerCore: TrackPlayerCore? = null
-    
+
     fun setTrackPlayerCore(core: TrackPlayerCore) {
         trackPlayerCore = core
     }
-    var mediaSession: MediaSession? = null  // Make public so MediaBrowserService can access it
+
+    var mediaSession: MediaSession? = null // Make public so MediaBrowserService can access it
         private set
     private var notificationManager: NotificationManager? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val artworkCache = mutableMapOf<String, Bitmap>()
-    
+
     private var androidAutoEnabled: Boolean = false
     private var carPlayEnabled: Boolean = false
     private var showInNotification: Boolean = true
-    
+
     companion object {
         private const val NOTIFICATION_ID = 1001
         private const val CHANNEL_ID = "nitro_player_channel"
@@ -59,20 +60,20 @@ class MediaSessionManager(
         const val ACTION_NEXT = "com.margelo.nitro.nitroplayer.NEXT"
         const val ACTION_PREVIOUS = "com.margelo.nitro.nitroplayer.PREVIOUS"
     }
-    
+
     init {
         setupMediaSession()
         createNotificationChannel()
     }
-    
+
     fun configure(
         androidAutoEnabled: Boolean?,
         carPlayEnabled: Boolean?,
-        showInNotification: Boolean?
+        showInNotification: Boolean?,
     ) {
         androidAutoEnabled?.let { this.androidAutoEnabled = it }
         carPlayEnabled?.let { this.carPlayEnabled = it }
-        showInNotification?.let { 
+        showInNotification?.let {
             this.showInNotification = it
             if (it) {
                 updateNotification()
@@ -81,61 +82,64 @@ class MediaSessionManager(
             }
         }
     }
-    
+
     private fun setupMediaSession() {
         try {
-            mediaSession = MediaSession.Builder(context, player)
-                .setCallback(object : MediaSession.Callback {
-                    override fun onConnect(
-                        session: MediaSession,
-                        controller: MediaSession.ControllerInfo
-                    ): MediaSession.ConnectionResult {
-                        // Accept all connections with default commands
-                        // Media3 automatically handles play, pause, skip, etc. through the player
-                        return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
-                            .setAvailableSessionCommands(
-                                MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS
-                            )
-                            .setAvailablePlayerCommands(
-                                MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS
-                            )
-                            .build()
-                    }
-                    
-                    override fun onCustomCommand(
-                        session: MediaSession,
-                        controller: MediaSession.ControllerInfo,
-                        customCommand: SessionCommand,
-                        args: android.os.Bundle
-                    ): ListenableFuture<SessionResult> {
-                        // Handle custom commands if needed
-                        return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
-                    }
-                })
-                .build()
+            mediaSession =
+                MediaSession
+                    .Builder(context, player)
+                    .setCallback(
+                        object : MediaSession.Callback {
+                            override fun onConnect(
+                                session: MediaSession,
+                                controller: MediaSession.ControllerInfo,
+                            ): MediaSession.ConnectionResult {
+                                // Accept all connections with default commands
+                                // Media3 automatically handles play, pause, skip, etc. through the player
+                                return MediaSession.ConnectionResult
+                                    .AcceptedResultBuilder(session)
+                                    .setAvailableSessionCommands(
+                                        MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS,
+                                    ).setAvailablePlayerCommands(
+                                        MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS,
+                                    ).build()
+                            }
+
+                            override fun onCustomCommand(
+                                session: MediaSession,
+                                controller: MediaSession.ControllerInfo,
+                                customCommand: SessionCommand,
+                                args: android.os.Bundle,
+                            ): ListenableFuture<SessionResult> {
+                                // Handle custom commands if needed
+                                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                            }
+                        },
+                    ).build()
             // MediaSession is active by default in Media3
             updateMediaSessionMetadata()
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
-    
+
     private fun updateMediaSessionMetadata() {
         // MediaSession will automatically use the metadata from player's current MediaItem
         // No need to manually update here as TrackPlayerCore already sets metadata
     }
-    
+
     private suspend fun loadArtworkBitmap(artworkUrl: String?): Bitmap? {
         if (artworkUrl.isNullOrEmpty()) return null
-        
+
         // Check cache first
         artworkCache[artworkUrl]?.let { return it }
-        
+
         return try {
-            val bitmap = withContext(Dispatchers.IO) {
-                val url = URL(artworkUrl)
-                BitmapFactory.decodeStream(url.openConnection().getInputStream())
-            }
+            val bitmap =
+                withContext(Dispatchers.IO) {
+                    val url = URL(artworkUrl)
+                    BitmapFactory.decodeStream(url.openConnection().getInputStream())
+                }
             // Cache the bitmap
             if (bitmap != null) {
                 artworkCache[artworkUrl] = bitmap
@@ -146,113 +150,120 @@ class MediaSessionManager(
             null
         }
     }
-    
+
     private fun bitmapToByteArray(bitmap: Bitmap): ByteArray {
         val stream = java.io.ByteArrayOutputStream()
         bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
         return stream.toByteArray()
     }
-    
+
     private fun createNotificationChannel() {
         notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Media playback controls"
-                setShowBadge(false)
-                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            }
-            
+            val channel =
+                NotificationChannel(
+                    CHANNEL_ID,
+                    CHANNEL_NAME,
+                    NotificationManager.IMPORTANCE_LOW,
+                ).apply {
+                    description = "Media playback controls"
+                    setShowBadge(false)
+                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                }
+
             notificationManager?.createNotificationChannel(channel)
         }
     }
-    
+
     private fun getCurrentTrack(): TrackItem? {
         val currentMediaItem = player.currentMediaItem ?: return null
         val mediaId = currentMediaItem.mediaId
-        
+
         // Parse mediaId format: "playlistId:trackId" or just "trackId"
-        val trackId = if (mediaId.contains(':')) {
-            mediaId.substring(mediaId.indexOf(':') + 1)
-        } else {
-            mediaId
-        }
-        
+        val trackId =
+            if (mediaId.contains(':')) {
+                mediaId.substring(mediaId.indexOf(':') + 1)
+            } else {
+                mediaId
+            }
+
         // Find track in current playlist or all playlists
         return trackPlayerCore?.getCurrentPlaylistId()?.let { playlistId ->
             playlistManager.getPlaylist(playlistId)?.tracks?.find { it.id == trackId }
-        } ?: playlistManager.getAllPlaylists()
+        } ?: playlistManager
+            .getAllPlaylists()
             .flatMap { it.tracks }
             .find { it.id == trackId }
     }
-    
+
     private fun updateNotification() {
         if (!showInNotification) return
-        
+
         val currentTrack = getCurrentTrack()
         val notification = buildNotification(currentTrack)
         notificationManager?.notify(NOTIFICATION_ID, notification)
     }
-    
+
     private fun buildNotification(track: TrackItem?): Notification {
         val mediaSession = this.mediaSession ?: return createEmptyNotification()
-        
+
         // Launch intent
-        val contentIntent = PendingIntent.getActivity(
-            context,
-            0,
-            context.packageManager.getLaunchIntentForPackage(context.packageName),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        
-        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setContentTitle(track?.title ?: "Unknown Title")
-            .setContentText(track?.artist ?: "Unknown Artist")
-            .setSubText(track?.album ?: "")
-            .setSmallIcon(android.R.drawable.ic_media_play)
-            .setContentIntent(contentIntent)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setOngoing(player.isPlaying)
-            .setShowWhen(false)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
-            .setStyle(
-                androidx.media.app.NotificationCompat.MediaStyle()
-                    .setMediaSession(mediaSession.sessionCompatToken)
-                    .setShowActionsInCompactView(0, 1, 2)
+        val contentIntent =
+            PendingIntent.getActivity(
+                context,
+                0,
+                context.packageManager.getLaunchIntentForPackage(context.packageName),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
-        
+
+        val builder =
+            NotificationCompat
+                .Builder(context, CHANNEL_ID)
+                .setContentTitle(track?.title ?: "Unknown Title")
+                .setContentText(track?.artist ?: "Unknown Artist")
+                .setSubText(track?.album ?: "")
+                .setSmallIcon(android.R.drawable.ic_media_play)
+                .setContentIntent(contentIntent)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setOngoing(player.isPlaying)
+                .setShowWhen(false)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
+                .setStyle(
+                    androidx.media.app.NotificationCompat
+                        .MediaStyle()
+                        .setMediaSession(mediaSession.sessionCompatToken)
+                        .setShowActionsInCompactView(0, 1, 2),
+                )
+
         // Add action buttons
         builder.addAction(
             android.R.drawable.ic_media_previous,
             "Previous",
-            createMediaAction(ACTION_PREVIOUS)
+            createMediaAction(ACTION_PREVIOUS),
         )
-        
+
         if (player.isPlaying) {
             builder.addAction(
                 android.R.drawable.ic_media_pause,
                 "Pause",
-                createMediaAction(ACTION_PAUSE)
+                createMediaAction(ACTION_PAUSE),
             )
         } else {
             builder.addAction(
                 android.R.drawable.ic_media_play,
                 "Play",
-                createMediaAction(ACTION_PLAY)
+                createMediaAction(ACTION_PLAY),
             )
         }
-        
+
         builder.addAction(
             android.R.drawable.ic_media_next,
             "Next",
-            createMediaAction(ACTION_NEXT)
+            createMediaAction(ACTION_NEXT),
         )
-        
+
         // Load artwork asynchronously and update notification
         track?.artwork?.asSecondOrNull()?.let { artworkUrl ->
             scope.launch {
@@ -263,33 +274,34 @@ class MediaSessionManager(
                 }
             }
         }
-        
+
         return builder.build()
     }
-    
-    private fun createEmptyNotification(): Notification {
-        return NotificationCompat.Builder(context, CHANNEL_ID)
+
+    private fun createEmptyNotification(): Notification =
+        NotificationCompat
+            .Builder(context, CHANNEL_ID)
             .setContentTitle("Music Player")
             .setSmallIcon(android.R.drawable.ic_media_play)
             .build()
-    }
-    
+
     private fun createMediaAction(action: String): PendingIntent {
-        val intent = Intent(action).apply {
-            setPackage(context.packageName)
-        }
+        val intent =
+            Intent(action).apply {
+                setPackage(context.packageName)
+            }
         return PendingIntent.getBroadcast(
             context,
             0,
             intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
     }
-    
+
     private fun hideNotification() {
         notificationManager?.cancel(NOTIFICATION_ID)
     }
-    
+
     fun onTrackChanged() {
         // Preload artwork for better notification display
         val currentTrack = getCurrentTrack()
@@ -304,11 +316,11 @@ class MediaSessionManager(
             updateNotification()
         }
     }
-    
+
     fun onPlaybackStateChanged() {
         updateNotification()
     }
-    
+
     fun release() {
         hideNotification()
         mediaSession?.release()
@@ -316,4 +328,3 @@ class MediaSessionManager(
         artworkCache.clear()
     }
 }
-
