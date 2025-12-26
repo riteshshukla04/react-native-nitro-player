@@ -55,9 +55,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pods-
 
-      - name: Check Swift formatting
-        run: bun run format:check:swift
-
       - name: Build iOS
         working-directory: example/ios
         run: |

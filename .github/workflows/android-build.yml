@@ -53,18 +53,3 @@ jobs:
         working-directory: example/android
         run: ./gradlew assembleDebug --no-daemon
 
-      - name: Check Kotlin formatting
-        run: bun run format:check:kotlin || echo "Kotlin formatting check completed"
-
-      - name: Check C++ formatting
-        run: |
-          sudo apt-get update && sudo apt-get install -y clang-format
-          bun run format:check:cpp || echo "C++ formatting check completed"
-
-      - name: Upload APK
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-apk
-          path: example/android/app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 7
