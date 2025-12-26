@@ -7,7 +7,7 @@ SWIFT_DIRS=(
   "example/ios"
 )
 
-if which swift >/dev/null; then
+if which swift-format >/dev/null; then
   DIRS=$(printf "%s " "${SWIFT_DIRS[@]}")
   ERROR_COUNT=0
   
@@ -21,7 +21,7 @@ if which swift >/dev/null; then
   
   # Check each file
   for file in $SWIFT_FILES; do
-    if ! swift format --mode lint "$file" >/dev/null 2>&1; then
+    if ! swift-format lint "$file" >/dev/null 2>&1; then
       echo "Formatting issue in: $file"
       ERROR_COUNT=$((ERROR_COUNT + 1))
     fi
@@ -36,7 +36,7 @@ if which swift >/dev/null; then
     exit 1
   fi
 else
-  echo "error: swift not installed, install the toolchain with Xcode."
+  echo "error: swift-format not installed, install with: swift package install swift-format"
   exit 1
 fi
 

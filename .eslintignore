@@ -11,4 +11,11 @@ dist/
 coverage/
 example/node_modules/
 react-native-nitro-player/node_modules/
+*.config.js
+babel.config.js
+metro.config.js
+jest.config.js
+react-native.config.js
+.eslintrc.js
+index.js
 

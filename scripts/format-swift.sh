@@ -7,14 +7,14 @@ SWIFT_DIRS=(
   "example/ios"
 )
 
-if which swift >/dev/null; then
+if which swift-format >/dev/null; then
   DIRS=$(printf "%s " "${SWIFT_DIRS[@]}")
   find $DIRS -type f \( -name "*.swift" \) ! -path "*/Pods/*" ! -path "*/generated/*" ! -path "*/nitrogen/generated/*" -print0 | while read -d $'\0' file; do
-    swift format --in-place "$file"
+    swift-format format --in-place "$file"
   done
   echo "Swift Format done!"
 else
-  echo "error: swift not installed, install the toolchain with Xcode."
+  echo "error: swift-format not installed, install with: swift package install swift-format"
   exit 1
 fi
 
