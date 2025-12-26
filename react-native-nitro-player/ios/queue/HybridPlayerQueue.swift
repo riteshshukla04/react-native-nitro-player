@@ -93,5 +93,3 @@ final class HybridPlayerQueue: HybridPlayerQueueSpec {
     }
   }
 }
-
-// Extension removed - toGeneratedPlaylist() is now defined in PlaylistModel.swift

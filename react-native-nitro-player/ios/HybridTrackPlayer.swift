@@ -8,13 +8,21 @@
 import Foundation
 import NitroModules
 
+/// Hybrid implementation of TrackPlayerSpec for iOS
+/// Bridges Nitro modules with the native TrackPlayerCore implementation
 final class HybridTrackPlayer: HybridTrackPlayerSpec {
+  // MARK: - Properties
+
   private let core: TrackPlayerCore
+
+  // MARK: - Initialization
 
   override init() {
     core = TrackPlayerCore.shared
     super.init()
   }
+
+  // MARK: - Playback Control
 
   func play() throws {
     core.play()
@@ -44,6 +52,8 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
     return core.getState()
   }
 
+  // MARK: - Configuration
+
   func configure(config: PlayerConfig) throws {
     core.configure(
       androidAutoEnabled: config.androidAutoEnabled,
@@ -51,6 +61,8 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
       showInNotification: config.showInNotification
     )
   }
+
+  // MARK: - Event Callbacks
 
   func onChangeTrack(callback: @escaping (TrackItem, Reason?) -> Void) throws {
     print("🎯 HybridTrackPlayer: onChangeTrack callback registered")
@@ -72,13 +84,17 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
     core.onPlaybackProgressChange = callback
   }
 
+  // MARK: - Android Auto (iOS No-op)
+
+  /// iOS doesn't support Android Auto, so this is a no-op
+  /// - Parameter callback: Callback that will never be invoked
   func onAndroidAutoConnectionChange(callback: @escaping (Bool) -> Void) throws {
     // iOS doesn't have Android Auto, so this is a no-op
-    // Always return false for isAndroidAutoConnected
   }
 
+  /// iOS doesn't support Android Auto, always returns false
+  /// - Returns: Always returns false on iOS
   func isAndroidAutoConnected() throws -> Bool {
-    // iOS doesn't have Android Auto
     return false
   }
 }

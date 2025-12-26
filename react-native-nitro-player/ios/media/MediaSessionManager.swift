@@ -12,6 +12,18 @@ import NitroModules
 import UIKit
 
 class MediaSessionManager {
+  // MARK: - Constants
+
+  private enum Constants {
+    // Seek intervals (in seconds)
+    static let seekInterval: Double = 10.0
+
+    // Artwork size
+    static let artworkSize: CGFloat = 500.0
+  }
+
+  // MARK: - Properties
+
   private var trackPlayerCore: TrackPlayerCore?
   private var artworkCache: [String: UIImage] = [:]
 
@@ -97,7 +109,7 @@ class MediaSessionManager {
     commandCenter.seekForwardCommand.addTarget { [weak self] event in
       guard let self = self, let core = self.trackPlayerCore else { return .commandFailed }
       let state = core.getState()
-      let newPosition = min(state.currentPosition + 10.0, state.totalDuration)
+      let newPosition = min(state.currentPosition + Constants.seekInterval, state.totalDuration)
       core.seek(position: newPosition)
       return .success
     }
@@ -107,7 +119,7 @@ class MediaSessionManager {
     commandCenter.seekBackwardCommand.addTarget { [weak self] event in
       guard let self = self, let core = self.trackPlayerCore else { return .commandFailed }
       let state = core.getState()
-      let newPosition = max(state.currentPosition - 10.0, 0.0)
+      let newPosition = max(state.currentPosition - Constants.seekInterval, 0.0)
       core.seek(position: newPosition)
       return .success
     }
@@ -157,7 +169,7 @@ class MediaSessionManager {
         if let image = image {
           var updatedInfo = nowPlayingInfo
           updatedInfo[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(
-            boundsSize: CGSize(width: 500, height: 500),
+            boundsSize: CGSize(width: Constants.artworkSize, height: Constants.artworkSize),
             requestHandler: { _ in image }
           )
           MPNowPlayingInfoCenter.default().nowPlayingInfo = updatedInfo

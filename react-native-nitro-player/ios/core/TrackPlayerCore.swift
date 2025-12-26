@@ -12,6 +12,29 @@ import NitroModules
 import ObjectiveC
 
 class TrackPlayerCore: NSObject {
+  // MARK: - Constants
+
+  private enum Constants {
+    // Time thresholds (in seconds)
+    static let skipToPreviousThreshold: Double = 2.0
+    static let stateChangeDelay: TimeInterval = 0.1
+
+    // Duration thresholds for boundary intervals (in seconds)
+    static let twoHoursInSeconds: Double = 7200
+    static let oneHourInSeconds: Double = 3600
+
+    // Boundary time intervals (in seconds)
+    static let boundaryIntervalLong: Double = 5.0  // For tracks > 2 hours
+    static let boundaryIntervalMedium: Double = 2.0  // For tracks > 1 hour
+    static let boundaryIntervalDefault: Double = 1.0  // Default interval
+
+    // UI/Display constants
+    static let separatorLineLength: Int = 80
+    static let playlistSeparatorLength: Int = 40
+  }
+
+  // MARK: - Properties
+
   private var player: AVQueuePlayer?
   private let playlistManager = PlaylistManager.shared
   private var mediaSessionManager: MediaSessionManager?
@@ -29,6 +52,8 @@ class TrackPlayerCore: NSObject {
 
   static let shared = TrackPlayerCore()
 
+  // MARK: - Initialization
+
   private override init() {
     super.init()
     setupAudioSession()
@@ -36,6 +61,8 @@ class TrackPlayerCore: NSObject {
     mediaSessionManager = MediaSessionManager()
     mediaSessionManager?.setTrackPlayerCore(self)
   }
+
+  // MARK: - Setup
 
   private func setupAudioSession() {
     do {
@@ -49,13 +76,18 @@ class TrackPlayerCore: NSObject {
 
   private func setupPlayer() {
     player = AVQueuePlayer()
+    setupPlayerObservers()
+  }
+
+  private func setupPlayerObservers() {
+    guard let player = player else { return }
 
     // Observe player status
-    player?.addObserver(self, forKeyPath: "status", options: [.new], context: nil)
-    player?.addObserver(self, forKeyPath: "rate", options: [.new], context: nil)
+    player.addObserver(self, forKeyPath: "status", options: [.new], context: nil)
+    player.addObserver(self, forKeyPath: "rate", options: [.new], context: nil)
 
     // Observe time control status
-    player?.addObserver(self, forKeyPath: "timeControlStatus", options: [.new], context: nil)
+    player.addObserver(self, forKeyPath: "timeControlStatus", options: [.new], context: nil)
 
     // Observe current item changes
     NotificationCenter.default.addObserver(
@@ -89,8 +121,10 @@ class TrackPlayerCore: NSObject {
     )
 
     // Observe when item changes (using KVO on currentItem)
-    player?.addObserver(self, forKeyPath: "currentItem", options: [.new], context: nil)
+    player.addObserver(self, forKeyPath: "currentItem", options: [.new], context: nil)
   }
+
+  // MARK: - Boundary Time Observer
 
   private func setupBoundaryTimeObserver() {
     // Remove existing boundary observer if any
@@ -120,12 +154,12 @@ class TrackPlayerCore: NSObject {
 
     // Determine interval based on duration
     let interval: Double
-    if duration > 7200 {  // > 2 hours
-      interval = 5.0  // 5 second intervals
-    } else if duration > 3600 {  // > 1 hour
-      interval = 2.0  // 2 second intervals
+    if duration > Constants.twoHoursInSeconds {
+      interval = Constants.boundaryIntervalLong
+    } else if duration > Constants.oneHourInSeconds {
+      interval = Constants.boundaryIntervalMedium
     } else {
-      interval = 1.0  // 1 second intervals
+      interval = Constants.boundaryIntervalDefault
     }
 
     // Create boundary times at each interval
@@ -175,6 +209,8 @@ class TrackPlayerCore: NSObject {
     )
     isManuallySeeked = false
   }
+
+  // MARK: - Notification Handlers
 
   @objc private func playerItemDidPlayToEndTime(notification: Notification) {
     print("\n🏁 TrackPlayerCore: Track finished playing")
@@ -257,6 +293,8 @@ class TrackPlayerCore: NSObject {
     handleBoundaryTimeCrossed()
   }
 
+  // MARK: - KVO Observer
+
   override func observeValue(
     forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey: Any]?,
     context: UnsafeMutableRawPointer?
@@ -285,6 +323,8 @@ class TrackPlayerCore: NSObject {
     }
   }
 
+  // MARK: - Item Change Handling
+
   @objc private func currentItemDidChange() {
     // Clear old item observers
     currentItemObservers.removeAll()
@@ -297,9 +337,9 @@ class TrackPlayerCore: NSObject {
       return
     }
 
-    print("\n" + String(repeating: "▶", count: 80))
+    print("\n" + String(repeating: "▶", count: Constants.separatorLineLength))
     print("🔄 TrackPlayerCore: CURRENT ITEM CHANGED")
-    print(String(repeating: "▶", count: 80))
+    print(String(repeating: "▶", count: Constants.separatorLineLength))
 
     // Log current item details
     if let trackId = currentItem.trackId,
@@ -322,7 +362,7 @@ class TrackPlayerCore: NSObject {
       }
     }
 
-    print(String(repeating: "▶", count: 80) + "\n")
+    print(String(repeating: "▶", count: Constants.separatorLineLength) + "\n")
 
     // Log item status
     print("📱 TrackPlayerCore: Item status: \(currentItem.status.rawValue)")
@@ -407,11 +447,13 @@ class TrackPlayerCore: NSObject {
     currentItemObservers.append(bufferKeepUpObserver)
   }
 
+  // MARK: - Playlist Management
+
   func loadPlaylist(playlistId: String) {
     DispatchQueue.main.async { [weak self] in
       guard let self = self else { return }
 
-      print("\n" + String(repeating: "🎼", count: 40))
+      print("\n" + String(repeating: "🎼", count: Constants.playlistSeparatorLength))
       print("📂 TrackPlayerCore: LOAD PLAYLIST REQUEST")
       print("   Playlist ID: \(playlistId)")
 
@@ -422,7 +464,7 @@ class TrackPlayerCore: NSObject {
         for (index, track) in playlist.tracks.enumerated() {
           print("      [\(index + 1)] \(track.title) - \(track.artist)")
         }
-        print(String(repeating: "🎼", count: 40) + "\n")
+        print(String(repeating: "🎼", count: Constants.playlistSeparatorLength) + "\n")
 
         self.currentPlaylistId = playlistId
         self.updatePlayerQueue(tracks: playlist.tracks)
@@ -432,7 +474,7 @@ class TrackPlayerCore: NSObject {
         self.play()
       } else {
         print("   ❌ Playlist NOT FOUND")
-        print(String(repeating: "🎼", count: 40) + "\n")
+        print(String(repeating: "🎼", count: Constants.playlistSeparatorLength) + "\n")
       }
     }
   }
@@ -448,6 +490,8 @@ class TrackPlayerCore: NSObject {
       }
     }
   }
+
+  // MARK: - Public Methods
 
   func getCurrentPlaylistId() -> String? {
     return currentPlaylistId
@@ -477,16 +521,18 @@ class TrackPlayerCore: NSObject {
     mediaSessionManager?.onPlaybackStateChanged()
   }
 
+  // MARK: - Queue Management
+
   private func updatePlayerQueue(tracks: [TrackItem]) {
-    print("\n" + String(repeating: "=", count: 80))
+    print("\n" + String(repeating: "=", count: Constants.separatorLineLength))
     print("📋 TrackPlayerCore: UPDATE PLAYER QUEUE - Received \(tracks.count) tracks")
-    print(String(repeating: "=", count: 80))
+    print(String(repeating: "=", count: Constants.separatorLineLength))
 
     // Print the full playlist being fed
     for (index, track) in tracks.enumerated() {
       print("  [\(index + 1)] 🎵 \(track.title) - \(track.artist) (ID: \(track.id))")
     }
-    print(String(repeating: "=", count: 80) + "\n")
+    print(String(repeating: "=", count: Constants.separatorLineLength) + "\n")
 
     // Store tracks for index tracking
     currentTracks = tracks
@@ -580,7 +626,7 @@ class TrackPlayerCore: NSObject {
         print("▶️  Current item: \(track.title)")
       }
     }
-    print(String(repeating: "=", count: 80) + "\n")
+    print(String(repeating: "=", count: Constants.separatorLineLength) + "\n")
 
     // Note: Boundary time observers will be set up automatically when item becomes ready
     // This happens in setupCurrentItemObservers() -> status observer -> setupBoundaryTimeObserver()
@@ -596,16 +642,6 @@ class TrackPlayerCore: NSObject {
     print("✅ TrackPlayerCore: Queue updated with \(items.count) tracks")
   }
 
-  private func findTrack(item: AVPlayerItem?) -> TrackItem? {
-    guard let item = item,
-      let trackId = item.trackId
-    else {
-      return nil
-    }
-
-    let playlist = currentPlaylistId.flatMap { playlistManager.getPlaylist(playlistId: $0) }
-    return playlist?.tracks.first { $0.id == trackId }
-  }
 
   func getCurrentTrack() -> TrackItem? {
     guard currentTrackIndex >= 0 && currentTrackIndex < currentTracks.count else {
@@ -630,7 +666,7 @@ class TrackPlayerCore: NSObject {
         player.play()
         // Emit state change immediately for responsive UI
         // KVO will also fire, but this ensures immediate feedback
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + Constants.stateChangeDelay) { [weak self] in
           self?.emitStateChange()
         }
       } else {
@@ -645,7 +681,7 @@ class TrackPlayerCore: NSObject {
       guard let self = self else { return }
       self.player?.pause()
       // Emit state change immediately for responsive UI
-      DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+      DispatchQueue.main.asyncAfter(deadline: .now() + Constants.stateChangeDelay) { [weak self] in
         self?.emitStateChange()
       }
     }
@@ -798,9 +834,9 @@ class TrackPlayerCore: NSObject {
       print("   Current time: \(queuePlayer.currentTime().seconds)s")
 
       let currentTime = queuePlayer.currentTime()
-      if currentTime.seconds > 2.0 {
-        // If more than 2 seconds in, restart current track
-        print("   🔄 More than 2s in, restarting current track")
+      if currentTime.seconds > Constants.skipToPreviousThreshold {
+        // If more than threshold seconds in, restart current track
+        print("   🔄 More than \(Int(Constants.skipToPreviousThreshold))s in, restarting current track")
         queuePlayer.seek(to: .zero)
       } else if self.currentTrackIndex > 0 {
         // Go to previous track
@@ -829,6 +865,8 @@ class TrackPlayerCore: NSObject {
       }
     }
   }
+
+  // MARK: - State Management
 
   func getState() -> PlayerState {
     guard let player = player else {
@@ -950,6 +988,8 @@ class TrackPlayerCore: NSObject {
       player.play()
     }
   }
+
+  // MARK: - Cleanup
 
   deinit {
     print("🧹 TrackPlayerCore: Cleaning up...")

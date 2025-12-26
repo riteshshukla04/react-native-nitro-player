@@ -23,13 +23,6 @@ class Queue {
   }
 
   /**
-   * Get tracks as an array (for compatibility with existing API)
-   */
-  func getTracksArray() -> [TrackItem] {
-    return getTracks()
-  }
-
-  /**
    * Add a single track to the queue
    */
   func addTrack(_ track: TrackItem) {

@@ -44,13 +44,6 @@ class QueueManager {
   }
 
   /**
-   * Get tracks as an array
-   */
-  func getTracksArray() -> [TrackItem] {
-    return queue.getTracksArray()
-  }
-
-  /**
    * Load multiple tracks into the queue (replaces existing queue)
    */
   func loadQueue(_ tracks: [TrackItem]) {
@@ -106,18 +99,6 @@ class QueueManager {
       self?.listenersQueue.sync {
         self?.listeners.removeAll { $0.id == wrapper.id }
       }
-    }
-  }
-
-  /**
-   * Remove a queue change listener
-   */
-  func removeQueueChangeListener(
-    _ listener: @escaping (_ queue: [TrackItem], _ operation: QueueOperation?) -> Void
-  ) {
-    listenersQueue.sync {
-      // This is kept for API compatibility, but removal should use the returned function
-      // from addQueueChangeListener
     }
   }
 
