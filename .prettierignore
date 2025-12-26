@@ -9,4 +9,4 @@ ios/
 build/
 dist/
 coverage/
-
+lib/

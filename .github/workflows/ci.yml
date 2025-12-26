@@ -72,6 +72,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Setup Swift format
+        run: brew install swift-format
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
