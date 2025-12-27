@@ -320,13 +320,184 @@ interface Playlist {
 }
 ```
 
+## Android Auto Customization
+
+Customize how your music library appears in Android Auto with a custom folder structure.
+
+### Basic Setup
+
+By default, all playlists are shown in Android Auto. You can create a custom structure:
+
+```typescript
+import { AndroidAutoMediaLibraryHelper } from 'react-native-nitro-player'
+import type { MediaLibrary } from 'react-native-nitro-player'
+
+// Check if available (Android only)
+if (AndroidAutoMediaLibraryHelper.isAvailable()) {
+  const mediaLibrary: MediaLibrary = {
+    layoutType: 'grid', // 'grid' or 'list'
+    rootItems: [
+      {
+        id: 'my_music',
+        title: '🎵 My Music',
+        subtitle: 'Your music collection',
+        mediaType: 'folder',
+        isPlayable: false,
+        layoutType: 'grid',
+        children: [
+          {
+            id: 'favorites',
+            title: 'Favorites',
+            subtitle: '10 tracks',
+            mediaType: 'playlist',
+            playlistId: 'my-playlist-id', // References a playlist created with PlayerQueue
+            isPlayable: false,
+          },
+        ],
+      },
+      {
+        id: 'recent',
+        title: '🕐 Recently Played',
+        mediaType: 'folder',
+        isPlayable: false,
+        children: [
+          // More playlist references...
+        ],
+      },
+    ],
+  }
+
+  AndroidAutoMediaLibraryHelper.set(mediaLibrary)
+}
+
+// Reset to default (show all playlists)
+AndroidAutoMediaLibraryHelper.clear()
+```
+
+### MediaLibrary Structure
+
+```typescript
+interface MediaLibrary {
+  layoutType: 'grid' | 'list' // Default layout for items
+  rootItems: MediaItem[] // Top-level items
+  appName?: string // Optional app name
+  appIconUrl?: string // Optional app icon
+}
+
+interface MediaItem {
+  id: string // Unique identifier
+  title: string // Display title
+  subtitle?: string // Optional subtitle
+  iconUrl?: string // Optional icon/artwork URL
+  isPlayable: boolean // Whether item can be played
+  mediaType: 'folder' | 'audio' | 'playlist' // Type of item
+  playlistId?: string // Reference to playlist (for playlist items)
+  children?: MediaItem[] // Child items (for folders)
+  layoutType?: 'grid' | 'list' // Override default layout
+}
+```
+
+### Example: Organizing Playlists by Genre
+
+```typescript
+import {
+  PlayerQueue,
+  AndroidAutoMediaLibraryHelper,
+} from 'react-native-nitro-player'
+
+// Create playlists first
+const rockPlaylistId = PlayerQueue.createPlaylist('Rock Classics')
+const jazzPlaylistId = PlayerQueue.createPlaylist('Jazz Essentials')
+const popPlaylistId = PlayerQueue.createPlaylist('Pop Hits')
+
+// Add tracks to playlists...
+PlayerQueue.addTracksToPlaylist(rockPlaylistId, rockTracks)
+PlayerQueue.addTracksToPlaylist(jazzPlaylistId, jazzTracks)
+PlayerQueue.addTracksToPlaylist(popPlaylistId, popTracks)
+
+// Create custom Android Auto structure
+AndroidAutoMediaLibraryHelper.set({
+  layoutType: 'list',
+  rootItems: [
+    {
+      id: 'genres',
+      title: '🎸 By Genre',
+      mediaType: 'folder',
+      isPlayable: false,
+      layoutType: 'grid',
+      children: [
+        {
+          id: 'rock',
+          title: 'Rock',
+          mediaType: 'playlist',
+          playlistId: rockPlaylistId,
+          isPlayable: false,
+        },
+        {
+          id: 'jazz',
+          title: 'Jazz',
+          mediaType: 'playlist',
+          playlistId: jazzPlaylistId,
+          isPlayable: false,
+        },
+        {
+          id: 'pop',
+          title: 'Pop',
+          mediaType: 'playlist',
+          playlistId: popPlaylistId,
+          isPlayable: false,
+        },
+      ],
+    },
+    {
+      id: 'all_music',
+      title: '📀 All Music',
+      mediaType: 'folder',
+      isPlayable: false,
+      children: [
+        {
+          id: 'all_rock',
+          title: 'Rock Classics',
+          mediaType: 'playlist',
+          playlistId: rockPlaylistId,
+          isPlayable: false,
+        },
+        {
+          id: 'all_jazz',
+          title: 'Jazz Essentials',
+          mediaType: 'playlist',
+          playlistId: jazzPlaylistId,
+          isPlayable: false,
+        },
+        {
+          id: 'all_pop',
+          title: 'Pop Hits',
+          mediaType: 'playlist',
+          playlistId: popPlaylistId,
+          isPlayable: false,
+        },
+      ],
+    },
+  ],
+})
+```
+
+### Notes
+
+- The `playlistId` field must reference a playlist created with `PlayerQueue.createPlaylist()`
+- Changes are immediately reflected in Android Auto
+- Use folders to organize playlists hierarchically
+- Grid layout is best for album/playlist browsing
+- List layout is best for song lists
+- Only available on Android (use `isAvailable()` to check)
+
 ## Features
 
 - ✅ **Playlist Management**: Create, update, and manage multiple playlists
 - ✅ **Playback Controls**: Play, pause, seek, skip tracks
 - ✅ **React Hooks**: Built-in hooks for reactive state management
 - ✅ **Event Listeners**: Listen to track changes, state changes, and more
-- ✅ **Android Auto Support**: Control playback from Android Auto
+- ✅ **Android Auto Support**: Control playback from Android Auto with customizable UI
 - ✅ **CarPlay Support**: Control playback from CarPlay (iOS)
 - ✅ **Notification Controls**: Show playback controls in notifications
 - ✅ **Progress Tracking**: Real-time playback progress updates
@@ -344,8 +515,18 @@ import type {
   QueueOperation,
   Reason,
   PlayerConfig,
+  MediaLibrary,
+  MediaItem,
+  LayoutType,
+  MediaType,
 } from 'react-native-nitro-player'
 ```
+
+## Platform Support
+
+- ✅ **iOS**: Full support with CarPlay integration
+- ✅ **Android**: Full support with Android Auto integration
+- 🎯 **Android Auto Media Library**: Android-only feature for customizing the Android Auto UI
 
 ## License
 

@@ -16,6 +16,9 @@
     "TrackPlayer": {
       "swift": "HybridTrackPlayer",
       "kotlin": "HybridTrackPlayer"
+    },
+    "AndroidAutoMediaLibrary": {
+      "kotlin": "HybridAndroidAutoMediaLibrary"
     }
   },
   "ignorePaths": ["**/node_modules"]

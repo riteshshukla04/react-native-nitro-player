@@ -15,6 +15,7 @@
 #include <fbjni/fbjni.h>
 #include <NitroModules/HybridObjectRegistry.hpp>
 
+#include "JHybridAndroidAutoMediaLibrarySpec.hpp"
 #include "JHybridPlayerQueueSpec.hpp"
 #include "JFunc_void_std__vector_Playlist__std__optional_QueueOperation_.hpp"
 #include "JFunc_void_std__string_Playlist_std__optional_QueueOperation_.hpp"
@@ -35,6 +36,7 @@ int initialize(JavaVM* vm) {
 
   return facebook::jni::initialize(vm, [] {
     // Register native JNI methods
+    margelo::nitro::nitroplayer::JHybridAndroidAutoMediaLibrarySpec::registerNatives();
     margelo::nitro::nitroplayer::JHybridPlayerQueueSpec::registerNatives();
     margelo::nitro::nitroplayer::JFunc_void_std__vector_Playlist__std__optional_QueueOperation__cxx::registerNatives();
     margelo::nitro::nitroplayer::JFunc_void_std__string_Playlist_std__optional_QueueOperation__cxx::registerNatives();
@@ -58,6 +60,14 @@ int initialize(JavaVM* vm) {
       "TrackPlayer",
       []() -> std::shared_ptr<HybridObject> {
         static DefaultConstructableObject<JHybridTrackPlayerSpec::javaobject> object("com/margelo/nitro/nitroplayer/HybridTrackPlayer");
+        auto instance = object.create();
+        return instance->cthis()->shared();
+      }
+    );
+    HybridObjectRegistry::registerHybridObjectConstructor(
+      "AndroidAutoMediaLibrary",
+      []() -> std::shared_ptr<HybridObject> {
+        static DefaultConstructableObject<JHybridAndroidAutoMediaLibrarySpec::javaobject> object("com/margelo/nitro/nitroplayer/HybridAndroidAutoMediaLibrary");
         auto instance = object.create();
         return instance->cthis()->shared();
       }

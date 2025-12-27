@@ -33,9 +33,11 @@ target_sources(
   # Autolinking Setup
   ../nitrogen/generated/android/NitroPlayerOnLoad.cpp
   # Shared Nitrogen C++ sources
+  ../nitrogen/generated/shared/c++/HybridAndroidAutoMediaLibrarySpec.cpp
   ../nitrogen/generated/shared/c++/HybridPlayerQueueSpec.cpp
   ../nitrogen/generated/shared/c++/HybridTrackPlayerSpec.cpp
   # Android-specific Nitrogen C++ sources
+  ../nitrogen/generated/android/c++/JHybridAndroidAutoMediaLibrarySpec.cpp
   ../nitrogen/generated/android/c++/JHybridPlayerQueueSpec.cpp
   ../nitrogen/generated/android/c++/JVariant_NullType_Playlist.cpp
   ../nitrogen/generated/android/c++/JVariant_NullType_String.cpp

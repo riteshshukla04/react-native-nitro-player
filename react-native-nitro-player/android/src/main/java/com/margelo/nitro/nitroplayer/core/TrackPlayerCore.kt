@@ -18,6 +18,9 @@ import com.margelo.nitro.nitroplayer.TrackPlayerState
 import com.margelo.nitro.nitroplayer.Variant_NullType_String
 import com.margelo.nitro.nitroplayer.Variant_NullType_TrackItem
 import com.margelo.nitro.nitroplayer.connection.AndroidAutoConnectionDetector
+import com.margelo.nitro.nitroplayer.media.MediaLibrary
+import com.margelo.nitro.nitroplayer.media.MediaLibraryManager
+import com.margelo.nitro.nitroplayer.media.MediaLibraryParser
 import com.margelo.nitro.nitroplayer.media.MediaSessionManager
 import com.margelo.nitro.nitroplayer.media.NitroPlayerMediaBrowserService
 import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
@@ -30,6 +33,7 @@ class TrackPlayerCore private constructor(
     private val handler = android.os.Handler(android.os.Looper.getMainLooper())
     private lateinit var player: ExoPlayer
     private val playlistManager = PlaylistManager.getInstance(context)
+    private val mediaLibraryManager = MediaLibraryManager.getInstance(context)
     private var mediaSessionManager: MediaSessionManager? = null
     private var currentPlaylistId: String? = null
     private var isManuallySeeked = false
@@ -608,4 +612,28 @@ class TrackPlayerCore private constructor(
 
     // Check if Android Auto is connected
     fun isAndroidAutoConnected(): Boolean = isAndroidAutoConnected
+
+    // Set the Android Auto media library structure from JSON
+    fun setAndroidAutoMediaLibrary(libraryJson: String) {
+        handler.post {
+            try {
+                val library = MediaLibraryParser.fromJson(libraryJson)
+                mediaLibraryManager.setMediaLibrary(library)
+                // Notify Android Auto to refresh
+                NitroPlayerMediaBrowserService.getInstance()?.onPlaylistsUpdated()
+                println("✅ TrackPlayerCore: Android Auto media library set successfully")
+            } catch (e: Exception) {
+                println("❌ TrackPlayerCore: Error setting media library - ${e.message}")
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // Clear the Android Auto media library
+    fun clearAndroidAutoMediaLibrary() {
+        handler.post {
+            mediaLibraryManager.clear()
+            NitroPlayerMediaBrowserService.getInstance()?.onPlaylistsUpdated()
+        }
+    }
 }
