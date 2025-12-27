@@ -642,7 +642,6 @@ class TrackPlayerCore: NSObject {
     print("✅ TrackPlayerCore: Queue updated with \(items.count) tracks")
   }
 
-
   func getCurrentTrack() -> TrackItem? {
     guard currentTrackIndex >= 0 && currentTrackIndex < currentTracks.count else {
       return nil
@@ -666,7 +665,8 @@ class TrackPlayerCore: NSObject {
         player.play()
         // Emit state change immediately for responsive UI
         // KVO will also fire, but this ensures immediate feedback
-        DispatchQueue.main.asyncAfter(deadline: .now() + Constants.stateChangeDelay) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + Constants.stateChangeDelay) {
+          [weak self] in
           self?.emitStateChange()
         }
       } else {
@@ -836,7 +836,8 @@ class TrackPlayerCore: NSObject {
       let currentTime = queuePlayer.currentTime()
       if currentTime.seconds > Constants.skipToPreviousThreshold {
         // If more than threshold seconds in, restart current track
-        print("   🔄 More than \(Int(Constants.skipToPreviousThreshold))s in, restarting current track")
+        print(
+          "   🔄 More than \(Int(Constants.skipToPreviousThreshold))s in, restarting current track")
         queuePlayer.seek(to: .zero)
       } else if self.currentTrackIndex > 0 {
         // Go to previous track

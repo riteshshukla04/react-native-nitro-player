@@ -87,6 +87,7 @@ TrackPlayer.seek(30) // Seek to 30 seconds
 ### PlayerQueue
 
 Manages playlists and tracks. Use it to:
+
 - Create, update, and delete playlists
 - Add or remove tracks from playlists
 - Load playlists for playback
@@ -95,6 +96,7 @@ Manages playlists and tracks. Use it to:
 ### TrackPlayer
 
 Controls playback. Use it to:
+
 - Play, pause, and seek
 - Skip tracks
 - Get current player state
@@ -109,6 +111,7 @@ The library provides React hooks for reactive state management. These hooks auto
 Returns the current track and the reason why it changed.
 
 **Returns:**
+
 - `track: TrackItem | undefined` - The current track, or `undefined` if no track is playing
 - `reason: Reason | undefined` - The reason for the track change (`'user_action'`, `'skip'`, `'end'`, or `'error'`)
 
@@ -117,6 +120,7 @@ Returns the current track and the reason why it changed.
 Returns the current playback state and the reason for the state change.
 
 **Returns:**
+
 - `state: TrackPlayerState | undefined` - Current playback state (`'playing'`, `'paused'`, or `'stopped'`)
 - `reason: Reason | undefined` - The reason for the state change
 
@@ -125,6 +129,7 @@ Returns the current playback state and the reason for the state change.
 Returns real-time playback progress updates.
 
 **Returns:**
+
 - `position: number` - Current playback position in seconds
 - `totalDuration: number` - Total duration of the current track in seconds
 - `isManuallySeeked: boolean | undefined` - `true` if the user manually seeked, `undefined` otherwise
@@ -134,6 +139,7 @@ Returns real-time playback progress updates.
 Returns information about the last seek event.
 
 **Returns:**
+
 - `position: number | undefined` - The position where the user seeked to, or `undefined` if no seek has occurred
 - `totalDuration: number | undefined` - The total duration at the time of seek, or `undefined` if no seek has occurred
 
@@ -142,6 +148,7 @@ Returns information about the last seek event.
 Monitors Android Auto connection status.
 
 **Returns:**
+
 - `isConnected: boolean` - `true` if connected to Android Auto, `false` otherwise
 
 ## Usage Examples
@@ -162,16 +169,16 @@ import {
 function PlayerComponent() {
   // Get current track
   const { track, reason } = useOnChangeTrack()
-  
+
   // Get playback state (playing, paused, stopped)
   const { state, reason: stateReason } = useOnPlaybackStateChange()
-  
+
   // Get playback progress
   const { position, totalDuration, isManuallySeeked } = useOnPlaybackProgressChange()
-  
+
   // Get seek events
   const { position: seekPosition, totalDuration: seekDuration } = useOnSeek()
-  
+
   // Check Android Auto connection
   const { isConnected } = useAndroidAutoConnection()
 
@@ -258,9 +265,11 @@ TrackPlayer.onSeek((position, totalDuration) => {
 })
 
 // Listen to playback progress
-TrackPlayer.onPlaybackProgressChange((position, totalDuration, isManuallySeeked) => {
-  console.log('Progress:', position, '/', totalDuration)
-})
+TrackPlayer.onPlaybackProgressChange(
+  (position, totalDuration, isManuallySeeked) => {
+    console.log('Progress:', position, '/', totalDuration)
+  }
+)
 
 // Listen to Android Auto connection changes
 TrackPlayer.onAndroidAutoConnectionChange((connected) => {
@@ -289,12 +298,12 @@ Each track must follow this structure:
 
 ```typescript
 interface TrackItem {
-  id: string              // Unique identifier
-  title: string           // Track title
-  artist: string          // Artist name
-  album: string           // Album name
-  duration: number        // Duration in seconds
-  url: string            // Audio file URL
+  id: string // Unique identifier
+  title: string // Track title
+  artist: string // Artist name
+  album: string // Album name
+  duration: number // Duration in seconds
+  url: string // Audio file URL
   artwork?: string | null // Optional artwork URL
 }
 ```
@@ -303,11 +312,11 @@ interface TrackItem {
 
 ```typescript
 interface Playlist {
-  id: string                    // Unique identifier
-  name: string                  // Playlist name
-  description?: string | null   // Optional description
-  artwork?: string | null       // Optional artwork URL
-  tracks: TrackItem[]           // Array of tracks
+  id: string // Unique identifier
+  name: string // Playlist name
+  description?: string | null // Optional description
+  artwork?: string | null // Optional artwork URL
+  tracks: TrackItem[] // Array of tracks
 }
 ```
 

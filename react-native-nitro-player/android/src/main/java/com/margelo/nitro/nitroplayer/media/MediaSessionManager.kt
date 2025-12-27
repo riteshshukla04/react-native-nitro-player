@@ -8,8 +8,10 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
@@ -103,6 +105,153 @@ class MediaSessionManager(
                                     ).setAvailablePlayerCommands(
                                         MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS,
                                     ).build()
+                            }
+
+                            override fun onAddMediaItems(
+                                mediaSession: MediaSession,
+                                controller: MediaSession.ControllerInfo,
+                                mediaItems: MutableList<MediaItem>,
+                            ): ListenableFuture<MutableList<MediaItem>> {
+                                // This is called when Android Auto requests to play a track
+                                println("🎵 MediaSessionManager: onAddMediaItems called with ${mediaItems.size} items")
+
+                                if (mediaItems.isEmpty()) {
+                                    return Futures.immediateFuture(mutableListOf())
+                                }
+
+                                val updatedMediaItems = mutableListOf<MediaItem>()
+
+                                for (requestedMediaItem in mediaItems) {
+                                    // Get the mediaId from requestMetadata or mediaId
+                                    val mediaId =
+                                        requestedMediaItem.requestMetadata.mediaUri?.toString()
+                                            ?: requestedMediaItem.mediaId
+
+                                    println("🎵 MediaSessionManager: Processing mediaId: $mediaId")
+
+                                    try {
+                                        // Parse mediaId format: "playlistId:trackId"
+                                        if (mediaId.contains(':')) {
+                                            val colonIndex = mediaId.indexOf(':')
+                                            val playlistId = mediaId.substring(0, colonIndex)
+                                            val trackId = mediaId.substring(colonIndex + 1)
+
+                                            println("🎵 MediaSessionManager: Parsed playlistId: $playlistId, trackId: $trackId")
+
+                                            // Get the playlist and track
+                                            val playlist = playlistManager.getPlaylist(playlistId)
+                                            if (playlist != null) {
+                                                val track = playlist.tracks.find { it.id == trackId }
+                                                if (track != null) {
+                                                    // Create a proper MediaItem with all metadata
+                                                    val resolvedMediaItem = createMediaItem(track, mediaId)
+                                                    updatedMediaItems.add(resolvedMediaItem)
+                                                    println("✅ MediaSessionManager: Resolved track: ${track.title}")
+                                                } else {
+                                                    println("⚠️ MediaSessionManager: Track $trackId not found in playlist")
+                                                    updatedMediaItems.add(requestedMediaItem)
+                                                }
+                                            } else {
+                                                println("⚠️ MediaSessionManager: Playlist $playlistId not found")
+                                                updatedMediaItems.add(requestedMediaItem)
+                                            }
+                                        } else {
+                                            println("⚠️ MediaSessionManager: Invalid mediaId format: $mediaId")
+                                            updatedMediaItems.add(requestedMediaItem)
+                                        }
+                                    } catch (e: Exception) {
+                                        println("❌ MediaSessionManager: Error processing mediaId - ${e.message}")
+                                        e.printStackTrace()
+                                        updatedMediaItems.add(requestedMediaItem)
+                                    }
+                                }
+
+                                println("🎵 MediaSessionManager: Returning ${updatedMediaItems.size} resolved media items")
+                                return Futures.immediateFuture(updatedMediaItems)
+                            }
+
+                            override fun onSetMediaItems(
+                                mediaSession: MediaSession,
+                                controller: MediaSession.ControllerInfo,
+                                mediaItems: MutableList<MediaItem>,
+                                startIndex: Int,
+                                startPositionMs: Long,
+                            ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+                                // This is called when Android Auto wants to set and play media items
+                                println("🎵 MediaSessionManager: onSetMediaItems called with ${mediaItems.size} items, startIndex: $startIndex")
+
+                                if (mediaItems.isEmpty()) {
+                                    return Futures.immediateFuture(
+                                        MediaSession.MediaItemsWithStartPosition(
+                                            mutableListOf(),
+                                            0,
+                                            0,
+                                        ),
+                                    )
+                                }
+
+                                try {
+                                    // Get the first item's mediaId to determine the playlist
+                                    val firstMediaId = mediaItems[0].mediaId
+                                    println("🎵 MediaSessionManager: First mediaId: $firstMediaId")
+
+                                    // Parse mediaId format: "playlistId:trackId"
+                                    if (firstMediaId.contains(':')) {
+                                        val colonIndex = firstMediaId.indexOf(':')
+                                        val playlistId = firstMediaId.substring(0, colonIndex)
+                                        val trackId = firstMediaId.substring(colonIndex + 1)
+
+                                        println("🎵 MediaSessionManager: Loading full playlist: $playlistId, starting at track: $trackId")
+
+                                        // Get the full playlist
+                                        val playlist = playlistManager.getPlaylist(playlistId)
+                                        if (playlist != null) {
+                                            // Find the track index in the full playlist
+                                            val trackIndex = playlist.tracks.indexOfFirst { it.id == trackId }
+
+                                            if (trackIndex >= 0) {
+                                                // Load the entire playlist into TrackPlayerCore
+                                                trackPlayerCore?.loadPlaylist(playlistId)
+
+                                                // Create MediaItems for the entire playlist
+                                                val playlistMediaItems =
+                                                    playlist.tracks
+                                                        .map { track ->
+                                                            val trackMediaId = "$playlistId:${track.id}"
+                                                            createMediaItem(track, trackMediaId)
+                                                        }.toMutableList()
+
+                                                println("✅ MediaSessionManager: Loaded ${playlistMediaItems.size} tracks, starting at index $trackIndex")
+
+                                                // Return the full playlist with the correct start index
+                                                return Futures.immediateFuture(
+                                                    MediaSession.MediaItemsWithStartPosition(
+                                                        playlistMediaItems,
+                                                        trackIndex,
+                                                        startPositionMs,
+                                                    ),
+                                                )
+                                            } else {
+                                                println("⚠️ MediaSessionManager: Track not found in playlist")
+                                            }
+                                        } else {
+                                            println("⚠️ MediaSessionManager: Playlist not found")
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    println("❌ MediaSessionManager: Error in onSetMediaItems - ${e.message}")
+                                    e.printStackTrace()
+                                }
+
+                                // Fallback: use the provided media items
+                                println("🎵 MediaSessionManager: Using fallback - provided media items")
+                                return Futures.immediateFuture(
+                                    MediaSession.MediaItemsWithStartPosition(
+                                        mediaItems,
+                                        startIndex,
+                                        startPositionMs,
+                                    ),
+                                )
                             }
 
                             override fun onCustomCommand(
@@ -326,5 +475,32 @@ class MediaSessionManager(
         mediaSession?.release()
         mediaSession = null
         artworkCache.clear()
+    }
+
+    private fun createMediaItem(
+        track: TrackItem,
+        mediaId: String,
+    ): MediaItem {
+        val metadataBuilder =
+            MediaMetadata
+                .Builder()
+                .setTitle(track.title)
+                .setArtist(track.artist)
+                .setAlbumTitle(track.album)
+
+        track.artwork?.asSecondOrNull()?.let { artworkUrl ->
+            try {
+                metadataBuilder.setArtworkUri(Uri.parse(artworkUrl))
+            } catch (e: Exception) {
+                println("⚠️ MediaSessionManager: Invalid artwork URI: $artworkUrl")
+            }
+        }
+
+        return MediaItem
+            .Builder()
+            .setMediaId(mediaId)
+            .setUri(track.url)
+            .setMediaMetadata(metadataBuilder.build())
+            .build()
     }
 }
