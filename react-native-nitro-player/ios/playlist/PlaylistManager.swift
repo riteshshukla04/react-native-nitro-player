@@ -9,7 +9,6 @@ import Foundation
 import NitroModules
 
 /// Manages multiple playlists using AVPlayer's native playlist functionality
-/// Based on: https://developer.android.com/media/media3/exoplayer/playlists
 class PlaylistManager {
   private var playlists: [String: PlaylistModel] = [:]
   private var listeners: [(String, ([PlaylistModel], QueueOperation?) -> Void)] = []

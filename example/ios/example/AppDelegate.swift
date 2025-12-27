@@ -1,3 +1,4 @@
+import CarPlay
 import React
 import ReactAppDependencyProvider
 import React_RCTAppDelegate
@@ -29,7 +30,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
       launchOptions: launchOptions
     )
 
+    // Setup CarPlay if available
+    if #available(iOS 14.0, *) {
+      setupCarPlay()
+    }
+
     return true
+  }
+
+  @available(iOS 14.0, *)
+  private func setupCarPlay() {
+    // CarPlay will be handled automatically through CPTemplateApplicationSceneDelegate
+    // when the user connects to CarPlay
   }
 }
 

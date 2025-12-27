@@ -49,6 +49,8 @@ class MediaSessionManager {
     }
     if let carPlayEnabled = carPlayEnabled {
       self.carPlayEnabled = carPlayEnabled
+      // CarPlay is handled by the app's CarPlaySceneDelegate
+      // We just maintain the flag here for reference
     }
     if let showInNotification = showInNotification {
       self.showInNotification = showInNotification
