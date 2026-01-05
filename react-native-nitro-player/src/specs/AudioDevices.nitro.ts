@@ -7,10 +7,7 @@ export type TAudioDevice = {
   isActive: boolean
 }
 
-
-
-export interface AudioDevices
-  extends HybridObject<{ android: 'kotlin' }> {
+export interface AudioDevices extends HybridObject<{ android: 'kotlin' }> {
   /**
    * Get the list of audio devices
    *
