@@ -17,6 +17,7 @@
 namespace margelo::nitro::nitroplayer { struct TAudioDevice; }
 
 #include "TAudioDevice.hpp"
+#include <vector>
 
 namespace margelo::nitro::nitroplayer {
 
@@ -49,7 +50,7 @@ namespace margelo::nitro::nitroplayer {
 
     public:
       // Methods
-      virtual TAudioDevice getAudioDevices() = 0;
+      virtual std::vector<TAudioDevice> getAudioDevices() = 0;
       virtual bool setAudioDevice(double deviceId) = 0;
 
     protected:

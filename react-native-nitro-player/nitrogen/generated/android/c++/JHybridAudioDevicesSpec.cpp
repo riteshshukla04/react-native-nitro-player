@@ -11,6 +11,7 @@
 namespace margelo::nitro::nitroplayer { struct TAudioDevice; }
 
 #include "TAudioDevice.hpp"
+#include <vector>
 #include "JTAudioDevice.hpp"
 #include <string>
 
@@ -46,10 +47,19 @@ namespace margelo::nitro::nitroplayer {
   
 
   // Methods
-  TAudioDevice JHybridAudioDevicesSpec::getAudioDevices() {
-    static const auto method = javaClassStatic()->getMethod<jni::local_ref<JTAudioDevice>()>("getAudioDevices");
+  std::vector<TAudioDevice> JHybridAudioDevicesSpec::getAudioDevices() {
+    static const auto method = javaClassStatic()->getMethod<jni::local_ref<jni::JArrayClass<JTAudioDevice>>()>("getAudioDevices");
     auto __result = method(_javaPart);
-    return __result->toCpp();
+    return [&]() {
+      size_t __size = __result->size();
+      std::vector<TAudioDevice> __vector;
+      __vector.reserve(__size);
+      for (size_t __i = 0; __i < __size; __i++) {
+        auto __element = __result->getElement(__i);
+        __vector.push_back(__element->toCpp());
+      }
+      return __vector;
+    }();
   }
   bool JHybridAudioDevicesSpec::setAudioDevice(double deviceId) {
     static const auto method = javaClassStatic()->getMethod<jboolean(double /* deviceId */)>("setAudioDevice");

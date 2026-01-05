@@ -9,20 +9,20 @@ import com.margelo.nitro.NitroModules
 class HybridAudioDevices : HybridAudioDevicesSpec() {
 
     val applicationContext = NitroModules.applicationContext;
-    private val audioManager = applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-    override fun getAudioDevices(): TAudioDevice {
+    private val audioManager = applicationContext?.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    override fun getAudioDevices(): Array<TAudioDevice> {
         val devices = audioManager.getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS)
         var activeDevice: AudioDeviceInfo? = null
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             activeDevice = audioManager.communicationDevice
         }
-        devices.map { device -> TAudioDevice(
+        return devices.map { device -> TAudioDevice(
             id = device.id.toDouble(),
             name = device.productName?.toString() ?: device.type.toString(),
             type = device.type.toDouble(),
             isActive = device == activeDevice
-        ) }
+        ) }.toTypedArray()
     }
 
     override fun setAudioDevice(deviceId: Double): Boolean {

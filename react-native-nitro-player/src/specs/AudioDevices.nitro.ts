@@ -13,7 +13,7 @@ export interface AudioDevices extends HybridObject<{ android: 'kotlin' }> {
    *
    * @returns The list of audio devices
    */
-  getAudioDevices(): TAudioDevice
+  getAudioDevices(): TAudioDevice[]
 
   /**
    * Set the audio device

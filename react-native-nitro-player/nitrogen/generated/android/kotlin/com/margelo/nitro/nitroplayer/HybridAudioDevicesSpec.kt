@@ -47,7 +47,7 @@ abstract class HybridAudioDevicesSpec: HybridObject() {
   // Methods
   @DoNotStrip
   @Keep
-  abstract fun getAudioDevices(): TAudioDevice
+  abstract fun getAudioDevices(): Array<TAudioDevice>
   
   @DoNotStrip
   @Keep
