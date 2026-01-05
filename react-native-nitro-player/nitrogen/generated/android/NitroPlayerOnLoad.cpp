@@ -27,7 +27,6 @@
 #include "JFunc_void_double_double_std__optional_bool_.hpp"
 #include "JFunc_void_bool.hpp"
 #include <NitroModules/DefaultConstructableObject.hpp>
-#include "JHybridAudioDevicesSpecSpec.hpp"
 
 namespace margelo::nitro::nitroplayer {
 
@@ -76,9 +75,9 @@ int initialize(JavaVM* vm) {
       }
     );
     HybridObjectRegistry::registerHybridObjectConstructor(
-      "AudioDevicesSpec",
+      "AudioDevices",
       []() -> std::shared_ptr<HybridObject> {
-        static DefaultConstructableObject<JHybridAudioDevicesSpecSpec::javaobject> object("com/margelo/nitro/nitroplayer/HybridAudioDevices");
+        static DefaultConstructableObject<JHybridAudioDevicesSpec::javaobject> object("com/margelo/nitro/nitroplayer/HybridAudioDevices");
         auto instance = object.create();
         return instance->cthis()->shared();
       }

@@ -20,7 +20,7 @@
     "AndroidAutoMediaLibrary": {
       "kotlin": "HybridAndroidAutoMediaLibrary"
     },
-    "AudioDevicesSpec": {
+    "AudioDevices": {
       "kotlin": "HybridAudioDevices"
     }
   },
