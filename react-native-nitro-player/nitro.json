@@ -19,6 +19,9 @@
     },
     "AndroidAutoMediaLibrary": {
       "kotlin": "HybridAndroidAutoMediaLibrary"
+    },
+    "AudioDevicesSpec": {
+      "kotlin": "HybridAudioDevices"
     }
   },
   "ignorePaths": ["**/node_modules"]
