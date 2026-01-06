@@ -151,6 +151,81 @@ Monitors Android Auto connection status.
 
 - `isConnected: boolean` - `true` if connected to Android Auto, `false` otherwise
 
+### `useAudioDevices()` (Android only)
+
+Automatically polls for audio device changes every 2 seconds.
+
+**Returns:**
+
+- `devices: TAudioDevice[]` - Array of available audio devices
+
+## Audio Device APIs
+
+### `AudioDevices` (Android only)
+
+Android-specific API for managing audio output devices.
+
+#### `getAudioDevices(): TAudioDevice[]`
+
+Returns the list of available audio output devices.
+
+**Returns:** Array of `TAudioDevice` objects with:
+- `id: number` - Unique device ID
+- `name: string` - Device name (e.g., "Built-in Speaker", "Bluetooth")
+- `type: number` - Device type constant
+- `isActive: boolean` - Whether this device is currently active
+
+**Example:**
+
+```typescript
+import { AudioDevices } from 'react-native-nitro-player'
+
+if (AudioDevices) {
+  const devices = AudioDevices.getAudioDevices()
+  devices.forEach(device => {
+    console.log(`${device.name} - Active: ${device.isActive}`)
+  })
+}
+```
+
+#### `setAudioDevice(deviceId: number): boolean`
+
+Sets the active audio output device.
+
+**Parameters:**
+- `deviceId: number` - The ID of the device to activate
+
+**Returns:** `true` if successful, `false` otherwise
+
+**Example:**
+
+```typescript
+import { AudioDevices } from 'react-native-nitro-player'
+
+if (AudioDevices) {
+  const success = AudioDevices.setAudioDevice(deviceId)
+  console.log(`Device switch: ${success ? 'success' : 'failed'}`)
+}
+```
+
+### `AudioRoutePicker` (iOS only)
+
+iOS-specific API for displaying the native audio route picker (AirPlay menu).
+
+#### `showRoutePicker(): void`
+
+Shows the native AVRoutePickerView for selecting audio output routes like AirPlay, Bluetooth, etc.
+
+**Example:**
+
+```typescript
+import { AudioRoutePicker } from 'react-native-nitro-player'
+
+if (AudioRoutePicker) {
+  AudioRoutePicker.showRoutePicker()
+}
+```
+
 ## Usage Examples
 
 ### Using React Hooks
