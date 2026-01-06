@@ -32,7 +32,6 @@ import type {
   PlayerState,
   Playlist,
 } from '../react-native-nitro-player/src/types/PlayerQueue';
-import type { TAudioDevice } from 'react-native-nitro-player';
 
 function App() {
   return <AppContent />;
@@ -472,7 +471,7 @@ function AppContent() {
             </TouchableOpacity>
             {Platform.OS === 'ios' && (
               <TouchableOpacity
-                style={[styles.controlButton, { backgroundColor: '#FF9500' }]}
+                style={styles.airPlayButton}
                 onPress={handleShowRoutePicker}
               >
                 <Text style={styles.buttonText}>AirPlay</Text>
@@ -968,6 +967,13 @@ const styles = StyleSheet.create({
   },
   controlButton: {
     backgroundColor: '#007AFF',
+    padding: 10,
+    borderRadius: 5,
+    minWidth: 60,
+    alignItems: 'center',
+  },
+  airPlayButton: {
+    backgroundColor: '#FF9500',
     padding: 10,
     borderRadius: 5,
     minWidth: 60,
