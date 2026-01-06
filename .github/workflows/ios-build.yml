@@ -33,7 +33,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-           bun install
+          bun install
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
@@ -47,13 +47,6 @@ jobs:
           bundle install
           RCT_USE_RN_DEP=1 RCT_USE_PREBUILT_RNCORE=1 bundle exec pod install
 
-      - name: Cache CocoaPods
-        uses: actions/cache@v4
-        with:
-          path: example/ios/Pods
-          key: ${{ runner.os }}-pods-${{ hashFiles('example/ios/Podfile.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-pods-
 
       - name: Build iOS
         working-directory: example/ios
@@ -62,4 +55,3 @@ jobs:
             -workspace example.xcworkspace \
             -scheme example \
             -sdk iphonesimulator
-

@@ -11,4 +11,3 @@ android: true
 experimental:
   - no-empty-first-line-in-method-block
 max_line_length: 200
-

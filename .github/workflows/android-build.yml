@@ -52,4 +52,3 @@ jobs:
       - name: Build Android
         working-directory: example/android
         run: ./gradlew assembleDebug --no-daemon
-

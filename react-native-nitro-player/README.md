@@ -170,6 +170,7 @@ Android-specific API for managing audio output devices.
 Returns the list of available audio output devices.
 
 **Returns:** Array of `TAudioDevice` objects with:
+
 - `id: number` - Unique device ID
 - `name: string` - Device name (e.g., "Built-in Speaker", "Bluetooth")
 - `type: number` - Device type constant
@@ -182,7 +183,7 @@ import { AudioDevices } from 'react-native-nitro-player'
 
 if (AudioDevices) {
   const devices = AudioDevices.getAudioDevices()
-  devices.forEach(device => {
+  devices.forEach((device) => {
     console.log(`${device.name} - Active: ${device.isActive}`)
   })
 }
@@ -193,6 +194,7 @@ if (AudioDevices) {
 Sets the active audio output device.
 
 **Parameters:**
+
 - `deviceId: number` - The ID of the device to activate
 
 **Returns:** `true` if successful, `false` otherwise
