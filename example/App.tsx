@@ -12,6 +12,7 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
+  Platform,
 } from 'react-native';
 import {
   PlayerQueue,
@@ -21,6 +22,8 @@ import {
   useOnSeek,
   useOnPlaybackProgressChange,
   useAndroidAutoConnection,
+  useAudioDevices,
+  AudioDevices,
 } from 'react-native-nitro-player';
 import type {
   TrackItem,
@@ -28,6 +31,7 @@ import type {
   PlayerState,
   Playlist,
 } from '../react-native-nitro-player/src/types/PlayerQueue';
+import type { TAudioDevice } from 'react-native-nitro-player';
 
 function App() {
   return <AppContent />;
@@ -106,6 +110,7 @@ function AppContent() {
 
   // Use hooks to get player state directly
   const { track: currentTrack, reason: trackChangeReason } = useOnChangeTrack();
+  const { devices: audioDevices } = useAudioDevices();
   const { state: playbackState, reason: stateChangeReason } =
     useOnPlaybackStateChange();
   const { position: lastSeekPosition, totalDuration: lastSeekDuration } =
@@ -135,6 +140,12 @@ function AppContent() {
       console.log('Seek:', lastSeekPosition, lastSeekDuration);
     }
   }, [lastSeekPosition, lastSeekDuration]);
+
+  useEffect(() => {
+    if (audioDevices.length > 0) {
+      console.log('Audio devices changed:', audioDevices);
+    }
+  }, [audioDevices]);
 
   useEffect(() => {
     console.log('Initializing player');
@@ -292,6 +303,73 @@ function AppContent() {
     TrackPlayer.playSong(songId);
   };
 
+  const handleRefreshAudioDevices = () => {
+    if (!AudioDevices) {
+      console.warn('AudioDevices is only available on Android');
+      return;
+    }
+    try {
+      const devices = AudioDevices.getAudioDevices();
+      console.log('Manual refresh - Audio devices:', devices);
+    } catch (error) {
+      console.error('Error getting audio devices:', error);
+    }
+  };
+
+  const handleSelectAudioDevice = (deviceId: number) => {
+    if (!AudioDevices) {
+      console.warn('AudioDevices is only available on Android');
+      return;
+    }
+    try {
+      const success = AudioDevices.setAudioDevice(deviceId);
+      console.log('Set audio device:', deviceId, 'Success:', success);
+      if (success) {
+        // Refresh the list to show the new active device
+        handleRefreshAudioDevices();
+      }
+    } catch (error) {
+      console.error('Error setting audio device:', error);
+    }
+  };
+
+  const getDeviceTypeName = (type: number): string => {
+    // Android AudioDeviceInfo types
+    const deviceTypes: { [key: number]: string } = {
+      0: 'Unknown',
+      1: 'Built-in Earpiece',
+      2: 'Built-in Speaker',
+      3: 'Wired Headset',
+      4: 'Wired Headphones',
+      5: 'Line Analog',
+      6: 'Line Digital',
+      7: 'Bluetooth SCO',
+      8: 'Bluetooth A2DP',
+      9: 'HDMI',
+      10: 'HDMI ARC',
+      11: 'USB Device',
+      12: 'USB Accessory',
+      13: 'Dock',
+      14: 'FM',
+      15: 'Built-in Mic',
+      16: 'FM Tuner',
+      17: 'TV Tuner',
+      18: 'Telephony',
+      19: 'Aux Line',
+      20: 'IP',
+      21: 'Bus',
+      22: 'USB Headset',
+      23: 'Hearing Aid',
+      24: 'Built-in Speaker Safe',
+      25: 'Remote Submix',
+      26: 'BLE Headset',
+      27: 'BLE Speaker',
+      28: 'HDMI EARC',
+      29: 'BLE Broadcast',
+    };
+    return deviceTypes[type] || `Type ${type}`;
+  };
+
   return (
     <View style={styles.container}>
       <ScrollView
@@ -426,6 +504,71 @@ function AppContent() {
             </View>
           )}
         </View>
+
+        {Platform.OS === 'android' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              Audio Devices (Android Only - Auto-updating)
+            </Text>
+
+            <View style={styles.infoBox}>
+              <Text style={styles.infoText}>
+                🔄 Auto-detecting: Devices are automatically updated when you
+                plug/unplug headphones or connect Bluetooth
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.button}
+              onPress={handleRefreshAudioDevices}
+            >
+              <Text style={styles.buttonText}>Manual Refresh</Text>
+            </TouchableOpacity>
+
+            {audioDevices.length === 0 ? (
+              <Text style={styles.emptyText}>
+                No compatible audio devices found
+              </Text>
+            ) : (
+              <View style={styles.devicesList}>
+                <Text style={styles.devicesListHeader}>
+                  Available Devices ({audioDevices.length}):
+                </Text>
+                {audioDevices.map(device => (
+                  <View key={device.id} style={styles.deviceItem}>
+                    <View style={styles.deviceInfo}>
+                      <Text
+                        style={[
+                          styles.deviceName,
+                          device.isActive && styles.activeDeviceName,
+                        ]}
+                      >
+                        {device.isActive && '🔊 '}
+                        {device.name}
+                      </Text>
+                      <Text style={styles.deviceType}>
+                        {getDeviceTypeName(device.type)}
+                      </Text>
+                      <Text style={styles.deviceId}>ID: {device.id}</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={[
+                        styles.selectDeviceButton,
+                        device.isActive && styles.activeDeviceButton,
+                      ]}
+                      onPress={() => handleSelectAudioDevice(device.id)}
+                      disabled={device.isActive}
+                    >
+                      <Text style={styles.selectDeviceButtonText}>
+                        {device.isActive ? '✓ Active' : 'Select'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Playlist Management</Text>
@@ -954,6 +1097,64 @@ const styles = StyleSheet.create({
     color: '#1976D2',
     marginLeft: 8,
     marginBottom: 2,
+  },
+  devicesList: {
+    marginTop: 10,
+  },
+  devicesListHeader: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 10,
+  },
+  deviceItem: {
+    flexDirection: 'row',
+    padding: 12,
+    marginBottom: 8,
+    backgroundColor: '#f9f9f9',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    alignItems: 'center',
+  },
+  deviceInfo: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  deviceName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  activeDeviceName: {
+    color: '#28a745',
+    fontWeight: '700',
+  },
+  deviceType: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 2,
+  },
+  deviceId: {
+    fontSize: 11,
+    color: '#999',
+  },
+  selectDeviceButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 5,
+    minWidth: 70,
+    alignItems: 'center',
+  },
+  activeDeviceButton: {
+    backgroundColor: '#28a745',
+  },
+  selectDeviceButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
 

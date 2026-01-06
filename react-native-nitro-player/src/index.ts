@@ -7,6 +7,7 @@ import type {
   TrackPlayer as TrackPlayerType,
 } from './specs/TrackPlayer.nitro'
 import type { AndroidAutoMediaLibrary as AndroidAutoMediaLibraryType } from './specs/AndroidAutoMediaLibrary.nitro'
+import type { AudioDevices as AudioDevicesType } from './specs/AudioDevices.nitro'
 
 export const PlayerQueue =
   NitroModules.createHybridObject<PlayerQueueType>('PlayerQueue')
@@ -21,12 +22,19 @@ export const AndroidAutoMediaLibrary =
       )
     : null
 
+// Android-only: Audio Devices
+export const AudioDevices =
+  Platform.OS === 'android'
+    ? NitroModules.createHybridObject<AudioDevicesType>('AudioDevices')
+    : null
+
 // Export hooks
 export * from './hooks'
 
 // Export types
 export * from './types/PlayerQueue'
 export * from './types/AndroidAutoMediaLibrary'
+export type { TAudioDevice } from './specs/AudioDevices.nitro'
 
 // Export utilities
 export { AndroidAutoMediaLibraryHelper } from './utils/androidAutoMediaLibrary'
