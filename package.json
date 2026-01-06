@@ -24,8 +24,7 @@
     "format:swift": "bash scripts/format-swift.sh",
     "format:check:swift": "bash scripts/check-swift.sh",
     "format:cpp": "find react-native-nitro-player/android/src/main/cpp -type f \\( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \\) -exec clang-format -i {} + || (echo 'clang-format not installed. Install with: brew install clang-format (macOS) or apt-get install clang-format (Linux)' && exit 0)",
-    "format:check:cpp": "find react-native-nitro-player/android/src/main/cpp -type f \\( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \\) -exec clang-format --dry-run --Werror {} + || (echo 'clang-format not installed. Install with: brew install clang-format (macOS) or apt-get install clang-format (Linux)' && exit 0)",
-    "release": "release-it"
+    "format:check:cpp": "find react-native-nitro-player/android/src/main/cpp -type f \\( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \\) -exec clang-format --dry-run --Werror {} + || (echo 'clang-format not installed. Install with: brew install clang-format (macOS) or apt-get install clang-format (Linux)' && exit 0)"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.28.3",
@@ -33,73 +32,10 @@
     "@babel/preset-typescript": "^7.27.1",
     "@jamesacarr/eslint-formatter-github-actions": "^0.2.0",
     "@react-native/eslint-config": "^0.82.0",
-    "@release-it-plugins/workspaces": "^5.0.3",
-    "@release-it/bumper": "^7.0.5",
-    "@release-it/conventional-changelog": "^10.0.1",
     "@types/bun": "latest",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.2.1",
-    "prettier": "^3.3.3",
-    "release-it": "^19.0.4"
-  },
-  "release-it": {
-    "npm": {
-      "publish": false
-    },
-    "git": {
-      "commitMessage": "chore: release ${version}",
-      "tagName": "v${version}",
-      "requireCleanWorkingDir": false
-    },
-    "github": {
-      "release": true
-    },
-    "plugins": {
-      "@release-it/bumper": {
-        "in": "package.json",
-        "out": [
-          {
-            "file": "package.json",
-            "path": "version"
-          },
-          {
-            "file": "react-native-nitro-player/package.json",
-            "path": "version"
-          },
-          {
-            "file": "example/package.json",
-            "path": "version"
-          }
-        ]
-      },
-      "@release-it/conventional-changelog": {
-        "preset": {
-          "name": "conventionalcommits",
-          "types": [
-            {
-              "type": "feat",
-              "section": "✨ Features"
-            },
-            {
-              "type": "perf",
-              "section": "💨 Performance Improvements"
-            },
-            {
-              "type": "fix",
-              "section": "🐛 Bug Fixes"
-            },
-            {
-              "type": "chore(deps)",
-              "section": "🛠️ Dependency Upgrades"
-            },
-            {
-              "type": "docs",
-              "section": "📚 Documentation"
-            }
-          ]
-        }
-      }
-    }
+    "prettier": "^3.3.3"
   }
 }
