@@ -7,4 +7,3 @@ export interface AudioRoutePicker extends HybridObject<{ ios: 'swift' }> {
    */
   showRoutePicker(): void
 }
-

@@ -6,7 +6,7 @@ import type { TAudioDevice } from '../specs/AudioDevices.nitro'
 
 /**
  * Hook to get audio devices (Android only)
- * 
+ *
  * Polls for device changes every 2 seconds
  *
  * @returns Object containing the current list of audio devices
@@ -62,4 +62,3 @@ export function useAudioDevices() {
 
   return { devices }
 }
-
