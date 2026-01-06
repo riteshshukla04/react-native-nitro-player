@@ -8,6 +8,8 @@
 #pragma once
 
 // Forward declarations of C++ defined types
+// Forward declaration of `HybridAudioRoutePickerSpec` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { class HybridAudioRoutePickerSpec; }
 // Forward declaration of `HybridPlayerQueueSpec` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { class HybridPlayerQueueSpec; }
 // Forward declaration of `HybridTrackPlayerSpec` to properly resolve imports.
@@ -28,6 +30,7 @@ namespace margelo::nitro::nitroplayer { struct TrackItem; }
 namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 
 // Include C++ defined types
+#include "HybridAudioRoutePickerSpec.hpp"
 #include "HybridPlayerQueueSpec.hpp"
 #include "HybridTrackPlayerSpec.hpp"
 #include "PlayerConfig.hpp"
@@ -57,6 +60,8 @@ namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 #include <NitroModules/DateToChronoDate.hpp>
 
 // Forward declarations of Swift defined types
+// Forward declaration of `HybridAudioRoutePickerSpec_cxx` to properly resolve imports.
+namespace NitroPlayer { class HybridAudioRoutePickerSpec_cxx; }
 // Forward declaration of `HybridPlayerQueueSpec_cxx` to properly resolve imports.
 namespace NitroPlayer { class HybridPlayerQueueSpec_cxx; }
 // Forward declaration of `HybridTrackPlayerSpec_cxx` to properly resolve imports.

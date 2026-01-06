@@ -8,6 +8,7 @@
 #include "NitroPlayer-Swift-Cxx-Bridge.hpp"
 
 // Include C++ implementation defined types
+#include "HybridAudioRoutePickerSpecSwift.hpp"
 #include "HybridPlayerQueueSpecSwift.hpp"
 #include "HybridTrackPlayerSpecSwift.hpp"
 #include "NitroPlayer-Swift-Cxx-Umbrella.hpp"
@@ -15,6 +16,22 @@
 
 namespace margelo::nitro::nitroplayer::bridge::swift {
 
+  // pragma MARK: std::shared_ptr<HybridAudioRoutePickerSpec>
+  std::shared_ptr<HybridAudioRoutePickerSpec> create_std__shared_ptr_HybridAudioRoutePickerSpec_(void* NON_NULL swiftUnsafePointer) noexcept {
+    NitroPlayer::HybridAudioRoutePickerSpec_cxx swiftPart = NitroPlayer::HybridAudioRoutePickerSpec_cxx::fromUnsafe(swiftUnsafePointer);
+    return std::make_shared<margelo::nitro::nitroplayer::HybridAudioRoutePickerSpecSwift>(swiftPart);
+  }
+  void* NON_NULL get_std__shared_ptr_HybridAudioRoutePickerSpec_(std__shared_ptr_HybridAudioRoutePickerSpec_ cppType) {
+    std::shared_ptr<margelo::nitro::nitroplayer::HybridAudioRoutePickerSpecSwift> swiftWrapper = std::dynamic_pointer_cast<margelo::nitro::nitroplayer::HybridAudioRoutePickerSpecSwift>(cppType);
+    #ifdef NITRO_DEBUG
+    if (swiftWrapper == nullptr) [[unlikely]] {
+      throw std::runtime_error("Class \"HybridAudioRoutePickerSpec\" is not implemented in Swift!");
+    }
+    #endif
+    NitroPlayer::HybridAudioRoutePickerSpec_cxx& swiftPart = swiftWrapper->getSwiftPart();
+    return swiftPart.toUnsafe();
+  }
+  
   // pragma MARK: std::function<void(const std::vector<Playlist>& /* playlists */, std::optional<QueueOperation> /* operation */)>
   Func_void_std__vector_Playlist__std__optional_QueueOperation_ create_Func_void_std__vector_Playlist__std__optional_QueueOperation_(void* NON_NULL swiftClosureWrapper) noexcept {
     auto swiftClosure = NitroPlayer::Func_void_std__vector_Playlist__std__optional_QueueOperation_::fromUnsafe(swiftClosureWrapper);

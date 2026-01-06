@@ -8,6 +8,7 @@ import type {
 } from './specs/TrackPlayer.nitro'
 import type { AndroidAutoMediaLibrary as AndroidAutoMediaLibraryType } from './specs/AndroidAutoMediaLibrary.nitro'
 import type { AudioDevices as AudioDevicesType } from './specs/AudioDevices.nitro'
+import type { AudioRoutePicker as AudioRoutePickerType } from './specs/AudioRoutePicker.nitro'
 
 export const PlayerQueue =
   NitroModules.createHybridObject<PlayerQueueType>('PlayerQueue')
@@ -26,6 +27,12 @@ export const AndroidAutoMediaLibrary =
 export const AudioDevices =
   Platform.OS === 'android'
     ? NitroModules.createHybridObject<AudioDevicesType>('AudioDevices')
+    : null
+
+// iOS-only: Audio Route Picker
+export const AudioRoutePicker =
+  Platform.OS === 'ios'
+    ? NitroModules.createHybridObject<AudioRoutePickerType>('AudioRoutePicker')
     : null
 
 // Export hooks

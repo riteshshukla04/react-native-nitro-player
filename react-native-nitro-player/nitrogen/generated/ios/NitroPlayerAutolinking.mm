@@ -12,6 +12,7 @@
 
 #include "HybridPlayerQueueSpecSwift.hpp"
 #include "HybridTrackPlayerSpecSwift.hpp"
+#include "HybridAudioRoutePickerSpecSwift.hpp"
 
 @interface NitroPlayerAutolinking : NSObject
 @end
@@ -33,6 +34,13 @@
     "TrackPlayer",
     []() -> std::shared_ptr<HybridObject> {
       std::shared_ptr<HybridTrackPlayerSpec> hybridObject = NitroPlayer::NitroPlayerAutolinking::createTrackPlayer();
+      return hybridObject;
+    }
+  );
+  HybridObjectRegistry::registerHybridObjectConstructor(
+    "AudioRoutePicker",
+    []() -> std::shared_ptr<HybridObject> {
+      std::shared_ptr<HybridAudioRoutePickerSpec> hybridObject = NitroPlayer::NitroPlayerAutolinking::createAudioRoutePicker();
       return hybridObject;
     }
   );

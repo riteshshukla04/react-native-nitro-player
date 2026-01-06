@@ -35,6 +35,7 @@ target_sources(
   # Shared Nitrogen C++ sources
   ../nitrogen/generated/shared/c++/HybridAndroidAutoMediaLibrarySpec.cpp
   ../nitrogen/generated/shared/c++/HybridAudioDevicesSpec.cpp
+  ../nitrogen/generated/shared/c++/HybridAudioRoutePickerSpec.cpp
   ../nitrogen/generated/shared/c++/HybridPlayerQueueSpec.cpp
   ../nitrogen/generated/shared/c++/HybridTrackPlayerSpec.cpp
   # Android-specific Nitrogen C++ sources

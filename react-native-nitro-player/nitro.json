@@ -22,6 +22,9 @@
     },
     "AudioDevices": {
       "kotlin": "HybridAudioDevices"
+    },
+    "AudioRoutePicker": {
+      "swift": "HybridAudioRoutePicker"
     }
   },
   "ignorePaths": ["**/node_modules"]

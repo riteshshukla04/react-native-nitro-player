@@ -24,6 +24,7 @@ import {
   useAndroidAutoConnection,
   useAudioDevices,
   AudioDevices,
+  AudioRoutePicker,
 } from 'react-native-nitro-player';
 import type {
   TrackItem,
@@ -303,6 +304,19 @@ function AppContent() {
     TrackPlayer.playSong(songId);
   };
 
+  const handleShowRoutePicker = () => {
+    if (!AudioRoutePicker) {
+      console.warn('AudioRoutePicker is only available on iOS');
+      return;
+    }
+    try {
+      console.log('Showing route picker');
+      AudioRoutePicker.showRoutePicker();
+    } catch (error) {
+      console.error('Error showing route picker:', error);
+    }
+  };
+
   const handleRefreshAudioDevices = () => {
     if (!AudioDevices) {
       console.warn('AudioDevices is only available on Android');
@@ -456,6 +470,14 @@ function AppContent() {
             >
               <Text style={styles.buttonText}>Get State</Text>
             </TouchableOpacity>
+            {Platform.OS === 'ios' && (
+              <TouchableOpacity
+                style={[styles.controlButton, { backgroundColor: '#FF9500' }]}
+                onPress={handleShowRoutePicker}
+              >
+                <Text style={styles.buttonText}>AirPlay</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           <Text style={styles.statusText}>

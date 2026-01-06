@@ -8,6 +8,8 @@
 #pragma once
 
 // Forward declarations of C++ defined types
+// Forward declaration of `HybridAudioRoutePickerSpec` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { class HybridAudioRoutePickerSpec; }
 // Forward declaration of `HybridPlayerQueueSpec` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { class HybridPlayerQueueSpec; }
 // Forward declaration of `HybridTrackPlayerSpec` to properly resolve imports.
@@ -26,12 +28,15 @@ namespace margelo::nitro::nitroplayer { struct TrackItem; }
 namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 
 // Forward declarations of Swift defined types
+// Forward declaration of `HybridAudioRoutePickerSpec_cxx` to properly resolve imports.
+namespace NitroPlayer { class HybridAudioRoutePickerSpec_cxx; }
 // Forward declaration of `HybridPlayerQueueSpec_cxx` to properly resolve imports.
 namespace NitroPlayer { class HybridPlayerQueueSpec_cxx; }
 // Forward declaration of `HybridTrackPlayerSpec_cxx` to properly resolve imports.
 namespace NitroPlayer { class HybridTrackPlayerSpec_cxx; }
 
 // Include C++ defined types
+#include "HybridAudioRoutePickerSpec.hpp"
 #include "HybridPlayerQueueSpec.hpp"
 #include "HybridTrackPlayerSpec.hpp"
 #include "PlayerState.hpp"
@@ -56,6 +61,27 @@ namespace NitroPlayer { class HybridTrackPlayerSpec_cxx; }
  */
 namespace margelo::nitro::nitroplayer::bridge::swift {
 
+  // pragma MARK: std::shared_ptr<HybridAudioRoutePickerSpec>
+  /**
+   * Specialized version of `std::shared_ptr<HybridAudioRoutePickerSpec>`.
+   */
+  using std__shared_ptr_HybridAudioRoutePickerSpec_ = std::shared_ptr<HybridAudioRoutePickerSpec>;
+  std::shared_ptr<HybridAudioRoutePickerSpec> create_std__shared_ptr_HybridAudioRoutePickerSpec_(void* NON_NULL swiftUnsafePointer) noexcept;
+  void* NON_NULL get_std__shared_ptr_HybridAudioRoutePickerSpec_(std__shared_ptr_HybridAudioRoutePickerSpec_ cppType);
+  
+  // pragma MARK: std::weak_ptr<HybridAudioRoutePickerSpec>
+  using std__weak_ptr_HybridAudioRoutePickerSpec_ = std::weak_ptr<HybridAudioRoutePickerSpec>;
+  inline std__weak_ptr_HybridAudioRoutePickerSpec_ weakify_std__shared_ptr_HybridAudioRoutePickerSpec_(const std::shared_ptr<HybridAudioRoutePickerSpec>& strong) noexcept { return strong; }
+  
+  // pragma MARK: Result<void>
+  using Result_void_ = Result<void>;
+  inline Result_void_ create_Result_void_() noexcept {
+    return Result<void>::withValue();
+  }
+  inline Result_void_ create_Result_void_(const std::exception_ptr& error) noexcept {
+    return Result<void>::withError(error);
+  }
+  
   // pragma MARK: std::optional<std::string>
   /**
    * Specialized version of `std::optional<std::string>`.
@@ -259,15 +285,6 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
   }
   inline Result_std__string_ create_Result_std__string_(const std::exception_ptr& error) noexcept {
     return Result<std::string>::withError(error);
-  }
-  
-  // pragma MARK: Result<void>
-  using Result_void_ = Result<void>;
-  inline Result_void_ create_Result_void_() noexcept {
-    return Result<void>::withValue();
-  }
-  inline Result_void_ create_Result_void_(const std::exception_ptr& error) noexcept {
-    return Result<void>::withError(error);
   }
   
   // pragma MARK: Result<std::variant<nitro::NullType, Playlist>>
