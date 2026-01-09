@@ -82,9 +82,9 @@ TrackPlayer.skipToPrevious()
 TrackPlayer.seek(30) // Seek to 30 seconds
 
 // Set repeat mode
-TrackPlayer.setRepeatMode('off')      // No repeat
+TrackPlayer.setRepeatMode('off') // No repeat
 TrackPlayer.setRepeatMode('Playlist') // Repeat entire playlist
-TrackPlayer.setRepeatMode('track')    // Repeat current track
+TrackPlayer.setRepeatMode('track') // Repeat current track
 ```
 
 ## Core Concepts
@@ -189,7 +189,7 @@ import { AudioDevices } from 'react-native-nitro-player'
 
 if (AudioDevices) {
   const devices = AudioDevices.getAudioDevices()
-  devices.forEach((device) => {
+  devices.forEach(device => {
     console.log(`${device.name} - Active: ${device.isActive}`)
   })
 }
@@ -265,8 +265,6 @@ TrackPlayer.setRepeatMode('Playlist')
 // Repeat current track
 TrackPlayer.setRepeatMode('track')
 ```
-
-
 
 ## Usage Examples
 
@@ -389,7 +387,7 @@ TrackPlayer.onPlaybackProgressChange(
 )
 
 // Listen to Android Auto connection changes
-TrackPlayer.onAndroidAutoConnectionChange((connected) => {
+TrackPlayer.onAndroidAutoConnectionChange(connected => {
   console.log('Android Auto:', connected ? 'Connected' : 'Disconnected')
 })
 ```

@@ -24,7 +24,8 @@
     "format:swift": "bash scripts/format-swift.sh",
     "format:check:swift": "bash scripts/check-swift.sh",
     "format:cpp": "find react-native-nitro-player/android/src/main/cpp -type f \\( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \\) -exec clang-format -i {} + || (echo 'clang-format not installed. Install with: brew install clang-format (macOS) or apt-get install clang-format (Linux)' && exit 0)",
-    "format:check:cpp": "find react-native-nitro-player/android/src/main/cpp -type f \\( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \\) -exec clang-format --dry-run --Werror {} + || (echo 'clang-format not installed. Install with: brew install clang-format (macOS) or apt-get install clang-format (Linux)' && exit 0)"
+    "format:check:cpp": "find react-native-nitro-player/android/src/main/cpp -type f \\( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \\) -exec clang-format --dry-run --Werror {} + || (echo 'clang-format not installed. Install with: brew install clang-format (macOS) or apt-get install clang-format (Linux)' && exit 0)",
+    "fix-lint": "bun run lint:fix && bun run format:all"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.28.3",

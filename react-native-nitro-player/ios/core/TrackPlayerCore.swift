@@ -34,7 +34,9 @@ class TrackPlayerCore: NSObject {
 
     // Gapless playback configuration
     static let preferredForwardBufferDuration: Double = 30.0  // Buffer 30 seconds ahead
-    static let preloadAssetKeys: [String] = ["playable", "duration", "tracks", "preferredTransform"]
+    static let preloadAssetKeys: [String] = [
+      "playable", "duration", "tracks", "preferredTransform",
+    ]
     static let gaplessPreloadCount: Int = 3  // Number of tracks to preload ahead
   }
 
@@ -101,7 +103,8 @@ class TrackPlayerCore: NSObject {
       player?.audiovisualBackgroundPlaybackPolicy = .continuesIfPossible
     }
 
-    print("🎵 TrackPlayerCore: Gapless playback configured - automaticallyWaitsToMinimizeStalling=false")
+    print(
+      "🎵 TrackPlayerCore: Gapless playback configured - automaticallyWaitsToMinimizeStalling=false")
 
     setupPlayerObservers()
   }
@@ -588,7 +591,9 @@ class TrackPlayerCore: NSObject {
   // MARK: - Gapless Playback Helpers
 
   /// Creates a gapless-optimized AVPlayerItem with proper buffering configuration
-  private func createGaplessPlayerItem(for track: TrackItem, isPreload: Bool = false) -> AVPlayerItem? {
+  private func createGaplessPlayerItem(for track: TrackItem, isPreload: Bool = false)
+    -> AVPlayerItem?
+  {
     guard let url = URL(string: track.url) else {
       print("❌ TrackPlayerCore: Invalid URL for track: \(track.title) - \(track.url)")
       return nil
@@ -601,9 +606,11 @@ class TrackPlayerCore: NSObject {
       print("🚀 TrackPlayerCore: Using preloaded asset for \(track.title)")
     } else {
       // Create asset with options optimized for gapless playback
-      asset = AVURLAsset(url: url, options: [
-        AVURLAssetPreferPreciseDurationAndTimingKey: true,  // Ensures accurate duration for gapless transitions
-      ])
+      asset = AVURLAsset(
+        url: url,
+        options: [
+          AVURLAssetPreferPreciseDurationAndTimingKey: true  // Ensures accurate duration for gapless transitions
+        ])
     }
 
     let item = AVPlayerItem(asset: asset)
@@ -627,7 +634,9 @@ class TrackPlayerCore: NSObject {
           var error: NSError?
           let status = asset.statusOfValue(forKey: key, error: &error)
           if status == .failed {
-            print("⚠️ TrackPlayerCore: Failed to load key '\(key)' for \(track.title): \(error?.localizedDescription ?? "unknown")")
+            print(
+              "⚠️ TrackPlayerCore: Failed to load key '\(key)' for \(track.title): \(error?.localizedDescription ?? "unknown")"
+            )
             allKeysLoaded = false
           }
         }
@@ -657,9 +666,11 @@ class TrackPlayerCore: NSObject {
 
         guard let url = URL(string: track.url) else { continue }
 
-        let asset = AVURLAsset(url: url, options: [
-          AVURLAssetPreferPreciseDurationAndTimingKey: true,
-        ])
+        let asset = AVURLAsset(
+          url: url,
+          options: [
+            AVURLAssetPreferPreciseDurationAndTimingKey: true
+          ])
 
         // Preload essential keys for gapless playback
         asset.loadValuesAsynchronously(forKeys: Constants.preloadAssetKeys) { [weak self] in
@@ -690,7 +701,9 @@ class TrackPlayerCore: NSObject {
       guard let self = self else { return }
 
       // Keep assets for current track and upcoming tracks within preload range
-      let keepRange = currentIndex..<min(currentIndex + Constants.gaplessPreloadCount + 1, self.currentTracks.count)
+      let keepRange =
+        currentIndex..<min(
+          currentIndex + Constants.gaplessPreloadCount + 1, self.currentTracks.count)
       let keepIds = Set(keepRange.compactMap { self.currentTracks[safe: $0]?.id })
 
       let assetsToRemove = self.preloadedAssets.keys.filter { !keepIds.contains($0) }
@@ -1119,7 +1132,9 @@ class TrackPlayerCore: NSObject {
       // Recreate the queue starting from the target index
       // This ensures all remaining tracks are in the queue
       let tracksToPlay = Array(fullPlaylist[index...])
-      print("   🔄 Creating gapless queue with \(tracksToPlay.count) tracks starting from index \(index)")
+      print(
+        "   🔄 Creating gapless queue with \(tracksToPlay.count) tracks starting from index \(index)"
+      )
 
       // Create gapless-optimized player items
       let items = tracksToPlay.enumerated().compactMap { (offset, track) -> AVPlayerItem? in

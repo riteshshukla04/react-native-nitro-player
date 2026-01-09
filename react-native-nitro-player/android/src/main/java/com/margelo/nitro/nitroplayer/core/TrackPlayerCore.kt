@@ -83,12 +83,11 @@ class TrackPlayerCore private constructor(
                 DefaultLoadControl
                     .Builder()
                     .setBufferDurationsMs(
-                        30_000,   // MIN_BUFFER_MS: 30 seconds minimum buffer
-                        120_000,  // MAX_BUFFER_MS: 2 minutes maximum buffer (enables preloading next tracks)
-                        2_500,    // BUFFER_FOR_PLAYBACK_MS: 2.5s before playback starts
-                        5_000,    // BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS: 5s after rebuffer
-                    )
-                    .setBackBuffer(30_000, true) // Keep 30s back buffer for seamless seek-back
+                        30_000, // MIN_BUFFER_MS: 30 seconds minimum buffer
+                        120_000, // MAX_BUFFER_MS: 2 minutes maximum buffer (enables preloading next tracks)
+                        2_500, // BUFFER_FOR_PLAYBACK_MS: 2.5s before playback starts
+                        5_000, // BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS: 5s after rebuffer
+                    ).setBackBuffer(30_000, true) // Keep 30s back buffer for seamless seek-back
                     .setTargetBufferBytes(C.LENGTH_UNSET) // No size limit - prioritize time
                     .setPrioritizeTimeOverSizeThresholds(true) // Prioritize time-based buffering
                     .build()

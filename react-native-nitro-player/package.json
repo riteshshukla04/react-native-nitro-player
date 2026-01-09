@@ -30,11 +30,11 @@
   "scripts": {
     "postinstall": "tsc || exit 0;",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf android/build node_modules/**/android/build lib nitrogen",
+    "clean": "rm -rf android/build node_modules/**/android/build lib nitrogen tsconfig.tsbuildinfo",
     "lint": "eslint \"**/*.{js,ts,tsx}\" --fix",
     "lint-ci": "eslint \"**/*.{js,ts,tsx}\" -f @jamesacarr/github-actions",
     "typescript": "tsc",
-    "specs": "tsc --noEmit false && nitrogen --logLevel=\"debug\"",
+    "specs": "tsc && nitrogen --logLevel=\"debug\"",
     "release": "release-it",
     "build": "bun run clean && bun run specs && bun run typescript"
   },
@@ -122,6 +122,9 @@
     },
     "github": {
       "release": true
+    },
+    "hooks": {
+      "before:release": "bun run clean && bun run specs && bun run typescript"
     },
     "plugins": {
       "@release-it/bumper": {
