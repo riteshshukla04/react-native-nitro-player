@@ -1110,6 +1110,28 @@ class TrackPlayerCore: NSObject {
     return playlistManager.getAllPlaylists().map { $0.toGeneratedPlaylist() }
   }
 
+  // MARK: - Volume Control
+
+  func setVolume(volume: Double) -> Bool {
+    guard let player = player else {
+      print("⚠️ TrackPlayerCore: Cannot set volume - no player available")
+      return false
+    }
+    DispatchQueue.main.async { [weak self] in
+      guard let self = self, let currentPlayer = self.player else {
+        return
+      }
+      // Clamp volume to 0-100 range
+      let clampedVolume = max(0.0, min(100.0, volume))
+      // Convert to 0.0-1.0 range for AVQueuePlayer
+      let normalizedVolume = Float(clampedVolume / 100.0)
+      currentPlayer.volume = normalizedVolume
+      print(
+        "🔊 TrackPlayerCore: Volume set to \(Int(clampedVolume))% (normalized: \(normalizedVolume))")
+    }
+    return true
+  }
+
   func playFromIndex(index: Int) {
     DispatchQueue.main.async { [weak self] in
       guard let self = self,

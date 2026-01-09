@@ -101,4 +101,10 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
   func isAndroidAutoConnected() throws -> Bool {
     return false
   }
+
+  // MARK: - Volume Control
+
+  func setVolume(volume: Double) throws -> Bool {
+    return core.setVolume(volume: volume)
+  }
 }

@@ -672,4 +672,21 @@ class TrackPlayerCore private constructor(
             NitroPlayerMediaBrowserService.getInstance()?.onPlaylistsUpdated()
         }
     }
+
+    // Set volume (0-100 range, converted to 0.0-1.0 for ExoPlayer)
+    fun setVolume(volume: Double): Boolean =
+        if (::player.isInitialized) {
+            handler.post {
+                // Clamp volume to 0-100 range
+                val clampedVolume = volume.coerceIn(0.0, 100.0)
+                // Convert to 0.0-1.0 range for ExoPlayer
+                val normalizedVolume = (clampedVolume / 100.0).toFloat()
+                player.volume = normalizedVolume
+                println("🔊 TrackPlayerCore: Volume set to $clampedVolume% (normalized: $normalizedVolume)")
+            }
+            true
+        } else {
+            println("⚠️ TrackPlayerCore: Cannot set volume - player not initialized")
+            false
+        }
 }

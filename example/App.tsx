@@ -109,6 +109,7 @@ function AppContent() {
     undefined,
   );
   const [repeatMode, setRepeatMode] = useState<RepeatMode>('off');
+  const [volume, setVolume] = useState<number>(50);
 
   // Use hooks to get player state directly
   const { track: currentTrack, reason: trackChangeReason } = useOnChangeTrack();
@@ -311,6 +312,27 @@ function AppContent() {
     const currentIndex = modes.indexOf(repeatMode);
     const nextIndex = (currentIndex + 1) % modes.length;
     handleSetRepeatMode(modes[nextIndex]);
+  };
+
+  const handleSetVolume = (newVolume: number) => {
+    console.log('Setting volume to:', newVolume);
+    const success = TrackPlayer.setVolume(newVolume);
+    if (success) {
+      setVolume(newVolume);
+      console.log('Volume set successfully to', newVolume + '%');
+    } else {
+      console.warn('Failed to set volume');
+    }
+  };
+
+  const handleVolumeUp = () => {
+    const newVolume = Math.min(100, volume + 10);
+    handleSetVolume(newVolume);
+  };
+
+  const handleVolumeDown = () => {
+    const newVolume = Math.max(0, volume - 10);
+    handleSetVolume(newVolume);
   };
 
   const handlePlaySongFromPlaylist = (songId: string, playlistId: string) => {
@@ -575,6 +597,53 @@ function AppContent() {
             >
               <Text style={styles.buttonText}>Cycle Repeat Mode</Text>
             </TouchableOpacity>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Volume Control</Text>
+            <View style={styles.infoBox}>
+              <Text style={styles.infoText}>
+                🔊 Adjust playback volume (0-100)
+              </Text>
+            </View>
+
+            <View style={styles.volumeContainer}>
+              <Text style={styles.volumeLabel}>Current Volume:</Text>
+              <Text style={styles.volumeValue}>{volume}%</Text>
+            </View>
+
+            <View style={styles.controlsRow}>
+              <TouchableOpacity
+                style={styles.volumeButton}
+                onPress={handleVolumeDown}
+              >
+                <Text style={styles.buttonText}>🔉 -10</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.volumeButton}
+                onPress={() => handleSetVolume(0)}
+              >
+                <Text style={styles.buttonText}>Mute</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.volumeButton}
+                onPress={() => handleSetVolume(50)}
+              >
+                <Text style={styles.buttonText}>50%</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.volumeButton}
+                onPress={() => handleSetVolume(100)}
+              >
+                <Text style={styles.buttonText}>100%</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.volumeButton}
+                onPress={handleVolumeUp}
+              >
+                <Text style={styles.buttonText}>🔊 +10</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <Text style={styles.statusText}>
@@ -1338,6 +1407,34 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginTop: 10,
     alignItems: 'center',
+  },
+  volumeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 6,
+    marginBottom: 15,
+  },
+  volumeLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  volumeValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#007AFF',
+  },
+  volumeButton: {
+    backgroundColor: '#007AFF',
+    padding: 10,
+    borderRadius: 5,
+    minWidth: 60,
+    alignItems: 'center',
+    flex: 1,
+    marginHorizontal: 2,
   },
 });
 

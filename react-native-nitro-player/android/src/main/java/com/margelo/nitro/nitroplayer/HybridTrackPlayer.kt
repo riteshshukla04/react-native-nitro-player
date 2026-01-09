@@ -94,4 +94,8 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
 
     @Keep
     override fun isAndroidAutoConnected(): Boolean = core.isAndroidAutoConnected()
+
+    @DoNotStrip
+    @Keep
+    override fun setVolume(volume: Double): Boolean = core.setVolume(volume)
 }

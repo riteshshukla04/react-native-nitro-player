@@ -82,6 +82,7 @@ namespace margelo::nitro::nitroplayer {
       virtual void onPlaybackProgressChange(const std::function<void(double /* position */, double /* totalDuration */, std::optional<bool> /* isManuallySeeked */)>& callback) = 0;
       virtual void onAndroidAutoConnectionChange(const std::function<void(bool /* connected */)>& callback) = 0;
       virtual bool isAndroidAutoConnected() = 0;
+      virtual bool setVolume(double volume) = 0;
 
     protected:
       // Hybrid Setup

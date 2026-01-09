@@ -81,4 +81,5 @@ export interface TrackPlayer
   ): void
   onAndroidAutoConnectionChange(callback: (connected: boolean) => void): void
   isAndroidAutoConnected(): boolean
+  setVolume(volume: number): boolean
 }

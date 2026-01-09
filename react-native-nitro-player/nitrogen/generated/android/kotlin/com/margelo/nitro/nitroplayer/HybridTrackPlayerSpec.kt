@@ -129,6 +129,10 @@ abstract class HybridTrackPlayerSpec: HybridObject() {
   @DoNotStrip
   @Keep
   abstract fun isAndroidAutoConnected(): Boolean
+  
+  @DoNotStrip
+  @Keep
+  abstract fun setVolume(volume: Double): Boolean
 
   private external fun initHybrid(): HybridData
 

@@ -142,5 +142,10 @@ namespace margelo::nitro::nitroplayer {
     auto __result = method(_javaPart);
     return static_cast<bool>(__result);
   }
+  bool JHybridTrackPlayerSpec::setVolume(double volume) {
+    static const auto method = javaClassStatic()->getMethod<jboolean(double /* volume */)>("setVolume");
+    auto __result = method(_javaPart, volume);
+    return static_cast<bool>(__result);
+  }
 
 } // namespace margelo::nitro::nitroplayer

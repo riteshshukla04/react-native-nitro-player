@@ -177,6 +177,14 @@ namespace margelo::nitro::nitroplayer {
       auto __value = std::move(__result.value());
       return __value;
     }
+    inline bool setVolume(double volume) override {
+      auto __result = _swiftPart.setVolume(std::forward<decltype(volume)>(volume));
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
 
   private:
     NitroPlayer::HybridTrackPlayerSpec_cxx _swiftPart;
