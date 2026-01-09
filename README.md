@@ -85,6 +85,11 @@ TrackPlayer.seek(30) // Seek to 30 seconds
 TrackPlayer.setRepeatMode('off') // No repeat
 TrackPlayer.setRepeatMode('Playlist') // Repeat entire playlist
 TrackPlayer.setRepeatMode('track') // Repeat current track
+
+// Set volume (0-100)
+TrackPlayer.setVolume(50) // Set volume to 50%
+TrackPlayer.setVolume(0) // Mute
+TrackPlayer.setVolume(100) // Maximum volume
 ```
 
 ## Core Concepts
@@ -105,6 +110,7 @@ Controls playback. Use it to:
 - Play, pause, and seek
 - Skip tracks
 - Control repeat mode
+- Control volume
 - Get current player state
 - Listen to playback events
 
@@ -265,6 +271,50 @@ TrackPlayer.setRepeatMode('Playlist')
 // Repeat current track
 TrackPlayer.setRepeatMode('track')
 ```
+
+## Volume Control
+
+Control the playback volume level.
+
+### `setVolume(volume: number): boolean`
+
+Sets the playback volume level.
+
+**Parameters:**
+
+- `volume: number` - Volume level between 0 and 100
+  - `0` - Mute (no sound)
+  - `50` - Half volume
+  - `100` - Maximum volume
+
+**Returns:** `true` if successful, `false` otherwise (e.g., if player is not initialized)
+
+**Example:**
+
+```typescript
+import { TrackPlayer } from 'react-native-nitro-player'
+
+// Set volume to 50%
+const success = TrackPlayer.setVolume(50)
+if (success) {
+  console.log('Volume set successfully')
+} else {
+  console.warn('Failed to set volume')
+}
+
+// Mute the player
+TrackPlayer.setVolume(0)
+
+// Set to maximum volume
+TrackPlayer.setVolume(100)
+
+// Incremental volume control
+const currentVolume = 50
+TrackPlayer.setVolume(currentVolume + 10) // Increase by 10%
+TrackPlayer.setVolume(currentVolume - 10) // Decrease by 10%
+```
+
+**Note:** The volume value is automatically clamped to the 0-100 range. Values outside this range will be clamped to the nearest valid value.
 
 ## Usage Examples
 
@@ -610,6 +660,7 @@ AndroidAutoMediaLibraryHelper.set({
 
 - ✅ **Playlist Management**: Create, update, and manage multiple playlists
 - ✅ **Playback Controls**: Play, pause, seek, skip tracks
+- ✅ **Volume Control**: Adjust playback volume (0-100)
 - ✅ **React Hooks**: Built-in hooks for reactive state management
 - ✅ **Event Listeners**: Listen to track changes, state changes, and more
 - ✅ **Android Auto Support**: Control playback from Android Auto with customizable UI

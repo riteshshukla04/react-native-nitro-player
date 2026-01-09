@@ -35,8 +35,9 @@
     "lint-ci": "eslint \"**/*.{js,ts,tsx}\" -f @jamesacarr/github-actions",
     "typescript": "tsc",
     "specs": "tsc && nitrogen --logLevel=\"debug\"",
+    "copy-readme": "cp ../README.md README.md",
     "release": "release-it",
-    "build": "bun run clean && bun run specs && bun run typescript"
+    "build": "bun run clean && bun run specs && bun run typescript && bun run copy-readme"
   },
   "keywords": [
     "react-native",
@@ -124,7 +125,7 @@
       "release": true
     },
     "hooks": {
-      "before:release": "bun run clean && bun run specs && bun run typescript"
+      "before:release": "bun run clean && bun run specs && bun run typescript && bun run copy-readme"
     },
     "plugins": {
       "@release-it/bumper": {
