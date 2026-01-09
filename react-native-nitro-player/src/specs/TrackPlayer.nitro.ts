@@ -54,9 +54,7 @@ export interface PlayerQueue
   ): void
 }
 
-
-
-export type RepeatMode = "off" | "Playlist" | "track"
+export type RepeatMode = 'off' | 'Playlist' | 'track'
 
 export interface TrackPlayer
   extends HybridObject<{ android: 'kotlin'; ios: 'swift' }> {

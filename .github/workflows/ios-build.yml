@@ -47,7 +47,6 @@ jobs:
           bundle install
           RCT_USE_RN_DEP=1 RCT_USE_PREBUILT_RNCORE=1 bundle exec pod install
 
-
       - name: Build iOS
         working-directory: example/ios
         run: |

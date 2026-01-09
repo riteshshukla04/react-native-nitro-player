@@ -480,11 +480,12 @@ class TrackPlayerCore private constructor(
     fun setRepeatMode(mode: RepeatMode): Boolean {
         println("🔁 TrackPlayerCore: setRepeatMode called with mode: $mode")
         handler.post {
-            val exoRepeatMode = when (mode) {
-                RepeatMode.OFF -> Player.REPEAT_MODE_OFF
-                RepeatMode.TRACK -> Player.REPEAT_MODE_ONE
-                RepeatMode.PLAYLIST -> Player.REPEAT_MODE_ALL
-            }
+            val exoRepeatMode =
+                when (mode) {
+                    RepeatMode.OFF -> Player.REPEAT_MODE_OFF
+                    RepeatMode.TRACK -> Player.REPEAT_MODE_ONE
+                    RepeatMode.PLAYLIST -> Player.REPEAT_MODE_ALL
+                }
             player.repeatMode = exoRepeatMode
             println("🔁 TrackPlayerCore: ExoPlayer repeat mode set to: $exoRepeatMode")
         }

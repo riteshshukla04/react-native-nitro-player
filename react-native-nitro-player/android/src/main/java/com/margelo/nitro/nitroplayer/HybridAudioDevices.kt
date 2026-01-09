@@ -7,21 +7,21 @@ import android.os.Build
 import com.margelo.nitro.NitroModules
 
 class HybridAudioDevices : HybridAudioDevicesSpec() {
-
-    val applicationContext = NitroModules.applicationContext;
+    val applicationContext = NitroModules.applicationContext
     private val audioManager = applicationContext?.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-    
+
     // Device types that can be set as communication devices
     private val validCommunicationDeviceTypes: Set<Int> by lazy {
-        val types = mutableSetOf(
-            AudioDeviceInfo.TYPE_BUILTIN_EARPIECE,
-            AudioDeviceInfo.TYPE_BUILTIN_SPEAKER,
-            AudioDeviceInfo.TYPE_WIRED_HEADSET,
-            AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
-            AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
-            AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
-            AudioDeviceInfo.TYPE_USB_HEADSET
-        )
+        val types =
+            mutableSetOf(
+                AudioDeviceInfo.TYPE_BUILTIN_EARPIECE,
+                AudioDeviceInfo.TYPE_BUILTIN_SPEAKER,
+                AudioDeviceInfo.TYPE_WIRED_HEADSET,
+                AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
+                AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
+                AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
+                AudioDeviceInfo.TYPE_USB_HEADSET,
+            )
         // BLE types are only available on Android S (API 31) and above
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             types.add(AudioDeviceInfo.TYPE_BLE_HEADSET)
@@ -29,7 +29,7 @@ class HybridAudioDevices : HybridAudioDevicesSpec() {
         }
         types
     }
-    
+
     override fun getAudioDevices(): Array<TAudioDevice> {
         val devices = audioManager.getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS)
         var activeDevice: AudioDeviceInfo? = null
@@ -37,20 +37,23 @@ class HybridAudioDevices : HybridAudioDevicesSpec() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             activeDevice = audioManager.communicationDevice
         }
-        
+
         // Filter to only include valid communication devices
-        return devices.filter { device ->
-            validCommunicationDeviceTypes.contains(device.type)
-        }.map { device -> TAudioDevice(
-            id = device.id.toDouble(),
-            name = device.productName?.toString() ?: getDeviceTypeName(device.type),
-            type = device.type.toDouble(),
-            isActive = device == activeDevice
-        ) }.toTypedArray()
+        return devices
+            .filter { device ->
+                validCommunicationDeviceTypes.contains(device.type)
+            }.map { device ->
+                TAudioDevice(
+                    id = device.id.toDouble(),
+                    name = device.productName?.toString() ?: getDeviceTypeName(device.type),
+                    type = device.type.toDouble(),
+                    isActive = device == activeDevice,
+                )
+            }.toTypedArray()
     }
-    
-    private fun getDeviceTypeName(type: Int): String {
-        return when (type) {
+
+    private fun getDeviceTypeName(type: Int): String =
+        when (type) {
             AudioDeviceInfo.TYPE_BUILTIN_EARPIECE -> "Built-in Earpiece"
             AudioDeviceInfo.TYPE_BUILTIN_SPEAKER -> "Built-in Speaker"
             AudioDeviceInfo.TYPE_WIRED_HEADSET -> "Wired Headset"
@@ -62,11 +65,11 @@ class HybridAudioDevices : HybridAudioDevicesSpec() {
             27 -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) "BLE Speaker" else "Type 27"
             else -> "Type $type"
         }
-    }
 
     override fun setAudioDevice(deviceId: Double): Boolean {
         val device =
-            audioManager.getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS)
+            audioManager
+                .getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS)
                 .firstOrNull { it.id == deviceId.toInt() }
                 ?: return false
 
@@ -83,21 +86,26 @@ class HybridAudioDevices : HybridAudioDevicesSpec() {
                 // Pre-Android 12 fallback (best-effort)
                 when (device.type) {
                     android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
-                    android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP -> {
+                    android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
+                    -> {
                         audioManager.startBluetoothSco()
                         audioManager.isBluetoothScoOn = true
                         true
                     }
+
                     android.media.AudioDeviceInfo.TYPE_BUILTIN_SPEAKER -> {
                         audioManager.isSpeakerphoneOn = true
                         true
                     }
+
                     android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET,
-                    android.media.AudioDeviceInfo.TYPE_WIRED_HEADPHONES -> {
+                    android.media.AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
+                    -> {
                         audioManager.isSpeakerphoneOn = false
                         audioManager.isBluetoothScoOn = false
                         true
                     }
+
                     else -> {
                         android.util.Log.w(TAG, "Unsupported device type for pre-Android 12: ${device.type}")
                         false

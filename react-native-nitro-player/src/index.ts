@@ -42,6 +42,6 @@ export * from './hooks'
 export * from './types/PlayerQueue'
 export * from './types/AndroidAutoMediaLibrary'
 export type { TAudioDevice } from './specs/AudioDevices.nitro'
-
+export type { RepeatMode } from './specs/TrackPlayer.nitro'
 // Export utilities
 export { AndroidAutoMediaLibraryHelper } from './utils/androidAutoMediaLibrary'
