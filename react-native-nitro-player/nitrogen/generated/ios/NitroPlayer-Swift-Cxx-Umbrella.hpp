@@ -24,6 +24,8 @@ namespace margelo::nitro::nitroplayer { struct Playlist; }
 namespace margelo::nitro::nitroplayer { enum class QueueOperation; }
 // Forward declaration of `Reason` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class Reason; }
+// Forward declaration of `RepeatMode` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class RepeatMode; }
 // Forward declaration of `TrackItem` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct TrackItem; }
 // Forward declaration of `TrackPlayerState` to properly resolve imports.
@@ -38,6 +40,7 @@ namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 #include "Playlist.hpp"
 #include "QueueOperation.hpp"
 #include "Reason.hpp"
+#include "RepeatMode.hpp"
 #include "TrackItem.hpp"
 #include "TrackPlayerState.hpp"
 #include <NitroModules/Null.hpp>

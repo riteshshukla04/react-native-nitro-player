@@ -52,6 +52,10 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
     return core.getState()
   }
 
+  func setRepeatMode(mode: RepeatMode) throws -> Bool {
+    return core.setRepeatMode(mode: mode)
+  }
+
   // MARK: - Configuration
 
   func configure(config: PlayerConfig) throws {

@@ -13,6 +13,8 @@ namespace margelo::nitro::nitroplayer { struct PlayerState; }
 namespace margelo::nitro::nitroplayer { struct TrackItem; }
 // Forward declaration of `TrackPlayerState` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
+// Forward declaration of `RepeatMode` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class RepeatMode; }
 // Forward declaration of `PlayerConfig` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct PlayerConfig; }
 // Forward declaration of `Reason` to properly resolve imports.
@@ -31,6 +33,8 @@ namespace margelo::nitro::nitroplayer { enum class Reason; }
 #include "JVariant_NullType_String.hpp"
 #include "TrackPlayerState.hpp"
 #include "JTrackPlayerState.hpp"
+#include "RepeatMode.hpp"
+#include "JRepeatMode.hpp"
 #include "PlayerConfig.hpp"
 #include "JPlayerConfig.hpp"
 #include "Reason.hpp"
@@ -103,6 +107,11 @@ namespace margelo::nitro::nitroplayer {
     static const auto method = javaClassStatic()->getMethod<jni::local_ref<JPlayerState>()>("getState");
     auto __result = method(_javaPart);
     return __result->toCpp();
+  }
+  bool JHybridTrackPlayerSpec::setRepeatMode(RepeatMode mode) {
+    static const auto method = javaClassStatic()->getMethod<jboolean(jni::alias_ref<JRepeatMode> /* mode */)>("setRepeatMode");
+    auto __result = method(_javaPart, JRepeatMode::fromCpp(mode));
+    return static_cast<bool>(__result);
   }
   void JHybridTrackPlayerSpec::configure(const PlayerConfig& config) {
     static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<JPlayerConfig> /* config */)>("configure");

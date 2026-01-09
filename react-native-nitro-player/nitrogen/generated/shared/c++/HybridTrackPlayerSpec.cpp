@@ -21,6 +21,7 @@ namespace margelo::nitro::nitroplayer {
       prototype.registerHybridMethod("skipToPrevious", &HybridTrackPlayerSpec::skipToPrevious);
       prototype.registerHybridMethod("seek", &HybridTrackPlayerSpec::seek);
       prototype.registerHybridMethod("getState", &HybridTrackPlayerSpec::getState);
+      prototype.registerHybridMethod("setRepeatMode", &HybridTrackPlayerSpec::setRepeatMode);
       prototype.registerHybridMethod("configure", &HybridTrackPlayerSpec::configure);
       prototype.registerHybridMethod("onChangeTrack", &HybridTrackPlayerSpec::onChangeTrack);
       prototype.registerHybridMethod("onPlaybackStateChange", &HybridTrackPlayerSpec::onPlaybackStateChange);

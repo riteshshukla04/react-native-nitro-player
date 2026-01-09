@@ -61,6 +61,7 @@ namespace margelo::nitro::nitroplayer {
     void skipToPrevious() override;
     void seek(double position) override;
     PlayerState getState() override;
+    bool setRepeatMode(RepeatMode mode) override;
     void configure(const PlayerConfig& config) override;
     void onChangeTrack(const std::function<void(const TrackItem& /* track */, std::optional<Reason> /* reason */)>& callback) override;
     void onPlaybackStateChange(const std::function<void(TrackPlayerState /* state */, std::optional<Reason> /* reason */)>& callback) override;

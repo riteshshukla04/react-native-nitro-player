@@ -13,6 +13,7 @@ import com.margelo.nitro.core.NullType
 import com.margelo.nitro.nitroplayer.NitroPlayerPackage
 import com.margelo.nitro.nitroplayer.PlayerState
 import com.margelo.nitro.nitroplayer.Reason
+import com.margelo.nitro.nitroplayer.RepeatMode
 import com.margelo.nitro.nitroplayer.TrackItem
 import com.margelo.nitro.nitroplayer.TrackPlayerState
 import com.margelo.nitro.nitroplayer.Variant_NullType_String
@@ -474,6 +475,20 @@ class TrackPlayerCore private constructor(
             isManuallySeeked = true
             player.seekTo((position * 1000).toLong())
         }
+    }
+
+    fun setRepeatMode(mode: RepeatMode): Boolean {
+        println("🔁 TrackPlayerCore: setRepeatMode called with mode: $mode")
+        handler.post {
+            val exoRepeatMode = when (mode) {
+                RepeatMode.OFF -> Player.REPEAT_MODE_OFF
+                RepeatMode.TRACK -> Player.REPEAT_MODE_ONE
+                RepeatMode.PLAYLIST -> Player.REPEAT_MODE_ALL
+            }
+            player.repeatMode = exoRepeatMode
+            println("🔁 TrackPlayerCore: ExoPlayer repeat mode set to: $exoRepeatMode")
+        }
+        return true
     }
 
     fun getState(): PlayerState {

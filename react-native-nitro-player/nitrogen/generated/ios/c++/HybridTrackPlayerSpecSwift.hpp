@@ -18,6 +18,8 @@ namespace margelo::nitro::nitroplayer { struct PlayerState; }
 namespace margelo::nitro::nitroplayer { struct TrackItem; }
 // Forward declaration of `TrackPlayerState` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
+// Forward declaration of `RepeatMode` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class RepeatMode; }
 // Forward declaration of `PlayerConfig` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct PlayerConfig; }
 // Forward declaration of `Reason` to properly resolve imports.
@@ -30,6 +32,7 @@ namespace margelo::nitro::nitroplayer { enum class Reason; }
 #include "TrackItem.hpp"
 #include <variant>
 #include "TrackPlayerState.hpp"
+#include "RepeatMode.hpp"
 #include "PlayerConfig.hpp"
 #include "Reason.hpp"
 #include <functional>
@@ -116,6 +119,14 @@ namespace margelo::nitro::nitroplayer {
     }
     inline PlayerState getState() override {
       auto __result = _swiftPart.getState();
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline bool setRepeatMode(RepeatMode mode) override {
+      auto __result = _swiftPart.setRepeatMode(static_cast<int>(mode));
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }

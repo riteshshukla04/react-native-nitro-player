@@ -54,6 +54,10 @@ export interface PlayerQueue
   ): void
 }
 
+
+
+export type RepeatMode = "off" | "Playlist" | "track"
+
 export interface TrackPlayer
   extends HybridObject<{ android: 'kotlin'; ios: 'swift' }> {
   play(): void
@@ -63,6 +67,7 @@ export interface TrackPlayer
   skipToPrevious(): void
   seek(position: number): void
   getState(): PlayerState
+  setRepeatMode(mode: RepeatMode): boolean
   configure(config: PlayerConfig): void
   onChangeTrack(callback: (track: TrackItem, reason?: Reason) => void): void
   onPlaybackStateChange(

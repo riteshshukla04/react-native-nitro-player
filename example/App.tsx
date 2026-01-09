@@ -26,6 +26,7 @@ import {
   AudioDevices,
   AudioRoutePicker,
 } from 'react-native-nitro-player';
+import type { RepeatMode } from '../react-native-nitro-player/src/specs/TrackPlayer.nitro';
 import type {
   TrackItem,
   QueueOperation,
@@ -107,6 +108,7 @@ function AppContent() {
   const [playerState, setPlayerState] = useState<PlayerState | undefined>(
     undefined,
   );
+  const [repeatMode, setRepeatMode] = useState<RepeatMode>('off');
 
   // Use hooks to get player state directly
   const { track: currentTrack, reason: trackChangeReason } = useOnChangeTrack();
@@ -293,6 +295,24 @@ function AppContent() {
     setPlayerState(state);
   };
 
+  const handleSetRepeatMode = (mode: RepeatMode) => {
+    console.log('Setting repeat mode to:', mode);
+    const success = TrackPlayer.setRepeatMode(mode);
+    if (success) {
+      setRepeatMode(mode);
+      console.log('Repeat mode set successfully');
+    } else {
+      console.warn('Failed to set repeat mode');
+    }
+  };
+
+  const handleCycleRepeatMode = () => {
+    const modes: RepeatMode[] = ['off', 'Playlist', 'track'];
+    const currentIndex = modes.indexOf(repeatMode);
+    const nextIndex = (currentIndex + 1) % modes.length;
+    handleSetRepeatMode(modes[nextIndex]);
+  };
+
   const handlePlaySongFromPlaylist = (songId: string, playlistId: string) => {
     console.log('Playing song:', songId, 'from playlist:', playlistId);
     TrackPlayer.playSong(songId, playlistId);
@@ -477,6 +497,84 @@ function AppContent() {
                 <Text style={styles.buttonText}>AirPlay</Text>
               </TouchableOpacity>
             )}
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Repeat Mode</Text>
+            <View style={styles.infoBox}>
+              <Text style={styles.infoText}>
+                🔁 Control how tracks repeat: Off, Playlist, or Single Track
+              </Text>
+            </View>
+
+            <View style={styles.repeatModeContainer}>
+              <Text style={styles.repeatModeLabel}>Current Mode:</Text>
+              <Text style={styles.repeatModeValue}>
+                {repeatMode === 'off'
+                  ? '🔁 Off'
+                  : repeatMode === 'Playlist'
+                    ? '🔁 Playlist'
+                    : '🔁 Track'}
+              </Text>
+            </View>
+
+            <View style={styles.controlsRow}>
+              <TouchableOpacity
+                style={[
+                  styles.repeatButton,
+                  repeatMode === 'off' && styles.repeatButtonActive,
+                ]}
+                onPress={() => handleSetRepeatMode('off')}
+              >
+                <Text
+                  style={[
+                    styles.repeatButtonText,
+                    repeatMode === 'off' && styles.repeatButtonTextActive,
+                  ]}
+                >
+                  Off
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.repeatButton,
+                  repeatMode === 'Playlist' && styles.repeatButtonActive,
+                ]}
+                onPress={() => handleSetRepeatMode('Playlist')}
+              >
+                <Text
+                  style={[
+                    styles.repeatButtonText,
+                    repeatMode === 'Playlist' && styles.repeatButtonTextActive,
+                  ]}
+                >
+                  Playlist
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.repeatButton,
+                  repeatMode === 'track' && styles.repeatButtonActive,
+                ]}
+                onPress={() => handleSetRepeatMode('track')}
+              >
+                <Text
+                  style={[
+                    styles.repeatButtonText,
+                    repeatMode === 'track' && styles.repeatButtonTextActive,
+                  ]}
+                >
+                  Track
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={styles.cycleButton}
+              onPress={handleCycleRepeatMode}
+            >
+              <Text style={styles.buttonText}>Cycle Repeat Mode</Text>
+            </TouchableOpacity>
           </View>
 
           <Text style={styles.statusText}>
@@ -1183,6 +1281,63 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 13,
     fontWeight: '600',
+  },
+  repeatModeSubsection: {
+    marginTop: 15,
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  subsectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 10,
+    color: '#333',
+  },
+  repeatModeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 6,
+    marginBottom: 15,
+  },
+  repeatModeLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  repeatModeValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#007AFF',
+  },
+  repeatButton: {
+    flex: 1,
+    backgroundColor: '#e0e0e0',
+    padding: 10,
+    borderRadius: 5,
+    marginHorizontal: 4,
+    alignItems: 'center',
+  },
+  repeatButtonActive: {
+    backgroundColor: '#007AFF',
+  },
+  repeatButtonText: {
+    color: '#333',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  repeatButtonTextActive: {
+    color: '#fff',
+  },
+  cycleButton: {
+    backgroundColor: '#28a745',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 10,
+    alignItems: 'center',
   },
 });
 

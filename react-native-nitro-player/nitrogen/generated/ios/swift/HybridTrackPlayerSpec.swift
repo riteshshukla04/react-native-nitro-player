@@ -21,6 +21,7 @@ public protocol HybridTrackPlayerSpec_protocol: HybridObject {
   func skipToPrevious() throws -> Void
   func seek(position: Double) throws -> Void
   func getState() throws -> PlayerState
+  func setRepeatMode(mode: RepeatMode) throws -> Bool
   func configure(config: PlayerConfig) throws -> Void
   func onChangeTrack(callback: @escaping (_ track: TrackItem, _ reason: Reason?) -> Void) throws -> Void
   func onPlaybackStateChange(callback: @escaping (_ state: TrackPlayerState, _ reason: Reason?) -> Void) throws -> Void

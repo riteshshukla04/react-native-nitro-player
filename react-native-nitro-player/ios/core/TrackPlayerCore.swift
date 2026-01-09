@@ -42,6 +42,7 @@ class TrackPlayerCore: NSObject {
   private var currentTrackIndex: Int = -1
   private var currentTracks: [TrackItem] = []
   private var isManuallySeeked = false
+  private var repeatMode: RepeatMode = .off
   private var boundaryTimeObserver: Any?
   private var currentItemObservers: [NSKeyValueObservation] = []
 
@@ -230,6 +231,38 @@ class TrackPlayerCore: NSObject {
     // Check remaining queue
     if let player = player {
       print("📋 Remaining items in queue: \(player.items().count)")
+    }
+
+    // Handle repeat modes
+    switch repeatMode {
+    case .track:
+      // Repeat current track - seek to beginning and play
+      print("🔁 TrackPlayerCore: Repeat mode is TRACK - replaying current track")
+      DispatchQueue.main.async { [weak self] in
+        guard let self = self, let player = self.player else { return }
+        // Recreate the current track item and play it
+        self.playFromIndex(index: self.currentTrackIndex)
+      }
+      return
+
+    case .playlist:
+      // Check if we're at the end of the playlist
+      if currentTrackIndex >= currentTracks.count - 1 {
+        print("🔁 TrackPlayerCore: Repeat mode is PLAYLIST - restarting from beginning")
+        DispatchQueue.main.async { [weak self] in
+          guard let self = self else { return }
+          // Go back to the first track
+          self.playFromIndex(index: 0)
+        }
+        return
+      } else {
+        // Not at end, just continue to next track
+        print("🔁 TrackPlayerCore: Repeat mode is PLAYLIST - continuing to next track")
+      }
+
+    case .off:
+      // Default behavior - stop at end of playlist
+      print("🔁 TrackPlayerCore: Repeat mode is OFF")
     }
 
     // Track ended naturally
@@ -865,6 +898,14 @@ class TrackPlayerCore: NSObject {
         }
       }
     }
+  }
+
+  // MARK: - Repeat Mode
+
+  func setRepeatMode(mode: RepeatMode) -> Bool {
+    print("🔁 TrackPlayerCore: setRepeatMode called with mode: \(mode)")
+    self.repeatMode = mode
+    return true
   }
 
   // MARK: - State Management
