@@ -31,6 +31,11 @@ class TrackPlayerCore: NSObject {
     // UI/Display constants
     static let separatorLineLength: Int = 80
     static let playlistSeparatorLength: Int = 40
+
+    // Gapless playback configuration
+    static let preferredForwardBufferDuration: Double = 30.0  // Buffer 30 seconds ahead
+    static let preloadAssetKeys: [String] = ["playable", "duration", "tracks", "preferredTransform"]
+    static let gaplessPreloadCount: Int = 3  // Number of tracks to preload ahead
   }
 
   // MARK: - Properties
@@ -45,6 +50,10 @@ class TrackPlayerCore: NSObject {
   private var repeatMode: RepeatMode = .off
   private var boundaryTimeObserver: Any?
   private var currentItemObservers: [NSKeyValueObservation] = []
+
+  // Gapless playback: Cache for preloaded assets
+  private var preloadedAssets: [String: AVURLAsset] = [:]
+  private let preloadQueue = DispatchQueue(label: "com.nitroplayer.preload", qos: .utility)
 
   var onChangeTrack: ((TrackItem, Reason?) -> Void)?
   var onPlaybackStateChange: ((TrackPlayerState, Reason?) -> Void)?
@@ -77,6 +86,23 @@ class TrackPlayerCore: NSObject {
 
   private func setupPlayer() {
     player = AVQueuePlayer()
+
+    // MARK: - Gapless Playback Configuration
+
+    // Disable automatic waiting to minimize stalling - this allows smoother transitions
+    // between tracks as AVPlayer won't pause to buffer excessively
+    player?.automaticallyWaitsToMinimizeStalling = false
+
+    // Set playback rate to 1.0 immediately when ready (reduces gap between tracks)
+    player?.actionAtItemEnd = .advance
+
+    // Configure for high-quality audio playback with minimal latency
+    if #available(iOS 15.0, *) {
+      player?.audiovisualBackgroundPlaybackPolicy = .continuesIfPossible
+    }
+
+    print("🎵 TrackPlayerCore: Gapless playback configured - automaticallyWaitsToMinimizeStalling=false")
+
     setupPlayerObservers()
   }
 
@@ -446,6 +472,11 @@ class TrackPlayerCore: NSObject {
     if currentItem.status == .readyToPlay {
       setupBoundaryTimeObserver()
     }
+
+    // MARK: - Gapless Playback: Preload upcoming tracks when track changes
+    // This ensures the next tracks are ready for seamless transitions
+    preloadUpcomingTracks(from: currentTrackIndex + 1)
+    cleanupPreloadedAssets(keepingFrom: currentTrackIndex)
   }
 
   private func setupCurrentItemObservers(item: AVPlayerItem) {
@@ -554,6 +585,125 @@ class TrackPlayerCore: NSObject {
     mediaSessionManager?.onPlaybackStateChanged()
   }
 
+  // MARK: - Gapless Playback Helpers
+
+  /// Creates a gapless-optimized AVPlayerItem with proper buffering configuration
+  private func createGaplessPlayerItem(for track: TrackItem, isPreload: Bool = false) -> AVPlayerItem? {
+    guard let url = URL(string: track.url) else {
+      print("❌ TrackPlayerCore: Invalid URL for track: \(track.title) - \(track.url)")
+      return nil
+    }
+
+    // Check if we have a preloaded asset for this track
+    let asset: AVURLAsset
+    if let preloadedAsset = preloadedAssets[track.id] {
+      asset = preloadedAsset
+      print("🚀 TrackPlayerCore: Using preloaded asset for \(track.title)")
+    } else {
+      // Create asset with options optimized for gapless playback
+      asset = AVURLAsset(url: url, options: [
+        AVURLAssetPreferPreciseDurationAndTimingKey: true,  // Ensures accurate duration for gapless transitions
+      ])
+    }
+
+    let item = AVPlayerItem(asset: asset)
+
+    // Configure buffer duration for gapless playback
+    // This tells AVPlayer how much content to buffer ahead
+    item.preferredForwardBufferDuration = Constants.preferredForwardBufferDuration
+
+    // Enable automatic loading of item properties for faster starts
+    item.canUseNetworkResourcesForLiveStreamingWhilePaused = true
+
+    // Store track ID for later reference
+    item.trackId = track.id
+
+    // If this is a preload request, start loading asset keys asynchronously
+    if isPreload {
+      asset.loadValuesAsynchronously(forKeys: Constants.preloadAssetKeys) {
+        // Asset keys are now loaded, which speeds up playback start
+        var allKeysLoaded = true
+        for key in Constants.preloadAssetKeys {
+          var error: NSError?
+          let status = asset.statusOfValue(forKey: key, error: &error)
+          if status == .failed {
+            print("⚠️ TrackPlayerCore: Failed to load key '\(key)' for \(track.title): \(error?.localizedDescription ?? "unknown")")
+            allKeysLoaded = false
+          }
+        }
+        if allKeysLoaded {
+          print("✅ TrackPlayerCore: All asset keys preloaded for \(track.title)")
+        }
+      }
+    }
+
+    return item
+  }
+
+  /// Preloads assets for upcoming tracks to enable gapless playback
+  private func preloadUpcomingTracks(from startIndex: Int) {
+    preloadQueue.async { [weak self] in
+      guard let self = self else { return }
+
+      let endIndex = min(startIndex + Constants.gaplessPreloadCount, self.currentTracks.count)
+
+      for i in startIndex..<endIndex {
+        let track = self.currentTracks[i]
+
+        // Skip if already preloaded
+        if self.preloadedAssets[track.id] != nil {
+          continue
+        }
+
+        guard let url = URL(string: track.url) else { continue }
+
+        let asset = AVURLAsset(url: url, options: [
+          AVURLAssetPreferPreciseDurationAndTimingKey: true,
+        ])
+
+        // Preload essential keys for gapless playback
+        asset.loadValuesAsynchronously(forKeys: Constants.preloadAssetKeys) { [weak self] in
+          var allKeysLoaded = true
+          for key in Constants.preloadAssetKeys {
+            var error: NSError?
+            let status = asset.statusOfValue(forKey: key, error: &error)
+            if status != .loaded {
+              allKeysLoaded = false
+              break
+            }
+          }
+
+          if allKeysLoaded {
+            DispatchQueue.main.async {
+              self?.preloadedAssets[track.id] = asset
+              print("🎯 TrackPlayerCore: Preloaded asset for upcoming track: \(track.title)")
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /// Clears preloaded assets that are no longer needed
+  private func cleanupPreloadedAssets(keepingFrom currentIndex: Int) {
+    preloadQueue.async { [weak self] in
+      guard let self = self else { return }
+
+      // Keep assets for current track and upcoming tracks within preload range
+      let keepRange = currentIndex..<min(currentIndex + Constants.gaplessPreloadCount + 1, self.currentTracks.count)
+      let keepIds = Set(keepRange.compactMap { self.currentTracks[safe: $0]?.id })
+
+      let assetsToRemove = self.preloadedAssets.keys.filter { !keepIds.contains($0) }
+      for id in assetsToRemove {
+        self.preloadedAssets.removeValue(forKey: id)
+      }
+
+      if !assetsToRemove.isEmpty {
+        print("🧹 TrackPlayerCore: Cleaned up \(assetsToRemove.count) preloaded assets")
+      }
+    }
+  }
+
   // MARK: - Queue Management
 
   private func updatePlayerQueue(tracks: [TrackItem]) {
@@ -578,39 +728,17 @@ class TrackPlayerCore: NSObject {
       boundaryTimeObserver = nil
     }
 
-    // Create AVPlayerItems from tracks
-    let items = tracks.compactMap { track -> AVPlayerItem? in
-      guard let url = URL(string: track.url) else {
-        print("❌ TrackPlayerCore: Invalid URL for track: \(track.title) - \(track.url)")
-        return nil
-      }
+    // Clear old preloaded assets when loading new queue
+    preloadedAssets.removeAll()
 
-      let item = AVPlayerItem(url: url)
-
-      // Set metadata using AVMutableMetadataItem
-      let metadata = AVMutableMetadataItem()
-      metadata.identifier = .commonIdentifierTitle
-      metadata.value = track.title as NSString
-      metadata.locale = Locale.current
-
-      let artistMetadata = AVMutableMetadataItem()
-      artistMetadata.identifier = .commonIdentifierArtist
-      artistMetadata.value = track.artist as NSString
-      artistMetadata.locale = Locale.current
-
-      let albumMetadata = AVMutableMetadataItem()
-      albumMetadata.identifier = .commonIdentifierAlbumName
-      albumMetadata.value = track.album as NSString
-      albumMetadata.locale = Locale.current
-
-      // Note: AVPlayerItem doesn't have externalMetadata property
-      // Metadata will be set via MPNowPlayingInfoCenter in MediaSessionManager
-
-      // Store track ID in item for later reference
-      item.trackId = track.id
-
-      return item
+    // Create gapless-optimized AVPlayerItems from tracks
+    let items = tracks.enumerated().compactMap { (index, track) -> AVPlayerItem? in
+      // First few items get preload treatment for faster initial playback
+      let isPreload = index < Constants.gaplessPreloadCount
+      return createGaplessPlayerItem(for: track, isPreload: isPreload)
     }
+
+    print("🎵 TrackPlayerCore: Created \(items.count) gapless-optimized player items")
 
     guard !items.isEmpty else {
       print("❌ TrackPlayerCore: No valid items to play")
@@ -672,7 +800,10 @@ class TrackPlayerCore: NSObject {
       mediaSessionManager?.onTrackChanged()
     }
 
-    print("✅ TrackPlayerCore: Queue updated with \(items.count) tracks")
+    // Start preloading upcoming tracks for gapless playback
+    preloadUpcomingTracks(from: 1)
+
+    print("✅ TrackPlayerCore: Queue updated with \(items.count) gapless-optimized tracks")
   }
 
   func getCurrentTrack() -> TrackItem? {
@@ -988,14 +1119,13 @@ class TrackPlayerCore: NSObject {
       // Recreate the queue starting from the target index
       // This ensures all remaining tracks are in the queue
       let tracksToPlay = Array(fullPlaylist[index...])
-      print("   🔄 Creating queue with \(tracksToPlay.count) tracks starting from index \(index)")
+      print("   🔄 Creating gapless queue with \(tracksToPlay.count) tracks starting from index \(index)")
 
-      // Update the queue (but keep the full currentTracks for reference)
-      let items = tracksToPlay.compactMap { track -> AVPlayerItem? in
-        guard let url = URL(string: track.url) else { return nil }
-        let item = AVPlayerItem(url: url)
-        item.trackId = track.id
-        return item
+      // Create gapless-optimized player items
+      let items = tracksToPlay.enumerated().compactMap { (offset, track) -> AVPlayerItem? in
+        // First few items get preload treatment for faster playback
+        let isPreload = offset < Constants.gaplessPreloadCount
+        return self.createGaplessPlayerItem(for: track, isPreload: isPreload)
       }
 
       guard let player = self.player, !items.isEmpty else {
@@ -1020,12 +1150,15 @@ class TrackPlayerCore: NSObject {
       // Restore the full playlist reference (don't slice it!)
       self.currentTracks = fullPlaylist
 
-      print("   ✅ Queue recreated. Now at index: \(self.currentTrackIndex)")
+      print("   ✅ Gapless queue recreated. Now at index: \(self.currentTrackIndex)")
       if let track = self.getCurrentTrack() {
         print("   🎵 Playing: \(track.title)")
         self.onChangeTrack?(track, .skip)
         self.mediaSessionManager?.onTrackChanged()
       }
+
+      // Start preloading upcoming tracks for gapless playback
+      self.preloadUpcomingTracks(from: index + 1)
 
       player.play()
     }
@@ -1035,6 +1168,9 @@ class TrackPlayerCore: NSObject {
 
   deinit {
     print("🧹 TrackPlayerCore: Cleaning up...")
+
+    // Clear preloaded assets for gapless playback
+    preloadedAssets.removeAll()
 
     // Remove boundary time observer
     if let boundaryObserver = boundaryTimeObserver, let currentPlayer = player {

@@ -4,6 +4,8 @@ package com.margelo.nitro.nitroplayer.core
 
 import android.content.Context
 import android.net.Uri
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
@@ -72,25 +74,44 @@ class TrackPlayerCore private constructor(
 
     init {
         handler.post {
-            // Configure LoadControl for gapless playback
-            // This enables pre-buffering of the next track for seamless transitions
+            // ============================================================
+            // GAPLESS PLAYBACK CONFIGURATION
+            // ============================================================
+            // Configure LoadControl for maximum gapless playback
+            // Large buffers ensure next track is fully ready before current ends
             val loadControl =
                 DefaultLoadControl
                     .Builder()
                     .setBufferDurationsMs(
-                        DefaultLoadControl.DEFAULT_MIN_BUFFER_MS, // Minimum buffer: 1.5s
-                        DefaultLoadControl.DEFAULT_MAX_BUFFER_MS, // Maximum buffer: 5s
-                        DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS, // Buffer for playback: 2.5s
-                        DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS, // Buffer after rebuffer: 5s
-                    ).setBackBuffer(DefaultLoadControl.DEFAULT_BACK_BUFFER_DURATION_MS, true) // Keep back buffer for seamless transitions
+                        30_000,   // MIN_BUFFER_MS: 30 seconds minimum buffer
+                        120_000,  // MAX_BUFFER_MS: 2 minutes maximum buffer (enables preloading next tracks)
+                        2_500,    // BUFFER_FOR_PLAYBACK_MS: 2.5s before playback starts
+                        5_000,    // BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS: 5s after rebuffer
+                    )
+                    .setBackBuffer(30_000, true) // Keep 30s back buffer for seamless seek-back
+                    .setTargetBufferBytes(C.LENGTH_UNSET) // No size limit - prioritize time
                     .setPrioritizeTimeOverSizeThresholds(true) // Prioritize time-based buffering
+                    .build()
+
+            // Configure audio attributes for optimal music playback
+            // This enables gapless audio processing in the audio pipeline
+            val audioAttributes =
+                AudioAttributes
+                    .Builder()
+                    .setUsage(C.USAGE_MEDIA)
+                    .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
                     .build()
 
             player =
                 ExoPlayer
                     .Builder(context)
                     .setLoadControl(loadControl)
+                    .setAudioAttributes(audioAttributes, true) // handleAudioFocus = true for gapless
+                    .setHandleAudioBecomingNoisy(true) // Pause when headphones disconnected
+                    .setPauseAtEndOfMediaItems(false) // Don't pause between items - key for gapless!
                     .build()
+
+            println("🎵 TrackPlayerCore: Gapless playback configured - 120s buffer, audio focus handling enabled")
             mediaSessionManager =
                 MediaSessionManager(context, player, playlistManager).apply {
                     setTrackPlayerCore(this@TrackPlayerCore)
