@@ -195,7 +195,7 @@ import { AudioDevices } from 'react-native-nitro-player'
 
 if (AudioDevices) {
   const devices = AudioDevices.getAudioDevices()
-  devices.forEach(device => {
+  devices.forEach((device) => {
     console.log(`${device.name} - Active: ${device.isActive}`)
   })
 }
@@ -437,7 +437,7 @@ TrackPlayer.onPlaybackProgressChange(
 )
 
 // Listen to Android Auto connection changes
-TrackPlayer.onAndroidAutoConnectionChange(connected => {
+TrackPlayer.onAndroidAutoConnectionChange((connected) => {
   console.log('Android Auto:', connected ? 'Connected' : 'Disconnected')
 })
 ```

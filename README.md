@@ -171,6 +171,21 @@ Automatically polls for audio device changes every 2 seconds.
 
 - `devices: TAudioDevice[]` - Array of available audio devices
 
+### `useNowPlaying()`
+
+Returns the complete current player state (same as `TrackPlayer.getState()`). This hook provides all player information in a single object and automatically updates when the player state changes.
+
+**Returns:**
+
+- `PlayerState` object containing:
+  - `currentTrack: TrackItem | null` - The current track being played, or `null` if no track is playing
+  - `totalDuration: number` - Total duration of the current track in seconds
+  - `currentState: TrackPlayerState` - Current playback state (`'playing'`, `'paused'`, or `'stopped'`)
+  - `currentPlaylistId: string | null` - ID of the currently loaded playlist, or `null` if no playlist is loaded
+  - `currentIndex: number` - Index of the current track in the playlist (-1 if no track is playing)
+
+**Note:** This hook is equivalent to calling `TrackPlayer.getState()` but provides reactive updates. It listens to track changes and playback state changes to update automatically. Also dont rely on progress from this hook
+
 ## Audio Device APIs
 
 ### `AudioDevices` (Android only)
@@ -347,6 +362,9 @@ function PlayerComponent() {
   // Check Android Auto connection
   const { isConnected } = useAndroidAutoConnection()
 
+  // Get complete player state (alternative to individual hooks)
+  const nowPlaying = useNowPlaying()
+
   return (
     <View>
       {track && (
@@ -354,6 +372,8 @@ function PlayerComponent() {
       )}
       <Text>State: {state}</Text>
       <Text>Progress: {position} / {totalDuration}</Text>
+      {/* Or use useNowPlaying for all state at once */}
+      <Text>Now Playing State: {nowPlaying.currentState}</Text>
     </View>
   )
 }
