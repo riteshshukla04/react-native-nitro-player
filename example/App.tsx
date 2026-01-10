@@ -23,6 +23,7 @@ import {
   useOnPlaybackProgressChange,
   useAndroidAutoConnection,
   useAudioDevices,
+  useNowPlaying,
   AudioDevices,
   AudioRoutePicker,
 } from 'react-native-nitro-player';
@@ -124,6 +125,7 @@ function AppContent() {
     isManuallySeeked,
   } = useOnPlaybackProgressChange();
   const { isConnected: isAndroidAutoConnected } = useAndroidAutoConnection();
+  const nowPlayingState = useNowPlaying();
 
   // Log changes for debugging
   useEffect(() => {
@@ -940,6 +942,61 @@ function AppContent() {
             </View>
           </View>
         )}
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>
+            Now Playing (from useNowPlaying hook)
+          </Text>
+          <View style={styles.infoBox}>
+            <Text style={styles.infoText}>
+              💡 This hook provides the same information as TrackPlayer.getState()
+              but updates automatically!
+            </Text>
+          </View>
+          <View style={styles.stateInfo}>
+            <Text style={styles.stateLabel}>Current State:</Text>
+            <Text style={styles.stateValue}>{nowPlayingState.currentState}</Text>
+          </View>
+          <View style={styles.stateInfo}>
+            <Text style={styles.stateLabel}>Current Position:</Text>
+            <Text style={styles.stateValue}>
+              {formatTime(nowPlayingState.currentPosition)}
+            </Text>
+          </View>
+          <View style={styles.stateInfo}>
+            <Text style={styles.stateLabel}>Total Duration:</Text>
+            <Text style={styles.stateValue}>
+              {formatTime(nowPlayingState.totalDuration)}
+            </Text>
+          </View>
+          <View style={styles.stateInfo}>
+            <Text style={styles.stateLabel}>Current Index:</Text>
+            <Text style={styles.stateValue}>
+              {nowPlayingState.currentIndex >= 0
+                ? nowPlayingState.currentIndex
+                : 'None'}
+            </Text>
+          </View>
+          {nowPlayingState.currentTrack && (
+            <View style={styles.stateInfo}>
+              <Text style={styles.stateLabel}>Current Track:</Text>
+              <View style={styles.stateTrackInfo}>
+                <Text style={styles.stateValue}>
+                  {nowPlayingState.currentTrack.title}
+                </Text>
+                <Text style={styles.stateSubValue}>
+                  {nowPlayingState.currentTrack.artist}
+                </Text>
+              </View>
+            </View>
+          )}
+          <View style={styles.stateInfo}>
+            <Text style={styles.stateLabel}>Current Playlist ID:</Text>
+            <Text style={styles.stateValue}>
+              {nowPlayingState.currentPlaylistId || 'None'}
+            </Text>
+          </View>
+        </View>
       </ScrollView>
     </View>
   );
