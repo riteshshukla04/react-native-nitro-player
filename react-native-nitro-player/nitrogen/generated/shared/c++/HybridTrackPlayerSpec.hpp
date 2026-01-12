@@ -13,14 +13,14 @@
 #error NitroModules cannot be found! Are you sure you installed NitroModules properly?
 #endif
 
+// Forward declaration of `TrackItem` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct TrackItem; }
 // Forward declaration of `PlayerState` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct PlayerState; }
 // Forward declaration of `RepeatMode` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class RepeatMode; }
 // Forward declaration of `PlayerConfig` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct PlayerConfig; }
-// Forward declaration of `TrackItem` to properly resolve imports.
-namespace margelo::nitro::nitroplayer { struct TrackItem; }
 // Forward declaration of `Reason` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class Reason; }
 // Forward declaration of `TrackPlayerState` to properly resolve imports.
@@ -28,10 +28,11 @@ namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 
 #include <string>
 #include <optional>
+#include "TrackItem.hpp"
+#include <vector>
 #include "PlayerState.hpp"
 #include "RepeatMode.hpp"
 #include "PlayerConfig.hpp"
-#include "TrackItem.hpp"
 #include "Reason.hpp"
 #include <functional>
 #include "TrackPlayerState.hpp"
@@ -73,6 +74,9 @@ namespace margelo::nitro::nitroplayer {
       virtual void skipToNext() = 0;
       virtual void skipToPrevious() = 0;
       virtual void seek(double position) = 0;
+      virtual void addToUpNext(const std::string& trackId) = 0;
+      virtual void playNext(const std::string& trackId) = 0;
+      virtual std::vector<TrackItem> getActualQueue() = 0;
       virtual PlayerState getState() = 0;
       virtual bool setRepeatMode(RepeatMode mode) = 0;
       virtual void configure(const PlayerConfig& config) = 0;

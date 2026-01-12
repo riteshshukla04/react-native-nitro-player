@@ -55,6 +55,22 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
 
     @DoNotStrip
     @Keep
+    override fun addToUpNext(trackId: String) {
+        core.addToUpNext(trackId)
+    }
+
+    @DoNotStrip
+    @Keep
+    override fun playNext(trackId: String) {
+        core.playNext(trackId)
+    }
+
+    @DoNotStrip
+    @Keep
+    override fun getActualQueue(): Array<TrackItem> = core.getActualQueue().toTypedArray()
+
+    @DoNotStrip
+    @Keep
     override fun getState(): PlayerState = core.getState()
 
     @DoNotStrip

@@ -71,6 +71,18 @@ abstract class HybridTrackPlayerSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
+  abstract fun addToUpNext(trackId: String): Unit
+  
+  @DoNotStrip
+  @Keep
+  abstract fun playNext(trackId: String): Unit
+  
+  @DoNotStrip
+  @Keep
+  abstract fun getActualQueue(): Array<TrackItem>
+  
+  @DoNotStrip
+  @Keep
   abstract fun getState(): PlayerState
   
   @DoNotStrip

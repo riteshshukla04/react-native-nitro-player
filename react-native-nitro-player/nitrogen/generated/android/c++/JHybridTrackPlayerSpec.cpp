@@ -7,10 +7,10 @@
 
 #include "JHybridTrackPlayerSpec.hpp"
 
-// Forward declaration of `PlayerState` to properly resolve imports.
-namespace margelo::nitro::nitroplayer { struct PlayerState; }
 // Forward declaration of `TrackItem` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct TrackItem; }
+// Forward declaration of `PlayerState` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct PlayerState; }
 // Forward declaration of `TrackPlayerState` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 // Forward declaration of `RepeatMode` to properly resolve imports.
@@ -20,17 +20,18 @@ namespace margelo::nitro::nitroplayer { struct PlayerConfig; }
 // Forward declaration of `Reason` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class Reason; }
 
-#include "PlayerState.hpp"
-#include "JPlayerState.hpp"
-#include <NitroModules/Null.hpp>
 #include "TrackItem.hpp"
-#include <variant>
-#include <optional>
-#include "JVariant_NullType_TrackItem.hpp"
-#include <NitroModules/JNull.hpp>
+#include <vector>
 #include "JTrackItem.hpp"
 #include <string>
+#include <NitroModules/Null.hpp>
+#include <variant>
+#include <optional>
 #include "JVariant_NullType_String.hpp"
+#include <NitroModules/JNull.hpp>
+#include "PlayerState.hpp"
+#include "JPlayerState.hpp"
+#include "JVariant_NullType_TrackItem.hpp"
 #include "TrackPlayerState.hpp"
 #include "JTrackPlayerState.hpp"
 #include "RepeatMode.hpp"
@@ -102,6 +103,28 @@ namespace margelo::nitro::nitroplayer {
   void JHybridTrackPlayerSpec::seek(double position) {
     static const auto method = javaClassStatic()->getMethod<void(double /* position */)>("seek");
     method(_javaPart, position);
+  }
+  void JHybridTrackPlayerSpec::addToUpNext(const std::string& trackId) {
+    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* trackId */)>("addToUpNext");
+    method(_javaPart, jni::make_jstring(trackId));
+  }
+  void JHybridTrackPlayerSpec::playNext(const std::string& trackId) {
+    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* trackId */)>("playNext");
+    method(_javaPart, jni::make_jstring(trackId));
+  }
+  std::vector<TrackItem> JHybridTrackPlayerSpec::getActualQueue() {
+    static const auto method = javaClassStatic()->getMethod<jni::local_ref<jni::JArrayClass<JTrackItem>>()>("getActualQueue");
+    auto __result = method(_javaPart);
+    return [&]() {
+      size_t __size = __result->size();
+      std::vector<TrackItem> __vector;
+      __vector.reserve(__size);
+      for (size_t __i = 0; __i < __size; __i++) {
+        auto __element = __result->getElement(__i);
+        __vector.push_back(__element->toCpp());
+      }
+      return __vector;
+    }();
   }
   PlayerState JHybridTrackPlayerSpec::getState() {
     static const auto method = javaClassStatic()->getMethod<jni::local_ref<JPlayerState>()>("getState");

@@ -48,6 +48,18 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
     core.seek(position: position)
   }
 
+  func addToUpNext(trackId: String) throws {
+    core.addToUpNext(trackId: trackId)
+  }
+
+  func playNext(trackId: String) throws {
+    core.playNext(trackId: trackId)
+  }
+
+  func getActualQueue() throws -> [TrackItem] {
+    return core.getActualQueue()
+  }
+
   func getState() throws -> PlayerState {
     return core.getState()
   }

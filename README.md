@@ -90,7 +90,105 @@ TrackPlayer.setRepeatMode('track') // Repeat current track
 TrackPlayer.setVolume(50) // Set volume to 50%
 TrackPlayer.setVolume(0) // Mute
 TrackPlayer.setVolume(100) // Maximum volume
+
+// Add temporary tracks to queue
+TrackPlayer.addToUpNext('song-id') // Add to up-next queue (FIFO)
+TrackPlayer.playNext('song-id') // Add to play-next stack (LIFO)
 ```
+
+## Temporary Queue Management
+
+The player supports adding temporary tracks to the queue without modifying the original playlist. These tracks are automatically removed after playing.
+
+### `addToUpNext(trackId: string)`
+
+Adds a track to the **up-next queue** (FIFO - First In, First Out). Tracks play in the order they were added.
+
+**Behavior:**
+
+- Track is inserted after the current track and any "play next" tracks
+- Multiple tracks can be added - they play in the order added
+- Track is automatically removed after playing
+- Does not modify the original playlist
+
+**Example:**
+
+```typescript
+// Add tracks to up-next queue
+TrackPlayer.addToUpNext('song-1') // Will play 3rd
+TrackPlayer.addToUpNext('song-2') // Will play 4th
+TrackPlayer.addToUpNext('song-3') // Will play 5th
+// Order: [current] → [song-1] → [song-2] → [song-3]
+```
+
+### `playNext(trackId: string)`
+
+Adds a track to the **play-next stack** (LIFO - Last In, First Out). The most recently added track plays first.
+
+**Behavior:**
+
+- Track is inserted immediately after the current track
+- Multiple tracks can be added - the last added plays first
+- Track is automatically removed after playing
+- Does not modify the original playlist
+
+**Example:**
+
+```typescript
+// Add tracks to play-next stack
+TrackPlayer.playNext('song-1') // Will play 3rd
+TrackPlayer.playNext('song-2') // Will play 2nd (most recent)
+TrackPlayer.playNext('song-3') // Will play 1st (most recent)
+// Order: [current] → [song-3] → [song-2] → [song-1]
+```
+
+### Queue Order
+
+The actual playback order is:
+
+```
+[original tracks before current]
++ [CURRENT TRACK]
++ [playNext stack (LIFO)]
++ [upNext queue (FIFO)]
++ [original tracks after current]
+```
+
+### Clearing Temporary Tracks
+
+Temporary tracks are automatically cleared when:
+
+- `TrackPlayer.playSong()` is called
+- `PlayerQueue.loadPlaylist()` is called
+- `TrackPlayer.playFromIndex()` is called
+
+### Getting the Actual Queue
+
+Use `useActualQueue()` hook to see the complete queue including temporary tracks:
+
+```typescript
+import { useActualQueue } from 'react-native-nitro-player'
+
+function QueueView() {
+  const { queue, refreshQueue, isLoading } = useActualQueue()
+
+  return (
+    <ScrollView>
+      {queue.map((track, index) => (
+        <View key={track.id}>
+          <Text>{index + 1}. {track.title}</Text>
+        </View>
+      ))}
+    </ScrollView>
+  )
+}
+```
+
+**Returns:**
+
+- `queue: TrackItem[]` - Complete queue in playback order
+- `refreshQueue: () => void` - Manually refresh the queue
+- `isLoading: boolean` - Whether the queue is currently loading
 
 ## Core Concepts
 
@@ -111,6 +209,7 @@ Controls playback. Use it to:
 - Skip tracks
 - Control repeat mode
 - Control volume
+- Add temporary tracks to queue (`addToUpNext`, `playNext`)
 - Get current player state
 - Listen to playback events
 
@@ -185,6 +284,78 @@ Returns the complete current player state (same as `TrackPlayer.getState()`). Th
   - `currentIndex: number` - Index of the current track in the playlist (-1 if no track is playing)
 
 **Note:** This hook is equivalent to calling `TrackPlayer.getState()` but provides reactive updates. It listens to track changes and playback state changes to update automatically. Also dont rely on progress from this hook
+
+### `useActualQueue()`
+
+Returns the actual playback queue including temporary tracks (from `addToUpNext` and `playNext`).
+
+**Returns:**
+
+- `queue: TrackItem[]` - Complete queue in playback order: `[tracks_before_current] + [current] + [playNext_stack] + [upNext_queue] + [remaining_tracks]`
+- `refreshQueue: () => void` - Manually refresh the queue (useful after adding tracks)
+- `isLoading: boolean` - Whether the queue is currently loading
+
+**Auto-updates when:**
+
+- Track changes
+- Temporary tracks are added (`playNext`/`addToUpNext`)
+- Playback state changes
+
+**Example:**
+
+```typescript
+import { useActualQueue } from 'react-native-nitro-player'
+
+function QueueView() {
+  const { queue, refreshQueue, isLoading } = useActualQueue()
+
+  const handleAddToUpNext = (trackId: string) => {
+    TrackPlayer.addToUpNext(trackId)
+    // Refresh queue after adding track
+    setTimeout(refreshQueue, 100)
+  }
+
+  return (
+    <ScrollView>
+      {queue.map((track, index) => (
+        <View key={track.id}>
+          <Text>{index + 1}. {track.title}</Text>
+        </View>
+      ))}
+    </ScrollView>
+  )
+}
+```
+
+### `usePlaylist()`
+
+Manages playlist-related state and provides access to all playlists and tracks.
+
+**Returns:**
+
+- `currentPlaylist: Playlist | null` - The currently loaded playlist
+- `currentPlaylistId: string | null` - ID of the currently loaded playlist
+- `allPlaylists: Playlist[]` - Array of all playlists
+- `allTracks: TrackItem[]` - Array of all tracks from all playlists
+- `isLoading: boolean` - Whether playlists are currently loading
+- `refreshPlaylists: () => void` - Manually refresh playlist data
+
+**Example:**
+
+```typescript
+import { usePlaylist } from 'react-native-nitro-player'
+
+function PlaylistView() {
+  const { allPlaylists, allTracks, refreshPlaylists } = usePlaylist()
+
+  return (
+    <View>
+      <Text>Playlists: {allPlaylists.length}</Text>
+      <Text>Total Tracks: {allTracks.length}</Text>
+    </View>
+  )
+}
+```
 
 ## Audio Device APIs
 

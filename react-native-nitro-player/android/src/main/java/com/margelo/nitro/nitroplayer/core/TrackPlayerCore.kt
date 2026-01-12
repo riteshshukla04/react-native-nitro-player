@@ -43,6 +43,7 @@ class TrackPlayerCore private constructor(
     private var isAndroidAutoConnected: Boolean = false
     private var androidAutoConnectionDetector: AndroidAutoConnectionDetector? = null
     var onAndroidAutoConnectionChange: ((Boolean) -> Unit)? = null
+    private var previousMediaItem: MediaItem? = null
     private val progressUpdateRunnable =
         object : Runnable {
             override fun run() {
@@ -60,6 +61,19 @@ class TrackPlayerCore private constructor(
     var onPlaybackStateChange: ((TrackPlayerState, Reason?) -> Unit)? = null
     var onSeek: ((Double, Double) -> Unit)? = null
     var onPlaybackProgressChange: ((Double, Double, Boolean?) -> Unit)? = null
+
+    // Temporary tracks for addToUpNext and playNext
+    private var playNextStack: MutableList<TrackItem> = mutableListOf() // LIFO - last added plays first
+    private var upNextQueue: MutableList<TrackItem> = mutableListOf() // FIFO - first added plays first
+    private var currentTemporaryType: TemporaryType = TemporaryType.NONE
+    private var currentTracks: List<TrackItem> = emptyList()
+
+    // Enum to track what type of track is currently playing
+    private enum class TemporaryType {
+        NONE, // Playing from original playlist
+        PLAY_NEXT, // Currently in playNextStack
+        UP_NEXT, // Currently in upNextQueue
+    }
 
     companion object {
         @Volatile
@@ -143,6 +157,60 @@ class TrackPlayerCore private constructor(
                         mediaItem: MediaItem?,
                         reason: Int,
                     ) {
+                        println("\n🔄 onMediaItemTransition called")
+                        println(
+                            "   reason: ${when (reason) {
+                                Player.MEDIA_ITEM_TRANSITION_REASON_AUTO -> "AUTO (track ended)"
+                                Player.MEDIA_ITEM_TRANSITION_REASON_SEEK -> "SEEK"
+                                Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED -> "PLAYLIST_CHANGED"
+                                Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT -> "REPEAT"
+                                else -> "UNKNOWN($reason)"
+                            }}",
+                        )
+                        println("   previousMediaItem: ${previousMediaItem?.mediaId}")
+                        println("   new mediaItem: ${mediaItem?.mediaId}")
+                        println("   playNextStack: ${playNextStack.map { it.id }}")
+                        println("   upNextQueue: ${upNextQueue.map { it.id }}")
+
+                        // Remove finished track from temporary lists
+                        // Handle AUTO (natural end) and SEEK (skip next) transitions
+                        if ((
+                                reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO ||
+                                    reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK
+                            ) &&
+                            previousMediaItem != null
+                        ) {
+                            previousMediaItem?.mediaId?.let { mediaId ->
+                                val trackId = extractTrackId(mediaId)
+                                println("🏁 Track finished/skipped, checking for removal: $trackId")
+
+                                // Find and remove from playNext stack (like iOS does)
+                                val playNextIndex = playNextStack.indexOfFirst { it.id == trackId }
+                                if (playNextIndex >= 0) {
+                                    val track = playNextStack.removeAt(playNextIndex)
+                                    println("   ✅ Removed from playNext stack: ${track.title}")
+                                } else {
+                                    // Find and remove from upNext queue
+                                    val upNextIndex = upNextQueue.indexOfFirst { it.id == trackId }
+                                    if (upNextIndex >= 0) {
+                                        val track = upNextQueue.removeAt(upNextIndex)
+                                        println("   ✅ Removed from upNext queue: ${track.title}")
+                                    } else {
+                                        println("   ℹ️  Was an original playlist track")
+                                    }
+                                }
+                            }
+                        } else {
+                            println("   ⏭️  Skipping removal (reason=$reason, prev=${previousMediaItem != null})")
+                        }
+
+                        // Store current item as previous for next transition
+                        previousMediaItem = mediaItem
+
+                        // Update temporary type for current track
+                        currentTemporaryType = determineCurrentTemporaryType()
+                        println("   Updated currentTemporaryType: $currentTemporaryType")
+
                         // Handle playlist switching if needed
                         mediaItem?.mediaId?.let { mediaId ->
                             if (mediaId.contains(':')) {
@@ -162,7 +230,8 @@ class TrackPlayerCore private constructor(
                             }
                         }
 
-                        val track = findTrack(mediaItem)
+                        // Use getCurrentTrack() which handles temporary tracks properly
+                        val track = getCurrentTrack()
                         if (track != null) {
                             val r =
                                 when (reason) {
@@ -230,6 +299,12 @@ class TrackPlayerCore private constructor(
      */
     fun loadPlaylist(playlistId: String) {
         handler.post {
+            // Clear temporary tracks when loading new playlist
+            playNextStack.clear()
+            upNextQueue.clear()
+            currentTemporaryType = TemporaryType.NONE
+            println("   🧹 Cleared temporary tracks")
+
             val playlist = playlistManager.getPlaylist(playlistId)
             if (playlist != null) {
                 currentPlaylistId = playlistId
@@ -316,6 +391,9 @@ class TrackPlayerCore private constructor(
     }
 
     private fun updatePlayerQueue(tracks: List<TrackItem>) {
+        // Store the original tracks
+        currentTracks = tracks
+
         // Create MediaItems with playlist info in mediaId for Android Auto
         val mediaItems =
             tracks.mapIndexed { index, track ->
@@ -386,6 +464,12 @@ class TrackPlayerCore private constructor(
         println("🎵 TrackPlayerCore: playSong() called - songId: $songId, fromPlaylist: $fromPlaylist")
 
         handler.post {
+            // Clear temporary tracks when directly playing a song
+            playNextStack.clear()
+            upNextQueue.clear()
+            currentTemporaryType = TemporaryType.NONE
+            println("   🧹 Cleared temporary tracks")
+
             var targetPlaylistId: String? = null
             var songIndex: Int = -1
 
@@ -484,8 +568,15 @@ class TrackPlayerCore private constructor(
 
     fun skipToPrevious() {
         handler.post {
-            if (player.hasPreviousMediaItem()) {
+            // If playing temporary track, just seek to beginning (temps not navigable backwards)
+            if (currentTemporaryType != TemporaryType.NONE) {
+                println("🔄 TrackPlayerCore: Playing temporary track - seeking to beginning")
+                player.seekTo(0)
+            } else if (player.hasPreviousMediaItem()) {
                 player.seekToPreviousMediaItem()
+            } else {
+                // Already at first track, seek to beginning
+                player.seekTo(0)
             }
         }
     }
@@ -542,13 +633,8 @@ class TrackPlayerCore private constructor(
 
     private fun getStateInternal(): PlayerState =
         if (::player.isInitialized) {
-            val currentMediaItem = player.currentMediaItem
-            val track =
-                if (currentMediaItem != null) {
-                    findTrack(currentMediaItem)
-                } else {
-                    null
-                }
+            // Use getCurrentTrack() which handles temporary tracks properly
+            val track = getCurrentTrack()
 
             // Convert nullable TrackItem to Variant_NullType_TrackItem
             val currentTrack: Variant_NullType_TrackItem? =
@@ -625,17 +711,207 @@ class TrackPlayerCore private constructor(
     fun getCurrentTrack(): TrackItem? {
         if (!::player.isInitialized) return null
         val currentMediaItem = player.currentMediaItem ?: return null
+
+        // If playing a temporary track, return that
+        if (currentTemporaryType != TemporaryType.NONE) {
+            val trackId = extractTrackId(currentMediaItem.mediaId)
+
+            when (currentTemporaryType) {
+                TemporaryType.PLAY_NEXT -> {
+                    return playNextStack.firstOrNull { it.id == trackId }
+                }
+
+                TemporaryType.UP_NEXT -> {
+                    return upNextQueue.firstOrNull { it.id == trackId }
+                }
+
+                else -> {}
+            }
+        }
+
+        // Otherwise return from original playlist
         return findTrack(currentMediaItem)
     }
+
+    private fun extractTrackId(mediaId: String): String =
+        if (mediaId.contains(':')) {
+            // Format: "playlistId:trackId"
+            mediaId.substring(mediaId.indexOf(':') + 1)
+        } else {
+            mediaId
+        }
 
     // Public method to play from a specific index (for Android Auto)
     fun playFromIndex(index: Int) {
         handler.post {
+            // Clear temporary tracks when jumping to specific index
+            playNextStack.clear()
+            upNextQueue.clear()
+            currentTemporaryType = TemporaryType.NONE
+            println("   🧹 Cleared temporary tracks")
+
             if (::player.isInitialized && index >= 0 && index < player.mediaItemCount) {
                 player.seekToDefaultPosition(index)
                 player.playWhenReady = true
             }
         }
+    }
+
+    // MARK: - Temporary Track Management
+
+    /**
+     * Add a track to the up-next queue (FIFO - first added plays first)
+     * Track will be inserted after currently playing track and any playNext tracks
+     */
+    fun addToUpNext(trackId: String) {
+        handler.post {
+            println("📋 TrackPlayerCore: addToUpNext($trackId)")
+
+            // Find the track from current playlist or all playlists
+            val track = findTrackById(trackId)
+            if (track == null) {
+                println("❌ TrackPlayerCore: Track $trackId not found")
+                return@post
+            }
+
+            // Add to end of upNext queue (FIFO)
+            upNextQueue.add(track)
+            println("   ✅ Added '${track.title}' to upNext queue (position: ${upNextQueue.size})")
+
+            // Rebuild the player queue if actively playing
+            if (::player.isInitialized && player.currentMediaItem != null) {
+                rebuildQueueFromCurrentPosition()
+            }
+        }
+    }
+
+    /**
+     * Add a track to play next (LIFO - last added plays first)
+     * Track will be inserted immediately after currently playing track
+     */
+    fun playNext(trackId: String) {
+        handler.post {
+            println("⏭️ TrackPlayerCore: playNext($trackId)")
+
+            // Find the track from current playlist or all playlists
+            val track = findTrackById(trackId)
+            if (track == null) {
+                println("❌ TrackPlayerCore: Track $trackId not found")
+                return@post
+            }
+
+            // Insert at beginning of playNext stack (LIFO)
+            playNextStack.add(0, track)
+            println("   ✅ Added '${track.title}' to playNext stack (position: 1)")
+
+            // Rebuild the player queue if actively playing
+            if (::player.isInitialized && player.currentMediaItem != null) {
+                rebuildQueueFromCurrentPosition()
+            }
+        }
+    }
+
+    /**
+     * Rebuild the ExoPlayer queue from current position with temporary tracks
+     * Order: [current] + [playNext stack] + [upNext queue] + [remaining original]
+     */
+    private fun rebuildQueueFromCurrentPosition() {
+        if (!::player.isInitialized) return
+
+        println("\n🔄 TrackPlayerCore: REBUILDING QUEUE FROM CURRENT POSITION")
+        println("   currentIndex: ${player.currentMediaItemIndex}")
+        println("   currentMediaItem: ${player.currentMediaItem?.mediaId}")
+        println("   playNextStack (${playNextStack.size}): ${playNextStack.map { "${it.id}:${it.title}" }}")
+        println("   upNextQueue (${upNextQueue.size}): ${upNextQueue.map { "${it.id}:${it.title}" }}")
+
+        val currentIndex = player.currentMediaItemIndex
+        if (currentIndex < 0) return
+
+        // Build new queue order:
+        // [playNext stack] + [upNext queue] + [remaining original tracks]
+        val newQueueTracks = mutableListOf<TrackItem>()
+
+        // Add playNext stack (LIFO - most recently added plays first)
+        // Stack is already in correct order since we insert at position 0
+        newQueueTracks.addAll(playNextStack)
+
+        // Add upNext queue (in order, FIFO)
+        newQueueTracks.addAll(upNextQueue)
+
+        // Add remaining original tracks
+        if (currentIndex + 1 < currentTracks.size) {
+            val remaining = currentTracks.subList(currentIndex + 1, currentTracks.size)
+            println("   remaining original (${remaining.size}): ${remaining.map { it.id }}")
+            newQueueTracks.addAll(remaining)
+        }
+
+        println("   New queue total: ${newQueueTracks.size} tracks")
+        println("   Queue order: ${newQueueTracks.map { it.id }}")
+
+        // Create MediaItems for new tracks
+        val playlistId = currentPlaylistId ?: ""
+        val newMediaItems =
+            newQueueTracks.map { track ->
+                val mediaId = if (playlistId.isNotEmpty()) "$playlistId:${track.id}" else track.id
+                println("   Creating MediaItem: mediaId=$mediaId, title=${track.title}")
+                track.toMediaItem(mediaId)
+            }
+
+        // Remove all items after current
+        val removedCount = player.mediaItemCount - currentIndex - 1
+        println("   Removing $removedCount items after current")
+        while (player.mediaItemCount > currentIndex + 1) {
+            player.removeMediaItem(currentIndex + 1)
+        }
+
+        // Add new items
+        player.addMediaItems(newMediaItems)
+
+        println("   ✅ Queue rebuilt. Player now has ${player.mediaItemCount} items")
+        for (i in 0 until player.mediaItemCount) {
+            println("      [$i]: ${player.getMediaItemAt(i).mediaId}")
+        }
+    }
+
+    /**
+     * Find a track by ID from current playlist or all playlists
+     */
+    private fun findTrackById(trackId: String): TrackItem? {
+        // First check current playlist
+        currentTracks.find { it.id == trackId }?.let { return it }
+
+        // Then check all playlists
+        val allPlaylists = playlistManager.getAllPlaylists()
+        for (playlist in allPlaylists) {
+            playlist.tracks.find { it.id == trackId }?.let { return it }
+        }
+
+        return null
+    }
+
+    /**
+     * Determine what type of track is currently playing
+     */
+    private fun determineCurrentTemporaryType(): TemporaryType {
+        val currentItem = player.currentMediaItem ?: return TemporaryType.NONE
+        val trackId =
+            if (currentItem.mediaId.contains(':')) {
+                currentItem.mediaId.substring(currentItem.mediaId.indexOf(':') + 1)
+            } else {
+                currentItem.mediaId
+            }
+
+        // Check if in playNext stack
+        if (playNextStack.any { it.id == trackId }) {
+            return TemporaryType.PLAY_NEXT
+        }
+
+        // Check if in upNext queue
+        if (upNextQueue.any { it.id == trackId }) {
+            return TemporaryType.UP_NEXT
+        }
+
+        return TemporaryType.NONE
     }
 
     // Clean up resources
@@ -689,4 +965,67 @@ class TrackPlayerCore private constructor(
             println("⚠️ TrackPlayerCore: Cannot set volume - player not initialized")
             false
         }
+
+    /**
+     * Get the actual queue with temporary tracks
+     * Returns: [original_before_current] + [current] + [playNext_stack] + [upNext_queue] + [original_after_current]
+     */
+    fun getActualQueue(): List<TrackItem> {
+        // Check if we're already on the main thread
+        if (android.os.Looper.myLooper() == handler.looper) {
+            return getActualQueueInternal()
+        }
+
+        // Use CountDownLatch to wait for the result on the main thread
+        val latch = CountDownLatch(1)
+        var result: List<TrackItem>? = null
+
+        handler.post {
+            try {
+                result = getActualQueueInternal()
+            } finally {
+                latch.countDown()
+            }
+        }
+
+        try {
+            // Wait up to 5 seconds for the result
+            latch.await(5, TimeUnit.SECONDS)
+        } catch (e: InterruptedException) {
+            println("⚠️ TrackPlayerCore: Interrupted while waiting for actual queue")
+        }
+
+        return result ?: emptyList()
+    }
+
+    private fun getActualQueueInternal(): List<TrackItem> {
+        val queue = mutableListOf<TrackItem>()
+
+        if (!::player.isInitialized) return emptyList()
+
+        val currentIndex = player.currentMediaItemIndex
+        if (currentIndex < 0) return emptyList()
+
+        // Add tracks before current (original playlist)
+        if (currentIndex > 0 && currentIndex <= currentTracks.size) {
+            queue.addAll(currentTracks.subList(0, currentIndex))
+        }
+
+        // Add current track
+        getCurrentTrack()?.let { queue.add(it) }
+
+        // Add playNext stack (LIFO - most recently added plays first)
+        // Stack is already in correct order since we insert at position 0
+        queue.addAll(playNextStack)
+
+        // Add upNext queue (in order, FIFO)
+        queue.addAll(upNextQueue)
+
+        // Add remaining original tracks
+        if (currentIndex + 1 < currentTracks.size) {
+            queue.addAll(currentTracks.subList(currentIndex + 1, currentTracks.size))
+        }
+
+        return queue
+    }
 }

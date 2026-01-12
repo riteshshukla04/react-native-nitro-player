@@ -60,6 +60,9 @@ namespace margelo::nitro::nitroplayer {
     void skipToNext() override;
     void skipToPrevious() override;
     void seek(double position) override;
+    void addToUpNext(const std::string& trackId) override;
+    void playNext(const std::string& trackId) override;
+    std::vector<TrackItem> getActualQueue() override;
     PlayerState getState() override;
     bool setRepeatMode(RepeatMode mode) override;
     void configure(const PlayerConfig& config) override;

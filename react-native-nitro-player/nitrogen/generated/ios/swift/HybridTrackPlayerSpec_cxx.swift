@@ -191,6 +191,46 @@ open class HybridTrackPlayerSpec_cxx {
   }
   
   @inline(__always)
+  public final func addToUpNext(trackId: std.string) -> bridge.Result_void_ {
+    do {
+      try self.__implementation.addToUpNext(trackId: String(trackId))
+      return bridge.create_Result_void_()
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_void_(__exceptionPtr)
+    }
+  }
+  
+  @inline(__always)
+  public final func playNext(trackId: std.string) -> bridge.Result_void_ {
+    do {
+      try self.__implementation.playNext(trackId: String(trackId))
+      return bridge.create_Result_void_()
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_void_(__exceptionPtr)
+    }
+  }
+  
+  @inline(__always)
+  public final func getActualQueue() -> bridge.Result_std__vector_TrackItem__ {
+    do {
+      let __result = try self.__implementation.getActualQueue()
+      let __resultCpp = { () -> bridge.std__vector_TrackItem_ in
+        var __vector = bridge.create_std__vector_TrackItem_(__result.count)
+        for __item in __result {
+          __vector.push_back(__item)
+        }
+        return __vector
+      }()
+      return bridge.create_Result_std__vector_TrackItem__(__resultCpp)
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_std__vector_TrackItem__(__exceptionPtr)
+    }
+  }
+  
+  @inline(__always)
   public final func getState() -> bridge.Result_PlayerState_ {
     do {
       let __result = try self.__implementation.getState()

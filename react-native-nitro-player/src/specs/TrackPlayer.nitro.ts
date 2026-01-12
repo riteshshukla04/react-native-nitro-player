@@ -64,6 +64,9 @@ export interface TrackPlayer
   skipToNext(): void
   skipToPrevious(): void
   seek(position: number): void
+  addToUpNext(trackId: string): void
+  playNext(trackId: string): void
+  getActualQueue(): TrackItem[]
   getState(): PlayerState
   setRepeatMode(mode: RepeatMode): boolean
   configure(config: PlayerConfig): void

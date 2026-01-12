@@ -20,6 +20,9 @@ public protocol HybridTrackPlayerSpec_protocol: HybridObject {
   func skipToNext() throws -> Void
   func skipToPrevious() throws -> Void
   func seek(position: Double) throws -> Void
+  func addToUpNext(trackId: String) throws -> Void
+  func playNext(trackId: String) throws -> Void
+  func getActualQueue() throws -> [TrackItem]
   func getState() throws -> PlayerState
   func setRepeatMode(mode: RepeatMode) throws -> Bool
   func configure(config: PlayerConfig) throws -> Void

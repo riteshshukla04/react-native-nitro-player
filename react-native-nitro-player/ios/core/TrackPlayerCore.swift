@@ -57,6 +57,18 @@ class TrackPlayerCore: NSObject {
   private var preloadedAssets: [String: AVURLAsset] = [:]
   private let preloadQueue = DispatchQueue(label: "com.nitroplayer.preload", qos: .utility)
 
+  // Temporary tracks for addToUpNext and playNext
+  private var playNextStack: [TrackItem] = []  // LIFO - last added plays first
+  private var upNextQueue: [TrackItem] = []  // FIFO - first added plays first
+  private var currentTemporaryType: TemporaryType = .none
+
+  // Enum to track what type of track is currently playing
+  private enum TemporaryType {
+    case none  // Playing from original playlist
+    case playNext  // Currently in playNextStack
+    case upNext  // Currently in upNextQueue
+  }
+
   var onChangeTrack: ((TrackItem, Reason?) -> Void)?
   var onPlaybackStateChange: ((TrackPlayerState, Reason?) -> Void)?
   var onSeek: ((Double, Double) -> Void)?
@@ -251,10 +263,22 @@ class TrackPlayerCore: NSObject {
       return
     }
 
-    if let trackId = finishedItem.trackId,
-      let track = currentTracks.first(where: { $0.id == trackId })
-    {
-      print("🏁 Finished: \(track.title)")
+    // Determine what type of track just finished and remove it from temporary lists
+    if let trackId = finishedItem.trackId {
+      // Check if it was a playNext track
+      if let index = playNextStack.firstIndex(where: { $0.id == trackId }) {
+        let track = playNextStack.remove(at: index)
+        print("🏁 Finished playNext track: \(track.title) - removed from stack")
+      }
+      // Check if it was an upNext track
+      else if let index = upNextQueue.firstIndex(where: { $0.id == trackId }) {
+        let track = upNextQueue.remove(at: index)
+        print("🏁 Finished upNext track: \(track.title) - removed from queue")
+      }
+      // Otherwise it was from original playlist
+      else if let track = currentTracks.first(where: { $0.id == trackId }) {
+        print("🏁 Finished original track: \(track.title)")
+      }
     }
 
     // Check remaining queue
@@ -269,23 +293,35 @@ class TrackPlayerCore: NSObject {
       print("🔁 TrackPlayerCore: Repeat mode is TRACK - replaying current track")
       DispatchQueue.main.async { [weak self] in
         guard let self = self, let player = self.player else { return }
-        // Recreate the current track item and play it
-        self.playFromIndex(index: self.currentTrackIndex)
+        // For temporary tracks, just seek to beginning
+        if self.currentTemporaryType != .none {
+          player.seek(to: .zero)
+          player.play()
+        } else {
+          // For original tracks, recreate via playFromIndex
+          self.playFromIndex(index: self.currentTrackIndex)
+        }
       }
       return
 
     case .playlist:
-      // Check if we're at the end of the playlist
-      if currentTrackIndex >= currentTracks.count - 1 {
-        print("🔁 TrackPlayerCore: Repeat mode is PLAYLIST - restarting from beginning")
-        DispatchQueue.main.async { [weak self] in
-          guard let self = self else { return }
-          // Go back to the first track
-          self.playFromIndex(index: 0)
+      // Check if we're at the end of the ORIGINAL playlist (ignore temps)
+      if currentTemporaryType == .none && currentTrackIndex >= currentTracks.count - 1 {
+        // Check if there are still temporary tracks
+        if !playNextStack.isEmpty || !upNextQueue.isEmpty {
+          print("🔁 TrackPlayerCore: Temporary tracks remaining, continuing...")
+        } else {
+          print("🔁 TrackPlayerCore: Repeat mode is PLAYLIST - restarting from beginning")
+          // Clear temps and restart
+          playNextStack.removeAll()
+          upNextQueue.removeAll()
+          DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.playFromIndex(index: 0)
+          }
+          return
         }
-        return
       } else {
-        // Not at end, just continue to next track
         print("🔁 TrackPlayerCore: Repeat mode is PLAYLIST - continuing to next track")
       }
 
@@ -437,12 +473,34 @@ class TrackPlayerCore: NSObject {
     // Setup KVO observers for current item
     setupCurrentItemObservers(item: currentItem)
 
-    // Update track index
+    // Update track index and determine temporary type
     if let trackId = currentItem.trackId {
       print("🔍 TrackPlayerCore: Looking up trackId '\(trackId)' in currentTracks...")
       print("   Current index BEFORE lookup: \(currentTrackIndex)")
 
-      if let index = currentTracks.firstIndex(where: { $0.id == trackId }) {
+      // Update temporary type
+      currentTemporaryType = determineCurrentTemporaryType()
+      print("   🎯 Track type: \(currentTemporaryType)")
+
+      // If it's a temporary track, don't update currentTrackIndex
+      if currentTemporaryType != .none {
+        // Find and emit the temporary track
+        var tempTrack: TrackItem? = nil
+        if currentTemporaryType == .playNext {
+          tempTrack = playNextStack.first(where: { $0.id == trackId })
+        } else if currentTemporaryType == .upNext {
+          tempTrack = upNextQueue.first(where: { $0.id == trackId })
+        }
+
+        if let track = tempTrack {
+          print("   🎵 Temporary track: \(track.title) - \(track.artist)")
+          print("   📢 Emitting onChangeTrack for temporary track")
+          onChangeTrack?(track, .skip)
+          mediaSessionManager?.onTrackChanged()
+        }
+      }
+      // It's an original playlist track
+      else if let index = currentTracks.firstIndex(where: { $0.id == trackId }) {
         print("   ✅ Found track at index: \(index)")
         print("   Setting currentTrackIndex from \(currentTrackIndex) to \(index)")
 
@@ -523,6 +581,12 @@ class TrackPlayerCore: NSObject {
       print("\n" + String(repeating: "🎼", count: Constants.playlistSeparatorLength))
       print("📂 TrackPlayerCore: LOAD PLAYLIST REQUEST")
       print("   Playlist ID: \(playlistId)")
+
+      // Clear temporary tracks when loading new playlist
+      self.playNextStack.removeAll()
+      self.upNextQueue.removeAll()
+      self.currentTemporaryType = .none
+      print("   🧹 Cleared temporary tracks")
 
       let playlist = self.playlistManager.getPlaylist(playlistId: playlistId)
       if let playlist = playlist {
@@ -820,10 +884,55 @@ class TrackPlayerCore: NSObject {
   }
 
   func getCurrentTrack() -> TrackItem? {
+    // If playing a temporary track, return that
+    if currentTemporaryType != .none,
+      let currentItem = player?.currentItem,
+      let trackId = currentItem.trackId
+    {
+      if currentTemporaryType == .playNext {
+        return playNextStack.first(where: { $0.id == trackId })
+      } else if currentTemporaryType == .upNext {
+        return upNextQueue.first(where: { $0.id == trackId })
+      }
+    }
+
+    // Otherwise return from original playlist
     guard currentTrackIndex >= 0 && currentTrackIndex < currentTracks.count else {
       return nil
     }
     return currentTracks[currentTrackIndex]
+  }
+
+  /**
+   * Get the actual queue with temporary tracks
+   * Returns: [original_before_current] + [current] + [playNext_stack] + [upNext_queue] + [original_after_current]
+   */
+  func getActualQueue() -> [TrackItem] {
+    var queue: [TrackItem] = []
+
+    // Add tracks before current (original playlist)
+    if currentTrackIndex > 0 {
+      queue.append(contentsOf: Array(currentTracks[0..<currentTrackIndex]))
+    }
+
+    // Add current track
+    if let current = getCurrentTrack() {
+      queue.append(current)
+    }
+
+    // Add playNext stack (LIFO - most recently added plays first)
+    // Stack is already in correct order since we insert at position 0
+    queue.append(contentsOf: playNextStack)
+
+    // Add upNext queue (in order, FIFO)
+    queue.append(contentsOf: upNextQueue)
+
+    // Add remaining original tracks
+    if currentTrackIndex + 1 < currentTracks.count {
+      queue.append(contentsOf: Array(currentTracks[(currentTrackIndex + 1)...]))
+    }
+
+    return queue
   }
 
   func play() {
@@ -871,6 +980,12 @@ class TrackPlayerCore: NSObject {
 
     DispatchQueue.main.async { [weak self] in
       guard let self = self else { return }
+
+      // Clear temporary tracks when directly playing a song
+      self.playNextStack.removeAll()
+      self.upNextQueue.removeAll()
+      self.currentTemporaryType = .none
+      print("   🧹 Cleared temporary tracks")
 
       var targetPlaylistId: String?
       var songIndex: Int = -1
@@ -1008,6 +1123,7 @@ class TrackPlayerCore: NSObject {
 
       print("\n⏮️ TrackPlayerCore: SKIP TO PREVIOUS")
       print("   Current index: \(self.currentTrackIndex)")
+      print("   Temporary type: \(self.currentTemporaryType)")
       print("   Current time: \(queuePlayer.currentTime().seconds)s")
 
       let currentTime = queuePlayer.currentTime()
@@ -1016,8 +1132,12 @@ class TrackPlayerCore: NSObject {
         print(
           "   🔄 More than \(Int(Constants.skipToPreviousThreshold))s in, restarting current track")
         queuePlayer.seek(to: .zero)
+      } else if self.currentTemporaryType != .none {
+        // Playing temporary track - just restart it (temps are not navigable backwards)
+        print("   🔄 Playing temporary track - restarting it (temps not navigable backwards)")
+        queuePlayer.seek(to: .zero)
       } else if self.currentTrackIndex > 0 {
-        // Go to previous track
+        // Go to previous track in original playlist
         let previousIndex = self.currentTrackIndex - 1
         print("   ⏮️ Going to previous track at index \(previousIndex)")
         self.playFromIndex(index: previousIndex)
@@ -1145,6 +1265,12 @@ class TrackPlayerCore: NSObject {
       print("   Total tracks in playlist: \(self.currentTracks.count)")
       print("   Current index: \(self.currentTrackIndex), target index: \(index)")
 
+      // Clear temporary tracks when jumping to specific index
+      self.playNextStack.removeAll()
+      self.upNextQueue.removeAll()
+      self.currentTemporaryType = .none
+      print("   🧹 Cleared temporary tracks")
+
       // Store the full playlist
       let fullPlaylist = self.currentTracks
 
@@ -1199,6 +1325,156 @@ class TrackPlayerCore: NSObject {
 
       player.play()
     }
+  }
+
+  // MARK: - Temporary Track Management
+
+  /**
+   * Add a track to the up-next queue (FIFO - first added plays first)
+   * Track will be inserted after currently playing track and any playNext tracks
+   */
+  func addToUpNext(trackId: String) {
+    DispatchQueue.main.async { [weak self] in
+      guard let self = self else { return }
+
+      print("📋 TrackPlayerCore: addToUpNext(\(trackId))")
+
+      // Find the track from current playlist or all playlists
+      guard let track = self.findTrackById(trackId) else {
+        print("❌ TrackPlayerCore: Track \(trackId) not found")
+        return
+      }
+
+      // Add to end of upNext queue (FIFO)
+      self.upNextQueue.append(track)
+      print("   ✅ Added '\(track.title)' to upNext queue (position: \(self.upNextQueue.count))")
+
+      // Rebuild the player queue if actively playing
+      if self.player?.currentItem != nil {
+        self.rebuildAVQueueFromCurrentPosition()
+      }
+    }
+  }
+
+  /**
+   * Add a track to play next (LIFO - last added plays first)
+   * Track will be inserted immediately after currently playing track
+   */
+  func playNext(trackId: String) {
+    DispatchQueue.main.async { [weak self] in
+      guard let self = self else { return }
+
+      print("⏭️ TrackPlayerCore: playNext(\(trackId))")
+
+      // Find the track from current playlist or all playlists
+      guard let track = self.findTrackById(trackId) else {
+        print("❌ TrackPlayerCore: Track \(trackId) not found")
+        return
+      }
+
+      // Insert at beginning of playNext stack (LIFO)
+      self.playNextStack.insert(track, at: 0)
+      print("   ✅ Added '\(track.title)' to playNext stack (position: 1)")
+
+      // Rebuild the player queue if actively playing
+      if self.player?.currentItem != nil {
+        self.rebuildAVQueueFromCurrentPosition()
+      }
+    }
+  }
+
+  /**
+   * Rebuild the AVQueuePlayer from current position with temporary tracks
+   * Order: [current] + [playNext stack reversed] + [upNext queue] + [remaining original]
+   */
+  private func rebuildAVQueueFromCurrentPosition() {
+    guard let player = self.player else { return }
+
+    print("\n🔄 TrackPlayerCore: REBUILDING QUEUE FROM CURRENT POSITION")
+    print("   playNext stack: \(playNextStack.count) tracks")
+    print("   upNext queue: \(upNextQueue.count) tracks")
+
+    // Don't interrupt currently playing item
+    let currentItem = player.currentItem
+    let playingItems = player.items()
+
+    // Build new queue order:
+    // [playNext stack] + [upNext queue] + [remaining original tracks]
+    var newQueueTracks: [TrackItem] = []
+
+    // Add playNext stack (LIFO - most recently added plays first)
+    // Stack is already in correct order since we insert at position 0
+    newQueueTracks.append(contentsOf: playNextStack)
+
+    // Add upNext queue (in order, FIFO)
+    newQueueTracks.append(contentsOf: upNextQueue)
+
+    // Add remaining original tracks
+    if currentTrackIndex + 1 < currentTracks.count {
+      let remainingOriginal = Array(currentTracks[(currentTrackIndex + 1)...])
+      newQueueTracks.append(contentsOf: remainingOriginal)
+    }
+
+    print("   New queue: \(newQueueTracks.count) tracks total")
+
+    // Remove all items from player EXCEPT the currently playing one
+    for item in playingItems where item != currentItem {
+      player.remove(item)
+    }
+
+    // Insert new items in order
+    var lastItem = currentItem
+    for track in newQueueTracks {
+      if let item = createGaplessPlayerItem(for: track, isPreload: false) {
+        player.insert(item, after: lastItem)
+        lastItem = item
+      }
+    }
+
+    print("   ✅ Queue rebuilt successfully")
+  }
+
+  /**
+   * Find a track by ID from current playlist or all playlists
+   */
+  private func findTrackById(_ trackId: String) -> TrackItem? {
+    // First check current playlist
+    if let track = currentTracks.first(where: { $0.id == trackId }) {
+      return track
+    }
+
+    // Then check all playlists
+    let allPlaylists = playlistManager.getAllPlaylists()
+    for playlist in allPlaylists {
+      if let track = playlist.tracks.first(where: { $0.id == trackId }) {
+        return track
+      }
+    }
+
+    return nil
+  }
+
+  /**
+   * Determine what type of track is currently playing
+   */
+  private func determineCurrentTemporaryType() -> TemporaryType {
+    guard let currentItem = player?.currentItem,
+      let trackId = currentItem.trackId
+    else {
+      return .none
+    }
+
+    // Check if in playNext stack
+    if playNextStack.contains(where: { $0.id == trackId }) {
+      return .playNext
+    }
+
+    // Check if in upNext queue
+    if upNextQueue.contains(where: { $0.id == trackId }) {
+      return .upNext
+    }
+
+    return .none
   }
 
   // MARK: - Cleanup

@@ -510,6 +510,15 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
   using std__weak_ptr_HybridTrackPlayerSpec_ = std::weak_ptr<HybridTrackPlayerSpec>;
   inline std__weak_ptr_HybridTrackPlayerSpec_ weakify_std__shared_ptr_HybridTrackPlayerSpec_(const std::shared_ptr<HybridTrackPlayerSpec>& strong) noexcept { return strong; }
   
+  // pragma MARK: Result<std::vector<TrackItem>>
+  using Result_std__vector_TrackItem__ = Result<std::vector<TrackItem>>;
+  inline Result_std__vector_TrackItem__ create_Result_std__vector_TrackItem__(const std::vector<TrackItem>& value) noexcept {
+    return Result<std::vector<TrackItem>>::withValue(value);
+  }
+  inline Result_std__vector_TrackItem__ create_Result_std__vector_TrackItem__(const std::exception_ptr& error) noexcept {
+    return Result<std::vector<TrackItem>>::withError(error);
+  }
+  
   // pragma MARK: Result<PlayerState>
   using Result_PlayerState_ = Result<PlayerState>;
   inline Result_PlayerState_ create_Result_PlayerState_(const PlayerState& value) noexcept {

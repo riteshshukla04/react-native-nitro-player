@@ -12,10 +12,10 @@
 // Forward declaration of `HybridTrackPlayerSpec_cxx` to properly resolve imports.
 namespace NitroPlayer { class HybridTrackPlayerSpec_cxx; }
 
-// Forward declaration of `PlayerState` to properly resolve imports.
-namespace margelo::nitro::nitroplayer { struct PlayerState; }
 // Forward declaration of `TrackItem` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct TrackItem; }
+// Forward declaration of `PlayerState` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct PlayerState; }
 // Forward declaration of `TrackPlayerState` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 // Forward declaration of `RepeatMode` to properly resolve imports.
@@ -27,10 +27,11 @@ namespace margelo::nitro::nitroplayer { enum class Reason; }
 
 #include <string>
 #include <optional>
-#include "PlayerState.hpp"
-#include <NitroModules/Null.hpp>
 #include "TrackItem.hpp"
+#include <vector>
+#include <NitroModules/Null.hpp>
 #include <variant>
+#include "PlayerState.hpp"
 #include "TrackPlayerState.hpp"
 #include "RepeatMode.hpp"
 #include "PlayerConfig.hpp"
@@ -116,6 +117,26 @@ namespace margelo::nitro::nitroplayer {
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
+    }
+    inline void addToUpNext(const std::string& trackId) override {
+      auto __result = _swiftPart.addToUpNext(trackId);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+    }
+    inline void playNext(const std::string& trackId) override {
+      auto __result = _swiftPart.playNext(trackId);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+    }
+    inline std::vector<TrackItem> getActualQueue() override {
+      auto __result = _swiftPart.getActualQueue();
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
     }
     inline PlayerState getState() override {
       auto __result = _swiftPart.getState();
