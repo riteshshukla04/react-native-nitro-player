@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'react-native-harness';
 import { TrackPlayer, PlayerQueue } from 'react-native-nitro-player';
-import type { TrackItem, Playlist } from 'react-native-nitro-player';
+import type { TrackItem } from 'react-native-nitro-player';
 import { sampleTracks1, sampleTracks2 } from '../../src/data/sampleTracks';
 
 describe('TrackPlayer - Comprehensive Tests', () => {

@@ -334,16 +334,16 @@ class TrackPlayerCore: NSObject {
     // Track ended naturally
     for listener in onChangeTrackListeners {
       listener(
-      getCurrentTrack()
-        ?? TrackItem(
-          id: "",
-          title: "",
-          artist: "",
-          album: "",
-          duration: 0,
-          url: "",
-          artwork: nil
-        ), .end)
+        getCurrentTrack()
+          ?? TrackItem(
+            id: "",
+            title: "",
+            artist: "",
+            album: "",
+            duration: 0,
+            url: "",
+            artwork: nil
+          ), .end)
     }
 
     // Try to play next track
@@ -801,7 +801,8 @@ class TrackPlayerCore: NSObject {
 
   func addOnChangeTrackListener(_ listener: @escaping (TrackItem, Reason?) -> Void) {
     onChangeTrackListeners.append(listener)
-    print("🎯 TrackPlayerCore: Added onChangeTrack listener (total: \(onChangeTrackListeners.count))")
+    print(
+      "🎯 TrackPlayerCore: Added onChangeTrack listener (total: \(onChangeTrackListeners.count))")
   }
 
   // MARK: - State Management
@@ -1257,14 +1258,16 @@ class TrackPlayerCore: NSObject {
       // Use sync to wait for any pending operations to complete
       var state: PlayerState!
       DispatchQueue.main.sync { [weak self] in
-        state = self?.getStateInternal() ?? PlayerState(
-          currentTrack: nil,
-          currentPosition: 0.0,
-          totalDuration: 0.0,
-          currentState: .stopped,
-          currentPlaylistId: nil,
-          currentIndex: -1.0
-        )
+        state =
+          self?.getStateInternal()
+          ?? PlayerState(
+            currentTrack: nil,
+            currentPosition: 0.0,
+            totalDuration: 0.0,
+            currentState: .stopped,
+            currentPlaylistId: nil,
+            currentIndex: -1.0
+          )
       }
       return state
     }

@@ -1094,7 +1094,7 @@ class TrackPlayerCore private constructor(
         println("   playNextStack size: ${playNextStack.size}, tracks: ${playNextStack.map { it.id }}")
         println("   upNextQueue size: ${upNextQueue.size}, tracks: ${upNextQueue.map { it.id }}")
         println("   currentTracks size: ${currentTracks.size}, tracks: ${currentTracks.map { it.id }}")
-        
+
         val queue = mutableListOf<TrackItem>()
 
         if (!::player.isInitialized) {
@@ -1117,9 +1117,9 @@ class TrackPlayerCore private constructor(
         }
 
         // Add current track
-        getCurrentTrack()?.let { 
+        getCurrentTrack()?.let {
             println("   Adding current track: ${it.id}")
-            queue.add(it) 
+            queue.add(it)
         }
 
         // Add playNext stack (LIFO - most recently added plays first)
