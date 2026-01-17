@@ -69,7 +69,8 @@ class TrackPlayerCore: NSObject {
     case upNext  // Currently in upNextQueue
   }
 
-  var onChangeTrack: ((TrackItem, Reason?) -> Void)?
+  // Event callbacks - support multiple listeners
+  private var onChangeTrackListeners: [(TrackItem, Reason?) -> Void] = []
   var onPlaybackStateChange: ((TrackPlayerState, Reason?) -> Void)?
   var onSeek: ((Double, Double) -> Void)?
   var onPlaybackProgressChange: ((Double, Double, Bool?) -> Void)?
@@ -331,7 +332,8 @@ class TrackPlayerCore: NSObject {
     }
 
     // Track ended naturally
-    onChangeTrack?(
+    for listener in onChangeTrackListeners {
+      listener(
       getCurrentTrack()
         ?? TrackItem(
           id: "",
@@ -342,6 +344,7 @@ class TrackPlayerCore: NSObject {
           url: "",
           artwork: nil
         ), .end)
+    }
 
     // Try to play next track
     skipToNext()
@@ -495,7 +498,9 @@ class TrackPlayerCore: NSObject {
         if let track = tempTrack {
           print("   🎵 Temporary track: \(track.title) - \(track.artist)")
           print("   📢 Emitting onChangeTrack for temporary track")
-          onChangeTrack?(track, .skip)
+          for listener in onChangeTrackListeners {
+            listener(track, .skip)
+          }
           mediaSessionManager?.onTrackChanged()
         }
       }
@@ -514,7 +519,9 @@ class TrackPlayerCore: NSObject {
           // This prevents duplicate emissions
           if oldIndex != index {
             print("   📢 Emitting onChangeTrack (index changed from \(oldIndex) to \(index))")
-            onChangeTrack?(track, .skip)
+            for listener in onChangeTrackListeners {
+              listener(track, .skip)
+            }
             mediaSessionManager?.onTrackChanged()
           } else {
             print("   ⏭️ Skipping onChangeTrack emission (index unchanged)")
@@ -575,38 +582,44 @@ class TrackPlayerCore: NSObject {
   // MARK: - Playlist Management
 
   func loadPlaylist(playlistId: String) {
-    DispatchQueue.main.async { [weak self] in
-      guard let self = self else { return }
-
-      print("\n" + String(repeating: "🎼", count: Constants.playlistSeparatorLength))
-      print("📂 TrackPlayerCore: LOAD PLAYLIST REQUEST")
-      print("   Playlist ID: \(playlistId)")
-
-      // Clear temporary tracks when loading new playlist
-      self.playNextStack.removeAll()
-      self.upNextQueue.removeAll()
-      self.currentTemporaryType = .none
-      print("   🧹 Cleared temporary tracks")
-
-      let playlist = self.playlistManager.getPlaylist(playlistId: playlistId)
-      if let playlist = playlist {
-        print("   ✅ Found playlist: \(playlist.name)")
-        print("   📋 Contains \(playlist.tracks.count) tracks:")
-        for (index, track) in playlist.tracks.enumerated() {
-          print("      [\(index + 1)] \(track.title) - \(track.artist)")
-        }
-        print(String(repeating: "🎼", count: Constants.playlistSeparatorLength) + "\n")
-
-        self.currentPlaylistId = playlistId
-        self.updatePlayerQueue(tracks: playlist.tracks)
-        // Emit initial state (paused/stopped before play)
-        self.emitStateChange()
-        // Automatically start playback after loading
-        self.play()
-      } else {
-        print("   ❌ Playlist NOT FOUND")
-        print(String(repeating: "🎼", count: Constants.playlistSeparatorLength) + "\n")
+    if Thread.isMainThread {
+      loadPlaylistInternal(playlistId: playlistId)
+    } else {
+      DispatchQueue.main.sync { [weak self] in
+        self?.loadPlaylistInternal(playlistId: playlistId)
       }
+    }
+  }
+
+  private func loadPlaylistInternal(playlistId: String) {
+    print("\n" + String(repeating: "🎼", count: Constants.playlistSeparatorLength))
+    print("📂 TrackPlayerCore: LOAD PLAYLIST REQUEST")
+    print("   Playlist ID: \(playlistId)")
+
+    // Clear temporary tracks when loading new playlist
+    self.playNextStack.removeAll()
+    self.upNextQueue.removeAll()
+    self.currentTemporaryType = .none
+    print("   🧹 Cleared temporary tracks")
+
+    let playlist = self.playlistManager.getPlaylist(playlistId: playlistId)
+    if let playlist = playlist {
+      print("   ✅ Found playlist: \(playlist.name)")
+      print("   📋 Contains \(playlist.tracks.count) tracks:")
+      for (index, track) in playlist.tracks.enumerated() {
+        print("      [\(index + 1)] \(track.title) - \(track.artist)")
+      }
+      print(String(repeating: "🎼", count: Constants.playlistSeparatorLength) + "\n")
+
+      self.currentPlaylistId = playlistId
+      self.updatePlayerQueue(tracks: playlist.tracks)
+      // Emit initial state (paused/stopped before play)
+      self.emitStateChange()
+      // Automatically start playback after loading
+      self.play()
+    } else {
+      print("   ❌ Playlist NOT FOUND")
+      print(String(repeating: "🎼", count: Constants.playlistSeparatorLength) + "\n")
     }
   }
 
@@ -718,10 +731,13 @@ class TrackPlayerCore: NSObject {
     preloadQueue.async { [weak self] in
       guard let self = self else { return }
 
-      let endIndex = min(startIndex + Constants.gaplessPreloadCount, self.currentTracks.count)
+      // Capture currentTracks to avoid race condition with main thread
+      let tracks = self.currentTracks
+      let endIndex = min(startIndex + Constants.gaplessPreloadCount, tracks.count)
 
       for i in startIndex..<endIndex {
-        let track = self.currentTracks[i]
+        guard i < tracks.count else { break }
+        let track = tracks[i]
 
         // Skip if already preloaded
         if self.preloadedAssets[track.id] != nil {
@@ -780,6 +796,15 @@ class TrackPlayerCore: NSObject {
       }
     }
   }
+
+  // MARK: - Listener Registration
+
+  func addOnChangeTrackListener(_ listener: @escaping (TrackItem, Reason?) -> Void) {
+    onChangeTrackListeners.append(listener)
+    print("🎯 TrackPlayerCore: Added onChangeTrack listener (total: \(onChangeTrackListeners.count))")
+  }
+
+  // MARK: - State Management
 
   // MARK: - Queue Management
 
@@ -872,8 +897,10 @@ class TrackPlayerCore: NSObject {
     // Notify track change
     if let firstTrack = tracks.first {
       print("🎵 TrackPlayerCore: Emitting track change: \(firstTrack.title)")
-      print("🎵 TrackPlayerCore: onChangeTrack callback exists: \(onChangeTrack != nil)")
-      onChangeTrack?(firstTrack, nil)
+      print("🎵 TrackPlayerCore: onChangeTrack callbacks count: \(onChangeTrackListeners.count)")
+      for listener in onChangeTrackListeners {
+        listener(firstTrack, nil)
+      }
       mediaSessionManager?.onTrackChanged()
     }
 
@@ -903,11 +930,20 @@ class TrackPlayerCore: NSObject {
     return currentTracks[currentTrackIndex]
   }
 
-  /**
-   * Get the actual queue with temporary tracks
-   * Returns: [original_before_current] + [current] + [playNext_stack] + [upNext_queue] + [original_after_current]
-   */
   func getActualQueue() -> [TrackItem] {
+    if Thread.isMainThread {
+      return getActualQueueInternal()
+    } else {
+      // Use sync to wait for any pending operations to complete
+      var queue: [TrackItem] = []
+      DispatchQueue.main.sync { [weak self] in
+        queue = self?.getActualQueueInternal() ?? []
+      }
+      return queue
+    }
+  }
+
+  private func getActualQueueInternal() -> [TrackItem] {
     var queue: [TrackItem] = []
 
     // Add tracks before current (original playlist)
@@ -937,39 +973,53 @@ class TrackPlayerCore: NSObject {
 
   func play() {
     print("▶️ TrackPlayerCore: play() called")
-    DispatchQueue.main.async { [weak self] in
-      guard let self = self else { return }
-      print("▶️ TrackPlayerCore: Calling player.play()")
-      if let player = self.player {
-        print("▶️ TrackPlayerCore: Player status: \(player.status.rawValue)")
-        if let currentItem = player.currentItem {
-          print("▶️ TrackPlayerCore: Current item status: \(currentItem.status.rawValue)")
-          if let error = currentItem.error {
-            print("❌ TrackPlayerCore: Current item error: \(error.localizedDescription)")
-          }
-        }
-        player.play()
-        // Emit state change immediately for responsive UI
-        // KVO will also fire, but this ensures immediate feedback
-        DispatchQueue.main.asyncAfter(deadline: .now() + Constants.stateChangeDelay) {
-          [weak self] in
-          self?.emitStateChange()
-        }
-      } else {
-        print("❌ TrackPlayerCore: No player available")
+    if Thread.isMainThread {
+      playInternal()
+    } else {
+      DispatchQueue.main.sync { [weak self] in
+        self?.playInternal()
       }
+    }
+  }
+
+  private func playInternal() {
+    print("▶️ TrackPlayerCore: Calling player.play()")
+    if let player = self.player {
+      print("▶️ TrackPlayerCore: Player status: \(player.status.rawValue)")
+      if let currentItem = player.currentItem {
+        print("▶️ TrackPlayerCore: Current item status: \(currentItem.status.rawValue)")
+        if let error = currentItem.error {
+          print("❌ TrackPlayerCore: Current item error: \(error.localizedDescription)")
+        }
+      }
+      player.play()
+      // Emit state change immediately for responsive UI
+      // KVO will also fire, but this ensures immediate feedback
+      DispatchQueue.main.asyncAfter(deadline: .now() + Constants.stateChangeDelay) {
+        [weak self] in
+        self?.emitStateChange()
+      }
+    } else {
+      print("❌ TrackPlayerCore: No player available")
     }
   }
 
   func pause() {
     print("⏸️ TrackPlayerCore: pause() called")
-    DispatchQueue.main.async { [weak self] in
-      guard let self = self else { return }
-      self.player?.pause()
-      // Emit state change immediately for responsive UI
-      DispatchQueue.main.asyncAfter(deadline: .now() + Constants.stateChangeDelay) { [weak self] in
-        self?.emitStateChange()
+    if Thread.isMainThread {
+      pauseInternal()
+    } else {
+      DispatchQueue.main.sync { [weak self] in
+        self?.pauseInternal()
       }
+    }
+  }
+
+  private func pauseInternal() {
+    self.player?.pause()
+    // Emit state change immediately for responsive UI
+    DispatchQueue.main.asyncAfter(deadline: .now() + Constants.stateChangeDelay) { [weak self] in
+      self?.emitStateChange()
     }
   }
 
@@ -978,188 +1028,210 @@ class TrackPlayerCore: NSObject {
       "🎵 TrackPlayerCore: playSong() called - songId: \(songId), fromPlaylist: \(fromPlaylist ?? "nil")"
     )
 
-    DispatchQueue.main.async { [weak self] in
-      guard let self = self else { return }
-
-      // Clear temporary tracks when directly playing a song
-      self.playNextStack.removeAll()
-      self.upNextQueue.removeAll()
-      self.currentTemporaryType = .none
-      print("   🧹 Cleared temporary tracks")
-
-      var targetPlaylistId: String?
-      var songIndex: Int = -1
-
-      // Case 1: If fromPlaylist is provided, use that playlist
-      if let playlistId = fromPlaylist {
-        print("🎵 TrackPlayerCore: Looking for song in specified playlist: \(playlistId)")
-        if let playlist = self.playlistManager.getPlaylist(playlistId: playlistId) {
-          if let index = playlist.tracks.firstIndex(where: { $0.id == songId }) {
-            targetPlaylistId = playlistId
-            songIndex = index
-            print("✅ Found song at index \(index) in playlist \(playlistId)")
-          } else {
-            print("⚠️ Song \(songId) not found in specified playlist \(playlistId)")
-            return
-          }
-        } else {
-          print("⚠️ Playlist \(playlistId) not found")
-          return
-        }
+    if Thread.isMainThread {
+      playSongInternal(songId: songId, fromPlaylist: fromPlaylist)
+    } else {
+      DispatchQueue.main.sync { [weak self] in
+        self?.playSongInternal(songId: songId, fromPlaylist: fromPlaylist)
       }
-      // Case 2: If fromPlaylist is not provided, search in current/loaded playlist first
-      else {
-        print("🎵 TrackPlayerCore: No playlist specified, checking current playlist")
-
-        // Check if song exists in currently loaded playlist
-        if let currentId = self.currentPlaylistId,
-          let currentPlaylist = self.playlistManager.getPlaylist(playlistId: currentId)
-        {
-          if let index = currentPlaylist.tracks.firstIndex(where: { $0.id == songId }) {
-            targetPlaylistId = currentId
-            songIndex = index
-            print("✅ Found song at index \(index) in current playlist \(currentId)")
-          }
-        }
-
-        // If not found in current playlist, search in all playlists
-        if songIndex == -1 {
-          print("🔍 Song not found in current playlist, searching all playlists...")
-          let allPlaylists = self.playlistManager.getAllPlaylists()
-
-          for playlist in allPlaylists {
-            if let index = playlist.tracks.firstIndex(where: { $0.id == songId }) {
-              targetPlaylistId = playlist.id
-              songIndex = index
-              print("✅ Found song at index \(index) in playlist \(playlist.id)")
-              break
-            }
-          }
-
-          // If still not found, just use the first playlist if available
-          if songIndex == -1 && !allPlaylists.isEmpty {
-            targetPlaylistId = allPlaylists[0].id
-            songIndex = 0
-            print("⚠️ Song not found in any playlist, using first playlist and starting at index 0")
-          }
-        }
-      }
-
-      // Now play the song
-      guard let playlistId = targetPlaylistId, songIndex >= 0 else {
-        print("❌ Could not determine playlist or song index")
-        return
-      }
-
-      // Load playlist if it's different from current
-      if self.currentPlaylistId != playlistId {
-        print("🔄 Loading new playlist: \(playlistId)")
-        if let playlist = self.playlistManager.getPlaylist(playlistId: playlistId) {
-          self.currentPlaylistId = playlistId
-          self.updatePlayerQueue(tracks: playlist.tracks)
-        }
-      }
-
-      // Play from the found index
-      print("▶️ Playing from index: \(songIndex)")
-      self.playFromIndex(index: songIndex)
     }
   }
 
-  func skipToNext() {
-    DispatchQueue.main.async { [weak self] in
-      guard let self = self,
-        let queuePlayer = self.player
-      else {
+  private func playSongInternal(songId: String, fromPlaylist: String?) {
+    // Clear temporary tracks when directly playing a song
+    self.playNextStack.removeAll()
+    self.upNextQueue.removeAll()
+    self.currentTemporaryType = .none
+    print("   🧹 Cleared temporary tracks")
+
+    var targetPlaylistId: String?
+    var songIndex: Int = -1
+
+    // Case 1: If fromPlaylist is provided, use that playlist
+    if let playlistId = fromPlaylist {
+      print("🎵 TrackPlayerCore: Looking for song in specified playlist: \(playlistId)")
+      if let playlist = self.playlistManager.getPlaylist(playlistId: playlistId) {
+        if let index = playlist.tracks.firstIndex(where: { $0.id == songId }) {
+          targetPlaylistId = playlistId
+          songIndex = index
+          print("✅ Found song at index \(index) in playlist \(playlistId)")
+        } else {
+          print("⚠️ Song \(songId) not found in specified playlist \(playlistId)")
+          return
+        }
+      } else {
+        print("⚠️ Playlist \(playlistId) not found")
         return
       }
+    }
+    // Case 2: If fromPlaylist is not provided, search in current/loaded playlist first
+    else {
+      print("🎵 TrackPlayerCore: No playlist specified, checking current playlist")
 
-      print("\n⏭️ TrackPlayerCore: SKIP TO NEXT")
-      print("   BEFORE:")
-      print("      currentTrackIndex: \(self.currentTrackIndex)")
-      print("      Total tracks in currentTracks: \(self.currentTracks.count)")
-      print("      Items in player queue: \(queuePlayer.items().count)")
-
-      if let currentItem = queuePlayer.currentItem, let trackId = currentItem.trackId {
-        if let track = self.currentTracks.first(where: { $0.id == trackId }) {
-          print("      Currently playing: \(track.title) (ID: \(track.id))")
+      // Check if song exists in currently loaded playlist
+      if let currentId = self.currentPlaylistId,
+        let currentPlaylist = self.playlistManager.getPlaylist(playlistId: currentId)
+      {
+        if let index = currentPlaylist.tracks.firstIndex(where: { $0.id == songId }) {
+          targetPlaylistId = currentId
+          songIndex = index
+          print("✅ Found song at index \(index) in current playlist \(currentId)")
         }
       }
 
-      // Check if there are more items in the queue
-      if self.currentTrackIndex + 1 < self.currentTracks.count {
-        print("   🔄 Calling advanceToNextItem()...")
-        queuePlayer.advanceToNextItem()
+      // If not found in current playlist, search in all playlists
+      if songIndex == -1 {
+        print("🔍 Song not found in current playlist, searching all playlists...")
+        let allPlaylists = self.playlistManager.getAllPlaylists()
 
-        // NOTE: Don't manually update currentTrackIndex here!
-        // The KVO observer (currentItemDidChange) will update it automatically
-
-        print("   AFTER advanceToNextItem():")
-        print("      Items in player queue: \(queuePlayer.items().count)")
-
-        if let newCurrentItem = queuePlayer.currentItem, let trackId = newCurrentItem.trackId {
-          if let track = self.currentTracks.first(where: { $0.id == trackId }) {
-            print("      New current item: \(track.title) (ID: \(track.id))")
+        for playlist in allPlaylists {
+          if let index = playlist.tracks.firstIndex(where: { $0.id == songId }) {
+            targetPlaylistId = playlist.id
+            songIndex = index
+            print("✅ Found song at index \(index) in playlist \(playlist.id)")
+            break
           }
         }
 
-        print("   ⏳ Waiting for KVO observer to update index...")
-      } else {
-        print("   ⚠️ No more tracks in playlist")
-        // At end of playlist - stop or loop
-        queuePlayer.pause()
-        self.onPlaybackStateChange?(.stopped, .end)
+        // If still not found, just use the first playlist if available
+        if songIndex == -1 && !allPlaylists.isEmpty {
+          targetPlaylistId = allPlaylists[0].id
+          songIndex = 0
+          print("⚠️ Song not found in any playlist, using first playlist and starting at index 0")
+        }
       }
+    }
+
+    // Now play the song
+    guard let playlistId = targetPlaylistId, songIndex >= 0 else {
+      print("❌ Could not determine playlist or song index")
+      return
+    }
+
+    // Load playlist if it's different from current
+    if self.currentPlaylistId != playlistId {
+      print("🔄 Loading new playlist: \(playlistId)")
+      if let playlist = self.playlistManager.getPlaylist(playlistId: playlistId) {
+        self.currentPlaylistId = playlistId
+        self.updatePlayerQueue(tracks: playlist.tracks)
+      }
+    }
+
+    // Play from the found index
+    print("▶️ Playing from index: \(songIndex)")
+    self.playFromIndex(index: songIndex)
+  }
+
+  func skipToNext() {
+    if Thread.isMainThread {
+      skipToNextInternal()
+    } else {
+      DispatchQueue.main.sync { [weak self] in
+        self?.skipToNextInternal()
+      }
+    }
+  }
+
+  private func skipToNextInternal() {
+    guard let queuePlayer = self.player else { return }
+
+    print("\n⏭️ TrackPlayerCore: SKIP TO NEXT")
+    print("   BEFORE:")
+    print("      currentTrackIndex: \(self.currentTrackIndex)")
+    print("      Total tracks in currentTracks: \(self.currentTracks.count)")
+    print("      Items in player queue: \(queuePlayer.items().count)")
+
+    if let currentItem = queuePlayer.currentItem, let trackId = currentItem.trackId {
+      if let track = self.currentTracks.first(where: { $0.id == trackId }) {
+        print("      Currently playing: \(track.title) (ID: \(track.id))")
+      }
+    }
+
+    // Check if there are more items in the queue
+    if self.currentTrackIndex + 1 < self.currentTracks.count {
+      print("   🔄 Calling advanceToNextItem()...")
+      queuePlayer.advanceToNextItem()
+
+      // NOTE: Don't manually update currentTrackIndex here!
+      // The KVO observer (currentItemDidChange) will update it automatically
+
+      print("   AFTER advanceToNextItem():")
+      print("      Items in player queue: \(queuePlayer.items().count)")
+
+      if let newCurrentItem = queuePlayer.currentItem, let trackId = newCurrentItem.trackId {
+        if let track = self.currentTracks.first(where: { $0.id == trackId }) {
+          print("      New current item: \(track.title) (ID: \(track.id))")
+        }
+      }
+
+      print("   ⏳ Waiting for KVO observer to update index...")
+    } else {
+      print("   ⚠️ No more tracks in playlist")
+      // At end of playlist - stop or loop
+      queuePlayer.pause()
+      self.onPlaybackStateChange?(.stopped, .end)
     }
   }
 
   func skipToPrevious() {
-    DispatchQueue.main.async { [weak self] in
-      guard let self = self,
-        let queuePlayer = self.player
-      else {
-        return
-      }
-
-      print("\n⏮️ TrackPlayerCore: SKIP TO PREVIOUS")
-      print("   Current index: \(self.currentTrackIndex)")
-      print("   Temporary type: \(self.currentTemporaryType)")
-      print("   Current time: \(queuePlayer.currentTime().seconds)s")
-
-      let currentTime = queuePlayer.currentTime()
-      if currentTime.seconds > Constants.skipToPreviousThreshold {
-        // If more than threshold seconds in, restart current track
-        print(
-          "   🔄 More than \(Int(Constants.skipToPreviousThreshold))s in, restarting current track")
-        queuePlayer.seek(to: .zero)
-      } else if self.currentTemporaryType != .none {
-        // Playing temporary track - just restart it (temps are not navigable backwards)
-        print("   🔄 Playing temporary track - restarting it (temps not navigable backwards)")
-        queuePlayer.seek(to: .zero)
-      } else if self.currentTrackIndex > 0 {
-        // Go to previous track in original playlist
-        let previousIndex = self.currentTrackIndex - 1
-        print("   ⏮️ Going to previous track at index \(previousIndex)")
-        self.playFromIndex(index: previousIndex)
-      } else {
-        // Already at first track, restart it
-        print("   🔄 Already at first track, restarting it")
-        queuePlayer.seek(to: .zero)
+    if Thread.isMainThread {
+      skipToPreviousInternal()
+    } else {
+      DispatchQueue.main.sync { [weak self] in
+        self?.skipToPreviousInternal()
       }
     }
   }
 
-  func seek(position: Double) {
-    DispatchQueue.main.async { [weak self] in
-      guard let self = self, let player = self.player else { return }
+  private func skipToPreviousInternal() {
+    guard let queuePlayer = self.player else { return }
 
-      self.isManuallySeeked = true
-      let time = CMTime(seconds: position, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
-      player.seek(to: time) { [weak self] completed in
-        if completed {
-          let duration = player.currentItem?.duration.seconds ?? 0.0
-          self?.onSeek?(position, duration)
-        }
+    print("\n⏮️ TrackPlayerCore: SKIP TO PREVIOUS")
+    print("   Current index: \(self.currentTrackIndex)")
+    print("   Temporary type: \(self.currentTemporaryType)")
+    print("   Current time: \(queuePlayer.currentTime().seconds)s")
+
+    let currentTime = queuePlayer.currentTime()
+    if currentTime.seconds > Constants.skipToPreviousThreshold {
+      // If more than threshold seconds in, restart current track
+      print(
+        "   🔄 More than \(Int(Constants.skipToPreviousThreshold))s in, restarting current track")
+      queuePlayer.seek(to: .zero)
+    } else if self.currentTemporaryType != .none {
+      // Playing temporary track - just restart it (temps are not navigable backwards)
+      print("   🔄 Playing temporary track - restarting it (temps not navigable backwards)")
+      queuePlayer.seek(to: .zero)
+    } else if self.currentTrackIndex > 0 {
+      // Go to previous track in original playlist
+      let previousIndex = self.currentTrackIndex - 1
+      print("   ⏮️ Going to previous track at index \(previousIndex)")
+      self.playFromIndex(index: previousIndex)
+    } else {
+      // Already at first track, restart it
+      print("   🔄 Already at first track, restarting it")
+      queuePlayer.seek(to: .zero)
+    }
+  }
+
+  func seek(position: Double) {
+    if Thread.isMainThread {
+      seekInternal(position: position)
+    } else {
+      DispatchQueue.main.sync { [weak self] in
+        self?.seekInternal(position: position)
+      }
+    }
+  }
+
+  private func seekInternal(position: Double) {
+    guard let player = self.player else { return }
+
+    self.isManuallySeeked = true
+    let time = CMTime(seconds: position, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
+    player.seek(to: time) { [weak self] completed in
+      if completed {
+        let duration = player.currentItem?.duration.seconds ?? 0.0
+        self?.onSeek?(position, duration)
       }
     }
   }
@@ -1168,13 +1240,37 @@ class TrackPlayerCore: NSObject {
 
   func setRepeatMode(mode: RepeatMode) -> Bool {
     print("🔁 TrackPlayerCore: setRepeatMode called with mode: \(mode)")
-    self.repeatMode = mode
+    if Thread.isMainThread {
+      self.repeatMode = mode
+    } else {
+      DispatchQueue.main.sync { [weak self] in
+        self?.repeatMode = mode
+      }
+    }
     return true
   }
 
-  // MARK: - State Management
-
   func getState() -> PlayerState {
+    if Thread.isMainThread {
+      return getStateInternal()
+    } else {
+      // Use sync to wait for any pending operations to complete
+      var state: PlayerState!
+      DispatchQueue.main.sync { [weak self] in
+        state = self?.getStateInternal() ?? PlayerState(
+          currentTrack: nil,
+          currentPosition: 0.0,
+          totalDuration: 0.0,
+          currentState: .stopped,
+          currentPlaylistId: nil,
+          currentIndex: -1.0
+        )
+      }
+      return state
+    }
+  }
+
+  private func getStateInternal() -> PlayerState {
     guard let player = player else {
       return PlayerState(
         currentTrack: nil,
@@ -1253,78 +1349,86 @@ class TrackPlayerCore: NSObject {
   }
 
   func playFromIndex(index: Int) {
-    DispatchQueue.main.async { [weak self] in
-      guard let self = self,
-        index >= 0 && index < self.currentTracks.count
-      else {
-        print("❌ TrackPlayerCore: playFromIndex - invalid index \(index)")
-        return
+    if Thread.isMainThread {
+      playFromIndexInternal(index: index)
+    } else {
+      DispatchQueue.main.async { [weak self] in
+        self?.playFromIndexInternal(index: index)
       }
-
-      print("\n🎯 TrackPlayerCore: PLAY FROM INDEX \(index)")
-      print("   Total tracks in playlist: \(self.currentTracks.count)")
-      print("   Current index: \(self.currentTrackIndex), target index: \(index)")
-
-      // Clear temporary tracks when jumping to specific index
-      self.playNextStack.removeAll()
-      self.upNextQueue.removeAll()
-      self.currentTemporaryType = .none
-      print("   🧹 Cleared temporary tracks")
-
-      // Store the full playlist
-      let fullPlaylist = self.currentTracks
-
-      // Update currentTrackIndex BEFORE updating queue
-      self.currentTrackIndex = index
-
-      // Recreate the queue starting from the target index
-      // This ensures all remaining tracks are in the queue
-      let tracksToPlay = Array(fullPlaylist[index...])
-      print(
-        "   🔄 Creating gapless queue with \(tracksToPlay.count) tracks starting from index \(index)"
-      )
-
-      // Create gapless-optimized player items
-      let items = tracksToPlay.enumerated().compactMap { (offset, track) -> AVPlayerItem? in
-        // First few items get preload treatment for faster playback
-        let isPreload = offset < Constants.gaplessPreloadCount
-        return self.createGaplessPlayerItem(for: track, isPreload: isPreload)
-      }
-
-      guard let player = self.player, !items.isEmpty else {
-        print("❌ No player or no items to play")
-        return
-      }
-
-      // Remove old boundary observer
-      if let boundaryObserver = self.boundaryTimeObserver {
-        player.removeTimeObserver(boundaryObserver)
-        self.boundaryTimeObserver = nil
-      }
-
-      // Clear and rebuild queue
-      player.removeAllItems()
-      var lastItem: AVPlayerItem? = nil
-      for item in items {
-        player.insert(item, after: lastItem)
-        lastItem = item
-      }
-
-      // Restore the full playlist reference (don't slice it!)
-      self.currentTracks = fullPlaylist
-
-      print("   ✅ Gapless queue recreated. Now at index: \(self.currentTrackIndex)")
-      if let track = self.getCurrentTrack() {
-        print("   🎵 Playing: \(track.title)")
-        self.onChangeTrack?(track, .skip)
-        self.mediaSessionManager?.onTrackChanged()
-      }
-
-      // Start preloading upcoming tracks for gapless playback
-      self.preloadUpcomingTracks(from: index + 1)
-
-      player.play()
     }
+  }
+
+  private func playFromIndexInternal(index: Int) {
+    guard index >= 0 && index < self.currentTracks.count else {
+      print("❌ TrackPlayerCore: playFromIndex - invalid index \(index)")
+      return
+    }
+
+    print("\n🎯 TrackPlayerCore: PLAY FROM INDEX \(index)")
+    print("   Total tracks in playlist: \(self.currentTracks.count)")
+    print("   Current index: \(self.currentTrackIndex), target index: \(index)")
+
+    // Clear temporary tracks when jumping to specific index
+    self.playNextStack.removeAll()
+    self.upNextQueue.removeAll()
+    self.currentTemporaryType = .none
+    print("   🧹 Cleared temporary tracks")
+
+    // Store the full playlist
+    let fullPlaylist = self.currentTracks
+
+    // Update currentTrackIndex BEFORE updating queue
+    self.currentTrackIndex = index
+
+    // Recreate the queue starting from the target index
+    // This ensures all remaining tracks are in the queue
+    let tracksToPlay = Array(fullPlaylist[index...])
+    print(
+      "   🔄 Creating gapless queue with \(tracksToPlay.count) tracks starting from index \(index)"
+    )
+
+    // Create gapless-optimized player items
+    let items = tracksToPlay.enumerated().compactMap { (offset, track) -> AVPlayerItem? in
+      // First few items get preload treatment for faster playback
+      let isPreload = offset < Constants.gaplessPreloadCount
+      return self.createGaplessPlayerItem(for: track, isPreload: isPreload)
+    }
+
+    guard let player = self.player, !items.isEmpty else {
+      print("❌ No player or no items to play")
+      return
+    }
+
+    // Remove old boundary observer
+    if let boundaryObserver = self.boundaryTimeObserver {
+      player.removeTimeObserver(boundaryObserver)
+      self.boundaryTimeObserver = nil
+    }
+
+    // Clear and rebuild queue
+    player.removeAllItems()
+    var lastItem: AVPlayerItem? = nil
+    for item in items {
+      player.insert(item, after: lastItem)
+      lastItem = item
+    }
+
+    // Restore the full playlist reference (don't slice it!)
+    self.currentTracks = fullPlaylist
+
+    print("   ✅ Gapless queue recreated. Now at index: \(self.currentTrackIndex)")
+    if let track = self.getCurrentTrack() {
+      print("   🎵 Playing: \(track.title)")
+      for listener in self.onChangeTrackListeners {
+        listener(track, .skip)
+      }
+      self.mediaSessionManager?.onTrackChanged()
+    }
+
+    // Start preloading upcoming tracks for gapless playback
+    self.preloadUpcomingTracks(from: index + 1)
+
+    player.play()
   }
 
   // MARK: - Temporary Track Management
@@ -1334,25 +1438,31 @@ class TrackPlayerCore: NSObject {
    * Track will be inserted after currently playing track and any playNext tracks
    */
   func addToUpNext(trackId: String) {
-    DispatchQueue.main.async { [weak self] in
-      guard let self = self else { return }
-
-      print("📋 TrackPlayerCore: addToUpNext(\(trackId))")
-
-      // Find the track from current playlist or all playlists
-      guard let track = self.findTrackById(trackId) else {
-        print("❌ TrackPlayerCore: Track \(trackId) not found")
-        return
+    if Thread.isMainThread {
+      addToUpNextInternal(trackId: trackId)
+    } else {
+      DispatchQueue.main.sync { [weak self] in
+        self?.addToUpNextInternal(trackId: trackId)
       }
+    }
+  }
 
-      // Add to end of upNext queue (FIFO)
-      self.upNextQueue.append(track)
-      print("   ✅ Added '\(track.title)' to upNext queue (position: \(self.upNextQueue.count))")
+  private func addToUpNextInternal(trackId: String) {
+    print("📋 TrackPlayerCore: addToUpNext(\(trackId))")
 
-      // Rebuild the player queue if actively playing
-      if self.player?.currentItem != nil {
-        self.rebuildAVQueueFromCurrentPosition()
-      }
+    // Find the track from current playlist or all playlists
+    guard let track = self.findTrackById(trackId) else {
+      print("❌ TrackPlayerCore: Track \(trackId) not found")
+      return
+    }
+
+    // Add to end of upNext queue (FIFO)
+    self.upNextQueue.append(track)
+    print("   ✅ Added '\(track.title)' to upNext queue (position: \(self.upNextQueue.count))")
+
+    // Rebuild the player queue if actively playing
+    if self.player?.currentItem != nil {
+      self.rebuildAVQueueFromCurrentPosition()
     }
   }
 
@@ -1361,25 +1471,31 @@ class TrackPlayerCore: NSObject {
    * Track will be inserted immediately after currently playing track
    */
   func playNext(trackId: String) {
-    DispatchQueue.main.async { [weak self] in
-      guard let self = self else { return }
-
-      print("⏭️ TrackPlayerCore: playNext(\(trackId))")
-
-      // Find the track from current playlist or all playlists
-      guard let track = self.findTrackById(trackId) else {
-        print("❌ TrackPlayerCore: Track \(trackId) not found")
-        return
+    if Thread.isMainThread {
+      playNextInternal(trackId: trackId)
+    } else {
+      DispatchQueue.main.sync { [weak self] in
+        self?.playNextInternal(trackId: trackId)
       }
+    }
+  }
 
-      // Insert at beginning of playNext stack (LIFO)
-      self.playNextStack.insert(track, at: 0)
-      print("   ✅ Added '\(track.title)' to playNext stack (position: 1)")
+  private func playNextInternal(trackId: String) {
+    print("⏭️ TrackPlayerCore: playNext(\(trackId))")
 
-      // Rebuild the player queue if actively playing
-      if self.player?.currentItem != nil {
-        self.rebuildAVQueueFromCurrentPosition()
-      }
+    // Find the track from current playlist or all playlists
+    guard let track = self.findTrackById(trackId) else {
+      print("❌ TrackPlayerCore: Track \(trackId) not found")
+      return
+    }
+
+    // Insert at beginning of playNext stack (LIFO)
+    self.playNextStack.insert(track, at: 0)
+    print("   ✅ Added '\(track.title)' to playNext stack (position: 1)")
+
+    // Rebuild the player queue if actively playing
+    if self.player?.currentItem != nil {
+      self.rebuildAVQueueFromCurrentPosition()
     }
   }
 

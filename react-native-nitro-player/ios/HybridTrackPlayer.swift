@@ -82,7 +82,7 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
 
   func onChangeTrack(callback: @escaping (TrackItem, Reason?) -> Void) throws {
     print("🎯 HybridTrackPlayer: onChangeTrack callback registered")
-    core.onChangeTrack = callback
+    core.addOnChangeTrackListener(callback)
   }
 
   func onPlaybackStateChange(callback: @escaping (TrackPlayerState, Reason?) -> Void) throws {

@@ -78,19 +78,19 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
     override fun setRepeatMode(mode: RepeatMode): Boolean = core.setRepeatMode(mode)
 
     override fun onChangeTrack(callback: (track: TrackItem, reason: Reason?) -> Unit) {
-        core.onChangeTrack = callback
+        core.addOnChangeTrackListener(callback)
     }
 
     override fun onPlaybackStateChange(callback: (state: TrackPlayerState, reason: Reason?) -> Unit) {
-        core.onPlaybackStateChange = callback
+        core.addOnPlaybackStateChangeListener(callback)
     }
 
     override fun onSeek(callback: (position: Double, totalDuration: Double) -> Unit) {
-        core.onSeek = callback
+        core.addOnSeekListener(callback)
     }
 
     override fun onPlaybackProgressChange(callback: (position: Double, totalDuration: Double, isManuallySeeked: Boolean?) -> Unit) {
-        core.onPlaybackProgressChange = callback
+        core.addOnPlaybackProgressChangeListener(callback)
     }
 
     @DoNotStrip

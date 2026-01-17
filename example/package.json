@@ -10,11 +10,14 @@
     "test": "jest"
   },
   "dependencies": {
+    "@react-native-harness/platform-android": "^1.0.0-alpha.21",
+    "@react-native-harness/platform-apple": "^1.0.0-alpha.21",
     "@react-native/new-app-screen": "0.82.1",
     "@react-navigation/bottom-tabs": "^7.9.1",
     "@react-navigation/native": "^7.1.27",
     "react": "19.1.1",
     "react-native": "0.82.1",
+    "react-native-harness": "^1.0.0-alpha.21",
     "react-native-nitro-modules": "^0.31.9",
     "react-native-nitro-player": "../react-native-nitro-player",
     "react-native-safe-area-context": "^5.6.2",

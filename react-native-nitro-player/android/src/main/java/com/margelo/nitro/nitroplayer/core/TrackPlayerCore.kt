@@ -50,17 +50,17 @@ class TrackPlayerCore private constructor(
                 if (::player.isInitialized && player.playbackState != Player.STATE_IDLE) {
                     val position = player.currentPosition / 1000.0
                     val duration = if (player.duration > 0) player.duration / 1000.0 else 0.0
-                    onPlaybackProgressChange?.invoke(position, duration, if (isManuallySeeked) true else null)
+                    onPlaybackProgressChangeListeners.forEach { it.invoke(position, duration, if (isManuallySeeked) true else null) }
                     isManuallySeeked = false
                 }
                 handler.postDelayed(this, 250) // Update every 250ms
             }
         }
 
-    var onChangeTrack: ((TrackItem, Reason?) -> Unit)? = null
-    var onPlaybackStateChange: ((TrackPlayerState, Reason?) -> Unit)? = null
-    var onSeek: ((Double, Double) -> Unit)? = null
-    var onPlaybackProgressChange: ((Double, Double, Boolean?) -> Unit)? = null
+    private val onChangeTrackListeners = mutableListOf<(TrackItem, Reason?) -> Unit>()
+    private val onPlaybackStateChangeListeners = mutableListOf<(TrackPlayerState, Reason?) -> Unit>()
+    private val onSeekListeners = mutableListOf<(Double, Double) -> Unit>()
+    private val onPlaybackProgressChangeListeners = mutableListOf<(Double, Double, Boolean?) -> Unit>()
 
     // Temporary tracks for addToUpNext and playNext
     private var playNextStack: MutableList<TrackItem> = mutableListOf() // LIFO - last added plays first
@@ -240,7 +240,7 @@ class TrackPlayerCore private constructor(
                                     Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED -> Reason.USER_ACTION
                                     else -> null
                                 }
-                            onChangeTrack?.invoke(track, r)
+                            onChangeTrackListeners.forEach { it.invoke(track, r) }
                             mediaSessionManager?.onTrackChanged()
                         }
                     }
@@ -282,7 +282,7 @@ class TrackPlayerCore private constructor(
                     ) {
                         if (reason == Player.DISCONTINUITY_REASON_SEEK) {
                             isManuallySeeked = true
-                            onSeek?.invoke(newPosition.positionMs / 1000.0, player.duration / 1000.0)
+                            onSeekListeners.forEach { it.invoke(newPosition.positionMs / 1000.0, player.duration / 1000.0) }
                         }
                     }
                 },
@@ -386,7 +386,7 @@ class TrackPlayerCore private constructor(
             }
 
         val actualReason = reason ?: if (player.playbackState == Player.STATE_ENDED) Reason.END else null
-        onPlaybackStateChange?.invoke(state, actualReason)
+        onPlaybackStateChangeListeners.forEach { it.invoke(state, actualReason) }
         mediaSessionManager?.onPlaybackStateChanged()
     }
 
@@ -463,98 +463,121 @@ class TrackPlayerCore private constructor(
     ) {
         println("🎵 TrackPlayerCore: playSong() called - songId: $songId, fromPlaylist: $fromPlaylist")
 
+        // If already on main thread, execute directly
+        if (android.os.Looper.myLooper() == handler.looper) {
+            playSongInternal(songId, fromPlaylist)
+            return
+        }
+
+        // Otherwise use CountDownLatch to wait for completion
+        val latch = CountDownLatch(1)
         handler.post {
-            // Clear temporary tracks when directly playing a song
-            playNextStack.clear()
-            upNextQueue.clear()
-            currentTemporaryType = TemporaryType.NONE
-            println("   🧹 Cleared temporary tracks")
+            try {
+                playSongInternal(songId, fromPlaylist)
+            } finally {
+                latch.countDown()
+            }
+        }
+        try {
+            latch.await(5, TimeUnit.SECONDS)
+        } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt()
+        }
+    }
 
-            var targetPlaylistId: String? = null
-            var songIndex: Int = -1
+    private fun playSongInternal(
+        songId: String,
+        fromPlaylist: String?,
+    ) {
+        // Clear temporary tracks when directly playing a song
+        playNextStack.clear()
+        upNextQueue.clear()
+        currentTemporaryType = TemporaryType.NONE
+        println("   🧹 Cleared temporary tracks")
 
-            // Case 1: If fromPlaylist is provided, use that playlist
-            if (fromPlaylist != null) {
-                println("🎵 TrackPlayerCore: Looking for song in specified playlist: $fromPlaylist")
-                val playlist = playlistManager.getPlaylist(fromPlaylist)
-                if (playlist != null) {
-                    songIndex = playlist.tracks.indexOfFirst { it.id == songId }
-                    if (songIndex >= 0) {
-                        targetPlaylistId = fromPlaylist
-                        println("✅ Found song at index $songIndex in playlist $fromPlaylist")
-                    } else {
-                        println("⚠️ Song $songId not found in specified playlist $fromPlaylist")
-                        return@post
-                    }
+        var targetPlaylistId: String? = null
+        var songIndex: Int = -1
+
+        // Case 1: If fromPlaylist is provided, use that playlist
+        if (fromPlaylist != null) {
+            println("🎵 TrackPlayerCore: Looking for song in specified playlist: $fromPlaylist")
+            val playlist = playlistManager.getPlaylist(fromPlaylist)
+            if (playlist != null) {
+                songIndex = playlist.tracks.indexOfFirst { it.id == songId }
+                if (songIndex >= 0) {
+                    targetPlaylistId = fromPlaylist
+                    println("✅ Found song at index $songIndex in playlist $fromPlaylist")
                 } else {
-                    println("⚠️ Playlist $fromPlaylist not found")
-                    return@post
-                }
-            }
-            // Case 2: If fromPlaylist is not provided, search in current/loaded playlist first
-            else {
-                println("🎵 TrackPlayerCore: No playlist specified, checking current playlist")
-
-                // Check if song exists in currently loaded playlist
-                if (currentPlaylistId != null) {
-                    val currentPlaylist = playlistManager.getPlaylist(currentPlaylistId!!)
-                    if (currentPlaylist != null) {
-                        songIndex = currentPlaylist.tracks.indexOfFirst { it.id == songId }
-                        if (songIndex >= 0) {
-                            targetPlaylistId = currentPlaylistId
-                            println("✅ Found song at index $songIndex in current playlist $currentPlaylistId")
-                        }
-                    }
-                }
-
-                // If not found in current playlist, search in all playlists
-                if (songIndex == -1) {
-                    println("🔍 Song not found in current playlist, searching all playlists...")
-                    val allPlaylists = playlistManager.getAllPlaylists()
-
-                    for (playlist in allPlaylists) {
-                        songIndex = playlist.tracks.indexOfFirst { it.id == songId }
-                        if (songIndex >= 0) {
-                            targetPlaylistId = playlist.id
-                            println("✅ Found song at index $songIndex in playlist ${playlist.id}")
-                            break
-                        }
-                    }
-
-                    // If still not found, just use the first playlist if available
-                    if (songIndex == -1 && allPlaylists.isNotEmpty()) {
-                        targetPlaylistId = allPlaylists[0].id
-                        songIndex = 0
-                        println("⚠️ Song not found in any playlist, using first playlist and starting at index 0")
-                    }
-                }
-            }
-
-            // Now play the song
-            if (targetPlaylistId == null || songIndex < 0) {
-                println("❌ Could not determine playlist or song index")
-                return@post
-            }
-
-            // Load playlist if it's different from current
-            if (currentPlaylistId != targetPlaylistId) {
-                println("🔄 Loading new playlist: $targetPlaylistId")
-                val playlist = playlistManager.getPlaylist(targetPlaylistId)
-                if (playlist != null) {
-                    currentPlaylistId = targetPlaylistId
-                    updatePlayerQueue(playlist.tracks)
-
-                    // Wait a bit for playlist to load, then play from index
-                    handler.postDelayed({
-                        println("▶️ Playing from index: $songIndex")
-                        playFromIndex(songIndex)
-                    }, 100)
+                    println("⚠️ Song $songId not found in specified playlist $fromPlaylist")
+                    return
                 }
             } else {
-                // Playlist already loaded, just play from index
+                println("⚠️ Playlist $fromPlaylist not found")
+                return
+            }
+        }
+        // Case 2: If fromPlaylist is not provided, search in current/loaded playlist first
+        else {
+            println("🎵 TrackPlayerCore: No playlist specified, checking current playlist")
+
+            // Check if song exists in currently loaded playlist
+            if (currentPlaylistId != null) {
+                val currentPlaylist = playlistManager.getPlaylist(currentPlaylistId!!)
+                if (currentPlaylist != null) {
+                    songIndex = currentPlaylist.tracks.indexOfFirst { it.id == songId }
+                    if (songIndex >= 0) {
+                        targetPlaylistId = currentPlaylistId
+                        println("✅ Found song at index $songIndex in current playlist $currentPlaylistId")
+                    }
+                }
+            }
+
+            // If not found in current playlist, search in all playlists
+            if (songIndex == -1) {
+                println("🔍 Song not found in current playlist, searching all playlists...")
+                val allPlaylists = playlistManager.getAllPlaylists()
+
+                for (playlist in allPlaylists) {
+                    songIndex = playlist.tracks.indexOfFirst { it.id == songId }
+                    if (songIndex >= 0) {
+                        targetPlaylistId = playlist.id
+                        println("✅ Found song at index $songIndex in playlist ${playlist.id}")
+                        break
+                    }
+                }
+
+                // If still not found, just use the first playlist if available
+                if (songIndex == -1 && allPlaylists.isNotEmpty()) {
+                    targetPlaylistId = allPlaylists[0].id
+                    songIndex = 0
+                    println("⚠️ Song not found in any playlist, using first playlist and starting at index 0")
+                }
+            }
+        }
+
+        // Now play the song
+        if (targetPlaylistId == null || songIndex < 0) {
+            println("❌ Could not determine playlist or song index")
+            return
+        }
+
+        // Load playlist if it's different from current
+        if (currentPlaylistId != targetPlaylistId) {
+            println("🔄 Loading new playlist: $targetPlaylistId")
+            val playlist = playlistManager.getPlaylist(targetPlaylistId)
+            if (playlist != null) {
+                currentPlaylistId = targetPlaylistId
+                updatePlayerQueue(playlist.tracks)
+
+                // Wait a bit for playlist to load, then play from index
+                // Note: Removed postDelayed to avoid race conditions with subsequent queue operations
                 println("▶️ Playing from index: $songIndex")
                 playFromIndex(songIndex)
             }
+        } else {
+            // Playlist already loaded, just play from index
+            println("▶️ Playing from index: $songIndex")
+            playFromIndex(songIndex)
         }
     }
 
@@ -742,18 +765,27 @@ class TrackPlayerCore private constructor(
         }
 
     // Public method to play from a specific index (for Android Auto)
+    // Public method to play from a specific index (for Android Auto)
     fun playFromIndex(index: Int) {
-        handler.post {
-            // Clear temporary tracks when jumping to specific index
-            playNextStack.clear()
-            upNextQueue.clear()
-            currentTemporaryType = TemporaryType.NONE
-            println("   🧹 Cleared temporary tracks")
-
-            if (::player.isInitialized && index >= 0 && index < player.mediaItemCount) {
-                player.seekToDefaultPosition(index)
-                player.playWhenReady = true
+        if (android.os.Looper.myLooper() == handler.looper) {
+            playFromIndexInternal(index)
+        } else {
+            handler.post {
+                playFromIndexInternal(index)
             }
+        }
+    }
+
+    private fun playFromIndexInternal(index: Int) {
+        // Clear temporary tracks when jumping to specific index
+        playNextStack.clear()
+        upNextQueue.clear()
+        currentTemporaryType = TemporaryType.NONE
+        println("   🧹 Cleared temporary tracks")
+
+        if (::player.isInitialized && index >= 0 && index < player.mediaItemCount) {
+            player.seekToDefaultPosition(index)
+            player.playWhenReady = true
         }
     }
 
@@ -764,24 +796,45 @@ class TrackPlayerCore private constructor(
      * Track will be inserted after currently playing track and any playNext tracks
      */
     fun addToUpNext(trackId: String) {
+        // If already on main thread, execute directly
+        if (android.os.Looper.myLooper() == handler.looper) {
+            addToUpNextInternal(trackId)
+            return
+        }
+
+        // Otherwise use CountDownLatch to wait for completion
+        val latch = CountDownLatch(1)
         handler.post {
-            println("📋 TrackPlayerCore: addToUpNext($trackId)")
-
-            // Find the track from current playlist or all playlists
-            val track = findTrackById(trackId)
-            if (track == null) {
-                println("❌ TrackPlayerCore: Track $trackId not found")
-                return@post
+            try {
+                addToUpNextInternal(trackId)
+            } finally {
+                latch.countDown()
             }
+        }
+        try {
+            latch.await(5, TimeUnit.SECONDS)
+        } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt()
+        }
+    }
 
-            // Add to end of upNext queue (FIFO)
-            upNextQueue.add(track)
-            println("   ✅ Added '${track.title}' to upNext queue (position: ${upNextQueue.size})")
+    private fun addToUpNextInternal(trackId: String) {
+        println("📋 TrackPlayerCore: addToUpNext($trackId)")
 
-            // Rebuild the player queue if actively playing
-            if (::player.isInitialized && player.currentMediaItem != null) {
-                rebuildQueueFromCurrentPosition()
-            }
+        // Find the track from current playlist or all playlists
+        val track = findTrackById(trackId)
+        if (track == null) {
+            println("❌ TrackPlayerCore: Track $trackId not found")
+            return
+        }
+
+        // Add to end of upNext queue (FIFO)
+        upNextQueue.add(track)
+        println("   ✅ Added '${track.title}' to upNext queue (position: ${upNextQueue.size})")
+
+        // Rebuild the player queue if actively playing
+        if (::player.isInitialized && player.currentMediaItem != null) {
+            rebuildQueueFromCurrentPosition()
         }
     }
 
@@ -790,24 +843,45 @@ class TrackPlayerCore private constructor(
      * Track will be inserted immediately after currently playing track
      */
     fun playNext(trackId: String) {
+        // If already on main thread, execute directly
+        if (android.os.Looper.myLooper() == handler.looper) {
+            playNextInternal(trackId)
+            return
+        }
+
+        // Otherwise use CountDownLatch to wait for completion
+        val latch = CountDownLatch(1)
         handler.post {
-            println("⏭️ TrackPlayerCore: playNext($trackId)")
-
-            // Find the track from current playlist or all playlists
-            val track = findTrackById(trackId)
-            if (track == null) {
-                println("❌ TrackPlayerCore: Track $trackId not found")
-                return@post
+            try {
+                playNextInternal(trackId)
+            } finally {
+                latch.countDown()
             }
+        }
+        try {
+            latch.await(5, TimeUnit.SECONDS)
+        } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt()
+        }
+    }
 
-            // Insert at beginning of playNext stack (LIFO)
-            playNextStack.add(0, track)
-            println("   ✅ Added '${track.title}' to playNext stack (position: 1)")
+    private fun playNextInternal(trackId: String) {
+        println("⏭️ TrackPlayerCore: playNext($trackId)")
 
-            // Rebuild the player queue if actively playing
-            if (::player.isInitialized && player.currentMediaItem != null) {
-                rebuildQueueFromCurrentPosition()
-            }
+        // Find the track from current playlist or all playlists
+        val track = findTrackById(trackId)
+        if (track == null) {
+            println("❌ TrackPlayerCore: Track $trackId not found")
+            return
+        }
+
+        // Insert at beginning of playNext stack (LIFO)
+        playNextStack.add(0, track)
+        println("   ✅ Added '${track.title}' to playNext stack (position: 1)")
+
+        // Rebuild the player queue if actively playing
+        if (::player.isInitialized && player.currentMediaItem != null) {
+            rebuildQueueFromCurrentPosition()
         }
     }
 
@@ -966,6 +1040,23 @@ class TrackPlayerCore private constructor(
             false
         }
 
+    // Add event listeners
+    fun addOnChangeTrackListener(callback: (TrackItem, Reason?) -> Unit) {
+        onChangeTrackListeners.add(callback)
+    }
+
+    fun addOnPlaybackStateChangeListener(callback: (TrackPlayerState, Reason?) -> Unit) {
+        onPlaybackStateChangeListeners.add(callback)
+    }
+
+    fun addOnSeekListener(callback: (Double, Double) -> Unit) {
+        onSeekListeners.add(callback)
+    }
+
+    fun addOnPlaybackProgressChangeListener(callback: (Double, Double, Boolean?) -> Unit) {
+        onPlaybackProgressChangeListeners.add(callback)
+    }
+
     /**
      * Get the actual queue with temporary tracks
      * Returns: [original_before_current] + [current] + [playNext_stack] + [upNext_queue] + [original_after_current]
@@ -999,33 +1090,55 @@ class TrackPlayerCore private constructor(
     }
 
     private fun getActualQueueInternal(): List<TrackItem> {
+        println("\n🔍 TrackPlayerCore: getActualQueueInternal() called")
+        println("   playNextStack size: ${playNextStack.size}, tracks: ${playNextStack.map { it.id }}")
+        println("   upNextQueue size: ${upNextQueue.size}, tracks: ${upNextQueue.map { it.id }}")
+        println("   currentTracks size: ${currentTracks.size}, tracks: ${currentTracks.map { it.id }}")
+        
         val queue = mutableListOf<TrackItem>()
 
-        if (!::player.isInitialized) return emptyList()
+        if (!::player.isInitialized) {
+            println("   ❌ Player not initialized, returning empty")
+            return emptyList()
+        }
 
         val currentIndex = player.currentMediaItemIndex
-        if (currentIndex < 0) return emptyList()
+        println("   currentIndex: $currentIndex")
+        if (currentIndex < 0) {
+            println("   ❌ currentIndex < 0, returning empty")
+            return emptyList()
+        }
 
         // Add tracks before current (original playlist)
         if (currentIndex > 0 && currentIndex <= currentTracks.size) {
-            queue.addAll(currentTracks.subList(0, currentIndex))
+            val beforeCurrent = currentTracks.subList(0, currentIndex)
+            println("   Adding ${beforeCurrent.size} tracks before current")
+            queue.addAll(beforeCurrent)
         }
 
         // Add current track
-        getCurrentTrack()?.let { queue.add(it) }
+        getCurrentTrack()?.let { 
+            println("   Adding current track: ${it.id}")
+            queue.add(it) 
+        }
 
         // Add playNext stack (LIFO - most recently added plays first)
         // Stack is already in correct order since we insert at position 0
+        println("   Adding ${playNextStack.size} playNext tracks")
         queue.addAll(playNextStack)
 
         // Add upNext queue (in order, FIFO)
+        println("   Adding ${upNextQueue.size} upNext tracks")
         queue.addAll(upNextQueue)
 
         // Add remaining original tracks
         if (currentIndex + 1 < currentTracks.size) {
-            queue.addAll(currentTracks.subList(currentIndex + 1, currentTracks.size))
+            val remaining = currentTracks.subList(currentIndex + 1, currentTracks.size)
+            println("   Adding ${remaining.size} remaining tracks")
+            queue.addAll(remaining)
         }
 
+        println("   ✅ Final queue size: ${queue.size}, tracks: ${queue.map { it.id }}")
         return queue
     }
 }

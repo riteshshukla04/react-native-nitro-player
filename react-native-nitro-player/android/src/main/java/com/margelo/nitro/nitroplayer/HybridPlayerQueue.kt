@@ -20,7 +20,7 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
         playlistManager = core.getPlaylistManager()
     }
 
-    private var playlistsChangeListener: (() -> Unit)? = null
+    private val playlistsChangeListeners = mutableListOf<() -> Unit>()
     private val playlistChangeListeners = mutableMapOf<String, () -> Unit>()
 
     @DoNotStrip
@@ -129,14 +129,12 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
     @DoNotStrip
     @Keep
     override fun onPlaylistsChanged(callback: (playlists: Array<Playlist>, operation: QueueOperation?) -> Unit) {
-        // Remove previous listener if exists
-        playlistsChangeListener?.invoke()
-
-        // Add new listener
-        playlistsChangeListener =
+        // Add new listener and store the cleanup function
+        val removeListener =
             playlistManager.addPlaylistsChangeListener { playlists, operation ->
                 callback(playlists.map { it.toPlaylist() }.toTypedArray(), operation)
             }
+        playlistsChangeListeners.add(removeListener)
     }
 
     @DoNotStrip
