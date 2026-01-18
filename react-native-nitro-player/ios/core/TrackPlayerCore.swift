@@ -932,10 +932,11 @@ class TrackPlayerCore: NSObject {
   }
 
   func getActualQueue() -> [TrackItem] {
+    // Called from Promise.async background thread
+    // Schedule on main thread and wait for result
     if Thread.isMainThread {
       return getActualQueueInternal()
     } else {
-      // Use sync to wait for any pending operations to complete
       var queue: [TrackItem] = []
       DispatchQueue.main.sync { [weak self] in
         queue = self?.getActualQueueInternal() ?? []
@@ -1025,16 +1026,8 @@ class TrackPlayerCore: NSObject {
   }
 
   func playSong(songId: String, fromPlaylist: String?) {
-    print(
-      "🎵 TrackPlayerCore: playSong() called - songId: \(songId), fromPlaylist: \(fromPlaylist ?? "nil")"
-    )
-
-    if Thread.isMainThread {
-      playSongInternal(songId: songId, fromPlaylist: fromPlaylist)
-    } else {
-      DispatchQueue.main.sync { [weak self] in
-        self?.playSongInternal(songId: songId, fromPlaylist: fromPlaylist)
-      }
+    DispatchQueue.main.async { [weak self] in
+      self?.playSongInternal(songId: songId, fromPlaylist: fromPlaylist)
     }
   }
 
@@ -1252,10 +1245,11 @@ class TrackPlayerCore: NSObject {
   }
 
   func getState() -> PlayerState {
+    // Called from Promise.async background thread
+    // Schedule on main thread and wait for result
     if Thread.isMainThread {
       return getStateInternal()
     } else {
-      // Use sync to wait for any pending operations to complete
       var state: PlayerState!
       DispatchQueue.main.sync { [weak self] in
         state =
@@ -1441,12 +1435,8 @@ class TrackPlayerCore: NSObject {
    * Track will be inserted after currently playing track and any playNext tracks
    */
   func addToUpNext(trackId: String) {
-    if Thread.isMainThread {
-      addToUpNextInternal(trackId: trackId)
-    } else {
-      DispatchQueue.main.sync { [weak self] in
-        self?.addToUpNextInternal(trackId: trackId)
-      }
+    DispatchQueue.main.async { [weak self] in
+      self?.addToUpNextInternal(trackId: trackId)
     }
   }
 
@@ -1474,12 +1464,8 @@ class TrackPlayerCore: NSObject {
    * Track will be inserted immediately after currently playing track
    */
   func playNext(trackId: String) {
-    if Thread.isMainThread {
-      playNextInternal(trackId: trackId)
-    } else {
-      DispatchQueue.main.sync { [weak self] in
-        self?.playNextInternal(trackId: trackId)
-      }
+    DispatchQueue.main.async { [weak self] in
+      self?.playNextInternal(trackId: trackId)
     }
   }
 

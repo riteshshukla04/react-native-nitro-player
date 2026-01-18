@@ -50,11 +50,11 @@ export function useNowPlaying(): PlayerState {
   const [state, setState] = useState<PlayerState>(DEFAULT_STATE)
   const isMounted = useRef(true)
 
-  const updateState = useCallback(() => {
+  const updateState = useCallback(async () => {
     if (!isMounted.current) return
 
     try {
-      const newState = TrackPlayer.getState()
+      const newState = await TrackPlayer.getState()
       setState(newState)
     } catch (error) {
       console.error('[useNowPlaying] Error updating player state:', error)

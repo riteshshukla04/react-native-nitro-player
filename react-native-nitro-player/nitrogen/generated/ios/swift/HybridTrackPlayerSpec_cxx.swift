@@ -140,9 +140,9 @@ open class HybridTrackPlayerSpec_cxx {
   }
   
   @inline(__always)
-  public final func playSong(songId: std.string, fromPlaylist: bridge.std__optional_std__string_) -> bridge.Result_void_ {
+  public final func playSong(songId: std.string, fromPlaylist: bridge.std__optional_std__string_) -> bridge.Result_std__shared_ptr_Promise_void___ {
     do {
-      try self.__implementation.playSong(songId: String(songId), fromPlaylist: { () -> String? in
+      let __result = try self.__implementation.playSong(songId: String(songId), fromPlaylist: { () -> String? in
         if bridge.has_value_std__optional_std__string_(fromPlaylist) {
           let __unwrapped = bridge.get_std__optional_std__string_(fromPlaylist)
           return String(__unwrapped)
@@ -150,10 +150,18 @@ open class HybridTrackPlayerSpec_cxx {
           return nil
         }
       }())
-      return bridge.create_Result_void_()
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_void__ in
+        let __promise = bridge.create_std__shared_ptr_Promise_void__()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_void__(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve() })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
+      }()
+      return bridge.create_Result_std__shared_ptr_Promise_void___(__resultCpp)
     } catch (let __error) {
       let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_void_(__exceptionPtr)
+      return bridge.create_Result_std__shared_ptr_Promise_void___(__exceptionPtr)
     }
   }
   
@@ -191,54 +199,84 @@ open class HybridTrackPlayerSpec_cxx {
   }
   
   @inline(__always)
-  public final func addToUpNext(trackId: std.string) -> bridge.Result_void_ {
+  public final func addToUpNext(trackId: std.string) -> bridge.Result_std__shared_ptr_Promise_void___ {
     do {
-      try self.__implementation.addToUpNext(trackId: String(trackId))
-      return bridge.create_Result_void_()
+      let __result = try self.__implementation.addToUpNext(trackId: String(trackId))
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_void__ in
+        let __promise = bridge.create_std__shared_ptr_Promise_void__()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_void__(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve() })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
+      }()
+      return bridge.create_Result_std__shared_ptr_Promise_void___(__resultCpp)
     } catch (let __error) {
       let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_void_(__exceptionPtr)
+      return bridge.create_Result_std__shared_ptr_Promise_void___(__exceptionPtr)
     }
   }
   
   @inline(__always)
-  public final func playNext(trackId: std.string) -> bridge.Result_void_ {
+  public final func playNext(trackId: std.string) -> bridge.Result_std__shared_ptr_Promise_void___ {
     do {
-      try self.__implementation.playNext(trackId: String(trackId))
-      return bridge.create_Result_void_()
+      let __result = try self.__implementation.playNext(trackId: String(trackId))
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_void__ in
+        let __promise = bridge.create_std__shared_ptr_Promise_void__()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_void__(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve() })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
+      }()
+      return bridge.create_Result_std__shared_ptr_Promise_void___(__resultCpp)
     } catch (let __error) {
       let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_void_(__exceptionPtr)
+      return bridge.create_Result_std__shared_ptr_Promise_void___(__exceptionPtr)
     }
   }
   
   @inline(__always)
-  public final func getActualQueue() -> bridge.Result_std__vector_TrackItem__ {
+  public final func getActualQueue() -> bridge.Result_std__shared_ptr_Promise_std__vector_TrackItem____ {
     do {
       let __result = try self.__implementation.getActualQueue()
-      let __resultCpp = { () -> bridge.std__vector_TrackItem_ in
-        var __vector = bridge.create_std__vector_TrackItem_(__result.count)
-        for __item in __result {
-          __vector.push_back(__item)
-        }
-        return __vector
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_std__vector_TrackItem___ in
+        let __promise = bridge.create_std__shared_ptr_Promise_std__vector_TrackItem___()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_std__vector_TrackItem___(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve({ () -> bridge.std__vector_TrackItem_ in
+              var __vector = bridge.create_std__vector_TrackItem_(__result.count)
+              for __item in __result {
+                __vector.push_back(__item)
+              }
+              return __vector
+            }()) })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
       }()
-      return bridge.create_Result_std__vector_TrackItem__(__resultCpp)
+      return bridge.create_Result_std__shared_ptr_Promise_std__vector_TrackItem____(__resultCpp)
     } catch (let __error) {
       let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_std__vector_TrackItem__(__exceptionPtr)
+      return bridge.create_Result_std__shared_ptr_Promise_std__vector_TrackItem____(__exceptionPtr)
     }
   }
   
   @inline(__always)
-  public final func getState() -> bridge.Result_PlayerState_ {
+  public final func getState() -> bridge.Result_std__shared_ptr_Promise_PlayerState___ {
     do {
       let __result = try self.__implementation.getState()
-      let __resultCpp = __result
-      return bridge.create_Result_PlayerState_(__resultCpp)
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_PlayerState__ in
+        let __promise = bridge.create_std__shared_ptr_Promise_PlayerState__()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_PlayerState__(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve(__result) })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
+      }()
+      return bridge.create_Result_std__shared_ptr_Promise_PlayerState___(__resultCpp)
     } catch (let __error) {
       let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_PlayerState_(__exceptionPtr)
+      return bridge.create_Result_std__shared_ptr_Promise_PlayerState___(__exceptionPtr)
     }
   }
   

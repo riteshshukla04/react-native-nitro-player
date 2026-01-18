@@ -48,19 +48,23 @@ export function useOnChangeTrack(): TrackChangeResult {
   useEffect(() => {
     isMounted.current = true
 
-    try {
-      const playerState = TrackPlayer.getState()
-      if (isMounted.current) {
-        setTrack(playerState.currentTrack)
-        setIsReady(true)
-      }
-    } catch (error) {
-      console.error('[useOnChangeTrack] Failed to get initial state:', error)
-      if (isMounted.current) {
-        setTrack(null)
-        setIsReady(true)
+    const initializeTrack = async () => {
+      try {
+        const playerState = await TrackPlayer.getState()
+        if (isMounted.current) {
+          setTrack(playerState.currentTrack)
+          setIsReady(true)
+        }
+      } catch (error) {
+        console.error('[useOnChangeTrack] Failed to get initial state:', error)
+        if (isMounted.current) {
+          setTrack(null)
+          setIsReady(true)
+        }
       }
     }
+
+    initializeTrack()
 
     return () => {
       isMounted.current = false

@@ -461,27 +461,8 @@ class TrackPlayerCore private constructor(
         songId: String,
         fromPlaylist: String?,
     ) {
-        println("🎵 TrackPlayerCore: playSong() called - songId: $songId, fromPlaylist: $fromPlaylist")
-
-        // If already on main thread, execute directly
-        if (android.os.Looper.myLooper() == handler.looper) {
-            playSongInternal(songId, fromPlaylist)
-            return
-        }
-
-        // Otherwise use CountDownLatch to wait for completion
-        val latch = CountDownLatch(1)
         handler.post {
-            try {
-                playSongInternal(songId, fromPlaylist)
-            } finally {
-                latch.countDown()
-            }
-        }
-        try {
-            latch.await(5, TimeUnit.SECONDS)
-        } catch (e: InterruptedException) {
-            Thread.currentThread().interrupt()
+            playSongInternal(songId, fromPlaylist)
         }
     }
 
@@ -627,6 +608,7 @@ class TrackPlayerCore private constructor(
     }
 
     fun getState(): PlayerState {
+        // Called from Promise.async background thread
         // Check if we're already on the main thread
         if (android.os.Looper.myLooper() == handler.looper) {
             return getStateInternal()
@@ -796,25 +778,8 @@ class TrackPlayerCore private constructor(
      * Track will be inserted after currently playing track and any playNext tracks
      */
     fun addToUpNext(trackId: String) {
-        // If already on main thread, execute directly
-        if (android.os.Looper.myLooper() == handler.looper) {
-            addToUpNextInternal(trackId)
-            return
-        }
-
-        // Otherwise use CountDownLatch to wait for completion
-        val latch = CountDownLatch(1)
         handler.post {
-            try {
-                addToUpNextInternal(trackId)
-            } finally {
-                latch.countDown()
-            }
-        }
-        try {
-            latch.await(5, TimeUnit.SECONDS)
-        } catch (e: InterruptedException) {
-            Thread.currentThread().interrupt()
+            addToUpNextInternal(trackId)
         }
     }
 
@@ -843,25 +808,8 @@ class TrackPlayerCore private constructor(
      * Track will be inserted immediately after currently playing track
      */
     fun playNext(trackId: String) {
-        // If already on main thread, execute directly
-        if (android.os.Looper.myLooper() == handler.looper) {
-            playNextInternal(trackId)
-            return
-        }
-
-        // Otherwise use CountDownLatch to wait for completion
-        val latch = CountDownLatch(1)
         handler.post {
-            try {
-                playNextInternal(trackId)
-            } finally {
-                latch.countDown()
-            }
-        }
-        try {
-            latch.await(5, TimeUnit.SECONDS)
-        } catch (e: InterruptedException) {
-            Thread.currentThread().interrupt()
+            playNextInternal(trackId)
         }
     }
 
@@ -1062,6 +1010,7 @@ class TrackPlayerCore private constructor(
      * Returns: [original_before_current] + [current] + [playNext_stack] + [upNext_queue] + [original_after_current]
      */
     fun getActualQueue(): List<TrackItem> {
+        // Called from Promise.async background thread
         // Check if we're already on the main thread
         if (android.os.Looper.myLooper() == handler.looper) {
             return getActualQueueInternal()

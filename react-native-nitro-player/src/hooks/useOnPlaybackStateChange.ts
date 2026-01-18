@@ -47,23 +47,27 @@ export function useOnPlaybackStateChange(): PlaybackStateResult {
   useEffect(() => {
     isMounted.current = true
 
-    // Get initial state synchronously
-    try {
-      const playerState = TrackPlayer.getState()
-      if (isMounted.current) {
-        setState(playerState.currentState)
-        setIsReady(true)
-      }
-    } catch (error) {
-      console.error(
-        '[useOnPlaybackStateChange] Failed to get initial state:',
-        error
-      )
-      if (isMounted.current) {
-        setState('stopped')
-        setIsReady(true)
+    // Get initial state asynchronously
+    const initializeState = async () => {
+      try {
+        const playerState = await TrackPlayer.getState()
+        if (isMounted.current) {
+          setState(playerState.currentState)
+          setIsReady(true)
+        }
+      } catch (error) {
+        console.error(
+          '[useOnPlaybackStateChange] Failed to get initial state:',
+          error
+        )
+        if (isMounted.current) {
+          setState('stopped')
+          setIsReady(true)
+        }
       }
     }
+
+    initializeState()
 
     return () => {
       isMounted.current = false

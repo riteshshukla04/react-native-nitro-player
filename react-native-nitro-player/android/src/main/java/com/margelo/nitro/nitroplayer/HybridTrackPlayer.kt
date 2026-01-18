@@ -3,6 +3,7 @@ package com.margelo.nitro.nitroplayer
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
 import com.margelo.nitro.NitroModules
+import com.margelo.nitro.core.Promise
 import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
 
 class HybridTrackPlayer : HybridTrackPlayerSpec() {
@@ -26,13 +27,13 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
         core.pause()
     }
 
-    @DoNotStrip
-    @Keep
     override fun playSong(
         songId: String,
         fromPlaylist: String?,
-    ) {
-        core.playSong(songId, fromPlaylist)
+    ): Promise<Unit> {
+        return Promise.async {
+            core.playSong(songId, fromPlaylist)
+        }
     }
 
     @DoNotStrip
@@ -53,25 +54,29 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
         core.seek(position)
     }
 
-    @DoNotStrip
-    @Keep
-    override fun addToUpNext(trackId: String) {
-        core.addToUpNext(trackId)
+    override fun addToUpNext(trackId: String): Promise<Unit> {
+        return Promise.async {
+            core.addToUpNext(trackId)
+        }
     }
 
-    @DoNotStrip
-    @Keep
-    override fun playNext(trackId: String) {
-        core.playNext(trackId)
+    override fun playNext(trackId: String): Promise<Unit> {
+        return Promise.async {
+            core.playNext(trackId)
+        }
     }
 
-    @DoNotStrip
-    @Keep
-    override fun getActualQueue(): Array<TrackItem> = core.getActualQueue().toTypedArray()
+    override fun getActualQueue(): Promise<Array<TrackItem>> {
+        return Promise.async {
+            core.getActualQueue().toTypedArray()
+        }
+    }
 
-    @DoNotStrip
-    @Keep
-    override fun getState(): PlayerState = core.getState()
+    override fun getState(): Promise<PlayerState> {
+        return Promise.async {
+            core.getState()
+        }
+    }
 
     @DoNotStrip
     @Keep

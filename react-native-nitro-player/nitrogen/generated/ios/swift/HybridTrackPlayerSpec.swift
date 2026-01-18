@@ -16,14 +16,14 @@ public protocol HybridTrackPlayerSpec_protocol: HybridObject {
   // Methods
   func play() throws -> Void
   func pause() throws -> Void
-  func playSong(songId: String, fromPlaylist: String?) throws -> Void
+  func playSong(songId: String, fromPlaylist: String?) throws -> Promise<Void>
   func skipToNext() throws -> Void
   func skipToPrevious() throws -> Void
   func seek(position: Double) throws -> Void
-  func addToUpNext(trackId: String) throws -> Void
-  func playNext(trackId: String) throws -> Void
-  func getActualQueue() throws -> [TrackItem]
-  func getState() throws -> PlayerState
+  func addToUpNext(trackId: String) throws -> Promise<Void>
+  func playNext(trackId: String) throws -> Promise<Void>
+  func getActualQueue() throws -> Promise<[TrackItem]>
+  func getState() throws -> Promise<PlayerState>
   func setRepeatMode(mode: RepeatMode) throws -> Bool
   func configure(config: PlayerConfig) throws -> Void
   func onChangeTrack(callback: @escaping (_ track: TrackItem, _ reason: Reason?) -> Void) throws -> Void

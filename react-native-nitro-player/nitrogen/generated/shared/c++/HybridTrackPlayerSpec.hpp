@@ -26,6 +26,7 @@ namespace margelo::nitro::nitroplayer { enum class Reason; }
 // Forward declaration of `TrackPlayerState` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 
+#include <NitroModules/Promise.hpp>
 #include <string>
 #include <optional>
 #include "TrackItem.hpp"
@@ -70,14 +71,14 @@ namespace margelo::nitro::nitroplayer {
       // Methods
       virtual void play() = 0;
       virtual void pause() = 0;
-      virtual void playSong(const std::string& songId, const std::optional<std::string>& fromPlaylist) = 0;
+      virtual std::shared_ptr<Promise<void>> playSong(const std::string& songId, const std::optional<std::string>& fromPlaylist) = 0;
       virtual void skipToNext() = 0;
       virtual void skipToPrevious() = 0;
       virtual void seek(double position) = 0;
-      virtual void addToUpNext(const std::string& trackId) = 0;
-      virtual void playNext(const std::string& trackId) = 0;
-      virtual std::vector<TrackItem> getActualQueue() = 0;
-      virtual PlayerState getState() = 0;
+      virtual std::shared_ptr<Promise<void>> addToUpNext(const std::string& trackId) = 0;
+      virtual std::shared_ptr<Promise<void>> playNext(const std::string& trackId) = 0;
+      virtual std::shared_ptr<Promise<std::vector<TrackItem>>> getActualQueue() = 0;
+      virtual std::shared_ptr<Promise<PlayerState>> getState() = 0;
       virtual bool setRepeatMode(RepeatMode mode) = 0;
       virtual void configure(const PlayerConfig& config) = 0;
       virtual void onChangeTrack(const std::function<void(const TrackItem& /* track */, std::optional<Reason> /* reason */)>& callback) = 0;

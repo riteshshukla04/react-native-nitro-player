@@ -20,6 +20,8 @@ namespace margelo::nitro::nitroplayer { struct PlayerConfig; }
 // Forward declaration of `Reason` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class Reason; }
 
+#include <NitroModules/Promise.hpp>
+#include <NitroModules/JPromise.hpp>
 #include "TrackItem.hpp"
 #include <vector>
 #include "JTrackItem.hpp"
@@ -88,9 +90,20 @@ namespace margelo::nitro::nitroplayer {
     static const auto method = javaClassStatic()->getMethod<void()>("pause");
     method(_javaPart);
   }
-  void JHybridTrackPlayerSpec::playSong(const std::string& songId, const std::optional<std::string>& fromPlaylist) {
-    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* songId */, jni::alias_ref<jni::JString> /* fromPlaylist */)>("playSong");
-    method(_javaPart, jni::make_jstring(songId), fromPlaylist.has_value() ? jni::make_jstring(fromPlaylist.value()) : nullptr);
+  std::shared_ptr<Promise<void>> JHybridTrackPlayerSpec::playSong(const std::string& songId, const std::optional<std::string>& fromPlaylist) {
+    static const auto method = javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* songId */, jni::alias_ref<jni::JString> /* fromPlaylist */)>("playSong");
+    auto __result = method(_javaPart, jni::make_jstring(songId), fromPlaylist.has_value() ? jni::make_jstring(fromPlaylist.value()) : nullptr);
+    return [&]() {
+      auto __promise = Promise<void>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& /* unit */) {
+        __promise->resolve();
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
   }
   void JHybridTrackPlayerSpec::skipToNext() {
     static const auto method = javaClassStatic()->getMethod<void()>("skipToNext");
@@ -104,32 +117,76 @@ namespace margelo::nitro::nitroplayer {
     static const auto method = javaClassStatic()->getMethod<void(double /* position */)>("seek");
     method(_javaPart, position);
   }
-  void JHybridTrackPlayerSpec::addToUpNext(const std::string& trackId) {
-    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* trackId */)>("addToUpNext");
-    method(_javaPart, jni::make_jstring(trackId));
-  }
-  void JHybridTrackPlayerSpec::playNext(const std::string& trackId) {
-    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* trackId */)>("playNext");
-    method(_javaPart, jni::make_jstring(trackId));
-  }
-  std::vector<TrackItem> JHybridTrackPlayerSpec::getActualQueue() {
-    static const auto method = javaClassStatic()->getMethod<jni::local_ref<jni::JArrayClass<JTrackItem>>()>("getActualQueue");
-    auto __result = method(_javaPart);
+  std::shared_ptr<Promise<void>> JHybridTrackPlayerSpec::addToUpNext(const std::string& trackId) {
+    static const auto method = javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* trackId */)>("addToUpNext");
+    auto __result = method(_javaPart, jni::make_jstring(trackId));
     return [&]() {
-      size_t __size = __result->size();
-      std::vector<TrackItem> __vector;
-      __vector.reserve(__size);
-      for (size_t __i = 0; __i < __size; __i++) {
-        auto __element = __result->getElement(__i);
-        __vector.push_back(__element->toCpp());
-      }
-      return __vector;
+      auto __promise = Promise<void>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& /* unit */) {
+        __promise->resolve();
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
     }();
   }
-  PlayerState JHybridTrackPlayerSpec::getState() {
-    static const auto method = javaClassStatic()->getMethod<jni::local_ref<JPlayerState>()>("getState");
+  std::shared_ptr<Promise<void>> JHybridTrackPlayerSpec::playNext(const std::string& trackId) {
+    static const auto method = javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* trackId */)>("playNext");
+    auto __result = method(_javaPart, jni::make_jstring(trackId));
+    return [&]() {
+      auto __promise = Promise<void>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& /* unit */) {
+        __promise->resolve();
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
+  }
+  std::shared_ptr<Promise<std::vector<TrackItem>>> JHybridTrackPlayerSpec::getActualQueue() {
+    static const auto method = javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>()>("getActualQueue");
     auto __result = method(_javaPart);
-    return __result->toCpp();
+    return [&]() {
+      auto __promise = Promise<std::vector<TrackItem>>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {
+        auto __result = jni::static_ref_cast<jni::JArrayClass<JTrackItem>>(__boxedResult);
+        __promise->resolve([&]() {
+          size_t __size = __result->size();
+          std::vector<TrackItem> __vector;
+          __vector.reserve(__size);
+          for (size_t __i = 0; __i < __size; __i++) {
+            auto __element = __result->getElement(__i);
+            __vector.push_back(__element->toCpp());
+          }
+          return __vector;
+        }());
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
+  }
+  std::shared_ptr<Promise<PlayerState>> JHybridTrackPlayerSpec::getState() {
+    static const auto method = javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>()>("getState");
+    auto __result = method(_javaPart);
+    return [&]() {
+      auto __promise = Promise<PlayerState>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {
+        auto __result = jni::static_ref_cast<JPlayerState>(__boxedResult);
+        __promise->resolve(__result->toCpp());
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
   }
   bool JHybridTrackPlayerSpec::setRepeatMode(RepeatMode mode) {
     static const auto method = javaClassStatic()->getMethod<jboolean(jni::alias_ref<JRepeatMode> /* mode */)>("setRepeatMode");

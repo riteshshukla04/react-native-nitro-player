@@ -46,6 +46,8 @@ namespace NitroPlayer { class HybridTrackPlayerSpec_cxx; }
 #include "TrackItem.hpp"
 #include "TrackPlayerState.hpp"
 #include <NitroModules/Null.hpp>
+#include <NitroModules/Promise.hpp>
+#include <NitroModules/PromiseHolder.hpp>
 #include <NitroModules/Result.hpp>
 #include <exception>
 #include <functional>
@@ -314,6 +316,96 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     return Result<std::variant<nitro::NullType, std::string>>::withError(error);
   }
   
+  // pragma MARK: std::shared_ptr<Promise<void>>
+  /**
+   * Specialized version of `std::shared_ptr<Promise<void>>`.
+   */
+  using std__shared_ptr_Promise_void__ = std::shared_ptr<Promise<void>>;
+  inline std::shared_ptr<Promise<void>> create_std__shared_ptr_Promise_void__() noexcept {
+    return Promise<void>::create();
+  }
+  inline PromiseHolder<void> wrap_std__shared_ptr_Promise_void__(std::shared_ptr<Promise<void>> promise) noexcept {
+    return PromiseHolder<void>(std::move(promise));
+  }
+  
+  // pragma MARK: std::function<void()>
+  /**
+   * Specialized version of `std::function<void()>`.
+   */
+  using Func_void = std::function<void()>;
+  /**
+   * Wrapper class for a `std::function<void()>`, this can be used from Swift.
+   */
+  class Func_void_Wrapper final {
+  public:
+    explicit Func_void_Wrapper(std::function<void()>&& func): _function(std::make_unique<std::function<void()>>(std::move(func))) {}
+    inline void call() const noexcept {
+      _function->operator()();
+    }
+  private:
+    std::unique_ptr<std::function<void()>> _function;
+  } SWIFT_NONCOPYABLE;
+  Func_void create_Func_void(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_Wrapper wrap_Func_void(Func_void value) noexcept {
+    return Func_void_Wrapper(std::move(value));
+  }
+  
+  // pragma MARK: std::function<void(const std::exception_ptr& /* error */)>
+  /**
+   * Specialized version of `std::function<void(const std::exception_ptr&)>`.
+   */
+  using Func_void_std__exception_ptr = std::function<void(const std::exception_ptr& /* error */)>;
+  /**
+   * Wrapper class for a `std::function<void(const std::exception_ptr& / * error * /)>`, this can be used from Swift.
+   */
+  class Func_void_std__exception_ptr_Wrapper final {
+  public:
+    explicit Func_void_std__exception_ptr_Wrapper(std::function<void(const std::exception_ptr& /* error */)>&& func): _function(std::make_unique<std::function<void(const std::exception_ptr& /* error */)>>(std::move(func))) {}
+    inline void call(std::exception_ptr error) const noexcept {
+      _function->operator()(error);
+    }
+  private:
+    std::unique_ptr<std::function<void(const std::exception_ptr& /* error */)>> _function;
+  } SWIFT_NONCOPYABLE;
+  Func_void_std__exception_ptr create_Func_void_std__exception_ptr(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_std__exception_ptr_Wrapper wrap_Func_void_std__exception_ptr(Func_void_std__exception_ptr value) noexcept {
+    return Func_void_std__exception_ptr_Wrapper(std::move(value));
+  }
+  
+  // pragma MARK: std::shared_ptr<Promise<std::vector<TrackItem>>>
+  /**
+   * Specialized version of `std::shared_ptr<Promise<std::vector<TrackItem>>>`.
+   */
+  using std__shared_ptr_Promise_std__vector_TrackItem___ = std::shared_ptr<Promise<std::vector<TrackItem>>>;
+  inline std::shared_ptr<Promise<std::vector<TrackItem>>> create_std__shared_ptr_Promise_std__vector_TrackItem___() noexcept {
+    return Promise<std::vector<TrackItem>>::create();
+  }
+  inline PromiseHolder<std::vector<TrackItem>> wrap_std__shared_ptr_Promise_std__vector_TrackItem___(std::shared_ptr<Promise<std::vector<TrackItem>>> promise) noexcept {
+    return PromiseHolder<std::vector<TrackItem>>(std::move(promise));
+  }
+  
+  // pragma MARK: std::function<void(const std::vector<TrackItem>& /* result */)>
+  /**
+   * Specialized version of `std::function<void(const std::vector<TrackItem>&)>`.
+   */
+  using Func_void_std__vector_TrackItem_ = std::function<void(const std::vector<TrackItem>& /* result */)>;
+  /**
+   * Wrapper class for a `std::function<void(const std::vector<TrackItem>& / * result * /)>`, this can be used from Swift.
+   */
+  class Func_void_std__vector_TrackItem__Wrapper final {
+  public:
+    explicit Func_void_std__vector_TrackItem__Wrapper(std::function<void(const std::vector<TrackItem>& /* result */)>&& func): _function(std::make_unique<std::function<void(const std::vector<TrackItem>& /* result */)>>(std::move(func))) {}
+    inline void call(std::vector<TrackItem> result) const noexcept {
+      _function->operator()(result);
+    }
+  private:
+    std::unique_ptr<std::function<void(const std::vector<TrackItem>& /* result */)>> _function;
+  } SWIFT_NONCOPYABLE;
+  Func_void_std__vector_TrackItem_ create_Func_void_std__vector_TrackItem_(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_std__vector_TrackItem__Wrapper wrap_Func_void_std__vector_TrackItem_(Func_void_std__vector_TrackItem_ value) noexcept {
+    return Func_void_std__vector_TrackItem__Wrapper(std::move(value));
+  }
+  
   // pragma MARK: std::variant<nitro::NullType, TrackItem>
   /**
    * Wrapper struct for `std::variant<nitro::NullType, TrackItem>`.
@@ -356,6 +448,40 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
   }
   inline std::variant<nitro::NullType, TrackItem> get_std__optional_std__variant_nitro__NullType__TrackItem__(const std::optional<std::variant<nitro::NullType, TrackItem>>& optional) noexcept {
     return *optional;
+  }
+  
+  // pragma MARK: std::shared_ptr<Promise<PlayerState>>
+  /**
+   * Specialized version of `std::shared_ptr<Promise<PlayerState>>`.
+   */
+  using std__shared_ptr_Promise_PlayerState__ = std::shared_ptr<Promise<PlayerState>>;
+  inline std::shared_ptr<Promise<PlayerState>> create_std__shared_ptr_Promise_PlayerState__() noexcept {
+    return Promise<PlayerState>::create();
+  }
+  inline PromiseHolder<PlayerState> wrap_std__shared_ptr_Promise_PlayerState__(std::shared_ptr<Promise<PlayerState>> promise) noexcept {
+    return PromiseHolder<PlayerState>(std::move(promise));
+  }
+  
+  // pragma MARK: std::function<void(const PlayerState& /* result */)>
+  /**
+   * Specialized version of `std::function<void(const PlayerState&)>`.
+   */
+  using Func_void_PlayerState = std::function<void(const PlayerState& /* result */)>;
+  /**
+   * Wrapper class for a `std::function<void(const PlayerState& / * result * /)>`, this can be used from Swift.
+   */
+  class Func_void_PlayerState_Wrapper final {
+  public:
+    explicit Func_void_PlayerState_Wrapper(std::function<void(const PlayerState& /* result */)>&& func): _function(std::make_unique<std::function<void(const PlayerState& /* result */)>>(std::move(func))) {}
+    inline void call(PlayerState result) const noexcept {
+      _function->operator()(result);
+    }
+  private:
+    std::unique_ptr<std::function<void(const PlayerState& /* result */)>> _function;
+  } SWIFT_NONCOPYABLE;
+  Func_void_PlayerState create_Func_void_PlayerState(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_PlayerState_Wrapper wrap_Func_void_PlayerState(Func_void_PlayerState value) noexcept {
+    return Func_void_PlayerState_Wrapper(std::move(value));
   }
   
   // pragma MARK: std::optional<bool>
@@ -510,22 +636,31 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
   using std__weak_ptr_HybridTrackPlayerSpec_ = std::weak_ptr<HybridTrackPlayerSpec>;
   inline std__weak_ptr_HybridTrackPlayerSpec_ weakify_std__shared_ptr_HybridTrackPlayerSpec_(const std::shared_ptr<HybridTrackPlayerSpec>& strong) noexcept { return strong; }
   
-  // pragma MARK: Result<std::vector<TrackItem>>
-  using Result_std__vector_TrackItem__ = Result<std::vector<TrackItem>>;
-  inline Result_std__vector_TrackItem__ create_Result_std__vector_TrackItem__(const std::vector<TrackItem>& value) noexcept {
-    return Result<std::vector<TrackItem>>::withValue(value);
+  // pragma MARK: Result<std::shared_ptr<Promise<void>>>
+  using Result_std__shared_ptr_Promise_void___ = Result<std::shared_ptr<Promise<void>>>;
+  inline Result_std__shared_ptr_Promise_void___ create_Result_std__shared_ptr_Promise_void___(const std::shared_ptr<Promise<void>>& value) noexcept {
+    return Result<std::shared_ptr<Promise<void>>>::withValue(value);
   }
-  inline Result_std__vector_TrackItem__ create_Result_std__vector_TrackItem__(const std::exception_ptr& error) noexcept {
-    return Result<std::vector<TrackItem>>::withError(error);
+  inline Result_std__shared_ptr_Promise_void___ create_Result_std__shared_ptr_Promise_void___(const std::exception_ptr& error) noexcept {
+    return Result<std::shared_ptr<Promise<void>>>::withError(error);
   }
   
-  // pragma MARK: Result<PlayerState>
-  using Result_PlayerState_ = Result<PlayerState>;
-  inline Result_PlayerState_ create_Result_PlayerState_(const PlayerState& value) noexcept {
-    return Result<PlayerState>::withValue(value);
+  // pragma MARK: Result<std::shared_ptr<Promise<std::vector<TrackItem>>>>
+  using Result_std__shared_ptr_Promise_std__vector_TrackItem____ = Result<std::shared_ptr<Promise<std::vector<TrackItem>>>>;
+  inline Result_std__shared_ptr_Promise_std__vector_TrackItem____ create_Result_std__shared_ptr_Promise_std__vector_TrackItem____(const std::shared_ptr<Promise<std::vector<TrackItem>>>& value) noexcept {
+    return Result<std::shared_ptr<Promise<std::vector<TrackItem>>>>::withValue(value);
   }
-  inline Result_PlayerState_ create_Result_PlayerState_(const std::exception_ptr& error) noexcept {
-    return Result<PlayerState>::withError(error);
+  inline Result_std__shared_ptr_Promise_std__vector_TrackItem____ create_Result_std__shared_ptr_Promise_std__vector_TrackItem____(const std::exception_ptr& error) noexcept {
+    return Result<std::shared_ptr<Promise<std::vector<TrackItem>>>>::withError(error);
+  }
+  
+  // pragma MARK: Result<std::shared_ptr<Promise<PlayerState>>>
+  using Result_std__shared_ptr_Promise_PlayerState___ = Result<std::shared_ptr<Promise<PlayerState>>>;
+  inline Result_std__shared_ptr_Promise_PlayerState___ create_Result_std__shared_ptr_Promise_PlayerState___(const std::shared_ptr<Promise<PlayerState>>& value) noexcept {
+    return Result<std::shared_ptr<Promise<PlayerState>>>::withValue(value);
+  }
+  inline Result_std__shared_ptr_Promise_PlayerState___ create_Result_std__shared_ptr_Promise_PlayerState___(const std::exception_ptr& error) noexcept {
+    return Result<std::shared_ptr<Promise<PlayerState>>>::withError(error);
   }
   
   // pragma MARK: Result<bool>

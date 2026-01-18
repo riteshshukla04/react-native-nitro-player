@@ -10,6 +10,7 @@ package com.margelo.nitro.nitroplayer
 import androidx.annotation.Keep
 import com.facebook.jni.HybridData
 import com.facebook.proguard.annotations.DoNotStrip
+import com.margelo.nitro.core.Promise
 import com.margelo.nitro.core.HybridObject
 
 /**
@@ -55,7 +56,7 @@ abstract class HybridTrackPlayerSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
-  abstract fun playSong(songId: String, fromPlaylist: String?): Unit
+  abstract fun playSong(songId: String, fromPlaylist: String?): Promise<Unit>
   
   @DoNotStrip
   @Keep
@@ -71,19 +72,19 @@ abstract class HybridTrackPlayerSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
-  abstract fun addToUpNext(trackId: String): Unit
+  abstract fun addToUpNext(trackId: String): Promise<Unit>
   
   @DoNotStrip
   @Keep
-  abstract fun playNext(trackId: String): Unit
+  abstract fun playNext(trackId: String): Promise<Unit>
   
   @DoNotStrip
   @Keep
-  abstract fun getActualQueue(): Array<TrackItem>
+  abstract fun getActualQueue(): Promise<Array<TrackItem>>
   
   @DoNotStrip
   @Keep
-  abstract fun getState(): PlayerState
+  abstract fun getState(): Promise<PlayerState>
   
   @DoNotStrip
   @Keep

@@ -55,11 +55,11 @@ export function useActualQueue(): UseActualQueueResult {
   const [isLoading, setIsLoading] = useState(true)
   const isMounted = useRef(true)
 
-  const updateQueue = useCallback(() => {
+  const updateQueue = useCallback(async () => {
     if (!isMounted.current) return
 
     try {
-      const actualQueue = TrackPlayer.getActualQueue()
+      const actualQueue = await TrackPlayer.getActualQueue()
       if (isMounted.current) {
         setQueue(actualQueue)
         setIsLoading(false)

@@ -25,6 +25,7 @@ namespace margelo::nitro::nitroplayer { struct PlayerConfig; }
 // Forward declaration of `Reason` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class Reason; }
 
+#include <NitroModules/Promise.hpp>
 #include <string>
 #include <optional>
 #include "TrackItem.hpp"
@@ -94,11 +95,13 @@ namespace margelo::nitro::nitroplayer {
         std::rethrow_exception(__result.error());
       }
     }
-    inline void playSong(const std::string& songId, const std::optional<std::string>& fromPlaylist) override {
+    inline std::shared_ptr<Promise<void>> playSong(const std::string& songId, const std::optional<std::string>& fromPlaylist) override {
       auto __result = _swiftPart.playSong(songId, fromPlaylist);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
+      auto __value = std::move(__result.value());
+      return __value;
     }
     inline void skipToNext() override {
       auto __result = _swiftPart.skipToNext();
@@ -118,19 +121,23 @@ namespace margelo::nitro::nitroplayer {
         std::rethrow_exception(__result.error());
       }
     }
-    inline void addToUpNext(const std::string& trackId) override {
+    inline std::shared_ptr<Promise<void>> addToUpNext(const std::string& trackId) override {
       auto __result = _swiftPart.addToUpNext(trackId);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
+      auto __value = std::move(__result.value());
+      return __value;
     }
-    inline void playNext(const std::string& trackId) override {
+    inline std::shared_ptr<Promise<void>> playNext(const std::string& trackId) override {
       auto __result = _swiftPart.playNext(trackId);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
+      auto __value = std::move(__result.value());
+      return __value;
     }
-    inline std::vector<TrackItem> getActualQueue() override {
+    inline std::shared_ptr<Promise<std::vector<TrackItem>>> getActualQueue() override {
       auto __result = _swiftPart.getActualQueue();
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
@@ -138,7 +145,7 @@ namespace margelo::nitro::nitroplayer {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline PlayerState getState() override {
+    inline std::shared_ptr<Promise<PlayerState>> getState() override {
       auto __result = _swiftPart.getState();
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());

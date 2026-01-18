@@ -44,6 +44,7 @@ namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 #include "TrackItem.hpp"
 #include "TrackPlayerState.hpp"
 #include <NitroModules/Null.hpp>
+#include <NitroModules/Promise.hpp>
 #include <NitroModules/Result.hpp>
 #include <exception>
 #include <functional>

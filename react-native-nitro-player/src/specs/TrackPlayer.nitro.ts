@@ -60,14 +60,14 @@ export interface TrackPlayer
   extends HybridObject<{ android: 'kotlin'; ios: 'swift' }> {
   play(): void
   pause(): void
-  playSong(songId: string, fromPlaylist?: string): void
+  playSong(songId: string, fromPlaylist?: string): Promise<void>
   skipToNext(): void
   skipToPrevious(): void
   seek(position: number): void
-  addToUpNext(trackId: string): void
-  playNext(trackId: string): void
-  getActualQueue(): TrackItem[]
-  getState(): PlayerState
+  addToUpNext(trackId: string): Promise<void>
+  playNext(trackId: string): Promise<void>
+  getActualQueue(): Promise<TrackItem[]>
+  getState(): Promise<PlayerState>
   setRepeatMode(mode: RepeatMode): boolean
   configure(config: PlayerConfig): void
   onChangeTrack(callback: (track: TrackItem, reason?: Reason) => void): void

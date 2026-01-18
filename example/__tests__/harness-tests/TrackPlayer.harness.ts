@@ -78,14 +78,14 @@ describe('TrackPlayer - Comprehensive Tests', () => {
     // ============================================
 
     describe('playNext (LIFO)', () => {
-        it('should add single track to play-next stack', () => {
+        it('should add single track to play-next stack', async () => {
             PlayerQueue.loadPlaylist(playlist1Id);
-            TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
 
             // Add track from playlist 2 to play next
-            TrackPlayer.playNext('4');
+            await TrackPlayer.playNext('4');
 
-            const queue = TrackPlayer.getActualQueue();
+            const queue = await TrackPlayer.getActualQueue();
 
             // Queue should be: [1 (current), 4 (playNext), 2, 3, ...]
             expect(queue.length).toBeGreaterThan(2);
@@ -94,16 +94,16 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             expect(queue[2].id).toBe('2'); // Next original track
         });
 
-        it('should add multiple tracks in LIFO order (last added plays first)', () => {
+        it('should add multiple tracks in LIFO order (last added plays first)', async () => {
             PlayerQueue.loadPlaylist(playlist1Id);
-            TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
 
             // Add tracks in order - using tracks from playlist2 and playlist3
-            TrackPlayer.playNext('4'); // From playlist2 - Will play 3rd
-            TrackPlayer.playNext('5'); // From playlist2 - Will play 2nd
-            TrackPlayer.playNext('p3-1'); // From playlist3 - Will play 1st (most recent)
+            await TrackPlayer.playNext('4'); // From playlist2 - Will play 3rd
+            await TrackPlayer.playNext('5'); // From playlist2 - Will play 2nd
+            await TrackPlayer.playNext('p3-1'); // From playlist3 - Will play 1st (most recent)
 
-            const queue = TrackPlayer.getActualQueue();
+            const queue = await TrackPlayer.getActualQueue();
 
             // Queue should be: [1 (current), p3-1, 5, 4, 2, 3, ...]
             expect(queue[0].id).toBe('1');
@@ -113,16 +113,16 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             expect(queue[4].id).toBe('2'); // Original playlist continues
         });
 
-        it('should add playNext tracks from different playlists', () => {
+        it('should add playNext tracks from different playlists', async () => {
             PlayerQueue.loadPlaylist(playlist1Id);
-            TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
 
             // Add tracks from different playlists
-            TrackPlayer.playNext('4'); // From playlist2
-            TrackPlayer.playNext('p3-1'); // From playlist3
-            TrackPlayer.playNext('5'); // From playlist2
+            await TrackPlayer.playNext('4'); // From playlist2
+            await TrackPlayer.playNext('p3-1'); // From playlist3
+            await TrackPlayer.playNext('5'); // From playlist2
 
-            const queue = TrackPlayer.getActualQueue();
+            const queue = await TrackPlayer.getActualQueue();
 
             // LIFO order: 5, p3-1, 4
             expect(queue[1].id).toBe('5');
@@ -130,17 +130,17 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             expect(queue[3].id).toBe('4');
         });
 
-        it('should clear playNext stack when loading new playlist', () => {
+        it('should clear playNext stack when loading new playlist', async () => {
             PlayerQueue.loadPlaylist(playlist1Id);
-            TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
 
-            TrackPlayer.playNext('4');
-            TrackPlayer.playNext('5');
+            await TrackPlayer.playNext('4');
+            await TrackPlayer.playNext('5');
 
             // Load different playlist - should clear playNext
             PlayerQueue.loadPlaylist(playlist2Id);
 
-            const queue = TrackPlayer.getActualQueue();
+            const queue = await TrackPlayer.getActualQueue();
 
             // Should only have playlist2 tracks, no playNext tracks
             expect(queue.every(track => ['4', '5'].includes(track.id))).toBe(true);
@@ -152,29 +152,29 @@ describe('TrackPlayer - Comprehensive Tests', () => {
     // ============================================
 
     describe('addToUpNext (FIFO)', () => {
-        it('should add single track to up-next queue', () => {
+        it('should add single track to up-next queue', async () => {
             PlayerQueue.loadPlaylist(playlist1Id);
-            TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
 
-            TrackPlayer.addToUpNext('4');
+            await TrackPlayer.addToUpNext('4');
 
-            const queue = TrackPlayer.getActualQueue();
+            const queue = await TrackPlayer.getActualQueue();
 
             // Queue should have track 4 after current track
             expect(queue[0].id).toBe('1');
             expect(queue.some(t => t.id === '4')).toBe(true);
         });
 
-        it('should add multiple tracks in FIFO order (first added plays first)', () => {
+        it('should add multiple tracks in FIFO order (first added plays first)', async () => {
             PlayerQueue.loadPlaylist(playlist1Id);
-            TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
 
             // Add tracks in order: song-4, song-5, p3-1
-            TrackPlayer.addToUpNext('4'); // Will play 1st
-            TrackPlayer.addToUpNext('5'); // Will play 2nd
-            TrackPlayer.addToUpNext('p3-1'); // Will play 3rd
+            await TrackPlayer.addToUpNext('4'); // Will play 1st
+            await TrackPlayer.addToUpNext('5'); // Will play 2nd
+            await TrackPlayer.addToUpNext('p3-1'); // Will play 3rd
 
-            const queue = TrackPlayer.getActualQueue();
+            const queue = await TrackPlayer.getActualQueue();
 
             // Find the upNext tracks in queue
             const track4Index = queue.findIndex(t => t.id === '4');
@@ -186,16 +186,16 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             expect(track5Index).toBeLessThan(trackP3Index);
         });
 
-        it('should add upNext tracks from different playlists', () => {
+        it('should add upNext tracks from different playlists', async () => {
             PlayerQueue.loadPlaylist(playlist1Id);
-            TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
 
             // Add tracks from different playlists
-            TrackPlayer.addToUpNext('4'); // From playlist2
-            TrackPlayer.addToUpNext('p3-1'); // From playlist3
-            TrackPlayer.addToUpNext('5'); // From playlist2
+            await TrackPlayer.addToUpNext('4'); // From playlist2
+            await TrackPlayer.addToUpNext('p3-1'); // From playlist3
+            await TrackPlayer.addToUpNext('5'); // From playlist2
 
-            const queue = TrackPlayer.getActualQueue();
+            const queue = await TrackPlayer.getActualQueue();
 
             // FIFO order: 4, p3-1, 5
             const track4Index = queue.findIndex(t => t.id === '4');
@@ -206,17 +206,17 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             expect(trackP3Index).toBeLessThan(track5Index);
         });
 
-        it('should clear upNext queue when loading new playlist', () => {
+        it('should clear upNext queue when loading new playlist', async () => {
             PlayerQueue.loadPlaylist(playlist1Id);
-            TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
 
-            TrackPlayer.addToUpNext('4');
-            TrackPlayer.addToUpNext('5');
+            await TrackPlayer.addToUpNext('4');
+            await TrackPlayer.addToUpNext('5');
 
             // Load different playlist - should clear upNext
             PlayerQueue.loadPlaylist(playlist2Id);
 
-            const queue = TrackPlayer.getActualQueue();
+            const queue = await TrackPlayer.getActualQueue();
 
             // Should only have playlist2 tracks
             expect(queue.every(track => ['4', '5'].includes(track.id))).toBe(true);
@@ -228,21 +228,21 @@ describe('TrackPlayer - Comprehensive Tests', () => {
     // // ============================================
 
     describe('Combined playNext + upNext', () => {
-        it('should maintain correct queue order: current → playNext(LIFO) → upNext(FIFO) → remaining', () => {
+        it('should maintain correct queue order: current → playNext(LIFO) → upNext(FIFO) → remaining', async () => {
             PlayerQueue.loadPlaylist(playlist1Id);
-            TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
 
             // Add playNext tracks (LIFO)
-            TrackPlayer.playNext('p3-1'); // Will be 3rd in playNext
-            TrackPlayer.playNext('p3-2'); // Will be 2nd in playNext
-            TrackPlayer.playNext('p3-3'); // Will be 1st in playNext (most recent)
+            await TrackPlayer.playNext('p3-1'); // Will be 3rd in playNext
+            await TrackPlayer.playNext('p3-2'); // Will be 2nd in playNext
+            await TrackPlayer.playNext('p3-3'); // Will be 1st in playNext (most recent)
 
             // Add upNext tracks (FIFO)
-            TrackPlayer.addToUpNext('4'); // Will be 1st in upNext
-            TrackPlayer.addToUpNext('5'); // Will be 2nd in upNext
-            TrackPlayer.addToUpNext('p3-2'); // Will be 3rd in upNext (using p3-2 instead of non-existent 6)
+            await TrackPlayer.addToUpNext('4'); // Will be 1st in upNext
+            await TrackPlayer.addToUpNext('5'); // Will be 2nd in upNext
+            await TrackPlayer.addToUpNext('p3-2'); // Will be 3rd in upNext (using p3-2 instead of non-existent 6)
 
-            const queue = TrackPlayer.getActualQueue();
+            const queue = await TrackPlayer.getActualQueue();
 
             // Expected order: [1, p3-3, p3-2, p3-1, 4, 5, p3-2, 2, 3, ...]
             // Note: p3-2 appears twice - once in playNext stack, once in upNext queue
@@ -263,18 +263,18 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             expect(queue[7].id).toBe('2');
         });
 
-        it('should handle complex cross-playlist scenario', () => {
+        it('should handle complex cross-playlist scenario', async () => {
             PlayerQueue.loadPlaylist(playlist1Id);
-            TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
 
             // Mix playNext and upNext from all 3 playlists
-            TrackPlayer.playNext('4'); // playlist2
-            TrackPlayer.addToUpNext('p3-1'); // playlist3
-            TrackPlayer.playNext('2'); // playlist1
-            TrackPlayer.addToUpNext('5'); // playlist2
-            TrackPlayer.playNext('p3-2'); // playlist3
+            await TrackPlayer.playNext('4'); // playlist2
+            await TrackPlayer.addToUpNext('p3-1'); // playlist3
+            await TrackPlayer.playNext('2'); // playlist1
+            await TrackPlayer.addToUpNext('5'); // playlist2
+            await TrackPlayer.playNext('p3-2'); // playlist3
 
-            const queue = TrackPlayer.getActualQueue();
+            const queue = await TrackPlayer.getActualQueue();
 
             // PlayNext (LIFO): p3-2, 2, 4
             // UpNext (FIFO): p3-1, 5
@@ -304,7 +304,7 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             PlayerQueue.loadPlaylist(playlist1Id);
             await waitForNextTick();
 
-            TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
             await waitForNextTick();
 
             TrackPlayer.skipToNext();
@@ -322,7 +322,7 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             });
 
 
-            TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
             await waitForNextTick();
 
             expect(changedTracks.some(t => t.id === '1')).toBe(true);
@@ -368,7 +368,7 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             });
 
             PlayerQueue.loadPlaylist(playlist1Id);
-            TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
             await waitForNextTick();
 
             TrackPlayer.seek(30);
@@ -381,7 +381,7 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             const listener1Tracks: TrackItem[] = [];
             const listener2Tracks: TrackItem[] = [];
 
-            
+
             TrackPlayer.onChangeTrack((track) => {
                 listener1Tracks.push(track);
             });
@@ -389,7 +389,7 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             TrackPlayer.onChangeTrack((track) => {
                 listener2Tracks.push(track);
             });
-            TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
 
             await waitForNextTick();
             expect(listener1Tracks.length).toBeGreaterThan(0);
@@ -428,87 +428,87 @@ describe('TrackPlayer - Comprehensive Tests', () => {
     // // ============================================
 
     describe('Playback Controls', () => {
-        it('should play and pause correctly', () => {
+        it('should play and pause correctly', async () => {
             PlayerQueue.loadPlaylist(playlist1Id);
 
             TrackPlayer.play();
-            let state = TrackPlayer.getState();
+            let state = await TrackPlayer.getState();
             expect(state.currentState).toBe('playing');
 
             TrackPlayer.pause();
-            state = TrackPlayer.getState();
+            state = await TrackPlayer.getState();
             expect(state.currentState).toBe('paused');
         });
 
-        it('should skip to next track', () => {
+        it('should skip to next track', async () => {
             PlayerQueue.loadPlaylist(playlist1Id);
-            TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
 
             TrackPlayer.skipToNext();
 
-            const state = TrackPlayer.getState();
+            const state = await TrackPlayer.getState();
             expect(state.currentTrack?.id).toBe('2');
         });
 
-        it('should skip to previous track', () => {
+        it('should skip to previous track', async () => {
             PlayerQueue.loadPlaylist(playlist1Id);
-            TrackPlayer.playSong('2', playlist1Id);
+            await TrackPlayer.playSong('2', playlist1Id);
 
             TrackPlayer.skipToPrevious();
 
-            const state = TrackPlayer.getState();
+            const state = await TrackPlayer.getState();
             expect(state.currentTrack?.id).toBe('1');
         });
 
-        it('should seek to position', () => {
+        it('should seek to position', async () => {
             PlayerQueue.loadPlaylist(playlist1Id);
-            TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
 
             TrackPlayer.seek(30);
 
             // Position should be around 30 seconds
-            const state = TrackPlayer.getState();
+            const state = await TrackPlayer.getState();
             expect(state.currentPosition).toBeGreaterThanOrEqual(29);
             expect(state.currentPosition).toBeLessThanOrEqual(31);
         });
 
-        it('should set repeat mode to off', () => {
+        it('should set repeat mode to off', async () => {
             const success = TrackPlayer.setRepeatMode('off');
             expect(success).toBe(true);
         });
 
-        it('should set repeat mode to Playlist', () => {
+        it('should set repeat mode to Playlist', async () => {
             const success = TrackPlayer.setRepeatMode('Playlist');
             expect(success).toBe(true);
         });
 
-        it('should set repeat mode to track', () => {
+        it('should set repeat mode to track', async () => {
             const success = TrackPlayer.setRepeatMode('track');
             expect(success).toBe(true);
         });
 
-        it('should set volume to 50%', () => {
+        it('should set volume to 50%', async () => {
             const success = TrackPlayer.setVolume(50);
             expect(success).toBe(true);
         });
 
-        it('should set volume to 0 (mute)', () => {
+        it('should set volume to 0 (mute)', async () => {
             const success = TrackPlayer.setVolume(0);
             expect(success).toBe(true);
         });
 
-        it('should set volume to 100 (max)', () => {
+        it('should set volume to 100 (max)', async () => {
             const success = TrackPlayer.setVolume(100);
             expect(success).toBe(true);
         });
 
-        it('should clamp volume below 0', () => {
+        it('should clamp volume below 0', async () => {
             const success = TrackPlayer.setVolume(-10);
             expect(success).toBe(true);
             // Volume should be clamped to 0
         });
 
-        it('should clamp volume above 100', () => {
+        it('should clamp volume above 100', async () => {
             const success = TrackPlayer.setVolume(150);
             expect(success).toBe(true);
             // Volume should be clamped to 100
@@ -520,48 +520,48 @@ describe('TrackPlayer - Comprehensive Tests', () => {
     // // ============================================
 
     describe('State Management', () => {
-        it('should return correct state after loading playlist', () => {
+        it('should return correct state after loading playlist', async () => {
             PlayerQueue.loadPlaylist(playlist1Id);
 
-            const state = TrackPlayer.getState();
+            const state = await TrackPlayer.getState();
             expect(state.currentPlaylistId).toBe(playlist1Id);
         });
 
-        it('should return correct state after playing song', () => {
-            TrackPlayer.playSong('1', playlist1Id);
+        it('should return correct state after playing song', async () => {
+            await TrackPlayer.playSong('1', playlist1Id);
 
-            const state = TrackPlayer.getState();
+            const state = await TrackPlayer.getState();
             expect(state.currentTrack?.id).toBe('1');
             expect(state.currentPlaylistId).toBe(playlist1Id);
         });
 
-        it('should return correct actual queue', () => {
+        it('should return correct actual queue', async () => {
             PlayerQueue.loadPlaylist(playlist1Id);
 
-            const queue = TrackPlayer.getActualQueue();
+            const queue = await TrackPlayer.getActualQueue();
             expect(queue.length).toBe(sampleTracks1.length);
             expect(queue[0].id).toBe('1');
         });
 
-        it('should update state after skip', () => {
+        it('should update state after skip', async () => {
             PlayerQueue.loadPlaylist(playlist1Id);
-            TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
 
             TrackPlayer.skipToNext();
 
-            const state = TrackPlayer.getState();
+            const state = await TrackPlayer.getState();
             expect(state.currentTrack?.id).toBe('2');
             expect(state.currentIndex).toBe(1);
         });
 
-        it('should maintain playlist ID across track changes', () => {
+        it('should maintain playlist ID across track changes', async () => {
             PlayerQueue.loadPlaylist(playlist1Id);
-            TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
 
             TrackPlayer.skipToNext();
             TrackPlayer.skipToNext();
 
-            const state = TrackPlayer.getState();
+            const state = await TrackPlayer.getState();
             expect(state.currentPlaylistId).toBe(playlist1Id);
         });
     });
@@ -571,29 +571,25 @@ describe('TrackPlayer - Comprehensive Tests', () => {
     // // ============================================
 
     describe('Edge Cases', () => {
-        it('should handle playNext with non-existent track ID', () => {
+        it('should handle playNext with non-existent track ID', async () => {
             PlayerQueue.loadPlaylist(playlist1Id);
-            TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
 
             // This should not crash
-            expect(() => {
-                TrackPlayer.playNext('non-existent-id');
-            }).not.toThrow();
+            await expect(TrackPlayer.playNext('non-existent-id')).resolves.not.toThrow();
         });
 
-        it('should handle addToUpNext with non-existent track ID', () => {
+        it('should handle addToUpNext with non-existent track ID', async () => {
             PlayerQueue.loadPlaylist(playlist1Id);
-            TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
 
             // This should not crash
-            expect(() => {
-                TrackPlayer.addToUpNext('non-existent-id');
-            }).not.toThrow();
+            await expect(TrackPlayer.addToUpNext('non-existent-id')).resolves.not.toThrow();
         });
 
-        it('should handle seek beyond track duration', () => {
+        it('should handle seek beyond track duration', async () => {
             PlayerQueue.loadPlaylist(playlist1Id);
-            TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
 
             // Seek to 1000 seconds (beyond duration)
             expect(() => {
@@ -601,12 +597,12 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             }).not.toThrow();
         });
 
-        it('should handle skip at last track with repeat off', () => {
+        it('should handle skip at last track with repeat off', async () => {
             PlayerQueue.loadPlaylist(playlist1Id);
             TrackPlayer.setRepeatMode('off');
 
             // Play last track
-            TrackPlayer.playSong('3', playlist1Id);
+            await TrackPlayer.playSong('3', playlist1Id);
 
             // Skip to next should not crash
             expect(() => {
@@ -614,9 +610,9 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             }).not.toThrow();
         });
 
-        it('should handle skip at first track going previous', () => {
+        it('should handle skip at first track going previous', async () => {
             PlayerQueue.loadPlaylist(playlist1Id);
-            TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
 
             // Skip to previous should not crash
             expect(() => {

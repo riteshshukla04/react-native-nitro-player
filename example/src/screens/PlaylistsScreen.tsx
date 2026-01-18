@@ -133,19 +133,19 @@ export default function PlaylistsScreen() {
           <View style={commonStyles.section}>
             <Text style={commonStyles.sectionTitle}>Current Playlist Tracks</Text>
             {currentPlaylist.tracks.map((track, index) => (
-                <View key={track.id} style={styles.trackCard}>
-                  <Text style={styles.trackNumber}>{index + 1}.</Text>
-                  <View style={styles.trackInfo}>
-                    <Text style={styles.trackCardTitle}>{track.title}</Text>
-                    <Text style={styles.trackCardArtist}>{track.artist}</Text>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.iconButton}
-                    onPress={() => TrackPlayer.playSong(track.id)}>
-                    <Text>▶️</Text>
-                  </TouchableOpacity>
+              <View key={track.id} style={styles.trackCard}>
+                <Text style={styles.trackNumber}>{index + 1}.</Text>
+                <View style={styles.trackInfo}>
+                  <Text style={styles.trackCardTitle}>{track.title}</Text>
+                  <Text style={styles.trackCardArtist}>{track.artist}</Text>
                 </View>
-              ))}
+                <TouchableOpacity
+                  style={styles.iconButton}
+                  onPress={async () => await TrackPlayer.playSong(track.id)}>
+                  <Text>▶️</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
           </View>
         )}
       </ScrollView>

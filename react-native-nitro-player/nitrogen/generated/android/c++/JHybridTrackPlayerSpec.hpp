@@ -56,14 +56,14 @@ namespace margelo::nitro::nitroplayer {
     // Methods
     void play() override;
     void pause() override;
-    void playSong(const std::string& songId, const std::optional<std::string>& fromPlaylist) override;
+    std::shared_ptr<Promise<void>> playSong(const std::string& songId, const std::optional<std::string>& fromPlaylist) override;
     void skipToNext() override;
     void skipToPrevious() override;
     void seek(double position) override;
-    void addToUpNext(const std::string& trackId) override;
-    void playNext(const std::string& trackId) override;
-    std::vector<TrackItem> getActualQueue() override;
-    PlayerState getState() override;
+    std::shared_ptr<Promise<void>> addToUpNext(const std::string& trackId) override;
+    std::shared_ptr<Promise<void>> playNext(const std::string& trackId) override;
+    std::shared_ptr<Promise<std::vector<TrackItem>>> getActualQueue() override;
+    std::shared_ptr<Promise<PlayerState>> getState() override;
     bool setRepeatMode(RepeatMode mode) override;
     void configure(const PlayerConfig& config) override;
     void onChangeTrack(const std::function<void(const TrackItem& /* track */, std::optional<Reason> /* reason */)>& callback) override;

@@ -32,8 +32,10 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
     core.pause()
   }
 
-  func playSong(songId: String, fromPlaylist: String?) throws {
-    core.playSong(songId: songId, fromPlaylist: fromPlaylist)
+  func playSong(songId: String, fromPlaylist: String?) throws -> Promise<Void> {
+    return Promise.async {
+      self.core.playSong(songId: songId, fromPlaylist: fromPlaylist)
+    }
   }
 
   func skipToNext() throws {
@@ -48,20 +50,28 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
     core.seek(position: position)
   }
 
-  func addToUpNext(trackId: String) throws {
-    core.addToUpNext(trackId: trackId)
+  func addToUpNext(trackId: String) throws -> Promise<Void> {
+    return Promise.async {
+      self.core.addToUpNext(trackId: trackId)
+    }
   }
 
-  func playNext(trackId: String) throws {
-    core.playNext(trackId: trackId)
+  func playNext(trackId: String) throws -> Promise<Void> {
+    return Promise.async {
+      self.core.playNext(trackId: trackId)
+    }
   }
 
-  func getActualQueue() throws -> [TrackItem] {
-    return core.getActualQueue()
+  func getActualQueue() throws -> Promise<[TrackItem]> {
+    return Promise.async {
+      return self.core.getActualQueue()
+    }
   }
 
-  func getState() throws -> PlayerState {
-    return core.getState()
+  func getState() throws -> Promise<PlayerState> {
+    return Promise.async {
+      return self.core.getState()
+    }
   }
 
   func setRepeatMode(mode: RepeatMode) throws -> Bool {
