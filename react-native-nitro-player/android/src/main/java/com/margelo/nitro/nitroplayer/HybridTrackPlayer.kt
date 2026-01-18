@@ -30,11 +30,10 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
     override fun playSong(
         songId: String,
         fromPlaylist: String?,
-    ): Promise<Unit> {
-        return Promise.async {
+    ): Promise<Unit> =
+        Promise.async {
             core.playSong(songId, fromPlaylist)
         }
-    }
 
     @DoNotStrip
     @Keep
@@ -54,29 +53,25 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
         core.seek(position)
     }
 
-    override fun addToUpNext(trackId: String): Promise<Unit> {
-        return Promise.async {
+    override fun addToUpNext(trackId: String): Promise<Unit> =
+        Promise.async {
             core.addToUpNext(trackId)
         }
-    }
 
-    override fun playNext(trackId: String): Promise<Unit> {
-        return Promise.async {
+    override fun playNext(trackId: String): Promise<Unit> =
+        Promise.async {
             core.playNext(trackId)
         }
-    }
 
-    override fun getActualQueue(): Promise<Array<TrackItem>> {
-        return Promise.async {
+    override fun getActualQueue(): Promise<Array<TrackItem>> =
+        Promise.async {
             core.getActualQueue().toTypedArray()
         }
-    }
 
-    override fun getState(): Promise<PlayerState> {
-        return Promise.async {
+    override fun getState(): Promise<PlayerState> =
+        Promise.async {
             core.getState()
         }
-    }
 
     @DoNotStrip
     @Keep
