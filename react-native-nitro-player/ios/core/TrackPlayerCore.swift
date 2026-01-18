@@ -69,11 +69,32 @@ class TrackPlayerCore: NSObject {
     case upNext  // Currently in upNextQueue
   }
 
-  // Event callbacks - support multiple listeners
-  private var onChangeTrackListeners: [(TrackItem, Reason?) -> Void] = []
-  var onPlaybackStateChange: ((TrackPlayerState, Reason?) -> Void)?
-  var onSeek: ((Double, Double) -> Void)?
-  var onPlaybackProgressChange: ((Double, Double, Bool?) -> Void)?
+  // MARK: - Weak Callback Wrapper
+
+  /// Wrapper to hold callbacks with weak reference for auto-cleanup
+  private class WeakCallbackBox<T> {
+    private(set) weak var owner: AnyObject?
+    let callback: T
+
+    init(owner: AnyObject, callback: T) {
+      self.owner = owner
+      self.callback = callback
+    }
+
+    var isAlive: Bool { owner != nil }
+  }
+
+  // Event callbacks - support multiple listeners with auto-cleanup
+  private var onChangeTrackListeners: [WeakCallbackBox<(TrackItem, Reason?) -> Void>] = []
+  private var onPlaybackStateChangeListeners:
+    [WeakCallbackBox<(TrackPlayerState, Reason?) -> Void>] = []
+  private var onSeekListeners: [WeakCallbackBox<(Double, Double) -> Void>] = []
+  private var onPlaybackProgressChangeListeners:
+    [WeakCallbackBox<(Double, Double, Bool?) -> Void>] = []
+
+  // Thread-safe queue for listener access
+  private let listenersQueue = DispatchQueue(
+    label: "com.trackplayer.listeners", attributes: .concurrent)
 
   static let shared = TrackPlayerCore()
 
@@ -242,10 +263,10 @@ class TrackPlayerCore: NSObject {
     guard duration > 0 && !duration.isNaN && !duration.isInfinite else { return }
 
     print(
-      "⏱️ TrackPlayerCore: Boundary crossed - position: \(Int(position))s / \(Int(duration))s, callback exists: \(onPlaybackProgressChange != nil)"
+      "⏱️ TrackPlayerCore: Boundary crossed - position: \(Int(position))s / \(Int(duration))s, callback exists: \(!onPlaybackProgressChangeListeners.isEmpty)"
     )
 
-    onPlaybackProgressChange?(
+    notifyPlaybackProgress(
       position,
       duration,
       isManuallySeeked ? true : nil
@@ -332,19 +353,17 @@ class TrackPlayerCore: NSObject {
     }
 
     // Track ended naturally
-    for listener in onChangeTrackListeners {
-      listener(
-        getCurrentTrack()
-          ?? TrackItem(
-            id: "",
-            title: "",
-            artist: "",
-            album: "",
-            duration: 0,
-            url: "",
-            artwork: nil
-          ), .end)
-    }
+    notifyTrackChange(
+      getCurrentTrack()
+        ?? TrackItem(
+          id: "",
+          title: "",
+          artist: "",
+          album: "",
+          duration: 0,
+          url: "",
+          artwork: nil
+        ), .end)
 
     // Try to play next track
     skipToNext()
@@ -353,7 +372,7 @@ class TrackPlayerCore: NSObject {
   @objc private func playerItemFailedToPlayToEndTime(notification: Notification) {
     if let error = notification.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error {
       print("❌ TrackPlayerCore: Playback failed - \(error)")
-      onPlaybackStateChange?(.stopped, .error)
+      notifyPlaybackStateChange(.stopped, .error)
     }
   }
 
@@ -385,7 +404,7 @@ class TrackPlayerCore: NSObject {
     print("🎯 TrackPlayerCore: Time jumped (seek detected) - position: \(Int(position))s")
 
     // Call onSeek callback immediately
-    onSeek?(position, duration)
+    notifySeek(position, duration)
 
     // Mark that this was a manual seek
     isManuallySeeked = true
@@ -410,7 +429,7 @@ class TrackPlayerCore: NSObject {
         emitStateChange()
       } else if player.status == .failed {
         print("❌ TrackPlayerCore: Player failed")
-        onPlaybackStateChange?(.stopped, .error)
+        notifyPlaybackStateChange(.stopped, .error)
       }
     } else if keyPath == "rate" {
       print("👀 TrackPlayerCore: Rate changed to: \(player.rate)")
@@ -498,9 +517,7 @@ class TrackPlayerCore: NSObject {
         if let track = tempTrack {
           print("   🎵 Temporary track: \(track.title) - \(track.artist)")
           print("   📢 Emitting onChangeTrack for temporary track")
-          for listener in onChangeTrackListeners {
-            listener(track, .skip)
-          }
+          notifyTrackChange(track, .skip)
           mediaSessionManager?.onTrackChanged()
         }
       }
@@ -519,9 +536,7 @@ class TrackPlayerCore: NSObject {
           // This prevents duplicate emissions
           if oldIndex != index {
             print("   📢 Emitting onChangeTrack (index changed from \(oldIndex) to \(index))")
-            for listener in onChangeTrackListeners {
-              listener(track, .skip)
-            }
+            notifyTrackChange(track, .skip)
             mediaSessionManager?.onTrackChanged()
           } else {
             print("   ⏭️ Skipping onChangeTrack emission (index unchanged)")
@@ -557,7 +572,7 @@ class TrackPlayerCore: NSObject {
         self?.setupBoundaryTimeObserver()
       } else if item.status == .failed {
         print("❌ TrackPlayerCore: Item failed")
-        self?.onPlaybackStateChange?(.stopped, .error)
+        self?.notifyPlaybackStateChange(.stopped, .error)
       }
     }
     currentItemObservers.append(statusObserver)
@@ -660,8 +675,8 @@ class TrackPlayerCore: NSObject {
     }
 
     print("🔔 TrackPlayerCore: Emitting state change: \(state)")
-    print("🔔 TrackPlayerCore: Callback exists: \(onPlaybackStateChange != nil)")
-    onPlaybackStateChange?(state, reason)
+    print("🔔 TrackPlayerCore: Callback exists: \(!onPlaybackStateChangeListeners.isEmpty)")
+    notifyPlaybackStateChange(state, reason)
     mediaSessionManager?.onPlaybackStateChanged()
   }
 
@@ -799,10 +814,133 @@ class TrackPlayerCore: NSObject {
 
   // MARK: - Listener Registration
 
-  func addOnChangeTrackListener(_ listener: @escaping (TrackItem, Reason?) -> Void) {
-    onChangeTrackListeners.append(listener)
-    print(
-      "🎯 TrackPlayerCore: Added onChangeTrack listener (total: \(onChangeTrackListeners.count))")
+  func addOnChangeTrackListener(owner: AnyObject, _ listener: @escaping (TrackItem, Reason?) -> Void) {
+    let box = WeakCallbackBox(owner: owner, callback: listener)
+    listenersQueue.async(flags: .barrier) { [weak self] in
+      self?.onChangeTrackListeners.append(box)
+      print(
+        "🎯 TrackPlayerCore: Added onChangeTrack listener (total: \(self?.onChangeTrackListeners.count ?? 0))"
+      )
+    }
+  }
+
+  func addOnPlaybackStateChangeListener(
+    owner: AnyObject,
+    _ listener: @escaping (TrackPlayerState, Reason?) -> Void
+  ) {
+    let box = WeakCallbackBox(owner: owner, callback: listener)
+    listenersQueue.async(flags: .barrier) { [weak self] in
+      self?.onPlaybackStateChangeListeners.append(box)
+      print(
+        "🎯 TrackPlayerCore: Added onPlaybackStateChange listener (total: \(self?.onPlaybackStateChangeListeners.count ?? 0))"
+      )
+    }
+  }
+
+  func addOnSeekListener(owner: AnyObject, _ listener: @escaping (Double, Double) -> Void) {
+    let box = WeakCallbackBox(owner: owner, callback: listener)
+    listenersQueue.async(flags: .barrier) { [weak self] in
+      self?.onSeekListeners.append(box)
+      print("🎯 TrackPlayerCore: Added onSeek listener (total: \(self?.onSeekListeners.count ?? 0))")
+    }
+  }
+
+  func addOnPlaybackProgressChangeListener(
+    owner: AnyObject,
+    _ listener: @escaping (Double, Double, Bool?) -> Void
+  ) {
+    let box = WeakCallbackBox(owner: owner, callback: listener)
+    listenersQueue.async(flags: .barrier) { [weak self] in
+      self?.onPlaybackProgressChangeListeners.append(box)
+      print(
+        "🎯 TrackPlayerCore: Added onPlaybackProgressChange listener (total: \(self?.onPlaybackProgressChangeListeners.count ?? 0))"
+      )
+    }
+  }
+
+  // MARK: - Listener Notification Helpers
+  
+  private func notifyTrackChange(_ track: TrackItem, _ reason: Reason?) {
+    listenersQueue.async(flags: .barrier) { [weak self] in
+      guard let self = self else { return }
+      
+      // Remove dead listeners
+      self.onChangeTrackListeners.removeAll { !$0.isAlive }
+      
+      // Get live callbacks
+      let liveCallbacks = self.onChangeTrackListeners.compactMap {
+        $0.isAlive ? $0.callback : nil
+      }
+      
+      // Call on main thread
+      if !liveCallbacks.isEmpty {
+        DispatchQueue.main.async {
+          for callback in liveCallbacks {
+            callback(track, reason)
+          }
+        }
+      }
+    }
+  }
+  
+  private func notifyPlaybackStateChange(_ state: TrackPlayerState, _ reason: Reason?) {
+    listenersQueue.async(flags: .barrier) { [weak self] in
+      guard let self = self else { return }
+      
+      self.onPlaybackStateChangeListeners.removeAll { !$0.isAlive }
+      
+      let liveCallbacks = self.onPlaybackStateChangeListeners.compactMap {
+        $0.isAlive ? $0.callback : nil
+      }
+      
+      if !liveCallbacks.isEmpty {
+        DispatchQueue.main.async {
+          for callback in liveCallbacks {
+            callback(state, reason)
+          }
+        }
+      }
+    }
+  }
+  
+  private func notifySeek(_ position: Double, _ duration: Double) {
+    listenersQueue.async(flags: .barrier) { [weak self] in
+      guard let self = self else { return }
+      
+      self.onSeekListeners.removeAll { !$0.isAlive }
+      
+      let liveCallbacks = self.onSeekListeners.compactMap {
+        $0.isAlive ? $0.callback : nil
+      }
+      
+      if !liveCallbacks.isEmpty {
+        DispatchQueue.main.async {
+          for callback in liveCallbacks {
+            callback(position, duration)
+          }
+        }
+      }
+    }
+  }
+  
+  private func notifyPlaybackProgress(_ position: Double, _ duration: Double, _ isPlaying: Bool?) {
+    listenersQueue.async(flags: .barrier) { [weak self] in
+      guard let self = self else { return }
+      
+      self.onPlaybackProgressChangeListeners.removeAll { !$0.isAlive }
+      
+      let liveCallbacks = self.onPlaybackProgressChangeListeners.compactMap {
+        $0.isAlive ? $0.callback : nil
+      }
+      
+      if !liveCallbacks.isEmpty {
+        DispatchQueue.main.async {
+          for callback in liveCallbacks {
+            callback(position, duration, isPlaying)
+          }
+        }
+      }
+    }
   }
 
   // MARK: - State Management
@@ -899,9 +1037,7 @@ class TrackPlayerCore: NSObject {
     if let firstTrack = tracks.first {
       print("🎵 TrackPlayerCore: Emitting track change: \(firstTrack.title)")
       print("🎵 TrackPlayerCore: onChangeTrack callbacks count: \(onChangeTrackListeners.count)")
-      for listener in onChangeTrackListeners {
-        listener(firstTrack, nil)
-      }
+      notifyTrackChange(firstTrack, nil)
       mediaSessionManager?.onTrackChanged()
     }
 
@@ -1163,7 +1299,7 @@ class TrackPlayerCore: NSObject {
       print("   ⚠️ No more tracks in playlist")
       // At end of playlist - stop or loop
       queuePlayer.pause()
-      self.onPlaybackStateChange?(.stopped, .end)
+      self.notifyPlaybackStateChange(.stopped, .end)
     }
   }
 
@@ -1225,7 +1361,7 @@ class TrackPlayerCore: NSObject {
     player.seek(to: time) { [weak self] completed in
       if completed {
         let duration = player.currentItem?.duration.seconds ?? 0.0
-        self?.onSeek?(position, duration)
+        self?.notifySeek(position, duration)
       }
     }
   }
@@ -1416,9 +1552,7 @@ class TrackPlayerCore: NSObject {
     print("   ✅ Gapless queue recreated. Now at index: \(self.currentTrackIndex)")
     if let track = self.getCurrentTrack() {
       print("   🎵 Playing: \(track.title)")
-      for listener in self.onChangeTrackListeners {
-        listener(track, .skip)
-      }
+       notifyTrackChange(track, .skip)
       self.mediaSessionManager?.onTrackChanged()
     }
 

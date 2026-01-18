@@ -9,8 +9,12 @@ import NitroModules
 
 final class HybridPlayerQueue: HybridPlayerQueueSpec {
   private let playlistManager = PlaylistManager.shared
-  private var playlistsChangeListener: (() -> Void)?
-  private var playlistChangeListeners: [String: () -> Void] = [:]
+
+  // Static storage for callbacks to ensure they persist across HybridPlayerQueue instances
+  private static var playlistsChangeCallbacks: [([Playlist], QueueOperation?) -> Void] = []
+  private static var playlistChangeCallbacks: [(String, Playlist, QueueOperation?) -> Void] = []
+  private static var isPlaylistsListenerRegistered = false
+  private static var playlistListenerIds: Set<String> = []
 
   func createPlaylist(name: String, description: String?, artwork: String?) throws -> String {
     return playlistManager.createPlaylist(name: name, description: description, artwork: artwork)
@@ -72,24 +76,40 @@ final class HybridPlayerQueue: HybridPlayerQueueSpec {
   }
 
   func onPlaylistsChanged(callback: @escaping ([Playlist], QueueOperation?) -> Void) throws {
-    // Remove previous listener if exists
-    playlistsChangeListener?()
+    // Store callback in static storage so it persists across HybridPlayerQueue instances
+    HybridPlayerQueue.playlistsChangeCallbacks.append(callback)
 
-    // Add new listener
-    playlistsChangeListener = playlistManager.addPlaylistsChangeListener { playlists, operation in
-      callback(playlists.map { $0.toGeneratedPlaylist() }, operation)
+    // Register a single listener with PlaylistManager that dispatches to all callbacks
+    if !HybridPlayerQueue.isPlaylistsListenerRegistered {
+      HybridPlayerQueue.isPlaylistsListenerRegistered = true
+      _ = playlistManager.addPlaylistsChangeListener { playlists, operation in
+        let generatedPlaylists = playlists.map { $0.toGeneratedPlaylist() }
+        // Call all registered callbacks
+        for cb in HybridPlayerQueue.playlistsChangeCallbacks {
+          cb(generatedPlaylists, operation)
+        }
+      }
     }
   }
 
   func onPlaylistChanged(callback: @escaping (String, Playlist, QueueOperation?) -> Void) throws {
-    // Listen to all playlists
+    // Store callback in static storage so it persists across HybridPlayerQueue instances
+    HybridPlayerQueue.playlistChangeCallbacks.append(callback)
+
+    // Register listeners for all existing playlists (only once per playlist)
     let allPlaylists = playlistManager.getAllPlaylists()
     for playlist in allPlaylists {
-      let removeListener = playlistManager.addPlaylistChangeListener(playlistId: playlist.id) {
-        updatedPlaylist, operation in
-        callback(updatedPlaylist.id, updatedPlaylist.toGeneratedPlaylist(), operation)
+      if !HybridPlayerQueue.playlistListenerIds.contains(playlist.id) {
+        HybridPlayerQueue.playlistListenerIds.insert(playlist.id)
+        _ = playlistManager.addPlaylistChangeListener(playlistId: playlist.id) {
+          updatedPlaylist, operation in
+          let generatedPlaylist = updatedPlaylist.toGeneratedPlaylist()
+          // Call all registered callbacks
+          for cb in HybridPlayerQueue.playlistChangeCallbacks {
+            cb(updatedPlaylist.id, generatedPlaylist, operation)
+          }
+        }
       }
-      playlistChangeListeners[playlist.id] = removeListener
     }
   }
 }

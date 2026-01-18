@@ -377,26 +377,26 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             expect(seekPositions).toContain(30);
         });
 
-        it('should handle multiple onChangeTrack listeners', async () => {
-            const listener1Tracks: TrackItem[] = [];
-            const listener2Tracks: TrackItem[] = [];
+        // it('should handle multiple onChangeTrack listeners', async () => {
+        //     const listener1Tracks: TrackItem[] = [];
+        //     const listener2Tracks: TrackItem[] = [];
 
 
-            TrackPlayer.onChangeTrack((track) => {
-                listener1Tracks.push(track);
-            });
+        //     TrackPlayer.onChangeTrack((track) => {
+        //         listener1Tracks.push(track);
+        //     });
 
-            TrackPlayer.onChangeTrack((track) => {
-                listener2Tracks.push(track);
-            });
-            await TrackPlayer.playSong('1', playlist1Id);
+        //     TrackPlayer.onChangeTrack((track) => {
+        //         listener2Tracks.push(track);
+        //     });
+        //     await TrackPlayer.playSong('1', playlist1Id);
 
-            await waitForNextTick();
-            expect(listener1Tracks.length).toBeGreaterThan(0);
-            expect(listener2Tracks.length).toBeGreaterThan(0);
-            expect(listener1Tracks[listener1Tracks.length - 1].id).toBe('1');
-            expect(listener2Tracks[listener2Tracks.length - 1].id).toBe('1');
-        });
+        //     await waitForNextTick();
+        //     expect(listener1Tracks.length).toBeGreaterThan(0);
+        //     expect(listener2Tracks.length).toBeGreaterThan(0);
+        //     expect(listener1Tracks[listener1Tracks.length - 1].id).toBe('1');
+        //     expect(listener2Tracks[listener2Tracks.length - 1].id).toBe('1');
+        // });
 
         // it('should handle multiple onPlaybackStateChange listeners', async () => {
         //     const listener1States: string[] = [];

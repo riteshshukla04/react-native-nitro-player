@@ -27,6 +27,8 @@ import com.margelo.nitro.nitroplayer.media.MediaLibraryParser
 import com.margelo.nitro.nitroplayer.media.MediaSessionManager
 import com.margelo.nitro.nitroplayer.media.NitroPlayerMediaBrowserService
 import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
+import java.lang.ref.WeakReference
+import java.util.Collections
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
@@ -50,17 +52,30 @@ class TrackPlayerCore private constructor(
                 if (::player.isInitialized && player.playbackState != Player.STATE_IDLE) {
                     val position = player.currentPosition / 1000.0
                     val duration = if (player.duration > 0) player.duration / 1000.0 else 0.0
-                    onPlaybackProgressChangeListeners.forEach { it.invoke(position, duration, if (isManuallySeeked) true else null) }
+                    notifyPlaybackProgress(position, duration, if (isManuallySeeked) true else null)
                     isManuallySeeked = false
                 }
                 handler.postDelayed(this, 250) // Update every 250ms
             }
         }
 
-    private val onChangeTrackListeners = mutableListOf<(TrackItem, Reason?) -> Unit>()
-    private val onPlaybackStateChangeListeners = mutableListOf<(TrackPlayerState, Reason?) -> Unit>()
-    private val onSeekListeners = mutableListOf<(Double, Double) -> Unit>()
-    private val onPlaybackProgressChangeListeners = mutableListOf<(Double, Double, Boolean?) -> Unit>()
+    // Weak callback wrapper for auto-cleanup
+    private data class WeakCallbackBox<T>(
+        private val ownerRef: WeakReference<Any>,
+        val callback: T,
+    ) {
+        val isAlive: Boolean get() = ownerRef.get() != null
+    }
+
+    // Event listeners - support multiple listeners with auto-cleanup
+    private val onChangeTrackListeners =
+        Collections.synchronizedList(mutableListOf<WeakCallbackBox<(TrackItem, Reason?) -> Unit>>())
+    private val onPlaybackStateChangeListeners =
+        Collections.synchronizedList(mutableListOf<WeakCallbackBox<(TrackPlayerState, Reason?) -> Unit>>())
+    private val onSeekListeners =
+        Collections.synchronizedList(mutableListOf<WeakCallbackBox<(Double, Double) -> Unit>>())
+    private val onPlaybackProgressChangeListeners =
+        Collections.synchronizedList(mutableListOf<WeakCallbackBox<(Double, Double, Boolean?) -> Unit>>())
 
     // Temporary tracks for addToUpNext and playNext
     private var playNextStack: MutableList<TrackItem> = mutableListOf() // LIFO - last added plays first
@@ -240,7 +255,7 @@ class TrackPlayerCore private constructor(
                                     Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED -> Reason.USER_ACTION
                                     else -> null
                                 }
-                            onChangeTrackListeners.forEach { it.invoke(track, r) }
+                            notifyTrackChange(track, r)
                             mediaSessionManager?.onTrackChanged()
                         }
                     }
@@ -282,7 +297,7 @@ class TrackPlayerCore private constructor(
                     ) {
                         if (reason == Player.DISCONTINUITY_REASON_SEEK) {
                             isManuallySeeked = true
-                            onSeekListeners.forEach { it.invoke(newPosition.positionMs / 1000.0, player.duration / 1000.0) }
+                            notifySeek(newPosition.positionMs / 1000.0, player.duration / 1000.0)
                         }
                     }
                 },
@@ -386,7 +401,7 @@ class TrackPlayerCore private constructor(
             }
 
         val actualReason = reason ?: if (player.playbackState == Player.STATE_ENDED) Reason.END else null
-        onPlaybackStateChangeListeners.forEach { it.invoke(state, actualReason) }
+        notifyPlaybackStateChange(state, actualReason)
         mediaSessionManager?.onPlaybackStateChanged()
     }
 
@@ -990,19 +1005,109 @@ class TrackPlayerCore private constructor(
 
     // Add event listeners
     fun addOnChangeTrackListener(callback: (TrackItem, Reason?) -> Unit) {
-        onChangeTrackListeners.add(callback)
+        val box = WeakCallbackBox(WeakReference(this), callback)
+        onChangeTrackListeners.add(box)
     }
 
     fun addOnPlaybackStateChangeListener(callback: (TrackPlayerState, Reason?) -> Unit) {
-        onPlaybackStateChangeListeners.add(callback)
+        val box = WeakCallbackBox(WeakReference(this), callback)
+        onPlaybackStateChangeListeners.add(box)
     }
 
     fun addOnSeekListener(callback: (Double, Double) -> Unit) {
-        onSeekListeners.add(callback)
+        val box = WeakCallbackBox(WeakReference(this), callback)
+        onSeekListeners.add(box)
     }
 
     fun addOnPlaybackProgressChangeListener(callback: (Double, Double, Boolean?) -> Unit) {
-        onPlaybackProgressChangeListeners.add(callback)
+        val box = WeakCallbackBox(WeakReference(this), callback)
+        onPlaybackProgressChangeListeners.add(box)
+    }
+
+    // Notification helpers with auto-cleanup
+    private fun notifyTrackChange(
+        track: TrackItem,
+        reason: Reason?,
+    ) {
+        val liveCallbacks =
+            synchronized(onChangeTrackListeners) {
+                onChangeTrackListeners.removeAll { !it.isAlive }
+                onChangeTrackListeners.filter { it.isAlive }.map { it.callback }
+            }
+
+        handler.post {
+            for (callback in liveCallbacks) {
+                try {
+                    callback(track, reason)
+                } catch (e: Exception) {
+                    println("⚠️ Error in track change listener: ${e.message}")
+                }
+            }
+        }
+    }
+
+    private fun notifyPlaybackStateChange(
+        state: TrackPlayerState,
+        reason: Reason?,
+    ) {
+        val liveCallbacks =
+            synchronized(onPlaybackStateChangeListeners) {
+                onPlaybackStateChangeListeners.removeAll { !it.isAlive }
+                onPlaybackStateChangeListeners.filter { it.isAlive }.map { it.callback }
+            }
+
+        handler.post {
+            for (callback in liveCallbacks) {
+                try {
+                    callback(state, reason)
+                } catch (e: Exception) {
+                    println("⚠️ Error in playback state listener: ${e.message}")
+                }
+            }
+        }
+    }
+
+    private fun notifySeek(
+        position: Double,
+        duration: Double,
+    ) {
+        val liveCallbacks =
+            synchronized(onSeekListeners) {
+                onSeekListeners.removeAll { !it.isAlive }
+                onSeekListeners.filter { it.isAlive }.map { it.callback }
+            }
+
+        handler.post {
+            for (callback in liveCallbacks) {
+                try {
+                    callback(position, duration)
+                } catch (e: Exception) {
+                    println("⚠️ Error in seek listener: ${e.message}")
+                }
+            }
+        }
+    }
+
+    private fun notifyPlaybackProgress(
+        position: Double,
+        duration: Double,
+        isPlaying: Boolean?,
+    ) {
+        val liveCallbacks =
+            synchronized(onPlaybackProgressChangeListeners) {
+                onPlaybackProgressChangeListeners.removeAll { !it.isAlive }
+                onPlaybackProgressChangeListeners.filter { it.isAlive }.map { it.callback }
+            }
+
+        handler.post {
+            for (callback in liveCallbacks) {
+                try {
+                    callback(position, duration, isPlaying)
+                } catch (e: Exception) {
+                    println("⚠️ Error in playback progress listener: ${e.message}")
+                }
+            }
+        }
     }
 
     /**

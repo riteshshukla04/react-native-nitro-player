@@ -92,22 +92,22 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
 
   func onChangeTrack(callback: @escaping (TrackItem, Reason?) -> Void) throws {
     print("🎯 HybridTrackPlayer: onChangeTrack callback registered")
-    core.addOnChangeTrackListener(callback)
+    core.addOnChangeTrackListener(owner: self, callback)
   }
 
   func onPlaybackStateChange(callback: @escaping (TrackPlayerState, Reason?) -> Void) throws {
     print("🎯 HybridTrackPlayer: onPlaybackStateChange callback registered")
-    core.onPlaybackStateChange = callback
+    core.addOnPlaybackStateChangeListener(owner: self, callback)
   }
 
   func onSeek(callback: @escaping (Double, Double) -> Void) throws {
     print("🎯 HybridTrackPlayer: onSeek callback registered")
-    core.onSeek = callback
+    core.addOnSeekListener(owner: self, callback)
   }
 
   func onPlaybackProgressChange(callback: @escaping (Double, Double, Bool?) -> Void) throws {
     print("🎯 HybridTrackPlayer: onPlaybackProgressChange callback registered")
-    core.onPlaybackProgressChange = callback
+    core.addOnPlaybackProgressChangeListener(owner: self, callback)
   }
 
   // MARK: - Android Auto (iOS No-op)

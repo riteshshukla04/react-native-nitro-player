@@ -260,7 +260,8 @@ class PlaylistManager {
    * Load a playlist for playback (sets it as current)
    */
   func loadPlaylist(playlistId: String) -> Bool {
-    guard let playlist = queue.sync(execute: { playlists[playlistId] }) else {
+    let exists = queue.sync { playlists[playlistId] != nil }
+    guard exists else {
       return false
     }
 
@@ -326,18 +327,25 @@ class PlaylistManager {
   }
 
   private func notifyPlaylistsChanged(_ operation: QueueOperation?) {
-    let allPlaylists = queue.sync {
-      return Array(playlists.values)
+    let (allPlaylists, currentListeners) = queue.sync {
+      (Array(playlists.values), listeners)
     }
-    listeners.forEach { $0.1(allPlaylists, operation) }
+    DispatchQueue.main.async {
+      currentListeners.forEach { $0.1(allPlaylists, operation) }
+    }
   }
 
   private func notifyPlaylistChanged(_ playlistId: String, _ operation: QueueOperation?) {
-    guard let playlist = queue.sync(execute: { playlists[playlistId] }) else {
-      return
+    let result: (PlaylistModel, [(String, (PlaylistModel, QueueOperation?) -> Void)])? = queue.sync {
+      guard let p = playlists[playlistId] else { return nil }
+      return (p, playlistListeners[playlistId] ?? [])
     }
+    
+    guard let (playlist, currentListeners) = result else { return }
 
-    playlistListeners[playlistId]?.forEach { $0.1(playlist, operation) }
+    DispatchQueue.main.async {
+      currentListeners.forEach { $0.1(playlist, operation) }
+    }
   }
 
   private func savePlaylistsToUserDefaults() {
@@ -386,7 +394,6 @@ class PlaylistManager {
     }
 
     do {
-      let decoder = JSONDecoder()
       let playlistsDict = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] ?? []
 
       queue.sync {

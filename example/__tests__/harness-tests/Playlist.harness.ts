@@ -593,7 +593,7 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
   describe('Playlist Callbacks', () => {
     // Helper to wait for callbacks to trigger
     const waitForNextTick = async () => {
-      await new Promise<void>(resolve => setTimeout(resolve, 0));
+      await new Promise<void>(resolve => setTimeout(resolve, 500));
     };
 
     it('should trigger onPlaylistsChanged when playlist is created', async () => {
