@@ -814,7 +814,9 @@ class TrackPlayerCore: NSObject {
 
   // MARK: - Listener Registration
 
-  func addOnChangeTrackListener(owner: AnyObject, _ listener: @escaping (TrackItem, Reason?) -> Void) {
+  func addOnChangeTrackListener(
+    owner: AnyObject, _ listener: @escaping (TrackItem, Reason?) -> Void
+  ) {
     let box = WeakCallbackBox(owner: owner, callback: listener)
     listenersQueue.async(flags: .barrier) { [weak self] in
       self?.onChangeTrackListeners.append(box)
@@ -859,19 +861,19 @@ class TrackPlayerCore: NSObject {
   }
 
   // MARK: - Listener Notification Helpers
-  
+
   private func notifyTrackChange(_ track: TrackItem, _ reason: Reason?) {
     listenersQueue.async(flags: .barrier) { [weak self] in
       guard let self = self else { return }
-      
+
       // Remove dead listeners
       self.onChangeTrackListeners.removeAll { !$0.isAlive }
-      
+
       // Get live callbacks
       let liveCallbacks = self.onChangeTrackListeners.compactMap {
         $0.isAlive ? $0.callback : nil
       }
-      
+
       // Call on main thread
       if !liveCallbacks.isEmpty {
         DispatchQueue.main.async {
@@ -882,17 +884,17 @@ class TrackPlayerCore: NSObject {
       }
     }
   }
-  
+
   private func notifyPlaybackStateChange(_ state: TrackPlayerState, _ reason: Reason?) {
     listenersQueue.async(flags: .barrier) { [weak self] in
       guard let self = self else { return }
-      
+
       self.onPlaybackStateChangeListeners.removeAll { !$0.isAlive }
-      
+
       let liveCallbacks = self.onPlaybackStateChangeListeners.compactMap {
         $0.isAlive ? $0.callback : nil
       }
-      
+
       if !liveCallbacks.isEmpty {
         DispatchQueue.main.async {
           for callback in liveCallbacks {
@@ -902,17 +904,17 @@ class TrackPlayerCore: NSObject {
       }
     }
   }
-  
+
   private func notifySeek(_ position: Double, _ duration: Double) {
     listenersQueue.async(flags: .barrier) { [weak self] in
       guard let self = self else { return }
-      
+
       self.onSeekListeners.removeAll { !$0.isAlive }
-      
+
       let liveCallbacks = self.onSeekListeners.compactMap {
         $0.isAlive ? $0.callback : nil
       }
-      
+
       if !liveCallbacks.isEmpty {
         DispatchQueue.main.async {
           for callback in liveCallbacks {
@@ -922,17 +924,17 @@ class TrackPlayerCore: NSObject {
       }
     }
   }
-  
+
   private func notifyPlaybackProgress(_ position: Double, _ duration: Double, _ isPlaying: Bool?) {
     listenersQueue.async(flags: .barrier) { [weak self] in
       guard let self = self else { return }
-      
+
       self.onPlaybackProgressChangeListeners.removeAll { !$0.isAlive }
-      
+
       let liveCallbacks = self.onPlaybackProgressChangeListeners.compactMap {
         $0.isAlive ? $0.callback : nil
       }
-      
+
       if !liveCallbacks.isEmpty {
         DispatchQueue.main.async {
           for callback in liveCallbacks {
@@ -1552,7 +1554,7 @@ class TrackPlayerCore: NSObject {
     print("   ✅ Gapless queue recreated. Now at index: \(self.currentTrackIndex)")
     if let track = self.getCurrentTrack() {
       print("   🎵 Playing: \(track.title)")
-       notifyTrackChange(track, .skip)
+      notifyTrackChange(track, .skip)
       self.mediaSessionManager?.onTrackChanged()
     }
 

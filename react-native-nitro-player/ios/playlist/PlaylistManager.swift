@@ -336,11 +336,12 @@ class PlaylistManager {
   }
 
   private func notifyPlaylistChanged(_ playlistId: String, _ operation: QueueOperation?) {
-    let result: (PlaylistModel, [(String, (PlaylistModel, QueueOperation?) -> Void)])? = queue.sync {
+    let result: (PlaylistModel, [(String, (PlaylistModel, QueueOperation?) -> Void)])? = queue.sync
+    {
       guard let p = playlists[playlistId] else { return nil }
       return (p, playlistListeners[playlistId] ?? [])
     }
-    
+
     guard let (playlist, currentListeners) = result else { return }
 
     DispatchQueue.main.async {
