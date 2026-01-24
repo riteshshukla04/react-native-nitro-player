@@ -8,12 +8,36 @@
 #pragma once
 
 // Forward declarations of C++ defined types
+// Forward declaration of `DownloadConfig` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct DownloadConfig; }
+// Forward declaration of `DownloadErrorReason` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class DownloadErrorReason; }
+// Forward declaration of `DownloadError` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct DownloadError; }
+// Forward declaration of `DownloadProgress` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct DownloadProgress; }
+// Forward declaration of `DownloadQueueStatus` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct DownloadQueueStatus; }
+// Forward declaration of `DownloadState` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class DownloadState; }
+// Forward declaration of `DownloadStorageInfo` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct DownloadStorageInfo; }
+// Forward declaration of `DownloadTask` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct DownloadTask; }
+// Forward declaration of `DownloadedPlaylist` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct DownloadedPlaylist; }
+// Forward declaration of `DownloadedTrack` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct DownloadedTrack; }
 // Forward declaration of `HybridAudioRoutePickerSpec` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { class HybridAudioRoutePickerSpec; }
+// Forward declaration of `HybridDownloadManagerSpec` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { class HybridDownloadManagerSpec; }
 // Forward declaration of `HybridPlayerQueueSpec` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { class HybridPlayerQueueSpec; }
 // Forward declaration of `HybridTrackPlayerSpec` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { class HybridTrackPlayerSpec; }
+// Forward declaration of `PlaybackSource` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class PlaybackSource; }
 // Forward declaration of `PlayerConfig` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct PlayerConfig; }
 // Forward declaration of `PlayerState` to properly resolve imports.
@@ -26,21 +50,36 @@ namespace margelo::nitro::nitroplayer { enum class QueueOperation; }
 namespace margelo::nitro::nitroplayer { enum class Reason; }
 // Forward declaration of `RepeatMode` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class RepeatMode; }
+// Forward declaration of `StorageLocation` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class StorageLocation; }
 // Forward declaration of `TrackItem` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct TrackItem; }
 // Forward declaration of `TrackPlayerState` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 
 // Include C++ defined types
+#include "DownloadConfig.hpp"
+#include "DownloadError.hpp"
+#include "DownloadErrorReason.hpp"
+#include "DownloadProgress.hpp"
+#include "DownloadQueueStatus.hpp"
+#include "DownloadState.hpp"
+#include "DownloadStorageInfo.hpp"
+#include "DownloadTask.hpp"
+#include "DownloadedPlaylist.hpp"
+#include "DownloadedTrack.hpp"
 #include "HybridAudioRoutePickerSpec.hpp"
+#include "HybridDownloadManagerSpec.hpp"
 #include "HybridPlayerQueueSpec.hpp"
 #include "HybridTrackPlayerSpec.hpp"
+#include "PlaybackSource.hpp"
 #include "PlayerConfig.hpp"
 #include "PlayerState.hpp"
 #include "Playlist.hpp"
 #include "QueueOperation.hpp"
 #include "Reason.hpp"
 #include "RepeatMode.hpp"
+#include "StorageLocation.hpp"
 #include "TrackItem.hpp"
 #include "TrackPlayerState.hpp"
 #include <NitroModules/Null.hpp>
@@ -66,6 +105,8 @@ namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 // Forward declarations of Swift defined types
 // Forward declaration of `HybridAudioRoutePickerSpec_cxx` to properly resolve imports.
 namespace NitroPlayer { class HybridAudioRoutePickerSpec_cxx; }
+// Forward declaration of `HybridDownloadManagerSpec_cxx` to properly resolve imports.
+namespace NitroPlayer { class HybridDownloadManagerSpec_cxx; }
 // Forward declaration of `HybridPlayerQueueSpec_cxx` to properly resolve imports.
 namespace NitroPlayer { class HybridPlayerQueueSpec_cxx; }
 // Forward declaration of `HybridTrackPlayerSpec_cxx` to properly resolve imports.

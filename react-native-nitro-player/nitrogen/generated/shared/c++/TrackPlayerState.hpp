@@ -29,8 +29,8 @@ namespace margelo::nitro::nitroplayer {
    * An enum which can be represented as a JavaScript union (TrackPlayerState).
    */
   enum class TrackPlayerState {
-    PLAYING      SWIFT_NAME(playing) = 0,
-    PAUSED      SWIFT_NAME(paused) = 1,
+    PAUSED      SWIFT_NAME(paused) = 0,
+    PLAYING      SWIFT_NAME(playing) = 1,
     STOPPED      SWIFT_NAME(stopped) = 2,
   } CLOSED_ENUM;
 
@@ -44,8 +44,8 @@ namespace margelo::nitro {
     static inline margelo::nitro::nitroplayer::TrackPlayerState fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
       std::string unionValue = JSIConverter<std::string>::fromJSI(runtime, arg);
       switch (hashString(unionValue.c_str(), unionValue.size())) {
-        case hashString("playing"): return margelo::nitro::nitroplayer::TrackPlayerState::PLAYING;
         case hashString("paused"): return margelo::nitro::nitroplayer::TrackPlayerState::PAUSED;
+        case hashString("playing"): return margelo::nitro::nitroplayer::TrackPlayerState::PLAYING;
         case hashString("stopped"): return margelo::nitro::nitroplayer::TrackPlayerState::STOPPED;
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert \"" + unionValue + "\" to enum TrackPlayerState - invalid value!");
@@ -53,8 +53,8 @@ namespace margelo::nitro {
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, margelo::nitro::nitroplayer::TrackPlayerState arg) {
       switch (arg) {
-        case margelo::nitro::nitroplayer::TrackPlayerState::PLAYING: return JSIConverter<std::string>::toJSI(runtime, "playing");
         case margelo::nitro::nitroplayer::TrackPlayerState::PAUSED: return JSIConverter<std::string>::toJSI(runtime, "paused");
+        case margelo::nitro::nitroplayer::TrackPlayerState::PLAYING: return JSIConverter<std::string>::toJSI(runtime, "playing");
         case margelo::nitro::nitroplayer::TrackPlayerState::STOPPED: return JSIConverter<std::string>::toJSI(runtime, "stopped");
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert TrackPlayerState to JS - invalid value: "
@@ -67,8 +67,8 @@ namespace margelo::nitro {
       }
       std::string unionValue = JSIConverter<std::string>::fromJSI(runtime, value);
       switch (hashString(unionValue.c_str(), unionValue.size())) {
-        case hashString("playing"):
         case hashString("paused"):
+        case hashString("playing"):
         case hashString("stopped"):
           return true;
         default:

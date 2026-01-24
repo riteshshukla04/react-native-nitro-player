@@ -17,10 +17,10 @@ public extension TrackPlayerState {
    */
   init?(fromString string: String) {
     switch string {
-      case "playing":
-        self = .playing
       case "paused":
         self = .paused
+      case "playing":
+        self = .playing
       case "stopped":
         self = .stopped
       default:
@@ -33,10 +33,10 @@ public extension TrackPlayerState {
    */
   var stringValue: String {
     switch self {
-      case .playing:
-        return "playing"
       case .paused:
         return "paused"
+      case .playing:
+        return "playing"
       case .stopped:
         return "stopped"
     }

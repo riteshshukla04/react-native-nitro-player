@@ -9,6 +9,7 @@ import type {
 import type { AndroidAutoMediaLibrary as AndroidAutoMediaLibraryType } from './specs/AndroidAutoMediaLibrary.nitro'
 import type { AudioDevices as AudioDevicesType } from './specs/AudioDevices.nitro'
 import type { AudioRoutePicker as AudioRoutePickerType } from './specs/AudioRoutePicker.nitro'
+import type { DownloadManager as DownloadManagerType } from './specs/DownloadManager.nitro'
 
 export const PlayerQueue =
   NitroModules.createHybridObject<PlayerQueueType>('PlayerQueue')
@@ -35,12 +36,17 @@ export const AudioRoutePicker =
     ? NitroModules.createHybridObject<AudioRoutePickerType>('AudioRoutePicker')
     : null
 
+// Download Manager
+export const DownloadManager =
+  NitroModules.createHybridObject<DownloadManagerType>('DownloadManager')
+
 // Export hooks
 export * from './hooks'
 
 // Export types
 export * from './types/PlayerQueue'
 export * from './types/AndroidAutoMediaLibrary'
+export * from './types/DownloadTypes'
 export type { TAudioDevice } from './specs/AudioDevices.nitro'
 export type { RepeatMode } from './specs/TrackPlayer.nitro'
 // Export utilities

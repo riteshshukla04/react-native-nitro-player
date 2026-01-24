@@ -36,14 +36,21 @@ target_sources(
   ../nitrogen/generated/shared/c++/HybridAndroidAutoMediaLibrarySpec.cpp
   ../nitrogen/generated/shared/c++/HybridAudioDevicesSpec.cpp
   ../nitrogen/generated/shared/c++/HybridAudioRoutePickerSpec.cpp
+  ../nitrogen/generated/shared/c++/HybridDownloadManagerSpec.cpp
   ../nitrogen/generated/shared/c++/HybridPlayerQueueSpec.cpp
   ../nitrogen/generated/shared/c++/HybridTrackPlayerSpec.cpp
   # Android-specific Nitrogen C++ sources
   ../nitrogen/generated/android/c++/JHybridAndroidAutoMediaLibrarySpec.cpp
   ../nitrogen/generated/android/c++/JHybridAudioDevicesSpec.cpp
+  ../nitrogen/generated/android/c++/JHybridDownloadManagerSpec.cpp
+  ../nitrogen/generated/android/c++/JVariant_NullType_String.cpp
+  ../nitrogen/generated/android/c++/JVariant_NullType_DownloadTask.cpp
+  ../nitrogen/generated/android/c++/JVariant_NullType_Double.cpp
+  ../nitrogen/generated/android/c++/JVariant_NullType_DownloadError.cpp
+  ../nitrogen/generated/android/c++/JVariant_NullType_DownloadedTrack.cpp
+  ../nitrogen/generated/android/c++/JVariant_NullType_DownloadedPlaylist.cpp
   ../nitrogen/generated/android/c++/JHybridPlayerQueueSpec.cpp
   ../nitrogen/generated/android/c++/JVariant_NullType_Playlist.cpp
-  ../nitrogen/generated/android/c++/JVariant_NullType_String.cpp
   ../nitrogen/generated/android/c++/JHybridTrackPlayerSpec.cpp
   ../nitrogen/generated/android/c++/JVariant_NullType_TrackItem.cpp
 )

@@ -25,6 +25,10 @@
     },
     "AudioRoutePicker": {
       "swift": "HybridAudioRoutePicker"
+    },
+    "DownloadManager": {
+      "swift": "HybridDownloadManager",
+      "kotlin": "HybridDownloadManager"
     }
   },
   "ignorePaths": ["**/node_modules"]

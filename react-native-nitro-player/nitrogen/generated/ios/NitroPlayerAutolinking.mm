@@ -13,6 +13,7 @@
 #include "HybridPlayerQueueSpecSwift.hpp"
 #include "HybridTrackPlayerSpecSwift.hpp"
 #include "HybridAudioRoutePickerSpecSwift.hpp"
+#include "HybridDownloadManagerSpecSwift.hpp"
 
 @interface NitroPlayerAutolinking : NSObject
 @end
@@ -41,6 +42,13 @@
     "AudioRoutePicker",
     []() -> std::shared_ptr<HybridObject> {
       std::shared_ptr<HybridAudioRoutePickerSpec> hybridObject = NitroPlayer::NitroPlayerAutolinking::createAudioRoutePicker();
+      return hybridObject;
+    }
+  );
+  HybridObjectRegistry::registerHybridObjectConstructor(
+    "DownloadManager",
+    []() -> std::shared_ptr<HybridObject> {
+      std::shared_ptr<HybridDownloadManagerSpec> hybridObject = NitroPlayer::NitroPlayerAutolinking::createDownloadManager();
       return hybridObject;
     }
   );

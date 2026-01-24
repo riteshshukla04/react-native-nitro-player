@@ -17,6 +17,10 @@
 
 #include "JHybridAndroidAutoMediaLibrarySpec.hpp"
 #include "JHybridAudioDevicesSpec.hpp"
+#include "JHybridDownloadManagerSpec.hpp"
+#include "JFunc_void_DownloadProgress.hpp"
+#include "JFunc_void_std__string_std__string_DownloadState_std__optional_DownloadError_.hpp"
+#include "JFunc_void_DownloadedTrack.hpp"
 #include "JHybridPlayerQueueSpec.hpp"
 #include "JFunc_void_std__vector_Playlist__std__optional_QueueOperation_.hpp"
 #include "JFunc_void_std__string_Playlist_std__optional_QueueOperation_.hpp"
@@ -39,6 +43,10 @@ int initialize(JavaVM* vm) {
     // Register native JNI methods
     margelo::nitro::nitroplayer::JHybridAndroidAutoMediaLibrarySpec::registerNatives();
     margelo::nitro::nitroplayer::JHybridAudioDevicesSpec::registerNatives();
+    margelo::nitro::nitroplayer::JHybridDownloadManagerSpec::registerNatives();
+    margelo::nitro::nitroplayer::JFunc_void_DownloadProgress_cxx::registerNatives();
+    margelo::nitro::nitroplayer::JFunc_void_std__string_std__string_DownloadState_std__optional_DownloadError__cxx::registerNatives();
+    margelo::nitro::nitroplayer::JFunc_void_DownloadedTrack_cxx::registerNatives();
     margelo::nitro::nitroplayer::JHybridPlayerQueueSpec::registerNatives();
     margelo::nitro::nitroplayer::JFunc_void_std__vector_Playlist__std__optional_QueueOperation__cxx::registerNatives();
     margelo::nitro::nitroplayer::JFunc_void_std__string_Playlist_std__optional_QueueOperation__cxx::registerNatives();
@@ -78,6 +86,14 @@ int initialize(JavaVM* vm) {
       "AudioDevices",
       []() -> std::shared_ptr<HybridObject> {
         static DefaultConstructableObject<JHybridAudioDevicesSpec::javaobject> object("com/margelo/nitro/nitroplayer/HybridAudioDevices");
+        auto instance = object.create();
+        return instance->cthis()->shared();
+      }
+    );
+    HybridObjectRegistry::registerHybridObjectConstructor(
+      "DownloadManager",
+      []() -> std::shared_ptr<HybridObject> {
+        static DefaultConstructableObject<JHybridDownloadManagerSpec::javaobject> object("com/margelo/nitro/nitroplayer/HybridDownloadManager");
         auto instance = object.create();
         return instance->cthis()->shared();
       }

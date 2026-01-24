@@ -9,6 +9,7 @@
 
 // Include C++ implementation defined types
 #include "HybridAudioRoutePickerSpecSwift.hpp"
+#include "HybridDownloadManagerSpecSwift.hpp"
 #include "HybridPlayerQueueSpecSwift.hpp"
 #include "HybridTrackPlayerSpecSwift.hpp"
 #include "NitroPlayer-Swift-Cxx-Umbrella.hpp"
@@ -29,6 +30,86 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     }
     #endif
     NitroPlayer::HybridAudioRoutePickerSpec_cxx& swiftPart = swiftWrapper->getSwiftPart();
+    return swiftPart.toUnsafe();
+  }
+  
+  // pragma MARK: std::function<void(const std::string& /* result */)>
+  Func_void_std__string create_Func_void_std__string(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_std__string::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const std::string& result) mutable -> void {
+      swiftClosure.call(result);
+    };
+  }
+  
+  // pragma MARK: std::function<void(const std::exception_ptr& /* error */)>
+  Func_void_std__exception_ptr create_Func_void_std__exception_ptr(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_std__exception_ptr::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const std::exception_ptr& error) mutable -> void {
+      swiftClosure.call(error);
+    };
+  }
+  
+  // pragma MARK: std::function<void(const std::vector<std::string>& /* result */)>
+  Func_void_std__vector_std__string_ create_Func_void_std__vector_std__string_(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_std__vector_std__string_::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const std::vector<std::string>& result) mutable -> void {
+      swiftClosure.call(result);
+    };
+  }
+  
+  // pragma MARK: std::function<void()>
+  Func_void create_Func_void(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)]() mutable -> void {
+      swiftClosure.call();
+    };
+  }
+  
+  // pragma MARK: std::function<void(const DownloadStorageInfo& /* result */)>
+  Func_void_DownloadStorageInfo create_Func_void_DownloadStorageInfo(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_DownloadStorageInfo::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const DownloadStorageInfo& result) mutable -> void {
+      swiftClosure.call(result);
+    };
+  }
+  
+  // pragma MARK: std::function<void(const DownloadProgress& /* progress */)>
+  Func_void_DownloadProgress create_Func_void_DownloadProgress(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_DownloadProgress::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const DownloadProgress& progress) mutable -> void {
+      swiftClosure.call(progress);
+    };
+  }
+  
+  // pragma MARK: std::function<void(const std::string& /* downloadId */, const std::string& /* trackId */, DownloadState /* state */, const std::optional<DownloadError>& /* error */)>
+  Func_void_std__string_std__string_DownloadState_std__optional_DownloadError_ create_Func_void_std__string_std__string_DownloadState_std__optional_DownloadError_(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_std__string_std__string_DownloadState_std__optional_DownloadError_::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const std::string& downloadId, const std::string& trackId, DownloadState state, const std::optional<DownloadError>& error) mutable -> void {
+      swiftClosure.call(downloadId, trackId, static_cast<int>(state), error);
+    };
+  }
+  
+  // pragma MARK: std::function<void(const DownloadedTrack& /* downloadedTrack */)>
+  Func_void_DownloadedTrack create_Func_void_DownloadedTrack(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_DownloadedTrack::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const DownloadedTrack& downloadedTrack) mutable -> void {
+      swiftClosure.call(downloadedTrack);
+    };
+  }
+  
+  // pragma MARK: std::shared_ptr<HybridDownloadManagerSpec>
+  std::shared_ptr<HybridDownloadManagerSpec> create_std__shared_ptr_HybridDownloadManagerSpec_(void* NON_NULL swiftUnsafePointer) noexcept {
+    NitroPlayer::HybridDownloadManagerSpec_cxx swiftPart = NitroPlayer::HybridDownloadManagerSpec_cxx::fromUnsafe(swiftUnsafePointer);
+    return std::make_shared<margelo::nitro::nitroplayer::HybridDownloadManagerSpecSwift>(swiftPart);
+  }
+  void* NON_NULL get_std__shared_ptr_HybridDownloadManagerSpec_(std__shared_ptr_HybridDownloadManagerSpec_ cppType) {
+    std::shared_ptr<margelo::nitro::nitroplayer::HybridDownloadManagerSpecSwift> swiftWrapper = std::dynamic_pointer_cast<margelo::nitro::nitroplayer::HybridDownloadManagerSpecSwift>(cppType);
+    #ifdef NITRO_DEBUG
+    if (swiftWrapper == nullptr) [[unlikely]] {
+      throw std::runtime_error("Class \"HybridDownloadManagerSpec\" is not implemented in Swift!");
+    }
+    #endif
+    NitroPlayer::HybridDownloadManagerSpec_cxx& swiftPart = swiftWrapper->getSwiftPart();
     return swiftPart.toUnsafe();
   }
   
@@ -62,22 +143,6 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     #endif
     NitroPlayer::HybridPlayerQueueSpec_cxx& swiftPart = swiftWrapper->getSwiftPart();
     return swiftPart.toUnsafe();
-  }
-  
-  // pragma MARK: std::function<void()>
-  Func_void create_Func_void(void* NON_NULL swiftClosureWrapper) noexcept {
-    auto swiftClosure = NitroPlayer::Func_void::fromUnsafe(swiftClosureWrapper);
-    return [swiftClosure = std::move(swiftClosure)]() mutable -> void {
-      swiftClosure.call();
-    };
-  }
-  
-  // pragma MARK: std::function<void(const std::exception_ptr& /* error */)>
-  Func_void_std__exception_ptr create_Func_void_std__exception_ptr(void* NON_NULL swiftClosureWrapper) noexcept {
-    auto swiftClosure = NitroPlayer::Func_void_std__exception_ptr::fromUnsafe(swiftClosureWrapper);
-    return [swiftClosure = std::move(swiftClosure)](const std::exception_ptr& error) mutable -> void {
-      swiftClosure.call(error);
-    };
   }
   
   // pragma MARK: std::function<void(const std::vector<TrackItem>& /* result */)>

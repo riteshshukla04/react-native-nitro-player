@@ -143,5 +143,8 @@ dependencies {
   implementation "androidx.media3:media3-session:$media3_version"
   implementation "androidx.media3:media3-common:$media3_version"
   implementation "androidx.media:media:1.7.0"
+  
+  // WorkManager for background downloads
+  implementation "androidx.work:work-runtime-ktx:2.9.0"
 }
 

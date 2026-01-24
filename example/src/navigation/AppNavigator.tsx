@@ -5,6 +5,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import PlayerScreen from '../screens/PlayerScreen';
 import PlaylistsScreen from '../screens/PlaylistsScreen';
 import UpNextScreen from '../screens/UpNextScreen';
+import DownloadsScreen from '../screens/DownloadsScreen';
 import MoreScreen from '../screens/MoreScreen';
 import { colors } from '../styles/theme';
 
@@ -51,6 +52,14 @@ export default function AppNavigator() {
           options={{
             tabBarLabel: 'Up Next',
             tabBarIcon: () => <Text>⏭️</Text>,
+          }}
+        />
+        <Tab.Screen
+          name="Downloads"
+          component={DownloadsScreen}
+          options={{
+            tabBarLabel: 'Downloads',
+            tabBarIcon: () => <Text>⬇️</Text>,
           }}
         />
         <Tab.Screen

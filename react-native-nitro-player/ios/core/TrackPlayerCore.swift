@@ -686,9 +686,40 @@ class TrackPlayerCore: NSObject {
   private func createGaplessPlayerItem(for track: TrackItem, isPreload: Bool = false)
     -> AVPlayerItem?
   {
-    guard let url = URL(string: track.url) else {
-      print("❌ TrackPlayerCore: Invalid URL for track: \(track.title) - \(track.url)")
-      return nil
+    // Get effective URL - uses local path if downloaded, otherwise remote URL
+    let effectiveUrlString = DownloadManagerCore.shared.getEffectiveUrl(track: track)
+    
+    // Create URL - use fileURLWithPath for local files, URL(string:) for remote
+    let url: URL
+    let isLocal = effectiveUrlString.hasPrefix("/")
+    
+    if isLocal {
+      // Local file - use fileURLWithPath
+      print("📥 TrackPlayerCore: Using DOWNLOADED version for \(track.title)")
+      print("   Local path: \(effectiveUrlString)")
+      
+      // Verify file exists
+      if FileManager.default.fileExists(atPath: effectiveUrlString) {
+        url = URL(fileURLWithPath: effectiveUrlString)
+        print("   File URL: \(url.absoluteString)")
+        print("   ✅ File verified to exist")
+      } else {
+        print("   ❌ Downloaded file does NOT exist at path!")
+        print("   Falling back to remote URL: \(track.url)")
+        guard let remoteUrl = URL(string: track.url) else {
+          print("❌ TrackPlayerCore: Invalid remote URL: \(track.url)")
+          return nil
+        }
+        url = remoteUrl
+      }
+    } else {
+      // Remote URL
+      guard let remoteUrl = URL(string: effectiveUrlString) else {
+        print("❌ TrackPlayerCore: Invalid URL for track: \(track.title) - \(effectiveUrlString)")
+        return nil
+      }
+      url = remoteUrl
+      print("🌐 TrackPlayerCore: Using REMOTE version for \(track.title)")
     }
 
     // Check if we have a preloaded asset for this track
@@ -954,9 +985,16 @@ class TrackPlayerCore: NSObject {
     print("📋 TrackPlayerCore: UPDATE PLAYER QUEUE - Received \(tracks.count) tracks")
     print(String(repeating: "=", count: Constants.separatorLineLength))
 
-    // Print the full playlist being fed
+    // Print the full playlist being fed and check download status
     for (index, track) in tracks.enumerated() {
-      print("  [\(index + 1)] 🎵 \(track.title) - \(track.artist) (ID: \(track.id))")
+      let isDownloaded = DownloadManagerCore.shared.isTrackDownloaded(trackId: track.id)
+      let downloadStatus = isDownloaded ? "📥 DOWNLOADED" : "🌐 REMOTE"
+      print("  [\(index + 1)] 🎵 \(track.title) - \(track.artist) (ID: \(track.id)) - \(downloadStatus)")
+      if isDownloaded {
+        if let localPath = DownloadManagerCore.shared.getLocalPath(trackId: track.id) {
+          print("      Local path: \(localPath)")
+        }
+      }
     }
     print(String(repeating: "=", count: Constants.separatorLineLength) + "\n")
 

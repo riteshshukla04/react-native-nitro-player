@@ -21,6 +21,7 @@ import com.margelo.nitro.nitroplayer.TrackPlayerState
 import com.margelo.nitro.nitroplayer.Variant_NullType_String
 import com.margelo.nitro.nitroplayer.Variant_NullType_TrackItem
 import com.margelo.nitro.nitroplayer.connection.AndroidAutoConnectionDetector
+import com.margelo.nitro.nitroplayer.download.DownloadManagerCore
 import com.margelo.nitro.nitroplayer.media.MediaLibrary
 import com.margelo.nitro.nitroplayer.media.MediaLibraryManager
 import com.margelo.nitro.nitroplayer.media.MediaLibraryParser
@@ -38,6 +39,7 @@ class TrackPlayerCore private constructor(
     private val handler = android.os.Handler(android.os.Looper.getMainLooper())
     private lateinit var player: ExoPlayer
     private val playlistManager = PlaylistManager.getInstance(context)
+    private val downloadManager = DownloadManagerCore.getInstance(context)
     private val mediaLibraryManager = MediaLibraryManager.getInstance(context)
     private var mediaSessionManager: MediaSessionManager? = null
     private var currentPlaylistId: String? = null
@@ -440,10 +442,13 @@ class TrackPlayerCore private constructor(
             }
         }
 
+        // Use downloadManager.getEffectiveUrl to automatically get local path if downloaded
+        val effectiveUrl = downloadManager.getEffectiveUrl(this)
+
         return MediaItem
             .Builder()
             .setMediaId(customMediaId ?: id)
-            .setUri(url)
+            .setUri(effectiveUrl)
             .setMediaMetadata(metadataBuilder.build())
             .build()
     }

@@ -41,15 +41,15 @@ namespace margelo::nitro::nitroplayer {
     [[maybe_unused]]
     static jni::alias_ref<JTrackPlayerState> fromCpp(TrackPlayerState value) {
       static const auto clazz = javaClassStatic();
-      static const auto fieldPLAYING = clazz->getStaticField<JTrackPlayerState>("PLAYING");
       static const auto fieldPAUSED = clazz->getStaticField<JTrackPlayerState>("PAUSED");
+      static const auto fieldPLAYING = clazz->getStaticField<JTrackPlayerState>("PLAYING");
       static const auto fieldSTOPPED = clazz->getStaticField<JTrackPlayerState>("STOPPED");
       
       switch (value) {
-        case TrackPlayerState::PLAYING:
-          return clazz->getStaticFieldValue(fieldPLAYING);
         case TrackPlayerState::PAUSED:
           return clazz->getStaticFieldValue(fieldPAUSED);
+        case TrackPlayerState::PLAYING:
+          return clazz->getStaticFieldValue(fieldPLAYING);
         case TrackPlayerState::STOPPED:
           return clazz->getStaticFieldValue(fieldSTOPPED);
         default:

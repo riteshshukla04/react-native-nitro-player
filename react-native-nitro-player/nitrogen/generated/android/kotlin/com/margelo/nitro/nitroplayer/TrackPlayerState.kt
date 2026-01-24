@@ -16,7 +16,7 @@ import com.facebook.proguard.annotations.DoNotStrip
 @DoNotStrip
 @Keep
 enum class TrackPlayerState(@DoNotStrip @Keep val value: Int) {
-  PLAYING(0),
-  PAUSED(1),
+  PAUSED(0),
+  PLAYING(1),
   STOPPED(2);
 }

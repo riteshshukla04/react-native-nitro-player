@@ -3,6 +3,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     
     <!-- Declare that the app doesn't require a touchscreen -->
     <uses-feature
@@ -50,5 +51,11 @@
           <action android:name="android.media.browse.MediaBrowserService" />
         </intent-filter>
       </service>
+      
+      <!-- WorkManager's SystemForegroundService for download notifications -->
+      <service
+        android:name="androidx.work.impl.foreground.SystemForegroundService"
+        android:foregroundServiceType="dataSync"
+        android:exported="false" />
     </application>
 </manifest>
