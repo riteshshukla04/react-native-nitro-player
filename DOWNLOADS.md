@@ -14,7 +14,7 @@ Add the following to your `AndroidManifest.xml`:
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-    
+
     <application>
         <!-- Required for background downloads with notifications -->
         <service
@@ -97,7 +97,7 @@ function DownloadProgressView() {
     <View>
       <Text>Overall Progress: {Math.round(overallProgress * 100)}%</Text>
       <Text>Downloading: {isDownloading ? 'Yes' : 'No'}</Text>
-      
+
       {progressList.map((progress) => (
         <View key={progress.trackId}>
           <Text>{progress.trackId}</Text>
@@ -117,11 +117,13 @@ function DownloadProgressView() {
 Track download progress for one or more tracks.
 
 **Options:**
+
 - `trackIds?: string[]` - Track specific track IDs
 - `downloadIds?: string[]` - Track specific download IDs
 - `activeOnly?: boolean` - Only track active downloads
 
 **Returns:**
+
 - `progressMap: Map<string, DownloadProgress>` - Map of trackId to progress
 - `progressList: DownloadProgress[]` - Array of all tracked progress
 - `overallProgress: number` - Overall progress (0-1)
@@ -153,6 +155,7 @@ function TrackDownloadProgress({ trackId }: { trackId: string }) {
 Access all downloaded tracks and playlists.
 
 **Returns:**
+
 - `downloadedTracks: DownloadedTrack[]` - All downloaded tracks
 - `downloadedPlaylists: DownloadedPlaylist[]` - All downloaded playlists
 - `isTrackDownloaded: (trackId: string) => boolean` - Check if track is downloaded
@@ -194,6 +197,7 @@ function DownloadedTracksView() {
 Configure the download manager.
 
 **Config Options:**
+
 - `storageLocation?: 'private' | 'public'` - Where to store downloads
 - `maxConcurrentDownloads?: number` - Max simultaneous downloads (default: 3)
 - `autoRetry?: boolean` - Auto-retry failed downloads (default: true)
@@ -262,6 +266,7 @@ Get all active download tasks.
 Get overall download queue status.
 
 **Returns:**
+
 ```typescript
 {
   pendingCount: number
@@ -337,6 +342,7 @@ Delete all downloaded content.
 Get storage usage information.
 
 **Returns:**
+
 ```typescript
 {
   totalDownloadedSize: number // bytes
@@ -376,7 +382,7 @@ Get the effective URL for a track (local or network based on preference and avai
 Listen to download progress updates.
 
 ```typescript
-DownloadManager.onDownloadProgress((progress) => {
+DownloadManager.onDownloadProgress(progress => {
   console.log(`${progress.trackId}: ${Math.round(progress.progress * 100)}%`)
 })
 ```
@@ -399,7 +405,7 @@ DownloadManager.onDownloadStateChange((downloadId, trackId, state, error) => {
 Listen to download completion events.
 
 ```typescript
-DownloadManager.onDownloadComplete((downloadedTrack) => {
+DownloadManager.onDownloadComplete(downloadedTrack => {
   console.log(`Downloaded: ${downloadedTrack.originalTrack.title}`)
 })
 ```
@@ -542,9 +548,11 @@ import { DownloadManager } from 'react-native-nitro-player'
 
 async function showStorageInfo() {
   const info = await DownloadManager.getStorageInfo()
-  
+
   console.log(`Downloaded: ${info.trackCount} tracks`)
-  console.log(`Total size: ${(info.totalDownloadedSize / 1024 / 1024).toFixed(2)} MB`)
+  console.log(
+    `Total size: ${(info.totalDownloadedSize / 1024 / 1024).toFixed(2)} MB`
+  )
   console.log(`Available: ${(info.availableSpace / 1024 / 1024).toFixed(2)} MB`)
 }
 

@@ -83,19 +83,19 @@ npm install react-native-nitro-modules
 
 ### DownloadManager Methods
 
-| Name                                  | Platform | Description                                                  |
-| ------------------------------------- | -------- | ------------------------------------------------------------ |
-| `configure(config)`                   | Both     | Configures download settings (storage, concurrency, etc.).   |
-| `downloadTrack(track, playlistId?)`   | Both     | **Async**. Downloads a track. Returns download ID.           |
-| `downloadPlaylist(playlistId, tracks)` | Both     | **Async**. Downloads all tracks in a playlist.               |
-| `pauseDownload(downloadId)`           | Both     | **Async**. Pauses an active download.                        |
-| `resumeDownload(downloadId)`          | Both     | **Async**. Resumes a paused download.                        |
-| `cancelDownload(downloadId)`          | Both     | **Async**. Cancels a download.                               |
-| `isTrackDownloaded(trackId)`          | Both     | Checks if a track is downloaded.                             |
-| `getAllDownloadedTracks()`            | Both     | Gets all downloaded tracks.                                  |
-| `deleteDownloadedTrack(trackId)`      | Both     | **Async**. Deletes a downloaded track.                       |
-| `getStorageInfo()`                    | Both     | **Async**. Gets download storage usage information.          |
-| `setPlaybackSourcePreference(pref)`   | Both     | Sets playback source: `'auto'`, `'download'`, or `'network'`. |
+| Name                                   | Platform | Description                                                   |
+| -------------------------------------- | -------- | ------------------------------------------------------------- |
+| `configure(config)`                    | Both     | Configures download settings (storage, concurrency, etc.).    |
+| `downloadTrack(track, playlistId?)`    | Both     | **Async**. Downloads a track. Returns download ID.            |
+| `downloadPlaylist(playlistId, tracks)` | Both     | **Async**. Downloads all tracks in a playlist.                |
+| `pauseDownload(downloadId)`            | Both     | **Async**. Pauses an active download.                         |
+| `resumeDownload(downloadId)`           | Both     | **Async**. Resumes a paused download.                         |
+| `cancelDownload(downloadId)`           | Both     | **Async**. Cancels a download.                                |
+| `isTrackDownloaded(trackId)`           | Both     | Checks if a track is downloaded.                              |
+| `getAllDownloadedTracks()`             | Both     | Gets all downloaded tracks.                                   |
+| `deleteDownloadedTrack(trackId)`       | Both     | **Async**. Deletes a downloaded track.                        |
+| `getStorageInfo()`                     | Both     | **Async**. Gets download storage usage information.           |
+| `setPlaybackSourcePreference(pref)`    | Both     | Sets playback source: `'auto'`, `'download'`, or `'network'`. |
 
 > [!NOTE]
 > See [DOWNLOADS.md](./DOWNLOADS.md) for complete downloads API documentation.

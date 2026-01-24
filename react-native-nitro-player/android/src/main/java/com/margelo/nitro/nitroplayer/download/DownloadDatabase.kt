@@ -2,12 +2,12 @@ package com.margelo.nitro.nitroplayer.download
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import com.margelo.nitro.core.NullType
 import com.margelo.nitro.nitroplayer.*
 import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
 import org.json.JSONArray
 import org.json.JSONObject
-import android.util.Log
 import java.io.File
 
 /**
