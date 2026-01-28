@@ -1,4 +1,8 @@
-export type CurrentPlayingType = 'playlist' | 'up-next' | 'play-next' | 'not-playing'
+export type CurrentPlayingType =
+  | 'playlist'
+  | 'up-next'
+  | 'play-next'
+  | 'not-playing'
 export interface TrackItem {
   id: string
   title: string

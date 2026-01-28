@@ -994,10 +994,11 @@ class TrackPlayerCore private constructor(
         println("   tracksToPlay (${tracksToPlay.size}): ${tracksToPlay.map { it.id }}")
 
         val playlistId = currentPlaylistId ?: ""
-        val mediaItems = tracksToPlay.map { track ->
-            val mediaId = if (playlistId.isNotEmpty()) "$playlistId:${track.id}" else track.id
-            track.toMediaItem(mediaId)
-        }
+        val mediaItems =
+            tracksToPlay.map { track ->
+                val mediaId = if (playlistId.isNotEmpty()) "$playlistId:${track.id}" else track.id
+                track.toMediaItem(mediaId)
+            }
 
         // Update our internal tracking of the position in original playlist
         currentTrackIndex = index

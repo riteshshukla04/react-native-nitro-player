@@ -52,6 +52,7 @@ npm install react-native-nitro-modules
 | `playNext(id)`              | Both     | **Async**. Adds a track to the "play next" stack (LIFO).            |
 | `getActualQueue()`          | Both     | **Async**. Gets the full playback queue including temporary tracks. |
 | `getState()`                | Both     | **Async**. Gets the current player state immediately.               |
+| `skipToIndex(index)`        | Both     | **Async**. Skips to a specific index in the actual queue.           |
 | `configure(config)`         | Both     | Configures player settings (Android Auto, etc.).                    |
 | `isAndroidAutoConnected()`  | Both     | Checks if Android Auto is currently connected.                      |
 
@@ -270,6 +271,29 @@ Temporary tracks are automatically cleared when:
 - `PlayerQueue.loadPlaylist()` is called
 - `TrackPlayer.playFromIndex()` is called
 
+### `skipToIndex(index: number): Promise<boolean>`
+
+Skips to a specific index in the **actual queue** (the combined queue with temporary tracks).
+
+**Behavior:**
+
+- Takes an index into the actual queue structure
+- If the target is a temporary track (playNext or upNext), plays that track
+- If the target is beyond temporary tracks (in the remaining original playlist), clears all temporary tracks and plays from the original playlist
+- Returns `true` if successful, `false` if the index is invalid
+
+**Example:**
+
+```typescript
+// Queue: [track1(0), track2(1, current), playNext-A(2), upNext-B(3), track3(4), track4(5)]
+
+// Skip to playNext track
+await TrackPlayer.skipToIndex(2) // Plays playNext-A
+
+// Skip to original playlist track (clears temporary tracks)
+await TrackPlayer.skipToIndex(4) // Clears temps, plays track3
+```
+
 ### Getting the Actual Queue
 
 Use `useActualQueue()` hook to see the complete queue including temporary tracks:
@@ -297,6 +321,31 @@ function QueueView() {
 - `queue: TrackItem[]` - Complete queue in playback order
 - `refreshQueue: () => void` - Manually refresh the queue
 - `isLoading: boolean` - Whether the queue is currently loading
+
+## CurrentPlayingType
+
+The `currentPlayingType` field in `PlayerState` indicates the source of the currently playing track:
+
+| Value          | Description                                              |
+| -------------- | -------------------------------------------------------- |
+| `'playlist'`   | Playing from the original playlist                       |
+| `'play-next'`  | Playing a track added via `playNext()` (LIFO stack)      |
+| `'up-next'`    | Playing a track added via `addToUpNext()` (FIFO queue)   |
+| `'not-playing'`| No track is currently playing                            |
+
+**Example:**
+
+```typescript
+const state = await TrackPlayer.getState()
+
+if (state.currentPlayingType === 'play-next') {
+  console.log('Playing a play-next track')
+} else if (state.currentPlayingType === 'up-next') {
+  console.log('Playing an up-next track')
+} else if (state.currentPlayingType === 'playlist') {
+  console.log('Playing from the original playlist')
+}
+```
 
 ## Core Concepts
 
@@ -390,6 +439,7 @@ Returns the complete current player state (same as `TrackPlayer.getState()`). Th
   - `currentState: TrackPlayerState` - Current playback state (`'playing'`, `'paused'`, or `'stopped'`)
   - `currentPlaylistId: string | null` - ID of the currently loaded playlist, or `null` if no playlist is loaded
   - `currentIndex: number` - Index of the current track in the playlist (-1 if no track is playing)
+  - `currentPlayingType: CurrentPlayingType` - Source of the current track (`'playlist'`, `'play-next'`, `'up-next'`, or `'not-playing'`)
 
 **Note:** This hook is equivalent to calling `TrackPlayer.getState()` but provides reactive updates. It listens to track changes and playback state changes to update automatically. Also dont rely on progress from this hook
 
@@ -489,7 +539,7 @@ import { AudioDevices } from 'react-native-nitro-player'
 
 if (AudioDevices) {
   const devices = AudioDevices.getAudioDevices()
-  devices.forEach(device => {
+  devices.forEach((device) => {
     console.log(`${device.name} - Active: ${device.isActive}`)
   })
 }
@@ -736,7 +786,7 @@ TrackPlayer.onPlaybackProgressChange(
 )
 
 // Listen to Android Auto connection changes
-TrackPlayer.onAndroidAutoConnectionChange(connected => {
+TrackPlayer.onAndroidAutoConnectionChange((connected) => {
   console.log('Android Auto:', connected ? 'Connected' : 'Disconnected')
 })
 ```
@@ -754,6 +804,7 @@ console.log(state.totalDuration) // total duration in seconds
 console.log(state.currentTrack) // current TrackItem or null
 console.log(state.currentPlaylistId) // current playlist ID or null
 console.log(state.currentIndex) // current track index in playlist
+console.log(state.currentPlayingType) // 'playlist' | 'play-next' | 'up-next' | 'not-playing'
 ```
 
 ## Track Item Structure
@@ -978,6 +1029,7 @@ import type {
   Playlist,
   PlayerState,
   TrackPlayerState,
+  CurrentPlayingType,
   QueueOperation,
   Reason,
   PlayerConfig,
