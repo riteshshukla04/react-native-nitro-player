@@ -124,6 +124,12 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
     return false
   }
 
+  func skipToIndex(index: Double) throws -> Promise<Bool> {
+    return Promise.async {
+      return self.core.skipToIndex(index: Int(index))
+    }
+  }
+
   // MARK: - Volume Control
 
   func setVolume(volume: Double) throws -> Bool {

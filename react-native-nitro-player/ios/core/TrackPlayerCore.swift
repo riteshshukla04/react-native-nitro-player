@@ -1436,7 +1436,8 @@ class TrackPlayerCore: NSObject {
             totalDuration: 0.0,
             currentState: .stopped,
             currentPlaylistId: nil,
-            currentIndex: -1.0
+            currentIndex: -1.0,
+            currentPlayingType: .notPlaying
           )
       }
       return state
@@ -1451,7 +1452,8 @@ class TrackPlayerCore: NSObject {
         totalDuration: 0.0,
         currentState: .stopped,
         currentPlaylistId: currentPlaylistId.map { Variant_NullType_String.second($0) },
-        currentIndex: -1.0
+        currentIndex: -1.0,
+        currentPlayingType: .notPlaying
       )
     }
 
@@ -1471,13 +1473,29 @@ class TrackPlayerCore: NSObject {
     // Get current index
     let currentIndex: Double = currentTrackIndex >= 0 ? Double(currentTrackIndex) : -1.0
 
+    // Map internal temporary type to CurrentPlayingType
+    let currentPlayingType: CurrentPlayingType
+    if currentTrack == nil {
+      currentPlayingType = .notPlaying
+    } else {
+      switch currentTemporaryType {
+      case .none:
+        currentPlayingType = .playlist
+      case .playNext:
+        currentPlayingType = .playNext
+      case .upNext:
+        currentPlayingType = .upNext
+      }
+    }
+
     return PlayerState(
       currentTrack: currentTrack.map { Variant_NullType_TrackItem.second($0) },
       currentPosition: currentPosition,
       totalDuration: totalDuration,
       currentState: currentState,
       currentPlaylistId: currentPlaylistId.map { Variant_NullType_String.second($0) },
-      currentIndex: currentIndex
+      currentIndex: currentIndex,
+      currentPlayingType: currentPlayingType
     )
   }
 
@@ -1531,10 +1549,143 @@ class TrackPlayerCore: NSObject {
     }
   }
 
+  // MARK: - Skip to Index in Actual Queue
+
+  func skipToIndex(index: Int) -> Bool {
+    if Thread.isMainThread {
+      return skipToIndexInternal(index: index)
+    } else {
+      var result = false
+      DispatchQueue.main.sync { [weak self] in
+        result = self?.skipToIndexInternal(index: index) ?? false
+      }
+      return result
+    }
+  }
+
+  private func skipToIndexInternal(index: Int) -> Bool {
+    print("\n🎯 TrackPlayerCore: SKIP TO INDEX \(index)")
+
+    // Get actual queue to validate index and determine position
+    let actualQueue = getActualQueueInternal()
+    let totalQueueSize = actualQueue.count
+
+    // Validate index
+    guard index >= 0 && index < totalQueueSize else {
+      print("   ❌ Invalid index \(index), queue size is \(totalQueueSize)")
+      return false
+    }
+
+    // Calculate queue section boundaries
+    // ActualQueue structure: [before_current] + [current] + [playNext] + [upNext] + [remaining_original]
+    let currentPos = currentTrackIndex
+    let playNextStart = currentPos + 1
+    let playNextEnd = playNextStart + playNextStack.count
+    let upNextStart = playNextEnd
+    let upNextEnd = upNextStart + upNextQueue.count
+    let originalRemainingStart = upNextEnd
+
+    print("   Queue structure:")
+    print("      currentPos: \(currentPos)")
+    print("      playNextStart: \(playNextStart), playNextEnd: \(playNextEnd)")
+    print("      upNextStart: \(upNextStart), upNextEnd: \(upNextEnd)")
+    print("      originalRemainingStart: \(originalRemainingStart)")
+    print("      totalQueueSize: \(totalQueueSize)")
+
+    // Case 1: Target is before current - use playFromIndex on original
+    if index < currentPos {
+      print("   📍 Target is before current, jumping to original playlist index \(index)")
+      playFromIndexInternal(index: index)
+      return true
+    }
+
+    // Case 2: Target is current - seek to beginning
+    if index == currentPos {
+      print("   📍 Target is current track, seeking to beginning")
+      player?.seek(to: .zero)
+      return true
+    }
+
+    // Case 3: Target is in playNext section
+    if index >= playNextStart && index < playNextEnd {
+      let playNextIndex = index - playNextStart
+      print("   📍 Target is in playNext section at position \(playNextIndex)")
+
+      // Remove tracks before the target from playNext (they're being skipped)
+      if playNextIndex > 0 {
+        playNextStack.removeFirst(playNextIndex)
+        print("      Removed \(playNextIndex) tracks from playNext stack")
+      }
+
+      // Rebuild queue and advance
+      rebuildAVQueueFromCurrentPosition()
+      player?.advanceToNextItem()
+      return true
+    }
+
+    // Case 4: Target is in upNext section
+    if index >= upNextStart && index < upNextEnd {
+      let upNextIndex = index - upNextStart
+      print("   📍 Target is in upNext section at position \(upNextIndex)")
+
+      // Clear all playNext tracks (they're being skipped)
+      playNextStack.removeAll()
+      print("      Cleared all playNext tracks")
+
+      // Remove tracks before target from upNext
+      if upNextIndex > 0 {
+        upNextQueue.removeFirst(upNextIndex)
+        print("      Removed \(upNextIndex) tracks from upNext queue")
+      }
+
+      // Rebuild queue and advance
+      rebuildAVQueueFromCurrentPosition()
+      player?.advanceToNextItem()
+      return true
+    }
+
+    // Case 5: Target is in remaining original tracks
+    if index >= originalRemainingStart {
+      // Get the target track directly from actualQueue
+      let targetTrack = actualQueue[index]
+
+      print("   📍 Case 5: Target is in remaining original tracks")
+      print("      targetTrack.id: \(targetTrack.id)")
+      print("      currentTracks.count: \(currentTracks.count)")
+      print("      currentTracks IDs: \(currentTracks.map { $0.id })")
+
+      // Find this track's index in the original playlist
+      guard let originalIndex = currentTracks.firstIndex(where: { $0.id == targetTrack.id }) else {
+        print("   ❌ Could not find track \(targetTrack.id) in original playlist")
+        print("      Available tracks: \(currentTracks.map { $0.id })")
+        return false
+      }
+
+      print("      originalIndex found: \(originalIndex)")
+
+      // Clear all temporary tracks (they're being skipped)
+      playNextStack.removeAll()
+      upNextQueue.removeAll()
+      currentTemporaryType = .none
+      print("      Cleared all temporary tracks")
+
+      // Play from the original playlist index
+      let success = playFromIndexInternalWithResult(index: originalIndex)
+      return success
+    }
+
+    print("   ❌ Unexpected case, index \(index) not handled")
+    return false
+  }
+
   private func playFromIndexInternal(index: Int) {
+    _ = playFromIndexInternalWithResult(index: index)
+  }
+
+  private func playFromIndexInternalWithResult(index: Int) -> Bool {
     guard index >= 0 && index < self.currentTracks.count else {
-      print("❌ TrackPlayerCore: playFromIndex - invalid index \(index)")
-      return
+      print("❌ TrackPlayerCore: playFromIndex - invalid index \(index), currentTracks.count = \(self.currentTracks.count)")
+      return false
     }
 
     print("\n🎯 TrackPlayerCore: PLAY FROM INDEX \(index)")
@@ -1569,7 +1720,7 @@ class TrackPlayerCore: NSObject {
 
     guard let player = self.player, !items.isEmpty else {
       print("❌ No player or no items to play")
-      return
+      return false
     }
 
     // Remove old boundary observer
@@ -1600,6 +1751,7 @@ class TrackPlayerCore: NSObject {
     self.preloadUpcomingTracks(from: index + 1)
 
     player.play()
+    return true
   }
 
   // MARK: - Temporary Track Management

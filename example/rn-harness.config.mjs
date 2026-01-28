@@ -10,7 +10,7 @@ import {
 const config = {
   entryPoint: './index.js',
   appRegistryComponentName: 'example',
-
+  forwardClientLogs: true,
   runners: [
     androidPlatform({
       name: 'android',

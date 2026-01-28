@@ -58,6 +58,7 @@ namespace margelo::nitro::nitroplayer {
     void pause() override;
     std::shared_ptr<Promise<void>> playSong(const std::string& songId, const std::optional<std::string>& fromPlaylist) override;
     void skipToNext() override;
+    std::shared_ptr<Promise<bool>> skipToIndex(double index) override;
     void skipToPrevious() override;
     void seek(double position) override;
     std::shared_ptr<Promise<void>> addToUpNext(const std::string& trackId) override;

@@ -13,6 +13,8 @@ namespace margelo::nitro::nitroplayer { struct TrackItem; }
 namespace margelo::nitro::nitroplayer { struct PlayerState; }
 // Forward declaration of `TrackPlayerState` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
+// Forward declaration of `CurrentPlayingType` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class CurrentPlayingType; }
 // Forward declaration of `RepeatMode` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class RepeatMode; }
 // Forward declaration of `PlayerConfig` to properly resolve imports.
@@ -36,6 +38,8 @@ namespace margelo::nitro::nitroplayer { enum class Reason; }
 #include "JVariant_NullType_TrackItem.hpp"
 #include "TrackPlayerState.hpp"
 #include "JTrackPlayerState.hpp"
+#include "CurrentPlayingType.hpp"
+#include "JCurrentPlayingType.hpp"
 #include "RepeatMode.hpp"
 #include "JRepeatMode.hpp"
 #include "PlayerConfig.hpp"
@@ -108,6 +112,22 @@ namespace margelo::nitro::nitroplayer {
   void JHybridTrackPlayerSpec::skipToNext() {
     static const auto method = javaClassStatic()->getMethod<void()>("skipToNext");
     method(_javaPart);
+  }
+  std::shared_ptr<Promise<bool>> JHybridTrackPlayerSpec::skipToIndex(double index) {
+    static const auto method = javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(double /* index */)>("skipToIndex");
+    auto __result = method(_javaPart, index);
+    return [&]() {
+      auto __promise = Promise<bool>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {
+        auto __result = jni::static_ref_cast<jni::JBoolean>(__boxedResult);
+        __promise->resolve(static_cast<bool>(__result->value()));
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
   }
   void JHybridTrackPlayerSpec::skipToPrevious() {
     static const auto method = javaClassStatic()->getMethod<void()>("skipToPrevious");

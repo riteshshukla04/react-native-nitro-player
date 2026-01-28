@@ -27,6 +27,8 @@
 namespace margelo::nitro::nitroplayer { struct TrackItem; }
 // Forward declaration of `TrackPlayerState` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
+// Forward declaration of `CurrentPlayingType` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class CurrentPlayingType; }
 
 #include <NitroModules/Null.hpp>
 #include "TrackItem.hpp"
@@ -34,6 +36,7 @@ namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 #include <optional>
 #include "TrackPlayerState.hpp"
 #include <string>
+#include "CurrentPlayingType.hpp"
 
 namespace margelo::nitro::nitroplayer {
 
@@ -48,10 +51,11 @@ namespace margelo::nitro::nitroplayer {
     TrackPlayerState currentState     SWIFT_PRIVATE;
     std::optional<std::variant<nitro::NullType, std::string>> currentPlaylistId     SWIFT_PRIVATE;
     double currentIndex     SWIFT_PRIVATE;
+    CurrentPlayingType currentPlayingType     SWIFT_PRIVATE;
 
   public:
     PlayerState() = default;
-    explicit PlayerState(std::optional<std::variant<nitro::NullType, TrackItem>> currentTrack, double currentPosition, double totalDuration, TrackPlayerState currentState, std::optional<std::variant<nitro::NullType, std::string>> currentPlaylistId, double currentIndex): currentTrack(currentTrack), currentPosition(currentPosition), totalDuration(totalDuration), currentState(currentState), currentPlaylistId(currentPlaylistId), currentIndex(currentIndex) {}
+    explicit PlayerState(std::optional<std::variant<nitro::NullType, TrackItem>> currentTrack, double currentPosition, double totalDuration, TrackPlayerState currentState, std::optional<std::variant<nitro::NullType, std::string>> currentPlaylistId, double currentIndex, CurrentPlayingType currentPlayingType): currentTrack(currentTrack), currentPosition(currentPosition), totalDuration(totalDuration), currentState(currentState), currentPlaylistId(currentPlaylistId), currentIndex(currentIndex), currentPlayingType(currentPlayingType) {}
   };
 
 } // namespace margelo::nitro::nitroplayer
@@ -69,7 +73,8 @@ namespace margelo::nitro {
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "totalDuration")),
         JSIConverter<margelo::nitro::nitroplayer::TrackPlayerState>::fromJSI(runtime, obj.getProperty(runtime, "currentState")),
         JSIConverter<std::optional<std::variant<nitro::NullType, std::string>>>::fromJSI(runtime, obj.getProperty(runtime, "currentPlaylistId")),
-        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "currentIndex"))
+        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "currentIndex")),
+        JSIConverter<margelo::nitro::nitroplayer::CurrentPlayingType>::fromJSI(runtime, obj.getProperty(runtime, "currentPlayingType"))
       );
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroplayer::PlayerState& arg) {
@@ -80,6 +85,7 @@ namespace margelo::nitro {
       obj.setProperty(runtime, "currentState", JSIConverter<margelo::nitro::nitroplayer::TrackPlayerState>::toJSI(runtime, arg.currentState));
       obj.setProperty(runtime, "currentPlaylistId", JSIConverter<std::optional<std::variant<nitro::NullType, std::string>>>::toJSI(runtime, arg.currentPlaylistId));
       obj.setProperty(runtime, "currentIndex", JSIConverter<double>::toJSI(runtime, arg.currentIndex));
+      obj.setProperty(runtime, "currentPlayingType", JSIConverter<margelo::nitro::nitroplayer::CurrentPlayingType>::toJSI(runtime, arg.currentPlayingType));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -96,6 +102,7 @@ namespace margelo::nitro {
       if (!JSIConverter<margelo::nitro::nitroplayer::TrackPlayerState>::canConvert(runtime, obj.getProperty(runtime, "currentState"))) return false;
       if (!JSIConverter<std::optional<std::variant<nitro::NullType, std::string>>>::canConvert(runtime, obj.getProperty(runtime, "currentPlaylistId"))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "currentIndex"))) return false;
+      if (!JSIConverter<margelo::nitro::nitroplayer::CurrentPlayingType>::canConvert(runtime, obj.getProperty(runtime, "currentPlayingType"))) return false;
       return true;
     }
   };

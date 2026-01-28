@@ -19,7 +19,7 @@ public extension PlayerState {
   /**
    * Create a new instance of `PlayerState`.
    */
-  init(currentTrack: Variant_NullType_TrackItem?, currentPosition: Double, totalDuration: Double, currentState: TrackPlayerState, currentPlaylistId: Variant_NullType_String?, currentIndex: Double) {
+  init(currentTrack: Variant_NullType_TrackItem?, currentPosition: Double, totalDuration: Double, currentState: TrackPlayerState, currentPlaylistId: Variant_NullType_String?, currentIndex: Double, currentPlayingType: CurrentPlayingType) {
     self.init({ () -> bridge.std__optional_std__variant_nitro__NullType__TrackItem__ in
       if let __unwrappedValue = currentTrack {
         return bridge.create_std__optional_std__variant_nitro__NullType__TrackItem__({ () -> bridge.std__variant_nitro__NullType__TrackItem_ in
@@ -46,7 +46,7 @@ public extension PlayerState {
       } else {
         return .init()
       }
-    }(), currentIndex)
+    }(), currentIndex, currentPlayingType)
   }
 
   var currentTrack: Variant_NullType_TrackItem? {
@@ -176,6 +176,17 @@ public extension PlayerState {
     @inline(__always)
     set {
       self.__currentIndex = newValue
+    }
+  }
+  
+  var currentPlayingType: CurrentPlayingType {
+    @inline(__always)
+    get {
+      return self.__currentPlayingType
+    }
+    @inline(__always)
+    set {
+      self.__currentPlayingType = newValue
     }
   }
 }

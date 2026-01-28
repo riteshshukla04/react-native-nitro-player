@@ -10,6 +10,7 @@ const DEFAULT_STATE: PlayerState = {
   currentState: 'stopped',
   currentPlaylistId: null,
   currentIndex: -1,
+  currentPlayingType: 'not-playing',
 }
 
 /**

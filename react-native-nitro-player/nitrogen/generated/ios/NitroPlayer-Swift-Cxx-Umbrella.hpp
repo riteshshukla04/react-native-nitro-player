@@ -8,6 +8,8 @@
 #pragma once
 
 // Forward declarations of C++ defined types
+// Forward declaration of `CurrentPlayingType` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class CurrentPlayingType; }
 // Forward declaration of `DownloadConfig` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct DownloadConfig; }
 // Forward declaration of `DownloadErrorReason` to properly resolve imports.
@@ -58,6 +60,7 @@ namespace margelo::nitro::nitroplayer { struct TrackItem; }
 namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 
 // Include C++ defined types
+#include "CurrentPlayingType.hpp"
 #include "DownloadConfig.hpp"
 #include "DownloadError.hpp"
 #include "DownloadErrorReason.hpp"

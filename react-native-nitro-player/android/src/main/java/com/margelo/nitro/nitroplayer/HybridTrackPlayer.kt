@@ -114,4 +114,11 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
     @DoNotStrip
     @Keep
     override fun setVolume(volume: Double): Boolean = core.setVolume(volume)
+
+    @DoNotStrip
+    @Keep
+    override fun skipToIndex(index: Double): Promise<Boolean> =
+        Promise.async {
+            core.skipToIndex(index.toInt())
+        }
 }

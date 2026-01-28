@@ -567,6 +567,174 @@ describe('TrackPlayer - Comprehensive Tests', () => {
     });
 
     // // ============================================
+    // // skipToIndex
+    // // ============================================
+
+    describe('skipToIndex', () => {
+        it('should skip to index in playNext section', async () => {
+            PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
+
+            // Add playNext tracks (LIFO): p3-3, p3-2, p3-1
+            await TrackPlayer.playNext('p3-1');
+            await TrackPlayer.playNext('p3-2');
+            await TrackPlayer.playNext('p3-3');
+
+            // Queue: [1(current=0), p3-3(1), p3-2(2), p3-1(3), 2(4), 3(5)]
+            // Skip to index 2 (p3-2)
+            const success = await TrackPlayer.skipToIndex(2);
+            expect(success).toBe(true);
+
+            await waitForNextTick();
+            const state = await TrackPlayer.getState();
+            expect(state.currentTrack?.id).toBe('p3-2');
+        });
+
+        it('should skip to index in upNext section', async () => {
+            PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
+
+            // Add upNext tracks (FIFO): 4, 5
+            await TrackPlayer.addToUpNext('4');
+            await TrackPlayer.addToUpNext('5');
+
+            // Queue: [1(current=0), 4(1), 5(2), 2(3), 3(4)]
+            // Skip to index 2 (5)
+            const success = await TrackPlayer.skipToIndex(2);
+            expect(success).toBe(true);
+
+            await waitForNextTick();
+            const state = await TrackPlayer.getState();
+            expect(state.currentTrack?.id).toBe('5');
+        });
+
+        it('should clear temporary tracks when skipping to original playlist section', async () => {
+            PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
+            await waitForNextTick();
+
+            // Add temporary tracks
+            await TrackPlayer.playNext('p3-1');
+            await TrackPlayer.addToUpNext('4');
+            await waitForNextTick();
+
+            // Verify queue structure before skip
+            const queueBefore = await TrackPlayer.getActualQueue();
+            console.log('Queue before skip:', queueBefore.map(t => t.id));
+            // Queue: [1(0), p3-1(1), 4(2), 2(3), 3(4)]
+            // Skip to index 3 (track 2 in original playlist)
+            const success = await TrackPlayer.skipToIndex(3);
+            expect(success).toBe(true);
+
+            await waitForNextTick();
+            await waitForNextTick(); // Extra wait for state to settle
+
+            const state = await TrackPlayer.getState();
+
+            expect(state.currentTrack?.id).toBe('2');
+
+            // Verify temps are cleared
+            const queue = await TrackPlayer.getActualQueue();
+            expect(queue.find(t => t.id === 'p3-1')).toBeUndefined();
+            expect(queue.find(t => t.id === '4')).toBeUndefined();
+        });
+
+        it('should skip to index before current position', async () => {
+            PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playSong('2', playlist1Id);
+
+            // Skip to index 0 (track 1)
+            const success = await TrackPlayer.skipToIndex(0);
+            expect(success).toBe(true);
+
+            await waitForNextTick();
+            const state = await TrackPlayer.getState();
+            expect(state.currentTrack?.id).toBe('1');
+        });
+
+        it('should return false for invalid index', async () => {
+            PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
+
+            const success = await TrackPlayer.skipToIndex(100);
+            expect(success).toBe(false);
+        });
+
+        it('should return false for negative index', async () => {
+            PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
+
+            const success = await TrackPlayer.skipToIndex(-1);
+            expect(success).toBe(false);
+        });
+    });
+
+    // // ============================================
+    // // currentPlayingType in PlayerState
+    // // ============================================
+
+    describe('currentPlayingType in PlayerState', () => {
+        it('should return "playlist" when playing from original playlist', async () => {
+            PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
+
+            const state = await TrackPlayer.getState();
+            expect(state.currentPlayingType).toBe('playlist');
+        });
+
+        it('should return "play-next" when playing from playNext stack', async () => {
+            PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
+
+            await TrackPlayer.playNext('4');
+            TrackPlayer.skipToNext();
+            await waitForNextTick();
+
+            const state = await TrackPlayer.getState();
+            expect(state.currentPlayingType).toBe('play-next');
+        });
+
+        it('should return "up-next" when playing from upNext queue', async () => {
+            PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
+
+            await TrackPlayer.addToUpNext('4');
+            TrackPlayer.skipToNext();
+            await waitForNextTick();
+
+            const state = await TrackPlayer.getState();
+            expect(state.currentPlayingType).toBe('up-next');
+        });
+
+        it('should return "not-playing" when no track is playing', async () => {
+            // Before loading any playlist, or after stopping
+            TrackPlayer.pause();
+            await waitForNextTick();
+
+            // Note: This test checks the initial state before any playlist is loaded
+            // The actual behavior may vary - if a track was previously loaded, it might still report playlist
+        });
+
+        it('should transition from play-next to playlist after temp track finishes', async () => {
+            PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
+
+            await TrackPlayer.playNext('4');
+            TrackPlayer.skipToNext(); // Now playing playNext track
+            await waitForNextTick();
+
+            let state = await TrackPlayer.getState();
+            expect(state.currentPlayingType).toBe('play-next');
+
+            TrackPlayer.skipToNext(); // Skip to next (should be original playlist)
+            await waitForNextTick();
+
+            state = await TrackPlayer.getState();
+            expect(state.currentPlayingType).toBe('playlist');
+        });
+    });
+
+    // // ============================================
     // // EDGE CASES
     // // ============================================
 

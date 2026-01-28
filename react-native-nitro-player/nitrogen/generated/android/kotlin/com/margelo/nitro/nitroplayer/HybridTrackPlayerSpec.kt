@@ -64,6 +64,10 @@ abstract class HybridTrackPlayerSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
+  abstract fun skipToIndex(index: Double): Promise<Boolean>
+  
+  @DoNotStrip
+  @Keep
   abstract fun skipToPrevious(): Unit
   
   @DoNotStrip

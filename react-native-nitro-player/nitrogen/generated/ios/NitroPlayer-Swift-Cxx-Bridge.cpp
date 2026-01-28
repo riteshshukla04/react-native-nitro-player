@@ -145,6 +145,14 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     return swiftPart.toUnsafe();
   }
   
+  // pragma MARK: std::function<void(bool /* result */)>
+  Func_void_bool create_Func_void_bool(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_bool::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](bool result) mutable -> void {
+      swiftClosure.call(result);
+    };
+  }
+  
   // pragma MARK: std::function<void(const std::vector<TrackItem>& /* result */)>
   Func_void_std__vector_TrackItem_ create_Func_void_std__vector_TrackItem_(void* NON_NULL swiftClosureWrapper) noexcept {
     auto swiftClosure = NitroPlayer::Func_void_std__vector_TrackItem_::fromUnsafe(swiftClosureWrapper);
@@ -190,14 +198,6 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     auto swiftClosure = NitroPlayer::Func_void_double_double_std__optional_bool_::fromUnsafe(swiftClosureWrapper);
     return [swiftClosure = std::move(swiftClosure)](double position, double totalDuration, std::optional<bool> isManuallySeeked) mutable -> void {
       swiftClosure.call(position, totalDuration, isManuallySeeked);
-    };
-  }
-  
-  // pragma MARK: std::function<void(bool /* connected */)>
-  Func_void_bool create_Func_void_bool(void* NON_NULL swiftClosureWrapper) noexcept {
-    auto swiftClosure = NitroPlayer::Func_void_bool::fromUnsafe(swiftClosureWrapper);
-    return [swiftClosure = std::move(swiftClosure)](bool connected) mutable -> void {
-      swiftClosure.call(connected);
     };
   }
   

@@ -18,6 +18,8 @@ namespace margelo::nitro::nitroplayer { struct TrackItem; }
 namespace margelo::nitro::nitroplayer { struct PlayerState; }
 // Forward declaration of `TrackPlayerState` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
+// Forward declaration of `CurrentPlayingType` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class CurrentPlayingType; }
 // Forward declaration of `RepeatMode` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class RepeatMode; }
 // Forward declaration of `PlayerConfig` to properly resolve imports.
@@ -34,6 +36,7 @@ namespace margelo::nitro::nitroplayer { enum class Reason; }
 #include <variant>
 #include "PlayerState.hpp"
 #include "TrackPlayerState.hpp"
+#include "CurrentPlayingType.hpp"
 #include "RepeatMode.hpp"
 #include "PlayerConfig.hpp"
 #include "Reason.hpp"
@@ -108,6 +111,14 @@ namespace margelo::nitro::nitroplayer {
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
+    }
+    inline std::shared_ptr<Promise<bool>> skipToIndex(double index) override {
+      auto __result = _swiftPart.skipToIndex(std::forward<decltype(index)>(index));
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
     }
     inline void skipToPrevious() override {
       auto __result = _swiftPart.skipToPrevious();

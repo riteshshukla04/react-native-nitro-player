@@ -73,6 +73,7 @@ namespace margelo::nitro::nitroplayer {
       virtual void pause() = 0;
       virtual std::shared_ptr<Promise<void>> playSong(const std::string& songId, const std::optional<std::string>& fromPlaylist) = 0;
       virtual void skipToNext() = 0;
+      virtual std::shared_ptr<Promise<bool>> skipToIndex(double index) = 0;
       virtual void skipToPrevious() = 0;
       virtual void seek(double position) = 0;
       virtual std::shared_ptr<Promise<void>> addToUpNext(const std::string& trackId) = 0;

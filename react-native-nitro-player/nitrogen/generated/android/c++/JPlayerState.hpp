@@ -10,6 +10,8 @@
 #include <fbjni/fbjni.h>
 #include "PlayerState.hpp"
 
+#include "CurrentPlayingType.hpp"
+#include "JCurrentPlayingType.hpp"
 #include "JTrackItem.hpp"
 #include "JTrackPlayerState.hpp"
 #include "JVariant_NullType_String.hpp"
@@ -53,13 +55,16 @@ namespace margelo::nitro::nitroplayer {
       jni::local_ref<JVariant_NullType_String> currentPlaylistId = this->getFieldValue(fieldCurrentPlaylistId);
       static const auto fieldCurrentIndex = clazz->getField<double>("currentIndex");
       double currentIndex = this->getFieldValue(fieldCurrentIndex);
+      static const auto fieldCurrentPlayingType = clazz->getField<JCurrentPlayingType>("currentPlayingType");
+      jni::local_ref<JCurrentPlayingType> currentPlayingType = this->getFieldValue(fieldCurrentPlayingType);
       return PlayerState(
         currentTrack != nullptr ? std::make_optional(currentTrack->toCpp()) : std::nullopt,
         currentPosition,
         totalDuration,
         currentState->toCpp(),
         currentPlaylistId != nullptr ? std::make_optional(currentPlaylistId->toCpp()) : std::nullopt,
-        currentIndex
+        currentIndex,
+        currentPlayingType->toCpp()
       );
     }
 
@@ -69,7 +74,7 @@ namespace margelo::nitro::nitroplayer {
      */
     [[maybe_unused]]
     static jni::local_ref<JPlayerState::javaobject> fromCpp(const PlayerState& value) {
-      using JSignature = JPlayerState(jni::alias_ref<JVariant_NullType_TrackItem>, double, double, jni::alias_ref<JTrackPlayerState>, jni::alias_ref<JVariant_NullType_String>, double);
+      using JSignature = JPlayerState(jni::alias_ref<JVariant_NullType_TrackItem>, double, double, jni::alias_ref<JTrackPlayerState>, jni::alias_ref<JVariant_NullType_String>, double, jni::alias_ref<JCurrentPlayingType>);
       static const auto clazz = javaClassStatic();
       static const auto create = clazz->getStaticMethod<JSignature>("fromCpp");
       return create(
@@ -79,7 +84,8 @@ namespace margelo::nitro::nitroplayer {
         value.totalDuration,
         JTrackPlayerState::fromCpp(value.currentState),
         value.currentPlaylistId.has_value() ? JVariant_NullType_String::fromCpp(value.currentPlaylistId.value()) : nullptr,
-        value.currentIndex
+        value.currentIndex,
+        JCurrentPlayingType::fromCpp(value.currentPlayingType)
       );
     }
   };

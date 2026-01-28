@@ -1,3 +1,4 @@
+export type CurrentPlayingType = 'playlist' | 'up-next' | 'play-next' | 'not-playing'
 export interface TrackItem {
   id: string
   title: string
@@ -29,6 +30,7 @@ export interface PlayerState {
   currentState: TrackPlayerState
   currentPlaylistId: string | null
   currentIndex: number
+  currentPlayingType: CurrentPlayingType
 }
 
 export interface PlayerConfig {

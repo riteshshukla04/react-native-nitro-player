@@ -62,6 +62,7 @@ export interface TrackPlayer
   pause(): void
   playSong(songId: string, fromPlaylist?: string): Promise<void>
   skipToNext(): void
+  skipToIndex(index: number): Promise<boolean>
   skipToPrevious(): void
   seek(position: number): void
   addToUpNext(trackId: string): Promise<void>

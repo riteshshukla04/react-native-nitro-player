@@ -8,6 +8,8 @@
 #pragma once
 
 // Forward declarations of C++ defined types
+// Forward declaration of `CurrentPlayingType` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class CurrentPlayingType; }
 // Forward declaration of `DownloadConfig` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct DownloadConfig; }
 // Forward declaration of `DownloadErrorReason` to properly resolve imports.
@@ -64,6 +66,7 @@ namespace NitroPlayer { class HybridPlayerQueueSpec_cxx; }
 namespace NitroPlayer { class HybridTrackPlayerSpec_cxx; }
 
 // Include C++ defined types
+#include "CurrentPlayingType.hpp"
 #include "DownloadConfig.hpp"
 #include "DownloadError.hpp"
 #include "DownloadErrorReason.hpp"
@@ -1001,6 +1004,40 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     return Result<std::vector<Playlist>>::withError(error);
   }
   
+  // pragma MARK: std::shared_ptr<Promise<bool>>
+  /**
+   * Specialized version of `std::shared_ptr<Promise<bool>>`.
+   */
+  using std__shared_ptr_Promise_bool__ = std::shared_ptr<Promise<bool>>;
+  inline std::shared_ptr<Promise<bool>> create_std__shared_ptr_Promise_bool__() noexcept {
+    return Promise<bool>::create();
+  }
+  inline PromiseHolder<bool> wrap_std__shared_ptr_Promise_bool__(std::shared_ptr<Promise<bool>> promise) noexcept {
+    return PromiseHolder<bool>(std::move(promise));
+  }
+  
+  // pragma MARK: std::function<void(bool /* result */)>
+  /**
+   * Specialized version of `std::function<void(bool)>`.
+   */
+  using Func_void_bool = std::function<void(bool /* result */)>;
+  /**
+   * Wrapper class for a `std::function<void(bool / * result * /)>`, this can be used from Swift.
+   */
+  class Func_void_bool_Wrapper final {
+  public:
+    explicit Func_void_bool_Wrapper(std::function<void(bool /* result */)>&& func): _function(std::make_unique<std::function<void(bool /* result */)>>(std::move(func))) {}
+    inline void call(bool result) const noexcept {
+      _function->operator()(result);
+    }
+  private:
+    std::unique_ptr<std::function<void(bool /* result */)>> _function;
+  } SWIFT_NONCOPYABLE;
+  Func_void_bool create_Func_void_bool(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_bool_Wrapper wrap_Func_void_bool(Func_void_bool value) noexcept {
+    return Func_void_bool_Wrapper(std::move(value));
+  }
+  
   // pragma MARK: std::shared_ptr<Promise<std::vector<TrackItem>>>
   /**
    * Specialized version of `std::shared_ptr<Promise<std::vector<TrackItem>>>`.
@@ -1216,28 +1253,6 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     return Func_void_double_double_std__optional_bool__Wrapper(std::move(value));
   }
   
-  // pragma MARK: std::function<void(bool /* connected */)>
-  /**
-   * Specialized version of `std::function<void(bool)>`.
-   */
-  using Func_void_bool = std::function<void(bool /* connected */)>;
-  /**
-   * Wrapper class for a `std::function<void(bool / * connected * /)>`, this can be used from Swift.
-   */
-  class Func_void_bool_Wrapper final {
-  public:
-    explicit Func_void_bool_Wrapper(std::function<void(bool /* connected */)>&& func): _function(std::make_unique<std::function<void(bool /* connected */)>>(std::move(func))) {}
-    inline void call(bool connected) const noexcept {
-      _function->operator()(connected);
-    }
-  private:
-    std::unique_ptr<std::function<void(bool /* connected */)>> _function;
-  } SWIFT_NONCOPYABLE;
-  Func_void_bool create_Func_void_bool(void* NON_NULL swiftClosureWrapper) noexcept;
-  inline Func_void_bool_Wrapper wrap_Func_void_bool(Func_void_bool value) noexcept {
-    return Func_void_bool_Wrapper(std::move(value));
-  }
-  
   // pragma MARK: std::shared_ptr<HybridTrackPlayerSpec>
   /**
    * Specialized version of `std::shared_ptr<HybridTrackPlayerSpec>`.
@@ -1249,6 +1264,15 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
   // pragma MARK: std::weak_ptr<HybridTrackPlayerSpec>
   using std__weak_ptr_HybridTrackPlayerSpec_ = std::weak_ptr<HybridTrackPlayerSpec>;
   inline std__weak_ptr_HybridTrackPlayerSpec_ weakify_std__shared_ptr_HybridTrackPlayerSpec_(const std::shared_ptr<HybridTrackPlayerSpec>& strong) noexcept { return strong; }
+  
+  // pragma MARK: Result<std::shared_ptr<Promise<bool>>>
+  using Result_std__shared_ptr_Promise_bool___ = Result<std::shared_ptr<Promise<bool>>>;
+  inline Result_std__shared_ptr_Promise_bool___ create_Result_std__shared_ptr_Promise_bool___(const std::shared_ptr<Promise<bool>>& value) noexcept {
+    return Result<std::shared_ptr<Promise<bool>>>::withValue(value);
+  }
+  inline Result_std__shared_ptr_Promise_bool___ create_Result_std__shared_ptr_Promise_bool___(const std::exception_ptr& error) noexcept {
+    return Result<std::shared_ptr<Promise<bool>>>::withError(error);
+  }
   
   // pragma MARK: Result<std::shared_ptr<Promise<std::vector<TrackItem>>>>
   using Result_std__shared_ptr_Promise_std__vector_TrackItem____ = Result<std::shared_ptr<Promise<std::vector<TrackItem>>>>;
