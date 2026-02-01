@@ -9,8 +9,10 @@ import type {
   Playlist,
 } from '../types/PlayerQueue'
 
-export interface PlayerQueue
-  extends HybridObject<{ android: 'kotlin'; ios: 'swift' }> {
+export interface PlayerQueue extends HybridObject<{
+  android: 'kotlin'
+  ios: 'swift'
+}> {
   // Playlist management
   createPlaylist(name: string, description?: string, artwork?: string): string
   deletePlaylist(playlistId: string): void
@@ -56,8 +58,10 @@ export interface PlayerQueue
 
 export type RepeatMode = 'off' | 'Playlist' | 'track'
 
-export interface TrackPlayer
-  extends HybridObject<{ android: 'kotlin'; ios: 'swift' }> {
+export interface TrackPlayer extends HybridObject<{
+  android: 'kotlin'
+  ios: 'swift'
+}> {
   play(): void
   pause(): void
   playSong(songId: string, fromPlaylist?: string): Promise<void>
