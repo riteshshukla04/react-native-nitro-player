@@ -381,7 +381,9 @@ class MediaSessionManager(
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
         try {
-            val compatToken = android.support.v4.media.session.MediaSessionCompat.Token.fromToken(mediaSession.platformToken)
+            val compatToken =
+                android.support.v4.media.session.MediaSessionCompat.Token
+                    .fromToken(mediaSession.platformToken)
             builder.setStyle(
                 androidx.media.app.NotificationCompat
                     .MediaStyle()
