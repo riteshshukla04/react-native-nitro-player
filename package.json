@@ -32,11 +32,15 @@
     "@babel/preset-react": "^7.27.1",
     "@babel/preset-typescript": "^7.27.1",
     "@jamesacarr/eslint-formatter-github-actions": "^0.2.0",
-    "@react-native/eslint-config": "^0.82.0",
+    "@react-native/eslint-config": "^0.84.0-rc.3",
     "@types/bun": "latest",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.2.1",
     "prettier": "^3.3.3"
+  },
+  "resolutions": {
+    "react-native": "0.84.0-rc.3",
+    "react": "19.2.3"
   }
 }
