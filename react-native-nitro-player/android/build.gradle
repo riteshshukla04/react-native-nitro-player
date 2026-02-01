@@ -129,7 +129,7 @@ repositories {
 }
 
 
-def media3_version = "1.3.0"
+def media3_version = "1.9.0"
 dependencies {
   // For < 0.71, this will be from the local maven repo
   // For > 0.71, this will be replaced by `com.facebook.react:react-android:$version` by react gradle plugin

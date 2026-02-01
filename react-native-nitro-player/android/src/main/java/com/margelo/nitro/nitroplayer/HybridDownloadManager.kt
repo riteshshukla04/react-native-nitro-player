@@ -11,6 +11,8 @@ import com.margelo.nitro.nitroplayer.download.DownloadManagerCore
  * Hybrid implementation of DownloadManagerSpec for Android
  * Bridges Nitro modules with the native DownloadManagerCore implementation
  */
+@DoNotStrip
+@Keep
 class HybridDownloadManager : HybridDownloadManagerSpec() {
     private val core: DownloadManagerCore
 

@@ -50,7 +50,7 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
             val session = mediaSessionManager?.mediaSession
             if (session != null) {
                 // Convert Media3 MediaSession to MediaSessionCompat for MediaBrowserService
-                sessionToken = session.sessionCompatToken
+                sessionToken = android.support.v4.media.session.MediaSessionCompat.Token.fromToken(session.platformToken)
                 println("🎵 NitroPlayerMediaBrowserService: MediaSession token set successfully")
             } else {
                 println("⚠️ NitroPlayerMediaBrowserService: MediaSession not available yet")

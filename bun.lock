@@ -18,7 +18,7 @@
     },
     "example": {
       "name": "example",
-      "version": "0.3.0-alpha.10",
+      "version": "0.3.0-alpha.13",
       "dependencies": {
         "@react-native-harness/platform-android": "^1.0.0-alpha.21",
         "@react-native-harness/platform-apple": "^1.0.0-alpha.21",
@@ -27,6 +27,7 @@
         "@react-navigation/native": "^7.1.27",
         "react": "19.1.1",
         "react-native": "0.82.1",
+        "react-native-audio-pro": "^10.1.2",
         "react-native-harness": "^1.0.0-alpha.21",
         "react-native-nitro-modules": "^0.31.9",
         "react-native-nitro-player": "../react-native-nitro-player",
@@ -56,7 +57,7 @@
     },
     "react-native-nitro-player": {
       "name": "react-native-nitro-player",
-      "version": "0.3.0-alpha.10",
+      "version": "0.3.0-alpha.13",
       "devDependencies": {
         "@react-native/eslint-config": "0.82.0",
         "@release-it-plugins/workspaces": "^5.0.3",
@@ -1715,6 +1716,8 @@
     "react-is": ["react-is@19.2.0", "", {}, "sha512-x3Ax3kNSMIIkyVYhWPyO09bu0uttcAIoecO/um/rKGQ4EltYWVYtyiGkS/3xMynrbVQdS69Jhlv8FXUEZehlzA=="],
 
     "react-native": ["react-native@0.82.1", "", { "dependencies": { "@jest/create-cache-key-function": "^29.7.0", "@react-native/assets-registry": "0.82.1", "@react-native/codegen": "0.82.1", "@react-native/community-cli-plugin": "0.82.1", "@react-native/gradle-plugin": "0.82.1", "@react-native/js-polyfills": "0.82.1", "@react-native/normalize-colors": "0.82.1", "@react-native/virtualized-lists": "0.82.1", "abort-controller": "^3.0.0", "anser": "^1.4.9", "ansi-regex": "^5.0.0", "babel-jest": "^29.7.0", "babel-plugin-syntax-hermes-parser": "0.32.0", "base64-js": "^1.5.1", "commander": "^12.0.0", "flow-enums-runtime": "^0.0.6", "glob": "^7.1.1", "hermes-compiler": "0.0.0", "invariant": "^2.2.4", "jest-environment-node": "^29.7.0", "memoize-one": "^5.0.0", "metro-runtime": "^0.83.1", "metro-source-map": "^0.83.1", "nullthrows": "^1.1.1", "pretty-format": "^29.7.0", "promise": "^8.3.0", "react-devtools-core": "^6.1.5", "react-refresh": "^0.14.0", "regenerator-runtime": "^0.13.2", "scheduler": "0.26.0", "semver": "^7.1.3", "stacktrace-parser": "^0.1.10", "whatwg-fetch": "^3.0.0", "ws": "^6.2.3", "yargs": "^17.6.2" }, "peerDependencies": { "@types/react": "^19.1.1", "react": "^19.1.1" }, "optionalPeers": ["@types/react"], "bin": { "react-native": "cli.js" } }, "sha512-tFAqcU7Z4g49xf/KnyCEzI4nRTu1Opcx05Ov2helr8ZTg1z7AJR/3sr2rZ+AAVlAs2IXk+B0WOxXGmdD3+4czA=="],
+
+    "react-native-audio-pro": ["react-native-audio-pro@10.1.2", "", { "dependencies": { "zustand": "^5.0.3" }, "peerDependencies": { "react": "*", "react-native": "*" } }, "sha512-lMVWytn11qgqPIJL5JXGi9WNxXne5FR3ATVM1A7D+tTzuqobjHvL/BKcY965RxdO+zT83yXIj18VpqSP7tvfQA=="],
 
     "react-native-harness": ["react-native-harness@1.0.0-alpha.21", "", { "dependencies": { "@react-native-harness/babel-preset": "1.0.0-alpha.21", "@react-native-harness/cli": "1.0.0-alpha.21", "@react-native-harness/jest": "1.0.0-alpha.21", "@react-native-harness/metro": "1.0.0-alpha.21", "@react-native-harness/runtime": "1.0.0-alpha.21", "tslib": "^2.3.0" }, "bin": { "react-native-harness": "bin.js" } }, "sha512-HasDD5vEf71aX2Y9J14vj4yZVIUTAEOWMQpQ6QBzSvh/1xP0Oo8SCHMWU/VENkEO7/MOvCAVqqIQcsKUfm+6Hw=="],
 

@@ -17,6 +17,7 @@
     "@react-navigation/native": "^7.1.27",
     "react": "19.1.1",
     "react-native": "0.82.1",
+    "react-native-audio-pro": "^10.1.2",
     "react-native-harness": "^1.0.0-alpha.21",
     "react-native-nitro-modules": "^0.31.9",
     "react-native-nitro-player": "../react-native-nitro-player",

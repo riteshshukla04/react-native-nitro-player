@@ -6,6 +6,8 @@ import com.margelo.nitro.NitroModules
 import com.margelo.nitro.core.Promise
 import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
 
+@DoNotStrip
+@Keep
 class HybridTrackPlayer : HybridTrackPlayerSpec() {
     private val core: TrackPlayerCore
 

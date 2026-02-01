@@ -10,6 +10,8 @@ import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
 import java.util.UUID
 import com.margelo.nitro.nitroplayer.playlist.Playlist as InternalPlaylist
 
+@DoNotStrip
+@Keep
 class HybridPlayerQueue : HybridPlayerQueueSpec() {
     private val core: TrackPlayerCore
     private val playlistManager: PlaylistManager

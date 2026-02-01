@@ -10,6 +10,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -379,12 +380,17 @@ class MediaSessionManager(
                 .setShowWhen(false)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
-                .setStyle(
-                    androidx.media.app.NotificationCompat
-                        .MediaStyle()
-                        .setMediaSession(mediaSession.sessionCompatToken)
-                        .setShowActionsInCompactView(0, 1, 2),
-                )
+        try {
+            val compatToken = android.support.v4.media.session.MediaSessionCompat.Token.fromToken(mediaSession.platformToken)
+            builder.setStyle(
+                androidx.media.app.NotificationCompat
+                    .MediaStyle()
+                    .setMediaSession(compatToken)
+                    .setShowActionsInCompactView(0, 1, 2),
+            )
+        } catch (e: Exception) {
+            Log.w("MediaSessionManager", "Failed to set media session token: ${e.message}")
+        }
 
         // Add action buttons
         builder.addAction(

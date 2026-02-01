@@ -5,6 +5,8 @@ import com.facebook.proguard.annotations.DoNotStrip
 import com.margelo.nitro.NitroModules
 import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
 
+@DoNotStrip
+@Keep
 class HybridAndroidAutoMediaLibrary : HybridAndroidAutoMediaLibrarySpec() {
     private val core: TrackPlayerCore
 

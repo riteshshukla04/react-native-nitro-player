@@ -4,8 +4,12 @@ import android.content.Context
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.os.Build
+import androidx.annotation.Keep
+import com.facebook.proguard.annotations.DoNotStrip
 import com.margelo.nitro.NitroModules
 
+@DoNotStrip
+@Keep
 class HybridAudioDevices : HybridAudioDevicesSpec() {
     val applicationContext = NitroModules.applicationContext
     private val audioManager = applicationContext?.getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -30,6 +34,8 @@ class HybridAudioDevices : HybridAudioDevicesSpec() {
         types
     }
 
+    @DoNotStrip
+    @Keep
     override fun getAudioDevices(): Array<TAudioDevice> {
         val devices = audioManager.getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS)
         var activeDevice: AudioDeviceInfo? = null
@@ -66,6 +72,8 @@ class HybridAudioDevices : HybridAudioDevicesSpec() {
             else -> "Type $type"
         }
 
+    @DoNotStrip
+    @Keep
     override fun setAudioDevice(deviceId: Double): Boolean {
         val device =
             audioManager
