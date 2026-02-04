@@ -630,8 +630,6 @@ class TrackPlayerCore: NSObject {
       self.updatePlayerQueue(tracks: playlist.tracks)
       // Emit initial state (paused/stopped before play)
       self.emitStateChange()
-      // Automatically start playback after loading
-      self.play()
     } else {
       print("   ❌ Playlist NOT FOUND")
       print(String(repeating: "🎼", count: Constants.playlistSeparatorLength) + "\n")
