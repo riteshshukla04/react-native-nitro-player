@@ -29,6 +29,10 @@
     "DownloadManager": {
       "swift": "HybridDownloadManager",
       "kotlin": "HybridDownloadManager"
+    },
+    "Equalizer": {
+      "swift": "HybridEqualizer",
+      "kotlin": "HybridEqualizer"
     }
   },
   "ignorePaths": ["**/node_modules"]

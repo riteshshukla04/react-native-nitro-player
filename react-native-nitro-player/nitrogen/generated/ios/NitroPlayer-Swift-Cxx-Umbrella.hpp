@@ -30,10 +30,20 @@ namespace margelo::nitro::nitroplayer { struct DownloadTask; }
 namespace margelo::nitro::nitroplayer { struct DownloadedPlaylist; }
 // Forward declaration of `DownloadedTrack` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct DownloadedTrack; }
+// Forward declaration of `EqualizerBand` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct EqualizerBand; }
+// Forward declaration of `EqualizerPreset` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct EqualizerPreset; }
+// Forward declaration of `EqualizerState` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct EqualizerState; }
+// Forward declaration of `GainRange` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct GainRange; }
 // Forward declaration of `HybridAudioRoutePickerSpec` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { class HybridAudioRoutePickerSpec; }
 // Forward declaration of `HybridDownloadManagerSpec` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { class HybridDownloadManagerSpec; }
+// Forward declaration of `HybridEqualizerSpec` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { class HybridEqualizerSpec; }
 // Forward declaration of `HybridPlayerQueueSpec` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { class HybridPlayerQueueSpec; }
 // Forward declaration of `HybridTrackPlayerSpec` to properly resolve imports.
@@ -46,6 +56,8 @@ namespace margelo::nitro::nitroplayer { struct PlayerConfig; }
 namespace margelo::nitro::nitroplayer { struct PlayerState; }
 // Forward declaration of `Playlist` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct Playlist; }
+// Forward declaration of `PresetType` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class PresetType; }
 // Forward declaration of `QueueOperation` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class QueueOperation; }
 // Forward declaration of `Reason` to properly resolve imports.
@@ -71,14 +83,20 @@ namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 #include "DownloadTask.hpp"
 #include "DownloadedPlaylist.hpp"
 #include "DownloadedTrack.hpp"
+#include "EqualizerBand.hpp"
+#include "EqualizerPreset.hpp"
+#include "EqualizerState.hpp"
+#include "GainRange.hpp"
 #include "HybridAudioRoutePickerSpec.hpp"
 #include "HybridDownloadManagerSpec.hpp"
+#include "HybridEqualizerSpec.hpp"
 #include "HybridPlayerQueueSpec.hpp"
 #include "HybridTrackPlayerSpec.hpp"
 #include "PlaybackSource.hpp"
 #include "PlayerConfig.hpp"
 #include "PlayerState.hpp"
 #include "Playlist.hpp"
+#include "PresetType.hpp"
 #include "QueueOperation.hpp"
 #include "Reason.hpp"
 #include "RepeatMode.hpp"
@@ -110,6 +128,8 @@ namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 namespace NitroPlayer { class HybridAudioRoutePickerSpec_cxx; }
 // Forward declaration of `HybridDownloadManagerSpec_cxx` to properly resolve imports.
 namespace NitroPlayer { class HybridDownloadManagerSpec_cxx; }
+// Forward declaration of `HybridEqualizerSpec_cxx` to properly resolve imports.
+namespace NitroPlayer { class HybridEqualizerSpec_cxx; }
 // Forward declaration of `HybridPlayerQueueSpec_cxx` to properly resolve imports.
 namespace NitroPlayer { class HybridPlayerQueueSpec_cxx; }
 // Forward declaration of `HybridTrackPlayerSpec_cxx` to properly resolve imports.

@@ -10,6 +10,7 @@ import type { AndroidAutoMediaLibrary as AndroidAutoMediaLibraryType } from './s
 import type { AudioDevices as AudioDevicesType } from './specs/AudioDevices.nitro'
 import type { AudioRoutePicker as AudioRoutePickerType } from './specs/AudioRoutePicker.nitro'
 import type { DownloadManager as DownloadManagerType } from './specs/DownloadManager.nitro'
+import type { Equalizer as EqualizerType } from './specs/Equalizer.nitro'
 
 export const PlayerQueue =
   NitroModules.createHybridObject<PlayerQueueType>('PlayerQueue')
@@ -40,6 +41,10 @@ export const AudioRoutePicker =
 export const DownloadManager =
   NitroModules.createHybridObject<DownloadManagerType>('DownloadManager')
 
+// Equalizer
+export const Equalizer =
+  NitroModules.createHybridObject<EqualizerType>('Equalizer')
+
 // Export hooks
 export * from './hooks'
 
@@ -47,6 +52,7 @@ export * from './hooks'
 export * from './types/PlayerQueue'
 export * from './types/AndroidAutoMediaLibrary'
 export * from './types/DownloadTypes'
+export * from './types/EqualizerTypes'
 export type { TAudioDevice } from './specs/AudioDevices.nitro'
 export type { RepeatMode } from './specs/TrackPlayer.nitro'
 // Export utilities

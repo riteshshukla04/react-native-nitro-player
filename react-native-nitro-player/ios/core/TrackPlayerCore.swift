@@ -748,6 +748,13 @@ class TrackPlayerCore: NSObject {
     // Store track ID for later reference
     item.trackId = track.id
 
+    // Apply equalizer audio mix to the player item
+    // This enables real-time EQ processing via MTAudioProcessingTap
+    // Apply equalizer audio mix to the player item
+    // This enables real-time EQ processing via MTAudioProcessingTap
+    EqualizerCore.shared.applyAudioMix(to: item)
+    print("🎛️ TrackPlayerCore: Requesting EQ audio mix application for \(track.title)")
+
     // If this is a preload request, start loading asset keys asynchronously
     if isPreload {
       asset.loadValuesAsynchronously(forKeys: Constants.preloadAssetKeys) {

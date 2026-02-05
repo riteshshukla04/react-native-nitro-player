@@ -24,3 +24,9 @@ export { useDownloadActions } from './useDownloadActions'
 export type { UseDownloadActionsResult } from './useDownloadActions'
 export { useDownloadStorage } from './useDownloadStorage'
 export type { UseDownloadStorageResult } from './useDownloadStorage'
+
+// Equalizer hooks
+export { useEqualizer } from './useEqualizer'
+export type { UseEqualizerResult } from './useEqualizer'
+export { useEqualizerPresets } from './useEqualizerPresets'
+export type { UseEqualizerPresetsResult } from './useEqualizerPresets'

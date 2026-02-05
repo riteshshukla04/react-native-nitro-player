@@ -18,7 +18,7 @@
     },
     "example": {
       "name": "example",
-      "version": "0.3.0-alpha.13",
+      "version": "0.3.0-alpha.14",
       "dependencies": {
         "@react-native-harness/platform-android": "^1.0.0-alpha.21",
         "@react-native-harness/platform-apple": "^1.0.0-alpha.21",
@@ -57,7 +57,7 @@
     },
     "react-native-nitro-player": {
       "name": "react-native-nitro-player",
-      "version": "0.3.0-alpha.13",
+      "version": "0.3.0-alpha.14",
       "devDependencies": {
         "@react-native/eslint-config": "0.82.0",
         "@release-it-plugins/workspaces": "^5.0.3",

@@ -63,6 +63,14 @@ export default function AppNavigator() {
           }}
         />
         <Tab.Screen
+          name="Equalizer"
+          component={require('../screens/EqualizerScreen').default}
+          options={{
+            tabBarLabel: 'EQ',
+            tabBarIcon: () => <Text>🎚️</Text>,
+          }}
+        />
+        <Tab.Screen
           name="More"
           component={MoreScreen}
           options={{

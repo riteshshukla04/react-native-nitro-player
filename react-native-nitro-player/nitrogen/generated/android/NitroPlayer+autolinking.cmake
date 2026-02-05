@@ -37,6 +37,7 @@ target_sources(
   ../nitrogen/generated/shared/c++/HybridAudioDevicesSpec.cpp
   ../nitrogen/generated/shared/c++/HybridAudioRoutePickerSpec.cpp
   ../nitrogen/generated/shared/c++/HybridDownloadManagerSpec.cpp
+  ../nitrogen/generated/shared/c++/HybridEqualizerSpec.cpp
   ../nitrogen/generated/shared/c++/HybridPlayerQueueSpec.cpp
   ../nitrogen/generated/shared/c++/HybridTrackPlayerSpec.cpp
   # Android-specific Nitrogen C++ sources
@@ -49,6 +50,7 @@ target_sources(
   ../nitrogen/generated/android/c++/JVariant_NullType_DownloadError.cpp
   ../nitrogen/generated/android/c++/JVariant_NullType_DownloadedTrack.cpp
   ../nitrogen/generated/android/c++/JVariant_NullType_DownloadedPlaylist.cpp
+  ../nitrogen/generated/android/c++/JHybridEqualizerSpec.cpp
   ../nitrogen/generated/android/c++/JHybridPlayerQueueSpec.cpp
   ../nitrogen/generated/android/c++/JVariant_NullType_Playlist.cpp
   ../nitrogen/generated/android/c++/JHybridTrackPlayerSpec.cpp

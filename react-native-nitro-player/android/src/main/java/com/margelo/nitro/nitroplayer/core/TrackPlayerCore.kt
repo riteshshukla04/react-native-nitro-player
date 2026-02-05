@@ -23,6 +23,7 @@ import com.margelo.nitro.nitroplayer.Variant_NullType_String
 import com.margelo.nitro.nitroplayer.Variant_NullType_TrackItem
 import com.margelo.nitro.nitroplayer.connection.AndroidAutoConnectionDetector
 import com.margelo.nitro.nitroplayer.download.DownloadManagerCore
+import com.margelo.nitro.nitroplayer.equalizer.EqualizerCore
 import com.margelo.nitro.nitroplayer.media.MediaLibrary
 import com.margelo.nitro.nitroplayer.media.MediaLibraryManager
 import com.margelo.nitro.nitroplayer.media.MediaLibraryParser
@@ -49,6 +50,7 @@ class TrackPlayerCore private constructor(
     private var androidAutoConnectionDetector: AndroidAutoConnectionDetector? = null
     var onAndroidAutoConnectionChange: ((Boolean) -> Unit)? = null
     private var previousMediaItem: MediaItem? = null
+
     private val progressUpdateRunnable =
         object : Runnable {
             override fun run() {
@@ -106,7 +108,9 @@ class TrackPlayerCore private constructor(
     }
 
     init {
-        handler.post {
+        // Run synchronously on main thread to avoid deadlock
+        // when awaitInitialization is called from main thread
+        val initRunnable = Runnable {
             // ============================================================
             // GAPLESS PLAYBACK CONFIGURATION
             // ============================================================
@@ -143,7 +147,6 @@ class TrackPlayerCore private constructor(
                     .setPauseAtEndOfMediaItems(false) // Don't pause between items - key for gapless!
                     .build()
 
-            println("🎵 TrackPlayerCore: Gapless playback configured - 120s buffer, audio focus handling enabled")
             mediaSessionManager =
                 MediaSessionManager(context, player, playlistManager).apply {
                     setTrackPlayerCore(this@TrackPlayerCore)
@@ -314,11 +317,28 @@ class TrackPlayerCore private constructor(
                             notifySeek(newPosition.positionMs / 1000.0, player.duration / 1000.0)
                         }
                     }
+
+                    override fun onAudioSessionIdChanged(audioSessionId: Int) {
+                        if (audioSessionId != 0) {
+                            try {
+                                EqualizerCore.getInstance(context).initialize(audioSessionId)
+                            } catch (e: Exception) {
+                                // Equalizer initialization failed - non-critical
+                            }
+                        }
+                    }
                 },
             )
 
             // Start progress updates
             handler.post(progressUpdateRunnable)
+        }
+        
+        // Execute on main thread: if already on main thread, run synchronously to avoid deadlock
+        if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+            initRunnable.run()
+        } else {
+            handler.post(initRunnable)
         }
     }
 

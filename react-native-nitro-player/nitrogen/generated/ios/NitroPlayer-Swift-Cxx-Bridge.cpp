@@ -10,6 +10,7 @@
 // Include C++ implementation defined types
 #include "HybridAudioRoutePickerSpecSwift.hpp"
 #include "HybridDownloadManagerSpecSwift.hpp"
+#include "HybridEqualizerSpecSwift.hpp"
 #include "HybridPlayerQueueSpecSwift.hpp"
 #include "HybridTrackPlayerSpecSwift.hpp"
 #include "NitroPlayer-Swift-Cxx-Umbrella.hpp"
@@ -113,6 +114,46 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     return swiftPart.toUnsafe();
   }
   
+  // pragma MARK: std::function<void(bool /* enabled */)>
+  Func_void_bool create_Func_void_bool(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_bool::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](bool enabled) mutable -> void {
+      swiftClosure.call(enabled);
+    };
+  }
+  
+  // pragma MARK: std::function<void(const std::vector<EqualizerBand>& /* bands */)>
+  Func_void_std__vector_EqualizerBand_ create_Func_void_std__vector_EqualizerBand_(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_std__vector_EqualizerBand_::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const std::vector<EqualizerBand>& bands) mutable -> void {
+      swiftClosure.call(bands);
+    };
+  }
+  
+  // pragma MARK: std::function<void(const std::optional<std::variant<nitro::NullType, std::string>>& /* presetName */)>
+  Func_void_std__optional_std__variant_nitro__NullType__std__string__ create_Func_void_std__optional_std__variant_nitro__NullType__std__string__(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_std__optional_std__variant_nitro__NullType__std__string__::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const std::optional<std::variant<nitro::NullType, std::string>>& presetName) mutable -> void {
+      swiftClosure.call(presetName);
+    };
+  }
+  
+  // pragma MARK: std::shared_ptr<HybridEqualizerSpec>
+  std::shared_ptr<HybridEqualizerSpec> create_std__shared_ptr_HybridEqualizerSpec_(void* NON_NULL swiftUnsafePointer) noexcept {
+    NitroPlayer::HybridEqualizerSpec_cxx swiftPart = NitroPlayer::HybridEqualizerSpec_cxx::fromUnsafe(swiftUnsafePointer);
+    return std::make_shared<margelo::nitro::nitroplayer::HybridEqualizerSpecSwift>(swiftPart);
+  }
+  void* NON_NULL get_std__shared_ptr_HybridEqualizerSpec_(std__shared_ptr_HybridEqualizerSpec_ cppType) {
+    std::shared_ptr<margelo::nitro::nitroplayer::HybridEqualizerSpecSwift> swiftWrapper = std::dynamic_pointer_cast<margelo::nitro::nitroplayer::HybridEqualizerSpecSwift>(cppType);
+    #ifdef NITRO_DEBUG
+    if (swiftWrapper == nullptr) [[unlikely]] {
+      throw std::runtime_error("Class \"HybridEqualizerSpec\" is not implemented in Swift!");
+    }
+    #endif
+    NitroPlayer::HybridEqualizerSpec_cxx& swiftPart = swiftWrapper->getSwiftPart();
+    return swiftPart.toUnsafe();
+  }
+  
   // pragma MARK: std::function<void(const std::vector<Playlist>& /* playlists */, std::optional<QueueOperation> /* operation */)>
   Func_void_std__vector_Playlist__std__optional_QueueOperation_ create_Func_void_std__vector_Playlist__std__optional_QueueOperation_(void* NON_NULL swiftClosureWrapper) noexcept {
     auto swiftClosure = NitroPlayer::Func_void_std__vector_Playlist__std__optional_QueueOperation_::fromUnsafe(swiftClosureWrapper);
@@ -143,14 +184,6 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     #endif
     NitroPlayer::HybridPlayerQueueSpec_cxx& swiftPart = swiftWrapper->getSwiftPart();
     return swiftPart.toUnsafe();
-  }
-  
-  // pragma MARK: std::function<void(bool /* result */)>
-  Func_void_bool create_Func_void_bool(void* NON_NULL swiftClosureWrapper) noexcept {
-    auto swiftClosure = NitroPlayer::Func_void_bool::fromUnsafe(swiftClosureWrapper);
-    return [swiftClosure = std::move(swiftClosure)](bool result) mutable -> void {
-      swiftClosure.call(result);
-    };
   }
   
   // pragma MARK: std::function<void(const std::vector<TrackItem>& /* result */)>

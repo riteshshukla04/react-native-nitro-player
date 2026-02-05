@@ -30,10 +30,20 @@ namespace margelo::nitro::nitroplayer { struct DownloadTask; }
 namespace margelo::nitro::nitroplayer { struct DownloadedPlaylist; }
 // Forward declaration of `DownloadedTrack` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct DownloadedTrack; }
+// Forward declaration of `EqualizerBand` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct EqualizerBand; }
+// Forward declaration of `EqualizerPreset` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct EqualizerPreset; }
+// Forward declaration of `EqualizerState` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct EqualizerState; }
+// Forward declaration of `GainRange` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct GainRange; }
 // Forward declaration of `HybridAudioRoutePickerSpec` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { class HybridAudioRoutePickerSpec; }
 // Forward declaration of `HybridDownloadManagerSpec` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { class HybridDownloadManagerSpec; }
+// Forward declaration of `HybridEqualizerSpec` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { class HybridEqualizerSpec; }
 // Forward declaration of `HybridPlayerQueueSpec` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { class HybridPlayerQueueSpec; }
 // Forward declaration of `HybridTrackPlayerSpec` to properly resolve imports.
@@ -44,6 +54,8 @@ namespace margelo::nitro::nitroplayer { enum class PlaybackSource; }
 namespace margelo::nitro::nitroplayer { struct PlayerState; }
 // Forward declaration of `Playlist` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct Playlist; }
+// Forward declaration of `PresetType` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class PresetType; }
 // Forward declaration of `QueueOperation` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class QueueOperation; }
 // Forward declaration of `Reason` to properly resolve imports.
@@ -60,6 +72,8 @@ namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 namespace NitroPlayer { class HybridAudioRoutePickerSpec_cxx; }
 // Forward declaration of `HybridDownloadManagerSpec_cxx` to properly resolve imports.
 namespace NitroPlayer { class HybridDownloadManagerSpec_cxx; }
+// Forward declaration of `HybridEqualizerSpec_cxx` to properly resolve imports.
+namespace NitroPlayer { class HybridEqualizerSpec_cxx; }
 // Forward declaration of `HybridPlayerQueueSpec_cxx` to properly resolve imports.
 namespace NitroPlayer { class HybridPlayerQueueSpec_cxx; }
 // Forward declaration of `HybridTrackPlayerSpec_cxx` to properly resolve imports.
@@ -77,13 +91,19 @@ namespace NitroPlayer { class HybridTrackPlayerSpec_cxx; }
 #include "DownloadTask.hpp"
 #include "DownloadedPlaylist.hpp"
 #include "DownloadedTrack.hpp"
+#include "EqualizerBand.hpp"
+#include "EqualizerPreset.hpp"
+#include "EqualizerState.hpp"
+#include "GainRange.hpp"
 #include "HybridAudioRoutePickerSpec.hpp"
 #include "HybridDownloadManagerSpec.hpp"
+#include "HybridEqualizerSpec.hpp"
 #include "HybridPlayerQueueSpec.hpp"
 #include "HybridTrackPlayerSpec.hpp"
 #include "PlaybackSource.hpp"
 #include "PlayerState.hpp"
 #include "Playlist.hpp"
+#include "PresetType.hpp"
 #include "QueueOperation.hpp"
 #include "Reason.hpp"
 #include "StorageLocation.hpp"
@@ -875,6 +895,153 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     return Result<std::string>::withError(error);
   }
   
+  // pragma MARK: std::vector<EqualizerBand>
+  /**
+   * Specialized version of `std::vector<EqualizerBand>`.
+   */
+  using std__vector_EqualizerBand_ = std::vector<EqualizerBand>;
+  inline std::vector<EqualizerBand> create_std__vector_EqualizerBand_(size_t size) noexcept {
+    std::vector<EqualizerBand> vector;
+    vector.reserve(size);
+    return vector;
+  }
+  
+  // pragma MARK: std::vector<double>
+  /**
+   * Specialized version of `std::vector<double>`.
+   */
+  using std__vector_double_ = std::vector<double>;
+  inline std::vector<double> create_std__vector_double_(size_t size) noexcept {
+    std::vector<double> vector;
+    vector.reserve(size);
+    return vector;
+  }
+  
+  // pragma MARK: std::vector<EqualizerPreset>
+  /**
+   * Specialized version of `std::vector<EqualizerPreset>`.
+   */
+  using std__vector_EqualizerPreset_ = std::vector<EqualizerPreset>;
+  inline std::vector<EqualizerPreset> create_std__vector_EqualizerPreset_(size_t size) noexcept {
+    std::vector<EqualizerPreset> vector;
+    vector.reserve(size);
+    return vector;
+  }
+  
+  // pragma MARK: std::function<void(bool /* enabled */)>
+  /**
+   * Specialized version of `std::function<void(bool)>`.
+   */
+  using Func_void_bool = std::function<void(bool /* enabled */)>;
+  /**
+   * Wrapper class for a `std::function<void(bool / * enabled * /)>`, this can be used from Swift.
+   */
+  class Func_void_bool_Wrapper final {
+  public:
+    explicit Func_void_bool_Wrapper(std::function<void(bool /* enabled */)>&& func): _function(std::make_unique<std::function<void(bool /* enabled */)>>(std::move(func))) {}
+    inline void call(bool enabled) const noexcept {
+      _function->operator()(enabled);
+    }
+  private:
+    std::unique_ptr<std::function<void(bool /* enabled */)>> _function;
+  } SWIFT_NONCOPYABLE;
+  Func_void_bool create_Func_void_bool(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_bool_Wrapper wrap_Func_void_bool(Func_void_bool value) noexcept {
+    return Func_void_bool_Wrapper(std::move(value));
+  }
+  
+  // pragma MARK: std::function<void(const std::vector<EqualizerBand>& /* bands */)>
+  /**
+   * Specialized version of `std::function<void(const std::vector<EqualizerBand>&)>`.
+   */
+  using Func_void_std__vector_EqualizerBand_ = std::function<void(const std::vector<EqualizerBand>& /* bands */)>;
+  /**
+   * Wrapper class for a `std::function<void(const std::vector<EqualizerBand>& / * bands * /)>`, this can be used from Swift.
+   */
+  class Func_void_std__vector_EqualizerBand__Wrapper final {
+  public:
+    explicit Func_void_std__vector_EqualizerBand__Wrapper(std::function<void(const std::vector<EqualizerBand>& /* bands */)>&& func): _function(std::make_unique<std::function<void(const std::vector<EqualizerBand>& /* bands */)>>(std::move(func))) {}
+    inline void call(std::vector<EqualizerBand> bands) const noexcept {
+      _function->operator()(bands);
+    }
+  private:
+    std::unique_ptr<std::function<void(const std::vector<EqualizerBand>& /* bands */)>> _function;
+  } SWIFT_NONCOPYABLE;
+  Func_void_std__vector_EqualizerBand_ create_Func_void_std__vector_EqualizerBand_(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_std__vector_EqualizerBand__Wrapper wrap_Func_void_std__vector_EqualizerBand_(Func_void_std__vector_EqualizerBand_ value) noexcept {
+    return Func_void_std__vector_EqualizerBand__Wrapper(std::move(value));
+  }
+  
+  // pragma MARK: std::function<void(const std::optional<std::variant<nitro::NullType, std::string>>& /* presetName */)>
+  /**
+   * Specialized version of `std::function<void(const std::optional<std::variant<nitro::NullType, std::string>>&)>`.
+   */
+  using Func_void_std__optional_std__variant_nitro__NullType__std__string__ = std::function<void(const std::optional<std::variant<nitro::NullType, std::string>>& /* presetName */)>;
+  /**
+   * Wrapper class for a `std::function<void(const std::optional<std::variant<nitro::NullType, std::string>>& / * presetName * /)>`, this can be used from Swift.
+   */
+  class Func_void_std__optional_std__variant_nitro__NullType__std__string___Wrapper final {
+  public:
+    explicit Func_void_std__optional_std__variant_nitro__NullType__std__string___Wrapper(std::function<void(const std::optional<std::variant<nitro::NullType, std::string>>& /* presetName */)>&& func): _function(std::make_unique<std::function<void(const std::optional<std::variant<nitro::NullType, std::string>>& /* presetName */)>>(std::move(func))) {}
+    inline void call(std::optional<std::variant<nitro::NullType, std::string>> presetName) const noexcept {
+      _function->operator()(presetName);
+    }
+  private:
+    std::unique_ptr<std::function<void(const std::optional<std::variant<nitro::NullType, std::string>>& /* presetName */)>> _function;
+  } SWIFT_NONCOPYABLE;
+  Func_void_std__optional_std__variant_nitro__NullType__std__string__ create_Func_void_std__optional_std__variant_nitro__NullType__std__string__(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_std__optional_std__variant_nitro__NullType__std__string___Wrapper wrap_Func_void_std__optional_std__variant_nitro__NullType__std__string__(Func_void_std__optional_std__variant_nitro__NullType__std__string__ value) noexcept {
+    return Func_void_std__optional_std__variant_nitro__NullType__std__string___Wrapper(std::move(value));
+  }
+  
+  // pragma MARK: std::shared_ptr<HybridEqualizerSpec>
+  /**
+   * Specialized version of `std::shared_ptr<HybridEqualizerSpec>`.
+   */
+  using std__shared_ptr_HybridEqualizerSpec_ = std::shared_ptr<HybridEqualizerSpec>;
+  std::shared_ptr<HybridEqualizerSpec> create_std__shared_ptr_HybridEqualizerSpec_(void* NON_NULL swiftUnsafePointer) noexcept;
+  void* NON_NULL get_std__shared_ptr_HybridEqualizerSpec_(std__shared_ptr_HybridEqualizerSpec_ cppType);
+  
+  // pragma MARK: std::weak_ptr<HybridEqualizerSpec>
+  using std__weak_ptr_HybridEqualizerSpec_ = std::weak_ptr<HybridEqualizerSpec>;
+  inline std__weak_ptr_HybridEqualizerSpec_ weakify_std__shared_ptr_HybridEqualizerSpec_(const std::shared_ptr<HybridEqualizerSpec>& strong) noexcept { return strong; }
+  
+  // pragma MARK: Result<std::vector<EqualizerBand>>
+  using Result_std__vector_EqualizerBand__ = Result<std::vector<EqualizerBand>>;
+  inline Result_std__vector_EqualizerBand__ create_Result_std__vector_EqualizerBand__(const std::vector<EqualizerBand>& value) noexcept {
+    return Result<std::vector<EqualizerBand>>::withValue(value);
+  }
+  inline Result_std__vector_EqualizerBand__ create_Result_std__vector_EqualizerBand__(const std::exception_ptr& error) noexcept {
+    return Result<std::vector<EqualizerBand>>::withError(error);
+  }
+  
+  // pragma MARK: Result<GainRange>
+  using Result_GainRange_ = Result<GainRange>;
+  inline Result_GainRange_ create_Result_GainRange_(const GainRange& value) noexcept {
+    return Result<GainRange>::withValue(value);
+  }
+  inline Result_GainRange_ create_Result_GainRange_(const std::exception_ptr& error) noexcept {
+    return Result<GainRange>::withError(error);
+  }
+  
+  // pragma MARK: Result<std::vector<EqualizerPreset>>
+  using Result_std__vector_EqualizerPreset__ = Result<std::vector<EqualizerPreset>>;
+  inline Result_std__vector_EqualizerPreset__ create_Result_std__vector_EqualizerPreset__(const std::vector<EqualizerPreset>& value) noexcept {
+    return Result<std::vector<EqualizerPreset>>::withValue(value);
+  }
+  inline Result_std__vector_EqualizerPreset__ create_Result_std__vector_EqualizerPreset__(const std::exception_ptr& error) noexcept {
+    return Result<std::vector<EqualizerPreset>>::withError(error);
+  }
+  
+  // pragma MARK: Result<EqualizerState>
+  using Result_EqualizerState_ = Result<EqualizerState>;
+  inline Result_EqualizerState_ create_Result_EqualizerState_(const EqualizerState& value) noexcept {
+    return Result<EqualizerState>::withValue(value);
+  }
+  inline Result_EqualizerState_ create_Result_EqualizerState_(const std::exception_ptr& error) noexcept {
+    return Result<EqualizerState>::withError(error);
+  }
+  
   // pragma MARK: std::variant<nitro::NullType, Playlist>
   /**
    * Wrapper struct for `std::variant<nitro::NullType, Playlist>`.
@@ -1014,28 +1181,6 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
   }
   inline PromiseHolder<bool> wrap_std__shared_ptr_Promise_bool__(std::shared_ptr<Promise<bool>> promise) noexcept {
     return PromiseHolder<bool>(std::move(promise));
-  }
-  
-  // pragma MARK: std::function<void(bool /* result */)>
-  /**
-   * Specialized version of `std::function<void(bool)>`.
-   */
-  using Func_void_bool = std::function<void(bool /* result */)>;
-  /**
-   * Wrapper class for a `std::function<void(bool / * result * /)>`, this can be used from Swift.
-   */
-  class Func_void_bool_Wrapper final {
-  public:
-    explicit Func_void_bool_Wrapper(std::function<void(bool /* result */)>&& func): _function(std::make_unique<std::function<void(bool /* result */)>>(std::move(func))) {}
-    inline void call(bool result) const noexcept {
-      _function->operator()(result);
-    }
-  private:
-    std::unique_ptr<std::function<void(bool /* result */)>> _function;
-  } SWIFT_NONCOPYABLE;
-  Func_void_bool create_Func_void_bool(void* NON_NULL swiftClosureWrapper) noexcept;
-  inline Func_void_bool_Wrapper wrap_Func_void_bool(Func_void_bool value) noexcept {
-    return Func_void_bool_Wrapper(std::move(value));
   }
   
   // pragma MARK: std::shared_ptr<Promise<std::vector<TrackItem>>>

@@ -14,6 +14,7 @@
 #include "HybridTrackPlayerSpecSwift.hpp"
 #include "HybridAudioRoutePickerSpecSwift.hpp"
 #include "HybridDownloadManagerSpecSwift.hpp"
+#include "HybridEqualizerSpecSwift.hpp"
 
 @interface NitroPlayerAutolinking : NSObject
 @end
@@ -49,6 +50,13 @@
     "DownloadManager",
     []() -> std::shared_ptr<HybridObject> {
       std::shared_ptr<HybridDownloadManagerSpec> hybridObject = NitroPlayer::NitroPlayerAutolinking::createDownloadManager();
+      return hybridObject;
+    }
+  );
+  HybridObjectRegistry::registerHybridObjectConstructor(
+    "Equalizer",
+    []() -> std::shared_ptr<HybridObject> {
+      std::shared_ptr<HybridEqualizerSpec> hybridObject = NitroPlayer::NitroPlayerAutolinking::createEqualizer();
       return hybridObject;
     }
   );

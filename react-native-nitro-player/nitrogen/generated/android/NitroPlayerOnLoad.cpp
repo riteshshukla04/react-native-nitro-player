@@ -21,6 +21,10 @@
 #include "JFunc_void_DownloadProgress.hpp"
 #include "JFunc_void_std__string_std__string_DownloadState_std__optional_DownloadError_.hpp"
 #include "JFunc_void_DownloadedTrack.hpp"
+#include "JHybridEqualizerSpec.hpp"
+#include "JFunc_void_bool.hpp"
+#include "JFunc_void_std__vector_EqualizerBand_.hpp"
+#include "JFunc_void_std__optional_std__variant_nitro__NullType__std__string__.hpp"
 #include "JHybridPlayerQueueSpec.hpp"
 #include "JFunc_void_std__vector_Playlist__std__optional_QueueOperation_.hpp"
 #include "JFunc_void_std__string_Playlist_std__optional_QueueOperation_.hpp"
@@ -29,7 +33,6 @@
 #include "JFunc_void_TrackPlayerState_std__optional_Reason_.hpp"
 #include "JFunc_void_double_double.hpp"
 #include "JFunc_void_double_double_std__optional_bool_.hpp"
-#include "JFunc_void_bool.hpp"
 #include <NitroModules/DefaultConstructableObject.hpp>
 
 namespace margelo::nitro::nitroplayer {
@@ -47,6 +50,10 @@ int initialize(JavaVM* vm) {
     margelo::nitro::nitroplayer::JFunc_void_DownloadProgress_cxx::registerNatives();
     margelo::nitro::nitroplayer::JFunc_void_std__string_std__string_DownloadState_std__optional_DownloadError__cxx::registerNatives();
     margelo::nitro::nitroplayer::JFunc_void_DownloadedTrack_cxx::registerNatives();
+    margelo::nitro::nitroplayer::JHybridEqualizerSpec::registerNatives();
+    margelo::nitro::nitroplayer::JFunc_void_bool_cxx::registerNatives();
+    margelo::nitro::nitroplayer::JFunc_void_std__vector_EqualizerBand__cxx::registerNatives();
+    margelo::nitro::nitroplayer::JFunc_void_std__optional_std__variant_nitro__NullType__std__string___cxx::registerNatives();
     margelo::nitro::nitroplayer::JHybridPlayerQueueSpec::registerNatives();
     margelo::nitro::nitroplayer::JFunc_void_std__vector_Playlist__std__optional_QueueOperation__cxx::registerNatives();
     margelo::nitro::nitroplayer::JFunc_void_std__string_Playlist_std__optional_QueueOperation__cxx::registerNatives();
@@ -55,7 +62,6 @@ int initialize(JavaVM* vm) {
     margelo::nitro::nitroplayer::JFunc_void_TrackPlayerState_std__optional_Reason__cxx::registerNatives();
     margelo::nitro::nitroplayer::JFunc_void_double_double_cxx::registerNatives();
     margelo::nitro::nitroplayer::JFunc_void_double_double_std__optional_bool__cxx::registerNatives();
-    margelo::nitro::nitroplayer::JFunc_void_bool_cxx::registerNatives();
 
     // Register Nitro Hybrid Objects
     HybridObjectRegistry::registerHybridObjectConstructor(
@@ -94,6 +100,14 @@ int initialize(JavaVM* vm) {
       "DownloadManager",
       []() -> std::shared_ptr<HybridObject> {
         static DefaultConstructableObject<JHybridDownloadManagerSpec::javaobject> object("com/margelo/nitro/nitroplayer/HybridDownloadManager");
+        auto instance = object.create();
+        return instance->cthis()->shared();
+      }
+    );
+    HybridObjectRegistry::registerHybridObjectConstructor(
+      "Equalizer",
+      []() -> std::shared_ptr<HybridObject> {
+        static DefaultConstructableObject<JHybridEqualizerSpec::javaobject> object("com/margelo/nitro/nitroplayer/HybridEqualizer");
         auto instance = object.create();
         return instance->cthis()->shared();
       }
