@@ -40,10 +40,12 @@ jobs:
         with:
           ruby-version: '3.2'
           bundler-cache: true
-      - name: Setup Xcode
-        uses: actions/setup-xcode@v4
+
+      - name: Setup xcode
+        uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: '26'
+
       - name: Install CocoaPods
         working-directory: example/ios
         run: |
