@@ -20,6 +20,7 @@ npm install react-native-nitro-modules
 
 ## API Reference
 
+
 ### React Hooks
 
 | Name                          | Platform | Description                                                                     |
@@ -31,6 +32,7 @@ npm install react-native-nitro-modules
 | `useNowPlaying`               | Both     | Returns complete player state (track, state, duration, playlist) in one object. |
 | `useActualQueue`              | Both     | Returns the efficient playback queue including temporary tracks.                |
 | `usePlaylist`                 | Both     | Manages playlist state, providing access to all playlists and tracks.           |
+| `useEqualizer`                | Both     | Controls the 5-band equalizer, including presets and individual band gains.     |
 | `useAndroidAutoConnection`    | Both     | Monitors Android Auto connection status.                                        |
 | `useAudioDevices`             | Android  | Returns list of available audio output devices.                                 |
 | `useDownloadProgress`         | Both     | Tracks download progress for tracks. Returns progress map and overall status.   |
@@ -581,6 +583,73 @@ import { AudioRoutePicker } from 'react-native-nitro-player'
 
 if (AudioRoutePicker) {
   AudioRoutePicker.showRoutePicker()
+}
+```
+
+
+## Equalizer
+
+The player includes a powerful 5-band equalizer that works on both iOS and Android.
+
+### `useEqualizer()`
+
+Returns the current equalizer state and control methods.
+
+**Returns:**
+
+- `isEnabled: boolean` - Whether the equalizer is currently active
+- `bands: EqualizerBand[]` - Current gain settings for all 5 bands
+- `currentPreset: string | null` - Name of the currently applied preset
+- `setEnabled(enabled: boolean): boolean` - Toggle the equalizer on/off
+- `setBandGain(index: number, gainDb: number): boolean` - Set gain for a specific band (range: -12dB to +12dB)
+- `setAllBandGains(gains: number[]): boolean` - Set all band gains at once
+- `reset(): void` - Reset to flat response
+
+**Bands:**
+
+The equalizer features 5 bands at the following center frequencies:
+1. **60 Hz** - Sub-bass/Bass
+2. **230 Hz** - Bass/Low-mids
+3. **910 Hz** - Mids
+4. **3.6 kHz** - Upper-mids/Treble
+5. **14 kHz** - High treble/Air
+
+**Example:**
+
+```typescript
+import { useEqualizer } from 'react-native-nitro-player'
+
+function EqualizerControl() {
+  const { 
+    isEnabled, 
+    setEnabled, 
+    bands, 
+    setBandGain, 
+    reset 
+  } = useEqualizer()
+
+  return (
+    <View>
+      <Switch 
+        value={isEnabled} 
+        onValueChange={setEnabled} 
+      />
+      
+      {bands.map((band) => (
+        <View key={band.index}>
+          <Text>{band.frequencyLabel}</Text>
+          <Slider
+            minimumValue={-12}
+            maximumValue={12}
+            value={band.gainDb}
+            onSlidingComplete={(value) => setBandGain(band.index, value)}
+          />
+        </View>
+      ))}
+      
+      <Button title="Reset" onPress={reset} />
+    </View>
+  )
 }
 ```
 
