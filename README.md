@@ -134,6 +134,12 @@ const tracks: TrackItem[] = [
     duration: 180.0, // in seconds
     url: 'https://example.com/song.mp3',
     artwork: 'https://example.com/artwork.jpg',
+    // Optional custom data (accessible in player state)
+    extraPayload: {
+      artistId: '123',
+      genre: 'Rock',
+      isFavorite: true,
+    },
   },
 ]
 
@@ -889,6 +895,29 @@ interface TrackItem {
   duration: number // Duration in seconds
   url: string // Audio file URL
   artwork?: string | null // Optional artwork URL
+  // key-value pairs for arbitrary data
+  extraPayload?: {
+    [key: string]: string | number | boolean | Record<string, unknown>
+  }
+}
+```
+
+### Custom Track Metadata (extraPayload)
+
+```typescript
+const track = {
+  // ... standard fields
+  extraPayload: {
+    externalId: 'sp-12345',
+    rating: 4.5,
+    tags: ['chill', 'instrumental']
+  }
+}
+
+// Accessing it later
+const { track } = useOnChangeTrack()
+if (track?.extraPayload?.rating > 4) {
+  console.log('High rated track playing!')
 }
 ```
 
