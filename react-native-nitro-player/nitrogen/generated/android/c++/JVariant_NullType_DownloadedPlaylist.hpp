@@ -23,6 +23,8 @@
 #include "TrackItem.hpp"
 #include <vector>
 #include "JTrackItem.hpp"
+#include <NitroModules/AnyMap.hpp>
+#include <NitroModules/JAnyMap.hpp>
 #include "DownloadedTrack.hpp"
 #include "JDownloadedTrack.hpp"
 #include "StorageLocation.hpp"

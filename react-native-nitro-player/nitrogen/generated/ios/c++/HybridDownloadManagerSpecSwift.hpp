@@ -49,6 +49,7 @@ namespace margelo::nitro::nitroplayer { enum class PlaybackSource; }
 #include <variant>
 #include <NitroModules/Promise.hpp>
 #include "TrackItem.hpp"
+#include <NitroModules/AnyMap.hpp>
 #include <vector>
 #include "DownloadTask.hpp"
 #include "DownloadState.hpp"

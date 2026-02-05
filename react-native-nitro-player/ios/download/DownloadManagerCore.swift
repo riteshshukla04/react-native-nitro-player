@@ -595,7 +595,8 @@ final class DownloadManagerCore: NSObject {
       album: record.album,
       duration: record.duration,
       url: record.url,
-      artwork: artwork
+      artwork: artwork,
+      extraPayload: nil
     )
   }
 

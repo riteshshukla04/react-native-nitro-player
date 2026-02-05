@@ -18,6 +18,8 @@
 #include "JVariant_NullType_TrackItem.hpp"
 #include "TrackItem.hpp"
 #include "TrackPlayerState.hpp"
+#include <NitroModules/AnyMap.hpp>
+#include <NitroModules/JAnyMap.hpp>
 #include <NitroModules/JNull.hpp>
 #include <NitroModules/Null.hpp>
 #include <optional>

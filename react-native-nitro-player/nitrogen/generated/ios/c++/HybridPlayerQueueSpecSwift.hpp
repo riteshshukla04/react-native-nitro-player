@@ -26,6 +26,7 @@ namespace margelo::nitro::nitroplayer { enum class QueueOperation; }
 #include <variant>
 #include "TrackItem.hpp"
 #include <vector>
+#include <NitroModules/AnyMap.hpp>
 #include "QueueOperation.hpp"
 #include <functional>
 

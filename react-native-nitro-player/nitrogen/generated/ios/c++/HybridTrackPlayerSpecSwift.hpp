@@ -34,6 +34,7 @@ namespace margelo::nitro::nitroplayer { enum class Reason; }
 #include <vector>
 #include <NitroModules/Null.hpp>
 #include <variant>
+#include <NitroModules/AnyMap.hpp>
 #include "PlayerState.hpp"
 #include "TrackPlayerState.hpp"
 #include "CurrentPlayingType.hpp"

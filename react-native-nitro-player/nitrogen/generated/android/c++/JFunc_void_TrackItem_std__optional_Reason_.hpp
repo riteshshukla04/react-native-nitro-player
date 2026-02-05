@@ -21,6 +21,8 @@
 #include <variant>
 #include "JVariant_NullType_String.hpp"
 #include <NitroModules/JNull.hpp>
+#include <NitroModules/AnyMap.hpp>
+#include <NitroModules/JAnyMap.hpp>
 #include "JReason.hpp"
 
 namespace margelo::nitro::nitroplayer {

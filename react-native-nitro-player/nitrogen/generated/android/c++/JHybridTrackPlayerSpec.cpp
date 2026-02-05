@@ -33,6 +33,8 @@ namespace margelo::nitro::nitroplayer { enum class Reason; }
 #include <optional>
 #include "JVariant_NullType_String.hpp"
 #include <NitroModules/JNull.hpp>
+#include <NitroModules/AnyMap.hpp>
+#include <NitroModules/JAnyMap.hpp>
 #include "PlayerState.hpp"
 #include "JPlayerState.hpp"
 #include "JVariant_NullType_TrackItem.hpp"

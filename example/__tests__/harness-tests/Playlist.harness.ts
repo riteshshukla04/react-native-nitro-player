@@ -3,6 +3,7 @@ import {
   it,
   expect,
   beforeEach,
+  beforeAll,
   afterEach,
 } from 'react-native-harness';
 import { PlayerQueue, TrackItem, Playlist } from 'react-native-nitro-player';
@@ -17,10 +18,24 @@ const createTestTrack = (id: string, title: string): TrackItem => ({
   duration: 180.0,
   url: `https://example.com/track-${id}.mp3`,
   artwork: `https://example.com/artwork-${id}.jpg`,
+  extraPayload: undefined,
 });
 
 describe('PlayerQueue - Comprehensive Playlist Tests', () => {
   let createdPlaylistIds: string[] = [];
+
+  // Clear all existing playlists before running tests
+  beforeAll(() => {
+    console.log('Clearing all existing playlists before tests...');
+    const existingPlaylists = PlayerQueue.getAllPlaylists();
+    existingPlaylists.forEach((playlist) => {
+      try {
+        PlayerQueue.deletePlaylist(playlist.id);
+      } catch (e) {
+        console.warn('Error deleting existing playlist:', e);
+      }
+    });
+  });
 
   beforeEach(() => {
     console.log('Setting up test...');

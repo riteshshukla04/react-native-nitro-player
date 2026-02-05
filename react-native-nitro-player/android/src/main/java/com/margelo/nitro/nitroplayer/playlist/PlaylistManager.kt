@@ -12,6 +12,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
+import com.margelo.nitro.core.AnyMap
 
 /**
  * Manages multiple playlists using ExoPlayer's native playlist functionality
@@ -381,6 +382,12 @@ class PlaylistManager private constructor(
                                         put("duration", track.duration)
                                         put("url", track.url)
                                         track.artwork?.let { put("artwork", it) }
+                                        // Serialize extraPayload to JSON for persistence
+                                        track.extraPayload?.let { payload ->
+                                            val extraPayloadMap = payload.toMap()
+                                            val extraPayloadJson = JSONObject(extraPayloadMap)
+                                            put("extraPayload", extraPayloadJson)
+                                        }
                                     },
                                 )
                             }
@@ -420,6 +427,24 @@ class PlaylistManager private constructor(
                                 } else {
                                     null
                                 }
+                            // Deserialize extraPayload from JSON
+                            val extraPayload: AnyMap? =
+                                if (trackObj.has("extraPayload")) {
+                                    val extraPayloadJson = trackObj.getJSONObject("extraPayload")
+                                    val map = AnyMap()
+                                    val keyIterator = extraPayloadJson.keys()
+                                    while (keyIterator.hasNext()) {
+                                        val key = keyIterator.next()
+                                        when (val value = extraPayloadJson.get(key)) {
+                                            is String -> map.setString(key, value)
+                                            is Number -> map.setDouble(key, value.toDouble())
+                                            is Boolean -> map.setBoolean(key, value)
+                                        }
+                                    }
+                                    map
+                                } else {
+                                    null
+                                }
                             tracks.add(
                                 TrackItem(
                                     id = trackObj.getString("id"),
@@ -429,6 +454,7 @@ class PlaylistManager private constructor(
                                     duration = trackObj.getDouble("duration"),
                                     url = trackObj.getString("url"),
                                     artwork = artwork,
+                                    extraPayload = extraPayload,
                                 ),
                             )
                         }

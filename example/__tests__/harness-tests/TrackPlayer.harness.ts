@@ -735,6 +735,153 @@ describe('TrackPlayer - Comprehensive Tests', () => {
     });
 
     // // ============================================
+    // // EXTRA PAYLOAD
+    // // ============================================
+
+    describe('ExtraPayload in TrackItem', () => {
+        it('should store extraPayload during track creation', async () => {
+            const trackWithPayload: TrackItem = {
+                id: 'payload-test-1',
+                title: 'Track with Payload',
+                artist: 'Test Artist',
+                album: 'Test Album',
+                duration: 180.0,
+                url: 'https://example.com/test.mp3',
+                artwork: 'https://example.com/art.jpg',
+                extraPayload: {
+                    customField: 'customValue',
+                    numericField: 42,
+                    nestedObject: { foo: 'bar' },
+                },
+            };
+
+            const payloadPlaylistId = PlayerQueue.createPlaylist('Payload Test Playlist', 'Test playlist for extraPayload');
+            createdPlaylistIds.push(payloadPlaylistId);
+
+            PlayerQueue.addTracksToPlaylist(payloadPlaylistId, [trackWithPayload]);
+
+            const playlist = PlayerQueue.getPlaylist(payloadPlaylistId);
+            expect(playlist).not.toBeNull();
+            expect(playlist!.tracks.length).toBe(1);
+            expect(playlist!.tracks[0].extraPayload).toBeDefined();
+        });
+
+        it('should retrieve extraPayload from current track when playing', async () => {
+            const trackWithPayload: TrackItem = {
+                id: 'payload-test-2',
+                title: 'Another Track with Payload',
+                artist: 'Test Artist',
+                album: 'Test Album',
+                duration: 200.0,
+                url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+                artwork: 'https://example.com/art2.jpg',
+                extraPayload: {
+                    source: 'library',
+                    rating: 5,
+                    tags: ['rock', 'classic'],
+                },
+            };
+
+            const payloadPlaylistId = PlayerQueue.createPlaylist('Play Payload Playlist', 'Test playlist for playing with extraPayload');
+            createdPlaylistIds.push(payloadPlaylistId);
+
+            PlayerQueue.addTracksToPlaylist(payloadPlaylistId, [trackWithPayload]);
+
+            await TrackPlayer.playSong('payload-test-2', payloadPlaylistId);
+            await waitForNextTick();
+
+            const state = await TrackPlayer.getState();
+            expect(state.currentTrack).not.toBeNull();
+            expect(state.currentTrack?.extraPayload).toBeDefined();
+        });
+
+        it('should handle track without extraPayload', async () => {
+            const trackWithoutPayload: TrackItem = {
+                id: 'no-payload-test',
+                title: 'Track without Payload',
+                artist: 'Test Artist',
+                album: 'Test Album',
+                duration: 150.0,
+                url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+                artwork: null,
+            };
+
+            const noPayloadPlaylistId = PlayerQueue.createPlaylist('No Payload Playlist', 'Test playlist without extraPayload');
+            createdPlaylistIds.push(noPayloadPlaylistId);
+
+            PlayerQueue.addTracksToPlaylist(noPayloadPlaylistId, [trackWithoutPayload]);
+
+            await TrackPlayer.playSong('no-payload-test', noPayloadPlaylistId);
+            await waitForNextTick();
+
+            const state = await TrackPlayer.getState();
+            expect(state.currentTrack).not.toBeNull();
+            expect(state.currentTrack?.id).toBe('no-payload-test');
+            // extraPayload should be undefined or null when not provided
+            expect(state.currentTrack?.extraPayload).toBeUndefined();
+        });
+
+        it('should preserve extraPayload in queue operations', async () => {
+            const trackWithPayload: TrackItem = {
+                id: 'queue-payload-test',
+                title: 'Queue Payload Track',
+                artist: 'Test Artist',
+                album: 'Test Album',
+                duration: 180.0,
+                url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
+                artwork: null,
+                extraPayload: {
+                    queueSource: 'search',
+                    addedAt: 1234567890,
+                },
+            };
+
+            const queuePayloadPlaylistId = PlayerQueue.createPlaylist('Queue Payload Playlist', 'Test playlist for queue extraPayload');
+            createdPlaylistIds.push(queuePayloadPlaylistId);
+
+            PlayerQueue.addTracksToPlaylist(queuePayloadPlaylistId, [trackWithPayload]);
+            PlayerQueue.loadPlaylist(queuePayloadPlaylistId);
+
+            const queue = await TrackPlayer.getActualQueue();
+            expect(queue.length).toBe(1);
+            expect(queue[0].extraPayload).toBeDefined();
+        });
+
+        it('should preserve extraPayload when adding to playNext', async () => {
+            // Create a track with extraPayload in a different playlist
+            const trackForPlayNext: TrackItem = {
+                id: 'playnext-payload',
+                title: 'PlayNext Payload Track',
+                artist: 'Test Artist',
+                album: 'Test Album',
+                duration: 180.0,
+                url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
+                artwork: null,
+                extraPayload: {
+                    addedVia: 'playNext',
+                    priority: 1,
+                },
+            };
+
+            const sourcePlaylistId = PlayerQueue.createPlaylist('Source Playlist', 'Source for playNext');
+            createdPlaylistIds.push(sourcePlaylistId);
+            PlayerQueue.addTracksToPlaylist(sourcePlaylistId, [trackForPlayNext]);
+
+            // Load main playlist and add track to playNext
+            PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.playNext('playnext-payload');
+
+            const queue = await TrackPlayer.getActualQueue();
+            const playNextTrack = queue.find(t => t.id === 'playnext-payload');
+
+            expect(playNextTrack).toBeDefined();
+            expect(playNextTrack?.extraPayload?.addedVia).toBe('playNext');
+            expect(playNextTrack?.extraPayload?.priority).toBe(1);
+        });
+    });
+
+    // // ============================================
     // // EDGE CASES
     // // ============================================
 

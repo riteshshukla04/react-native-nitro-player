@@ -377,6 +377,10 @@ class PlaylistManager {
             } else {
               trackDict["artwork"] = ""
             }
+            // Serialize extraPayload to dictionary for persistence
+            if let extraPayload = track.extraPayload {
+              trackDict["extraPayload"] = extraPayload.toDictionary()
+            }
             return trackDict
           },
         ]
@@ -425,6 +429,24 @@ class PlaylistManager {
             let artwork = artworkString.flatMap {
               !$0.isEmpty ? Variant_NullType_String.second($0) : nil
             }
+            
+            // Deserialize extraPayload from dictionary
+            var extraPayload: AnyMap? = nil
+            if let extraPayloadDict = trackDict["extraPayload"] as? [String: Any] {
+              extraPayload = AnyMap()
+              for (key, value) in extraPayloadDict {
+                if let stringValue = value as? String {
+                  extraPayload?.setString(key: key, value: stringValue)
+                } else if let doubleValue = value as? Double {
+                  extraPayload?.setDouble(key: key, value: doubleValue)
+                } else if let intValue = value as? Int {
+                  extraPayload?.setDouble(key: key, value: Double(intValue))
+                } else if let boolValue = value as? Bool {
+                  extraPayload?.setBoolean(key: key, value: boolValue)
+                }
+              }
+            }
+            
             return TrackItem(
               id: id,
               title: title,
@@ -432,7 +454,8 @@ class PlaylistManager {
               album: album,
               duration: duration,
               url: url,
-              artwork: artwork
+              artwork: artwork,
+              extraPayload: extraPayload
             )
           }
 

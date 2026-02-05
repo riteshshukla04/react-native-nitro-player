@@ -362,7 +362,8 @@ class TrackPlayerCore: NSObject {
           album: "",
           duration: 0,
           url: "",
-          artwork: nil
+          artwork: nil,
+          extraPayload: nil
         ), .end)
 
     // Try to play next track

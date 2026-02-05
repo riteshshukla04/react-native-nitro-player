@@ -370,6 +370,7 @@ class DownloadDatabase private constructor(
             duration = record.duration,
             url = record.url,
             artwork = artworkVariant,
+            extraPayload = null,
         )
     }
 

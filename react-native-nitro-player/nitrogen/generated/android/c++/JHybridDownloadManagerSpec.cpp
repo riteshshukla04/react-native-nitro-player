@@ -69,6 +69,8 @@ namespace margelo::nitro::nitroplayer { enum class PlaybackSource; }
 #include "JDownloadedTrack.hpp"
 #include "TrackItem.hpp"
 #include "JTrackItem.hpp"
+#include <NitroModules/AnyMap.hpp>
+#include <NitroModules/JAnyMap.hpp>
 #include "DownloadedPlaylist.hpp"
 #include "JVariant_NullType_DownloadedPlaylist.hpp"
 #include "JDownloadedPlaylist.hpp"

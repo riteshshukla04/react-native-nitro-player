@@ -22,6 +22,8 @@
 #include <optional>
 #include "JVariant_NullType_String.hpp"
 #include <NitroModules/JNull.hpp>
+#include <NitroModules/AnyMap.hpp>
+#include <NitroModules/JAnyMap.hpp>
 #include "StorageLocation.hpp"
 #include "JStorageLocation.hpp"
 

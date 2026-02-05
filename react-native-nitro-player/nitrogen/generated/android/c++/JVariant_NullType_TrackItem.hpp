@@ -18,6 +18,8 @@
 #include <string>
 #include <optional>
 #include "JVariant_NullType_String.hpp"
+#include <NitroModules/AnyMap.hpp>
+#include <NitroModules/JAnyMap.hpp>
 
 namespace margelo::nitro::nitroplayer {
 

@@ -10,6 +10,7 @@ package com.margelo.nitro.nitroplayer
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
 import com.margelo.nitro.core.NullType
+import com.margelo.nitro.core.AnyMap
 
 /**
  * Represents the JavaScript object/struct "TrackItem".
@@ -37,7 +38,10 @@ data class TrackItem(
   val url: String,
   @DoNotStrip
   @Keep
-  val artwork: Variant_NullType_String?
+  val artwork: Variant_NullType_String?,
+  @DoNotStrip
+  @Keep
+  val extraPayload: AnyMap?
 ) {
   /* primary constructor */
 
@@ -49,8 +53,8 @@ data class TrackItem(
     @Keep
     @Suppress("unused")
     @JvmStatic
-    private fun fromCpp(id: String, title: String, artist: String, album: String, duration: Double, url: String, artwork: Variant_NullType_String?): TrackItem {
-      return TrackItem(id, title, artist, album, duration, url, artwork)
+    private fun fromCpp(id: String, title: String, artist: String, album: String, duration: Double, url: String, artwork: Variant_NullType_String?, extraPayload: AnyMap?): TrackItem {
+      return TrackItem(id, title, artist, album, duration, url, artwork, extraPayload)
     }
   }
 }

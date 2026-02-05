@@ -1,3 +1,5 @@
+import type { AnyMap } from "react-native-nitro-modules"
+
 export type CurrentPlayingType =
   | 'playlist'
   | 'up-next'
@@ -10,7 +12,8 @@ export interface TrackItem {
   album: string
   duration: number
   url: string
-  artwork?: string | null
+  artwork?: string | null,
+  extraPayload?: AnyMap
 }
 
 export interface Playlist {

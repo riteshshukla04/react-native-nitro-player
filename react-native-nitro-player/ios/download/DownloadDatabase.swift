@@ -452,7 +452,8 @@ final class DownloadDatabase {
       album: record.album,
       duration: record.duration,
       url: record.url,
-      artwork: stringToVariant(record.artwork)
+      artwork: stringToVariant(record.artwork),
+      extraPayload: nil
     )
   }
 

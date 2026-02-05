@@ -24,6 +24,8 @@
 #include "TrackItem.hpp"
 #include <vector>
 #include "JTrackItem.hpp"
+#include <NitroModules/AnyMap.hpp>
+#include <NitroModules/JAnyMap.hpp>
 #include "JQueueOperation.hpp"
 
 namespace margelo::nitro::nitroplayer {

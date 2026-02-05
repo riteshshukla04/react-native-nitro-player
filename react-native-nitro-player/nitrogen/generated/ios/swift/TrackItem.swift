@@ -19,7 +19,7 @@ public extension TrackItem {
   /**
    * Create a new instance of `TrackItem`.
    */
-  init(id: String, title: String, artist: String, album: String, duration: Double, url: String, artwork: Variant_NullType_String?) {
+  init(id: String, title: String, artist: String, album: String, duration: Double, url: String, artwork: Variant_NullType_String?, extraPayload: AnyMap?) {
     self.init(std.string(id), std.string(title), std.string(artist), std.string(album), duration, std.string(url), { () -> bridge.std__optional_std__variant_nitro__NullType__std__string__ in
       if let __unwrappedValue = artwork {
         return bridge.create_std__optional_std__variant_nitro__NullType__std__string__({ () -> bridge.std__variant_nitro__NullType__std__string_ in
@@ -30,6 +30,12 @@ public extension TrackItem {
               return bridge.create_std__variant_nitro__NullType__std__string_(std.string(__value))
           }
         }().variant)
+      } else {
+        return .init()
+      }
+    }(), { () -> bridge.std__optional_std__shared_ptr_AnyMap__ in
+      if let __unwrappedValue = extraPayload {
+        return bridge.create_std__optional_std__shared_ptr_AnyMap__(__unwrappedValue.cppPart)
       } else {
         return .init()
       }
@@ -138,6 +144,30 @@ public extension TrackItem {
                 return bridge.create_std__variant_nitro__NullType__std__string_(std.string(__value))
             }
           }().variant)
+        } else {
+          return .init()
+        }
+      }()
+    }
+  }
+  
+  var extraPayload: AnyMap? {
+    @inline(__always)
+    get {
+      return { () -> AnyMap? in
+        if bridge.has_value_std__optional_std__shared_ptr_AnyMap__(self.__extraPayload) {
+          let __unwrapped = bridge.get_std__optional_std__shared_ptr_AnyMap__(self.__extraPayload)
+          return AnyMap(withCppPart: __unwrapped)
+        } else {
+          return nil
+        }
+      }()
+    }
+    @inline(__always)
+    set {
+      self.__extraPayload = { () -> bridge.std__optional_std__shared_ptr_AnyMap__ in
+        if let __unwrappedValue = newValue {
+          return bridge.create_std__optional_std__shared_ptr_AnyMap__(__unwrappedValue.cppPart)
         } else {
           return .init()
         }

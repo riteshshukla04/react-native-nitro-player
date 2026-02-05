@@ -10,6 +10,7 @@ export const sampleTracks1: TrackItem[] = [
     url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
     artwork:
       'https://img.freepik.com/free-photo/sunset-time-tropical-beach-sea-with-coconut-palm-tree_74190-1075.jpg?w=740',
+    extraPayload: undefined,
   },
   {
     id: '2',
@@ -19,6 +20,7 @@ export const sampleTracks1: TrackItem[] = [
     duration: 204.0,
     url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
     artwork: 'https://via.placeholder.com/150/FF0000/FFFFFF?Text=Midnight',
+    extraPayload: undefined,
   },
   {
     id: '3',
@@ -28,6 +30,7 @@ export const sampleTracks1: TrackItem[] = [
     duration: 195.5,
     url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
     artwork: 'https://via.placeholder.com/150/00FF00/000000?Text=City',
+    extraPayload: undefined,
   },
 ];
 
@@ -40,6 +43,7 @@ export const sampleTracks2: TrackItem[] = [
     duration: 300.0,
     url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
     artwork: 'https://via.placeholder.com/150/0000FF/FFFFFF?Text=Ocean',
+    extraPayload: undefined,
   },
   {
     id: '5',
@@ -49,5 +53,6 @@ export const sampleTracks2: TrackItem[] = [
     duration: 280.0,
     url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3',
     artwork: 'https://via.placeholder.com/150/008000/FFFFFF?Text=Forest',
+    extraPayload: undefined,
   },
 ];

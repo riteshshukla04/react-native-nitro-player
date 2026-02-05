@@ -103,6 +103,7 @@ namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 #include "StorageLocation.hpp"
 #include "TrackItem.hpp"
 #include "TrackPlayerState.hpp"
+#include <NitroModules/AnyMap.hpp>
 #include <NitroModules/Null.hpp>
 #include <NitroModules/Promise.hpp>
 #include <NitroModules/Result.hpp>

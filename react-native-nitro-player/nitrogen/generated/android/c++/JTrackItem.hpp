@@ -11,6 +11,8 @@
 #include "TrackItem.hpp"
 
 #include "JVariant_NullType_String.hpp"
+#include <NitroModules/AnyMap.hpp>
+#include <NitroModules/JAnyMap.hpp>
 #include <NitroModules/JNull.hpp>
 #include <NitroModules/Null.hpp>
 #include <optional>
@@ -50,6 +52,8 @@ namespace margelo::nitro::nitroplayer {
       jni::local_ref<jni::JString> url = this->getFieldValue(fieldUrl);
       static const auto fieldArtwork = clazz->getField<JVariant_NullType_String>("artwork");
       jni::local_ref<JVariant_NullType_String> artwork = this->getFieldValue(fieldArtwork);
+      static const auto fieldExtraPayload = clazz->getField<JAnyMap::javaobject>("extraPayload");
+      jni::local_ref<JAnyMap::javaobject> extraPayload = this->getFieldValue(fieldExtraPayload);
       return TrackItem(
         id->toStdString(),
         title->toStdString(),
@@ -57,7 +61,8 @@ namespace margelo::nitro::nitroplayer {
         album->toStdString(),
         duration,
         url->toStdString(),
-        artwork != nullptr ? std::make_optional(artwork->toCpp()) : std::nullopt
+        artwork != nullptr ? std::make_optional(artwork->toCpp()) : std::nullopt,
+        extraPayload != nullptr ? std::make_optional(extraPayload->cthis()->getMap()) : std::nullopt
       );
     }
 
@@ -67,7 +72,7 @@ namespace margelo::nitro::nitroplayer {
      */
     [[maybe_unused]]
     static jni::local_ref<JTrackItem::javaobject> fromCpp(const TrackItem& value) {
-      using JSignature = JTrackItem(jni::alias_ref<jni::JString>, jni::alias_ref<jni::JString>, jni::alias_ref<jni::JString>, jni::alias_ref<jni::JString>, double, jni::alias_ref<jni::JString>, jni::alias_ref<JVariant_NullType_String>);
+      using JSignature = JTrackItem(jni::alias_ref<jni::JString>, jni::alias_ref<jni::JString>, jni::alias_ref<jni::JString>, jni::alias_ref<jni::JString>, double, jni::alias_ref<jni::JString>, jni::alias_ref<JVariant_NullType_String>, jni::alias_ref<JAnyMap::javaobject>);
       static const auto clazz = javaClassStatic();
       static const auto create = clazz->getStaticMethod<JSignature>("fromCpp");
       return create(
@@ -78,7 +83,8 @@ namespace margelo::nitro::nitroplayer {
         jni::make_jstring(value.album),
         value.duration,
         jni::make_jstring(value.url),
-        value.artwork.has_value() ? JVariant_NullType_String::fromCpp(value.artwork.value()) : nullptr
+        value.artwork.has_value() ? JVariant_NullType_String::fromCpp(value.artwork.value()) : nullptr,
+        value.extraPayload.has_value() ? JAnyMap::create(value.extraPayload.value()) : nullptr
       );
     }
   };
