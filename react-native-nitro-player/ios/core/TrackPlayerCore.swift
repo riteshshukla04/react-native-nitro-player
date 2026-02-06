@@ -566,11 +566,13 @@ class TrackPlayerCore: NSObject {
   private func setupCurrentItemObservers(item: AVPlayerItem) {
     print("📱 TrackPlayerCore: Setting up item observers")
 
-    // Observe status - recreate boundaries when ready
+    // Observe status - recreate boundaries when ready and update now playing info
     let statusObserver = item.observe(\.status, options: [.new]) { [weak self] item, _ in
       if item.status == .readyToPlay {
         print("✅ TrackPlayerCore: Item ready, setting up boundaries")
         self?.setupBoundaryTimeObserver()
+        // Update now playing info now that duration is available
+        self?.mediaSessionManager?.updateNowPlayingInfo()
       } else if item.status == .failed {
         print("❌ TrackPlayerCore: Item failed")
         self?.notifyPlaybackStateChange(.stopped, .error)
@@ -1406,6 +1408,10 @@ class TrackPlayerCore: NSObject {
     self.isManuallySeeked = true
     let time = CMTime(seconds: position, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
     player.seek(to: time) { [weak self] completed in
+      // Always update now playing info to restore playback rate after seek
+      // This ensures the scrubber animation resumes correctly
+      self?.mediaSessionManager?.updateNowPlayingInfo()
+      
       if completed {
         let duration = player.currentItem?.duration.seconds ?? 0.0
         self?.notifySeek(position, duration)

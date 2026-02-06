@@ -106,36 +106,29 @@ class MediaSessionManager {
       return .success
     }
 
-    // Seek forward
-    commandCenter.seekForwardCommand.isEnabled = true
-    commandCenter.seekForwardCommand.addTarget { [weak self] event in
-      guard let self = self, let core = self.trackPlayerCore else { return .commandFailed }
-      let state = core.getState()
-      let newPosition = min(state.currentPosition + Constants.seekInterval, state.totalDuration)
-      core.seek(position: newPosition)
-      return .success
-    }
+    // Disable continuous seek commands - they replace the interactive scrubber
+    // with non-interactive forward/backward buttons on the lock screen
+    commandCenter.seekForwardCommand.isEnabled = false
+    commandCenter.seekBackwardCommand.isEnabled = false
 
-    // Seek backward
-    commandCenter.seekBackwardCommand.isEnabled = true
-    commandCenter.seekBackwardCommand.addTarget { [weak self] event in
-      guard let self = self, let core = self.trackPlayerCore else { return .commandFailed }
-      let state = core.getState()
-      let newPosition = max(state.currentPosition - Constants.seekInterval, 0.0)
-      core.seek(position: newPosition)
-      return .success
-    }
-
-    // Change playback position
+    // Change playback position (interactive scrubber)
     commandCenter.changePlaybackPositionCommand.isEnabled = true
     commandCenter.changePlaybackPositionCommand.addTarget { [weak self] event in
       guard let self = self,
         let core = self.trackPlayerCore,
-        let event = event as? MPChangePlaybackPositionCommandEvent
+        let positionEvent = event as? MPChangePlaybackPositionCommandEvent
       else {
         return .commandFailed
       }
-      core.seek(position: event.positionTime)
+      // Immediately update elapsed time AND set playback rate to 0 during seek
+      // This prevents the scrubber from freezing/desyncing during the async seek operation
+      if var info = MPNowPlayingInfoCenter.default().nowPlayingInfo {
+        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = positionEvent.positionTime
+        // Set rate to 0 to pause scrubber animation during seek
+        info[MPNowPlayingInfoPropertyPlaybackRate] = 0.0
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+      }
+      core.seek(position: positionEvent.positionTime)
       return .success
     }
   }
@@ -156,20 +149,39 @@ class MediaSessionManager {
 
     let state = core.getState()
 
-    let nowPlayingInfo: [String: Any] = [
+    // Use player duration if valid, otherwise fall back to track metadata duration.
+    // Duration must always be present for the lock screen scrubber to be interactive.
+    let playerDuration = state.totalDuration
+    let effectiveDuration: Double
+    if playerDuration > 0 && !playerDuration.isNaN && !playerDuration.isInfinite {
+      effectiveDuration = playerDuration
+    } else {
+      effectiveDuration = track.duration
+    }
+
+    var nowPlayingInfo: [String: Any] = [
       MPMediaItemPropertyTitle: track.title,
       MPMediaItemPropertyArtist: track.artist,
       MPMediaItemPropertyAlbumTitle: track.album,
       MPNowPlayingInfoPropertyElapsedPlaybackTime: state.currentPosition,
-      MPMediaItemPropertyPlaybackDuration: state.totalDuration,
+      MPMediaItemPropertyPlaybackDuration: effectiveDuration,
       MPNowPlayingInfoPropertyPlaybackRate: state.currentState == .playing ? 1.0 : 0.0,
     ]
 
-    // Load artwork asynchronously
+    // Add artwork synchronously if cached, otherwise load async
     if let artwork = track.artwork, case .second(let artworkUrl) = artwork {
-      loadArtwork(url: artworkUrl) { [weak self] image in
-        if let image = image {
-          var updatedInfo = nowPlayingInfo
+      if let cachedImage = artworkCache[artworkUrl] {
+        // Artwork is cached - include it directly to avoid overwrite race condition
+        nowPlayingInfo[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(
+          boundsSize: CGSize(width: Constants.artworkSize, height: Constants.artworkSize),
+          requestHandler: { _ in cachedImage }
+        )
+      } else {
+        // Artwork not cached - load asynchronously and update later
+        loadArtwork(url: artworkUrl) { [weak self] image in
+          guard let self = self, let image = image else { return }
+          // Re-read current nowPlayingInfo to avoid overwriting other updates
+          var updatedInfo = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
           updatedInfo[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(
             boundsSize: CGSize(width: Constants.artworkSize, height: Constants.artworkSize),
             requestHandler: { _ in image }
