@@ -12,6 +12,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
+
 import com.margelo.nitro.core.AnyMap
 
 /**
@@ -384,7 +385,7 @@ class PlaylistManager private constructor(
                                         track.artwork?.let { put("artwork", it) }
                                         // Serialize extraPayload to JSON for persistence
                                         track.extraPayload?.let { payload ->
-                                            val extraPayloadMap = payload.toMap()
+                                            val extraPayloadMap = payload.toHashMap()
                                             val extraPayloadJson = JSONObject(extraPayloadMap)
                                             put("extraPayload", extraPayloadJson)
                                         }

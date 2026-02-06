@@ -18,7 +18,7 @@
     },
     "example": {
       "name": "example",
-      "version": "0.3.0-alpha.14",
+      "version": "0.3.0-alpha.16",
       "dependencies": {
         "@react-native-harness/platform-android": "^1.0.0-alpha.21",
         "@react-native-harness/platform-apple": "^1.0.0-alpha.21",
@@ -29,7 +29,7 @@
         "react-native": "0.82.1",
         "react-native-audio-pro": "^10.1.2",
         "react-native-harness": "^1.0.0-alpha.21",
-        "react-native-nitro-modules": "^0.31.9",
+        "react-native-nitro-modules": "^0.33.7",
         "react-native-nitro-player": "../react-native-nitro-player",
         "react-native-safe-area-context": "^5.6.2",
         "react-native-screens": "^4.19.0",
@@ -57,7 +57,7 @@
     },
     "react-native-nitro-player": {
       "name": "react-native-nitro-player",
-      "version": "0.3.0-alpha.14",
+      "version": "0.3.0-alpha.16",
       "devDependencies": {
         "@react-native/eslint-config": "0.82.0",
         "@release-it-plugins/workspaces": "^5.0.3",
@@ -1721,7 +1721,7 @@
 
     "react-native-harness": ["react-native-harness@1.0.0-alpha.21", "", { "dependencies": { "@react-native-harness/babel-preset": "1.0.0-alpha.21", "@react-native-harness/cli": "1.0.0-alpha.21", "@react-native-harness/jest": "1.0.0-alpha.21", "@react-native-harness/metro": "1.0.0-alpha.21", "@react-native-harness/runtime": "1.0.0-alpha.21", "tslib": "^2.3.0" }, "bin": { "react-native-harness": "bin.js" } }, "sha512-HasDD5vEf71aX2Y9J14vj4yZVIUTAEOWMQpQ6QBzSvh/1xP0Oo8SCHMWU/VENkEO7/MOvCAVqqIQcsKUfm+6Hw=="],
 
-    "react-native-nitro-modules": ["react-native-nitro-modules@0.31.9", "", { "peerDependencies": { "react": "*", "react-native": "*" } }, "sha512-w7NtHq4wP6LZgvDs7zbFU3B2uHpRx/bJlSTckw0By8NyEX39fURPGgHyi4a67q1O7I3iFJvbRNWUiiOBbNvHDg=="],
+    "react-native-nitro-modules": ["react-native-nitro-modules@0.33.7", "", { "peerDependencies": { "react": "*", "react-native": "*" } }, "sha512-WepMobWe4j1Ae5GQ5RxYGBdBpJBwzP6zaOxJ7r6nhbY5iyl01DL3Gsh4gk8edzNFRuAh1rvXDAHIipq8SahxeQ=="],
 
     "react-native-nitro-player": ["react-native-nitro-player@workspace:react-native-nitro-player"],
 
@@ -2254,6 +2254,8 @@
     "new-github-release-url/type-fest": ["type-fest@2.19.0", "", {}, "sha512-RAH822pAdBgcNMAfWnCBU3CFZcfZ/i1eZjwFU/dsLKumyuuP3niueg2UAukXYF0E2AAoc82ZSSf9J0WQBinzHA=="],
 
     "nitrogen/chalk": ["chalk@5.6.2", "", {}, "sha512-7NzBL0rN6fMUW+f7A6Io4h40qQlG+xGmtMxfbnH/K7TAtt8JQWVQK+6g0UXKMeVJoyV5EkkNsErQ8pVD3bLHbA=="],
+
+    "nitrogen/react-native-nitro-modules": ["react-native-nitro-modules@0.31.9", "", { "peerDependencies": { "react": "*", "react-native": "*" } }, "sha512-w7NtHq4wP6LZgvDs7zbFU3B2uHpRx/bJlSTckw0By8NyEX39fURPGgHyi4a67q1O7I3iFJvbRNWUiiOBbNvHDg=="],
 
     "nitrogen/yargs": ["yargs@18.0.0", "", { "dependencies": { "cliui": "^9.0.1", "escalade": "^3.1.1", "get-caller-file": "^2.0.5", "string-width": "^7.2.0", "y18n": "^5.0.5", "yargs-parser": "^22.0.0" } }, "sha512-4UEqdc2RYGHZc7Doyqkrqiln3p9X2DZVxaGbwhn2pi7MrRagKaOcIKe8L3OxYcbhXLgLFUS3zAYuQjKBQgmuNg=="],
 
