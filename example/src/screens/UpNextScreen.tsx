@@ -84,15 +84,15 @@ export default function UpNextScreen() {
         const currentTrackIndex = (await TrackPlayer.getState()).currentIndex;
         console.log('Current track index:', currentTrackIndex);
         PlayerQueue.reorderTrackInPlaylist(playlistId, newTrack.id, currentTrackIndex + 1);
-          console.log(`✅ Moved track ${newTrack.id} to index ${currentTrackIndex + 1} (Play Next)`);
-       
+        console.log(`✅ Moved track ${newTrack.id} to index ${currentTrackIndex + 1} (Play Next)`);
+
       }
 
-      
+
     } catch (error) {
       console.error('❌ Error in insertRandomSongNext:', error);
     }
-  }, [refreshPlaylists, refreshQueue]);
+  }, [currentTrack]);
 
   return (
     <SafeAreaView style={commonStyles.container}>
