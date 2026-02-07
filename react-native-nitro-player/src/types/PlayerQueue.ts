@@ -45,3 +45,4 @@ export interface PlayerConfig {
   carPlayEnabled?: boolean
   showInNotification?: boolean
 }
+

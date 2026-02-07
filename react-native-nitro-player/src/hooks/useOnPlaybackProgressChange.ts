@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { TrackPlayer } from '../index'
+import { callbackManager } from './callbackManager'
 
 /**
  * Hook to get the current playback progress
@@ -17,7 +17,7 @@ export function useOnPlaybackProgressChange(): {
   )
 
   useEffect(() => {
-    TrackPlayer.onPlaybackProgressChange(
+    return callbackManager.subscribeToPlaybackProgressChange(
       (newPosition, newTotalDuration, newIsManuallySeeked) => {
         setPosition(newPosition)
         setTotalDuration(newTotalDuration)

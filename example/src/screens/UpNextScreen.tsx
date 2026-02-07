@@ -14,6 +14,7 @@ import {
   useOnChangeTrack,
   usePlaylist,
   useActualQueue,
+  useNowPlaying,
 } from 'react-native-nitro-player';
 import type { TrackItem } from 'react-native-nitro-player';
 import { colors, commonStyles, spacing, borderRadius } from '../styles/theme';
@@ -22,6 +23,8 @@ export default function UpNextScreen() {
   const { allTracks: availableTracks, refreshPlaylists, isLoading: playlistLoading } = usePlaylist();
   const { track: currentTrack } = useOnChangeTrack();
   const { queue: actualQueue, refreshQueue, isLoading: queueLoading } = useActualQueue();
+  const nowPlaying = useNowPlaying();
+  console.log('nowPlaying', nowPlaying);
 
   const handleAddToUpNext = useCallback((trackId: string) => {
     TrackPlayer.addToUpNext(trackId);

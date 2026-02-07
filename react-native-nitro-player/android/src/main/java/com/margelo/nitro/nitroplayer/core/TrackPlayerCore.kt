@@ -625,10 +625,32 @@ class TrackPlayerCore private constructor(
 
     fun skipToPrevious() {
         handler.post {
-            // If playing temporary track, just seek to beginning (temps not navigable backwards)
-            if (currentTemporaryType != TemporaryType.NONE) {
-                println("🔄 TrackPlayerCore: Playing temporary track - seeking to beginning")
+            val currentPosition = player.currentPosition // milliseconds
+
+            if (currentPosition > 2000) {
+                // More than 2 seconds in, restart current track
+                println("🔄 TrackPlayerCore: Past threshold, restarting current track")
                 player.seekTo(0)
+            } else if (currentTemporaryType != TemporaryType.NONE) {
+                // Playing temporary track within threshold — remove from its list, go back to original
+                println("🔄 TrackPlayerCore: Removing temp track, going back to original")
+                val currentMediaItem = player.currentMediaItem
+                if (currentMediaItem != null) {
+                    val trackId = extractTrackId(currentMediaItem.mediaId)
+                    when (currentTemporaryType) {
+                        TemporaryType.PLAY_NEXT -> {
+                            val idx = playNextStack.indexOfFirst { it.id == trackId }
+                            if (idx >= 0) playNextStack.removeAt(idx)
+                        }
+                        TemporaryType.UP_NEXT -> {
+                            val idx = upNextQueue.indexOfFirst { it.id == trackId }
+                            if (idx >= 0) upNextQueue.removeAt(idx)
+                        }
+                        else -> {}
+                    }
+                }
+                currentTemporaryType = TemporaryType.NONE
+                playFromIndexInternal(currentTrackIndex)
             } else if (currentTrackIndex > 0) {
                 // Go to previous track in original playlist
                 println("🔄 TrackPlayerCore: Going to previous track, currentTrackIndex: $currentTrackIndex -> ${currentTrackIndex - 1}")

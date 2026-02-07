@@ -51,12 +51,14 @@ export function useNowPlaying(): PlayerState {
   const [state, setState] = useState<PlayerState>(DEFAULT_STATE)
   const isMounted = useRef(true)
 
-  const updateState = useCallback(async () => {
+  const fetchFullState = useCallback(async () => {
     if (!isMounted.current) return
 
     try {
       const newState = await TrackPlayer.getState()
-      setState(newState)
+      if (isMounted.current) {
+        setState(newState)
+      }
     } catch (error) {
       console.error('[useNowPlaying] Error updating player state:', error)
     }
@@ -65,34 +67,44 @@ export function useNowPlaying(): PlayerState {
   // Initialize with current state
   useEffect(() => {
     isMounted.current = true
-    updateState()
+    fetchFullState()
 
     return () => {
       isMounted.current = false
     }
-  }, [updateState])
+  }, [fetchFullState])
 
-  // Subscribe to track changes
+  // Subscribe to track changes — full refresh
   useEffect(() => {
-    const unsubscribe = callbackManager.subscribeToTrackChange(() => {
-      updateState()
+    return callbackManager.subscribeToTrackChange(() => {
+      fetchFullState()
     })
+  }, [fetchFullState])
 
-    return () => {
-      unsubscribe()
-    }
-  }, [updateState])
-
-  // Subscribe to playback state changes
+  // Subscribe to playback state changes — full refresh
   useEffect(() => {
-    const unsubscribe = callbackManager.subscribeToPlaybackState(() => {
-      updateState()
+    return callbackManager.subscribeToPlaybackState(() => {
+      fetchFullState()
     })
+  }, [fetchFullState])
 
-    return () => {
-      unsubscribe()
-    }
-  }, [updateState])
+  // Subscribe to progress changes — lightweight position/duration update
+  useEffect(() => {
+    return callbackManager.subscribeToPlaybackProgressChange(
+      (currentPosition, totalDuration) => {
+        if (!isMounted.current) return
+        setState((prev) => ({ ...prev, currentPosition, totalDuration }))
+      }
+    )
+  }, [])
+
+  // Subscribe to seek events — lightweight position/duration update
+  useEffect(() => {
+    return callbackManager.subscribeToSeek((currentPosition, totalDuration) => {
+      if (!isMounted.current) return
+      setState((prev) => ({ ...prev, currentPosition, totalDuration }))
+    })
+  }, [])
 
   return state
 }
