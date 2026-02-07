@@ -165,10 +165,7 @@ class CallbackSubscriptionManager {
           try {
             subscriber(position, totalDuration)
           } catch (error) {
-            console.error(
-              '[CallbackManager] Error in seek subscriber:',
-              error
-            )
+            console.error('[CallbackManager] Error in seek subscriber:', error)
           }
         })
       })
