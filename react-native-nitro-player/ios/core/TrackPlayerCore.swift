@@ -280,8 +280,7 @@ class TrackPlayerCore: NSObject {
     print("\n🏁 TrackPlayerCore: Track finished playing")
 
     guard let finishedItem = notification.object as? AVPlayerItem else {
-      print("⚠️ Cannot identify finished item")
-      skipToNext()
+      // Don't call skipToNext — AVQueuePlayer with actionAtItemEnd = .advance already auto-advances
       return
     }
 
@@ -352,7 +351,9 @@ class TrackPlayerCore: NSObject {
       print("🔁 TrackPlayerCore: Repeat mode is OFF")
     }
 
-    // Track ended naturally
+    // Track ended naturally — notify with .end reason
+    // AVQueuePlayer with actionAtItemEnd = .advance auto-advances to next item
+    // The KVO observer (currentItemDidChange) will handle the track change notification
     notifyTrackChange(
       getCurrentTrack()
         ?? TrackItem(
@@ -365,9 +366,6 @@ class TrackPlayerCore: NSObject {
           artwork: nil,
           extraPayload: nil
         ), .end)
-
-    // Try to play next track
-    skipToNext()
   }
 
   @objc private func playerItemFailedToPlayToEndTime(notification: Notification) {
@@ -1134,21 +1132,34 @@ class TrackPlayerCore: NSObject {
     var queue: [TrackItem] = []
 
     // Add tracks before current (original playlist)
-    if currentTrackIndex > 0 {
-      queue.append(contentsOf: Array(currentTracks[0..<currentTrackIndex]))
+    // When a temp track is playing, include the original track at currentTrackIndex
+    // (it already played before the temp track started)
+    let beforeEnd = currentTemporaryType != .none
+      ? min(currentTrackIndex + 1, currentTracks.count) : currentTrackIndex
+    if beforeEnd > 0 {
+      queue.append(contentsOf: Array(currentTracks[0..<beforeEnd]))
     }
 
-    // Add current track
+    // Add current track (temp or original)
     if let current = getCurrentTrack() {
       queue.append(current)
     }
 
     // Add playNext stack (LIFO - most recently added plays first)
-    // Stack is already in correct order since we insert at position 0
-    queue.append(contentsOf: playNextStack)
+    // Skip index 0 if current track is from playNext (it's already added as current)
+    if currentTemporaryType == .playNext && playNextStack.count > 1 {
+      queue.append(contentsOf: Array(playNextStack.dropFirst()))
+    } else if currentTemporaryType != .playNext {
+      queue.append(contentsOf: playNextStack)
+    }
 
     // Add upNext queue (in order, FIFO)
-    queue.append(contentsOf: upNextQueue)
+    // Skip index 0 if current track is from upNext (it's already added as current)
+    if currentTemporaryType == .upNext && upNextQueue.count > 1 {
+      queue.append(contentsOf: Array(upNextQueue.dropFirst()))
+    } else if currentTemporaryType != .upNext {
+      queue.append(contentsOf: upNextQueue)
+    }
 
     // Add remaining original tracks
     if currentTrackIndex + 1 < currentTracks.count {
@@ -1314,39 +1325,23 @@ class TrackPlayerCore: NSObject {
   private func skipToNextInternal() {
     guard let queuePlayer = self.player else { return }
 
-    print("\n⏭️ TrackPlayerCore: SKIP TO NEXT")
-    print("   BEFORE:")
-    print("      currentTrackIndex: \(self.currentTrackIndex)")
-    print("      Total tracks in currentTracks: \(self.currentTracks.count)")
-    print("      Items in player queue: \(queuePlayer.items().count)")
-
-    if let currentItem = queuePlayer.currentItem, let trackId = currentItem.trackId {
-      if let track = self.currentTracks.first(where: { $0.id == trackId }) {
-        print("      Currently playing: \(track.title) (ID: \(track.id))")
+    // Remove current temp track from its list before advancing
+    if let trackId = queuePlayer.currentItem?.trackId {
+      if currentTemporaryType == .playNext {
+        if let idx = playNextStack.firstIndex(where: { $0.id == trackId }) {
+          playNextStack.remove(at: idx)
+        }
+      } else if currentTemporaryType == .upNext {
+        if let idx = upNextQueue.firstIndex(where: { $0.id == trackId }) {
+          upNextQueue.remove(at: idx)
+        }
       }
     }
 
-    // Check if there are more items in the queue
-    if self.currentTrackIndex + 1 < self.currentTracks.count {
-      print("   🔄 Calling advanceToNextItem()...")
+    // Check if there are more items in the player queue
+    if queuePlayer.items().count > 1 {
       queuePlayer.advanceToNextItem()
-
-      // NOTE: Don't manually update currentTrackIndex here!
-      // The KVO observer (currentItemDidChange) will update it automatically
-
-      print("   AFTER advanceToNextItem():")
-      print("      Items in player queue: \(queuePlayer.items().count)")
-
-      if let newCurrentItem = queuePlayer.currentItem, let trackId = newCurrentItem.trackId {
-        if let track = self.currentTracks.first(where: { $0.id == trackId }) {
-          print("      New current item: \(track.title) (ID: \(track.id))")
-        }
-      }
-
-      print("   ⏳ Waiting for KVO observer to update index...")
     } else {
-      print("   ⚠️ No more tracks in playlist")
-      // At end of playlist - stop or loop
       queuePlayer.pause()
       self.notifyPlaybackStateChange(.stopped, .end)
     }
@@ -1365,29 +1360,31 @@ class TrackPlayerCore: NSObject {
   private func skipToPreviousInternal() {
     guard let queuePlayer = self.player else { return }
 
-    print("\n⏮️ TrackPlayerCore: SKIP TO PREVIOUS")
-    print("   Current index: \(self.currentTrackIndex)")
-    print("   Temporary type: \(self.currentTemporaryType)")
-    print("   Current time: \(queuePlayer.currentTime().seconds)s")
-
     let currentTime = queuePlayer.currentTime()
     if currentTime.seconds > Constants.skipToPreviousThreshold {
       // If more than threshold seconds in, restart current track
-      print(
-        "   🔄 More than \(Int(Constants.skipToPreviousThreshold))s in, restarting current track")
       queuePlayer.seek(to: .zero)
     } else if self.currentTemporaryType != .none {
-      // Playing temporary track - just restart it (temps are not navigable backwards)
-      print("   🔄 Playing temporary track - restarting it (temps not navigable backwards)")
-      queuePlayer.seek(to: .zero)
+      // Playing temporary track — remove from its list, then restart
+      if let trackId = queuePlayer.currentItem?.trackId {
+        if currentTemporaryType == .playNext {
+          if let idx = playNextStack.firstIndex(where: { $0.id == trackId }) {
+            playNextStack.remove(at: idx)
+          }
+        } else if currentTemporaryType == .upNext {
+          if let idx = upNextQueue.firstIndex(where: { $0.id == trackId }) {
+            upNextQueue.remove(at: idx)
+          }
+        }
+      }
+      // Go to current original track position (skip back from temp)
+      self.playFromIndex(index: self.currentTrackIndex)
     } else if self.currentTrackIndex > 0 {
       // Go to previous track in original playlist
       let previousIndex = self.currentTrackIndex - 1
-      print("   ⏮️ Going to previous track at index \(previousIndex)")
       self.playFromIndex(index: previousIndex)
     } else {
       // Already at first track, restart it
-      print("   🔄 Already at first track, restarting it")
       queuePlayer.seek(to: .zero)
     }
   }
@@ -1577,44 +1574,38 @@ class TrackPlayerCore: NSObject {
   }
 
   private func skipToIndexInternal(index: Int) -> Bool {
-    print("\n🎯 TrackPlayerCore: SKIP TO INDEX \(index)")
-
     // Get actual queue to validate index and determine position
     let actualQueue = getActualQueueInternal()
     let totalQueueSize = actualQueue.count
 
     // Validate index
-    guard index >= 0 && index < totalQueueSize else {
-      print("   ❌ Invalid index \(index), queue size is \(totalQueueSize)")
-      return false
-    }
+    guard index >= 0 && index < totalQueueSize else { return false }
 
-    // Calculate queue section boundaries
-    // ActualQueue structure: [before_current] + [current] + [playNext] + [upNext] + [remaining_original]
-    let currentPos = currentTrackIndex
+    // Calculate queue section boundaries using effective sizes
+    // (reduced by 1 when current track is from that temp list, matching getActualQueueInternal)
+    // When temp is playing, the original track at currentTrackIndex is included in "before",
+    // so the current playing position shifts by 1
+    let currentPos = currentTemporaryType != .none
+      ? currentTrackIndex + 1 : currentTrackIndex
+    let effectivePlayNextSize = currentTemporaryType == .playNext
+      ? max(0, playNextStack.count - 1) : playNextStack.count
+    let effectiveUpNextSize = currentTemporaryType == .upNext
+      ? max(0, upNextQueue.count - 1) : upNextQueue.count
+
     let playNextStart = currentPos + 1
-    let playNextEnd = playNextStart + playNextStack.count
+    let playNextEnd = playNextStart + effectivePlayNextSize
     let upNextStart = playNextEnd
-    let upNextEnd = upNextStart + upNextQueue.count
+    let upNextEnd = upNextStart + effectiveUpNextSize
     let originalRemainingStart = upNextEnd
-
-    print("   Queue structure:")
-    print("      currentPos: \(currentPos)")
-    print("      playNextStart: \(playNextStart), playNextEnd: \(playNextEnd)")
-    print("      upNextStart: \(upNextStart), upNextEnd: \(upNextEnd)")
-    print("      originalRemainingStart: \(originalRemainingStart)")
-    print("      totalQueueSize: \(totalQueueSize)")
 
     // Case 1: Target is before current - use playFromIndex on original
     if index < currentPos {
-      print("   📍 Target is before current, jumping to original playlist index \(index)")
       playFromIndexInternal(index: index)
       return true
     }
 
     // Case 2: Target is current - seek to beginning
     if index == currentPos {
-      print("   📍 Target is current track, seeking to beginning")
       player?.seek(to: .zero)
       return true
     }
@@ -1622,12 +1613,13 @@ class TrackPlayerCore: NSObject {
     // Case 3: Target is in playNext section
     if index >= playNextStart && index < playNextEnd {
       let playNextIndex = index - playNextStart
-      print("   📍 Target is in playNext section at position \(playNextIndex)")
+      // Offset by 1 if current is from playNext (index 0 is already playing)
+      let actualListIndex = currentTemporaryType == .playNext
+        ? playNextIndex + 1 : playNextIndex
 
       // Remove tracks before the target from playNext (they're being skipped)
-      if playNextIndex > 0 {
-        playNextStack.removeFirst(playNextIndex)
-        print("      Removed \(playNextIndex) tracks from playNext stack")
+      if actualListIndex > 0 {
+        playNextStack.removeFirst(actualListIndex)
       }
 
       // Rebuild queue and advance
@@ -1639,16 +1631,16 @@ class TrackPlayerCore: NSObject {
     // Case 4: Target is in upNext section
     if index >= upNextStart && index < upNextEnd {
       let upNextIndex = index - upNextStart
-      print("   📍 Target is in upNext section at position \(upNextIndex)")
+      // Offset by 1 if current is from upNext (index 0 is already playing)
+      let actualListIndex = currentTemporaryType == .upNext
+        ? upNextIndex + 1 : upNextIndex
 
       // Clear all playNext tracks (they're being skipped)
       playNextStack.removeAll()
-      print("      Cleared all playNext tracks")
 
       // Remove tracks before target from upNext
-      if upNextIndex > 0 {
-        upNextQueue.removeFirst(upNextIndex)
-        print("      Removed \(upNextIndex) tracks from upNext queue")
+      if actualListIndex > 0 {
+        upNextQueue.removeFirst(actualListIndex)
       }
 
       // Rebuild queue and advance
@@ -1659,35 +1651,21 @@ class TrackPlayerCore: NSObject {
 
     // Case 5: Target is in remaining original tracks
     if index >= originalRemainingStart {
-      // Get the target track directly from actualQueue
       let targetTrack = actualQueue[index]
-
-      print("   📍 Case 5: Target is in remaining original tracks")
-      print("      targetTrack.id: \(targetTrack.id)")
-      print("      currentTracks.count: \(currentTracks.count)")
-      print("      currentTracks IDs: \(currentTracks.map { $0.id })")
 
       // Find this track's index in the original playlist
       guard let originalIndex = currentTracks.firstIndex(where: { $0.id == targetTrack.id }) else {
-        print("   ❌ Could not find track \(targetTrack.id) in original playlist")
-        print("      Available tracks: \(currentTracks.map { $0.id })")
         return false
       }
-
-      print("      originalIndex found: \(originalIndex)")
 
       // Clear all temporary tracks (they're being skipped)
       playNextStack.removeAll()
       upNextQueue.removeAll()
       currentTemporaryType = .none
-      print("      Cleared all temporary tracks")
 
-      // Play from the original playlist index
-      let success = playFromIndexInternalWithResult(index: originalIndex)
-      return success
+      return playFromIndexInternalWithResult(index: originalIndex)
     }
 
-    print("   ❌ Unexpected case, index \(index) not handled")
     return false
   }
 
@@ -1836,32 +1814,32 @@ class TrackPlayerCore: NSObject {
   private func rebuildAVQueueFromCurrentPosition() {
     guard let player = self.player else { return }
 
-    print("\n🔄 TrackPlayerCore: REBUILDING QUEUE FROM CURRENT POSITION")
-    print("   playNext stack: \(playNextStack.count) tracks")
-    print("   upNext queue: \(upNextQueue.count) tracks")
-
-    // Don't interrupt currently playing item
     let currentItem = player.currentItem
     let playingItems = player.items()
 
-    // Build new queue order:
-    // [playNext stack] + [upNext queue] + [remaining original tracks]
     var newQueueTracks: [TrackItem] = []
 
     // Add playNext stack (LIFO - most recently added plays first)
-    // Stack is already in correct order since we insert at position 0
-    newQueueTracks.append(contentsOf: playNextStack)
+    // Skip index 0 if current track is from playNext (it's already playing)
+    if currentTemporaryType == .playNext && playNextStack.count > 1 {
+      newQueueTracks.append(contentsOf: Array(playNextStack.dropFirst()))
+    } else if currentTemporaryType != .playNext {
+      newQueueTracks.append(contentsOf: playNextStack)
+    }
 
     // Add upNext queue (in order, FIFO)
-    newQueueTracks.append(contentsOf: upNextQueue)
+    // Skip index 0 if current track is from upNext (it's already playing)
+    if currentTemporaryType == .upNext && upNextQueue.count > 1 {
+      newQueueTracks.append(contentsOf: Array(upNextQueue.dropFirst()))
+    } else if currentTemporaryType != .upNext {
+      newQueueTracks.append(contentsOf: upNextQueue)
+    }
 
     // Add remaining original tracks
     if currentTrackIndex + 1 < currentTracks.count {
       let remainingOriginal = Array(currentTracks[(currentTrackIndex + 1)...])
       newQueueTracks.append(contentsOf: remainingOriginal)
     }
-
-    print("   New queue: \(newQueueTracks.count) tracks total")
 
     // Remove all items from player EXCEPT the currently playing one
     for item in playingItems where item != currentItem {
@@ -1877,7 +1855,6 @@ class TrackPlayerCore: NSObject {
       }
     }
 
-    print("   ✅ Queue rebuilt successfully")
   }
 
   /**

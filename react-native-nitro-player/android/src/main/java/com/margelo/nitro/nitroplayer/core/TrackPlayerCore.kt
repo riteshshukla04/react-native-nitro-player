@@ -859,50 +859,40 @@ class TrackPlayerCore private constructor(
     }
 
     private fun skipToIndexInternal(index: Int): Boolean {
-        println("\n🎯 TrackPlayerCore: SKIP TO INDEX $index")
-
-        if (!::player.isInitialized) {
-            println("   ❌ Player not initialized")
-            return false
-        }
+        if (!::player.isInitialized) return false
 
         // Get actual queue to validate index and determine position
         val actualQueue = getActualQueueInternal()
         val totalQueueSize = actualQueue.size
 
         // Validate index
-        if (index < 0 || index >= totalQueueSize) {
-            println("   ❌ Invalid index $index, queue size is $totalQueueSize")
-            return false
-        }
+        if (index < 0 || index >= totalQueueSize) return false
 
-        // Calculate queue section boundaries
-        // ActualQueue structure: [before_current] + [current] + [playNext] + [upNext] + [remaining_original]
-        // Use our internal tracking instead of player.currentMediaItemIndex (which is relative to ExoPlayer's subset queue)
-        val currentPos = currentTrackIndex
+        // Calculate queue section boundaries using effective sizes
+        // (reduced by 1 when current track is from that temp list, matching getActualQueueInternal)
+        // When temp is playing, the original track at currentTrackIndex is included in "before",
+        // so the current playing position shifts by 1
+        val currentPos = if (currentTemporaryType != TemporaryType.NONE)
+            currentTrackIndex + 1 else currentTrackIndex
+        val effectivePlayNextSize = if (currentTemporaryType == TemporaryType.PLAY_NEXT)
+            maxOf(0, playNextStack.size - 1) else playNextStack.size
+        val effectiveUpNextSize = if (currentTemporaryType == TemporaryType.UP_NEXT)
+            maxOf(0, upNextQueue.size - 1) else upNextQueue.size
+
         val playNextStart = currentPos + 1
-        val playNextEnd = playNextStart + playNextStack.size
+        val playNextEnd = playNextStart + effectivePlayNextSize
         val upNextStart = playNextEnd
-        val upNextEnd = upNextStart + upNextQueue.size
+        val upNextEnd = upNextStart + effectiveUpNextSize
         val originalRemainingStart = upNextEnd
-
-        println("   Queue structure:")
-        println("      currentPos: $currentPos")
-        println("      playNextStart: $playNextStart, playNextEnd: $playNextEnd")
-        println("      upNextStart: $upNextStart, upNextEnd: $upNextEnd")
-        println("      originalRemainingStart: $originalRemainingStart")
-        println("      totalQueueSize: $totalQueueSize")
 
         // Case 1: Target is before current - use playFromIndex on original
         if (index < currentPos) {
-            println("   📍 Target is before current, jumping to original playlist index $index")
             playFromIndexInternal(index)
             return true
         }
 
         // Case 2: Target is current - seek to beginning
         if (index == currentPos) {
-            println("   📍 Target is current track, seeking to beginning")
             player.seekTo(0)
             return true
         }
@@ -910,12 +900,13 @@ class TrackPlayerCore private constructor(
         // Case 3: Target is in playNext section
         if (index >= playNextStart && index < playNextEnd) {
             val playNextIndex = index - playNextStart
-            println("   📍 Target is in playNext section at position $playNextIndex")
+            // Offset by 1 if current is from playNext (index 0 is already playing)
+            val actualListIndex = if (currentTemporaryType == TemporaryType.PLAY_NEXT)
+                playNextIndex + 1 else playNextIndex
 
             // Remove tracks before the target from playNext (they're being skipped)
-            if (playNextIndex > 0) {
-                repeat(playNextIndex) { playNextStack.removeAt(0) }
-                println("      Removed $playNextIndex tracks from playNext stack")
+            if (actualListIndex > 0) {
+                repeat(actualListIndex) { playNextStack.removeAt(0) }
             }
 
             // Rebuild queue and advance
@@ -927,16 +918,16 @@ class TrackPlayerCore private constructor(
         // Case 4: Target is in upNext section
         if (index >= upNextStart && index < upNextEnd) {
             val upNextIndex = index - upNextStart
-            println("   📍 Target is in upNext section at position $upNextIndex")
+            // Offset by 1 if current is from upNext (index 0 is already playing)
+            val actualListIndex = if (currentTemporaryType == TemporaryType.UP_NEXT)
+                upNextIndex + 1 else upNextIndex
 
             // Clear all playNext tracks (they're being skipped)
             playNextStack.clear()
-            println("      Cleared all playNext tracks")
 
             // Remove tracks before target from upNext
-            if (upNextIndex > 0) {
-                repeat(upNextIndex) { upNextQueue.removeAt(0) }
-                println("      Removed $upNextIndex tracks from upNext queue")
+            if (actualListIndex > 0) {
+                repeat(actualListIndex) { upNextQueue.removeAt(0) }
             }
 
             // Rebuild queue and advance
@@ -947,37 +938,21 @@ class TrackPlayerCore private constructor(
 
         // Case 5: Target is in remaining original tracks
         if (index >= originalRemainingStart) {
-            // Get the target track directly from actualQueue
             val targetTrack = actualQueue[index]
-
-            println("   📍 Case 5: Target is in remaining original tracks")
-            println("      targetTrack.id: ${targetTrack.id}")
-            println("      currentTracks.count: ${currentTracks.size}")
-            println("      currentTracks IDs: ${currentTracks.map { it.id }}")
 
             // Find this track's index in the original playlist
             val originalIndex = currentTracks.indexOfFirst { it.id == targetTrack.id }
-            if (originalIndex == -1) {
-                println("   ❌ Could not find track ${targetTrack.id} in original playlist")
-                println("      Available tracks: ${currentTracks.map { it.id }}")
-                return false
-            }
-
-            println("      originalIndex found: $originalIndex")
+            if (originalIndex == -1) return false
 
             // Clear all temporary tracks (they're being skipped)
             playNextStack.clear()
             upNextQueue.clear()
             currentTemporaryType = TemporaryType.NONE
-            println("      Cleared all temporary tracks")
 
-            // IMPORTANT: Rebuild the ExoPlayer queue without temporary tracks, then seek
-            // We need to rebuild from the target index, not just seek
             rebuildQueueAndPlayFromIndex(originalIndex)
             return true
         }
 
-        println("   ❌ Unexpected case, index $index not handled")
         return false
     }
 
@@ -986,7 +961,6 @@ class TrackPlayerCore private constructor(
         playNextStack.clear()
         upNextQueue.clear()
         currentTemporaryType = TemporaryType.NONE
-        println("   🧹 Cleared temporary tracks")
 
         rebuildQueueAndPlayFromIndex(index)
     }
@@ -1104,59 +1078,48 @@ class TrackPlayerCore private constructor(
     private fun rebuildQueueFromCurrentPosition() {
         if (!::player.isInitialized) return
 
-        println("\n🔄 TrackPlayerCore: REBUILDING QUEUE FROM CURRENT POSITION")
-        println("   currentIndex: ${player.currentMediaItemIndex}")
-        println("   currentMediaItem: ${player.currentMediaItem?.mediaId}")
-        println("   playNextStack (${playNextStack.size}): ${playNextStack.map { "${it.id}:${it.title}" }}")
-        println("   upNextQueue (${upNextQueue.size}): ${upNextQueue.map { "${it.id}:${it.title}" }}")
-
         val currentIndex = player.currentMediaItemIndex
         if (currentIndex < 0) return
 
-        // Build new queue order:
-        // [playNext stack] + [upNext queue] + [remaining original tracks]
         val newQueueTracks = mutableListOf<TrackItem>()
 
         // Add playNext stack (LIFO - most recently added plays first)
-        // Stack is already in correct order since we insert at position 0
-        newQueueTracks.addAll(playNextStack)
-
-        // Add upNext queue (in order, FIFO)
-        newQueueTracks.addAll(upNextQueue)
-
-        // Add remaining original tracks
-        if (currentIndex + 1 < currentTracks.size) {
-            val remaining = currentTracks.subList(currentIndex + 1, currentTracks.size)
-            println("   remaining original (${remaining.size}): ${remaining.map { it.id }}")
-            newQueueTracks.addAll(remaining)
+        // Skip index 0 if current track is from playNext (it's already playing)
+        if (currentTemporaryType == TemporaryType.PLAY_NEXT && playNextStack.size > 1) {
+            newQueueTracks.addAll(playNextStack.subList(1, playNextStack.size))
+        } else if (currentTemporaryType != TemporaryType.PLAY_NEXT) {
+            newQueueTracks.addAll(playNextStack)
         }
 
-        println("   New queue total: ${newQueueTracks.size} tracks")
-        println("   Queue order: ${newQueueTracks.map { it.id }}")
+        // Add upNext queue (in order, FIFO)
+        // Skip index 0 if current track is from upNext (it's already playing)
+        if (currentTemporaryType == TemporaryType.UP_NEXT && upNextQueue.size > 1) {
+            newQueueTracks.addAll(upNextQueue.subList(1, upNextQueue.size))
+        } else if (currentTemporaryType != TemporaryType.UP_NEXT) {
+            newQueueTracks.addAll(upNextQueue)
+        }
+
+        // Add remaining original tracks — use currentTrackIndex (original playlist position)
+        if (currentTrackIndex + 1 < currentTracks.size) {
+            val remaining = currentTracks.subList(currentTrackIndex + 1, currentTracks.size)
+            newQueueTracks.addAll(remaining)
+        }
 
         // Create MediaItems for new tracks
         val playlistId = currentPlaylistId ?: ""
         val newMediaItems =
             newQueueTracks.map { track ->
                 val mediaId = if (playlistId.isNotEmpty()) "$playlistId:${track.id}" else track.id
-                println("   Creating MediaItem: mediaId=$mediaId, title=${track.title}")
                 track.toMediaItem(mediaId)
             }
 
         // Remove all items after current
-        val removedCount = player.mediaItemCount - currentIndex - 1
-        println("   Removing $removedCount items after current")
         while (player.mediaItemCount > currentIndex + 1) {
             player.removeMediaItem(currentIndex + 1)
         }
 
         // Add new items
         player.addMediaItems(newMediaItems)
-
-        println("   ✅ Queue rebuilt. Player now has ${player.mediaItemCount} items")
-        for (i in 0 until player.mediaItemCount) {
-            println("      [$i]: ${player.getMediaItemAt(i).mediaId}")
-        }
     }
 
     /**
@@ -1393,57 +1356,46 @@ class TrackPlayerCore private constructor(
     }
 
     private fun getActualQueueInternal(): List<TrackItem> {
-        println("\n🔍 TrackPlayerCore: getActualQueueInternal() called")
-        println("   playNextStack size: ${playNextStack.size}, tracks: ${playNextStack.map { it.id }}")
-        println("   upNextQueue size: ${upNextQueue.size}, tracks: ${upNextQueue.map { it.id }}")
-        println("   currentTracks size: ${currentTracks.size}, tracks: ${currentTracks.map { it.id }}")
-        println("   currentTrackIndex: $currentTrackIndex")
-
         val queue = mutableListOf<TrackItem>()
 
-        if (!::player.isInitialized) {
-            println("   ❌ Player not initialized, returning empty")
-            return emptyList()
-        }
+        if (!::player.isInitialized) return emptyList()
 
-        // Use our internal tracking of position in original playlist
         val currentIndex = currentTrackIndex
-        println("   Using currentTrackIndex: $currentIndex")
-        if (currentIndex < 0) {
-            println("   ❌ currentIndex < 0, returning empty")
-            return emptyList()
-        }
+        if (currentIndex < 0) return emptyList()
 
         // Add tracks before current (original playlist)
-        if (currentIndex > 0 && currentIndex <= currentTracks.size) {
-            val beforeCurrent = currentTracks.subList(0, currentIndex)
-            println("   Adding ${beforeCurrent.size} tracks before current")
-            queue.addAll(beforeCurrent)
+        // When a temp track is playing, include the original track at currentTrackIndex
+        // (it already played before the temp track started)
+        val beforeEnd = if (currentTemporaryType != TemporaryType.NONE)
+            minOf(currentIndex + 1, currentTracks.size) else currentIndex
+        if (beforeEnd > 0) {
+            queue.addAll(currentTracks.subList(0, beforeEnd))
         }
 
-        // Add current track
-        getCurrentTrack()?.let {
-            println("   Adding current track: ${it.id}")
-            queue.add(it)
-        }
+        // Add current track (temp or original)
+        getCurrentTrack()?.let { queue.add(it) }
 
         // Add playNext stack (LIFO - most recently added plays first)
-        // Stack is already in correct order since we insert at position 0
-        println("   Adding ${playNextStack.size} playNext tracks")
-        queue.addAll(playNextStack)
+        // Skip index 0 if current track is from playNext (it's already added as current)
+        if (currentTemporaryType == TemporaryType.PLAY_NEXT && playNextStack.size > 1) {
+            queue.addAll(playNextStack.subList(1, playNextStack.size))
+        } else if (currentTemporaryType != TemporaryType.PLAY_NEXT) {
+            queue.addAll(playNextStack)
+        }
 
         // Add upNext queue (in order, FIFO)
-        println("   Adding ${upNextQueue.size} upNext tracks")
-        queue.addAll(upNextQueue)
+        // Skip index 0 if current track is from upNext (it's already added as current)
+        if (currentTemporaryType == TemporaryType.UP_NEXT && upNextQueue.size > 1) {
+            queue.addAll(upNextQueue.subList(1, upNextQueue.size))
+        } else if (currentTemporaryType != TemporaryType.UP_NEXT) {
+            queue.addAll(upNextQueue)
+        }
 
         // Add remaining original tracks
         if (currentIndex + 1 < currentTracks.size) {
-            val remaining = currentTracks.subList(currentIndex + 1, currentTracks.size)
-            println("   Adding ${remaining.size} remaining tracks")
-            queue.addAll(remaining)
+            queue.addAll(currentTracks.subList(currentIndex + 1, currentTracks.size))
         }
 
-        println("   ✅ Final queue size: ${queue.size}, tracks: ${queue.map { it.id }}")
         return queue
     }
 }

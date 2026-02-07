@@ -14,7 +14,7 @@ import {
   usePlaylist,
 } from 'react-native-nitro-player';
 import type { TrackItem } from 'react-native-nitro-player';
-import { sampleTracks1, sampleTracks2 } from '../data/sampleTracks';
+import { sampleTracks1, sampleTracks2, sampleTracks3 } from '../data/sampleTracks';
 import { colors, commonStyles, spacing, borderRadius } from '../styles/theme';
 
 export default function PlaylistsScreen() {
@@ -78,6 +78,13 @@ export default function PlaylistsScreen() {
               createPlaylist('Nature Sounds', 'Sounds of nature', sampleTracks2)
             }>
             <Text style={commonStyles.buttonText}>Create "Nature Sounds"</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={commonStyles.button}
+            onPress={() =>
+              createPlaylist('Test Tracks', '19 test songs for performance testing', sampleTracks3)
+            }>
+            <Text style={commonStyles.buttonText}>Create "Test Tracks" (19 songs)</Text>
           </TouchableOpacity>
         </View>
 
