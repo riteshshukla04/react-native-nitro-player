@@ -640,12 +640,21 @@ class TrackPlayerCore: NSObject {
   func updatePlaylist(playlistId: String) {
     DispatchQueue.main.async { [weak self] in
       guard let self = self else { return }
-      if self.currentPlaylistId == playlistId {
+      guard self.currentPlaylistId == playlistId,
         let playlist = self.playlistManager.getPlaylist(playlistId: playlistId)
-        if let playlist = playlist {
-          self.updatePlayerQueue(tracks: playlist.tracks)
-        }
+      else { return }
+
+      // If nothing is playing yet, do a full load
+      guard let player = self.player, player.currentItem != nil else {
+        self.updatePlayerQueue(tracks: playlist.tracks)
+        return
       }
+
+      // Update tracks list without interrupting playback
+      self.currentTracks = playlist.tracks
+
+      // Rebuild only the items after the currently playing item
+      self.rebuildAVQueueFromCurrentPosition()
     }
   }
 

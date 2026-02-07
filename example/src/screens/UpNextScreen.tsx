@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import {
   TrackPlayer,
+  PlayerQueue,
   useOnChangeTrack,
   usePlaylist,
   useActualQueue,
@@ -41,6 +42,55 @@ export default function UpNextScreen() {
     refreshQueue();
   }, [refreshPlaylists, refreshQueue]);
 
+  const insertRandomSongNext = useCallback(async () => {
+    try {
+      // 1. Generate a random track
+      const randomId = `random-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const randomImageId = Math.floor(Math.random() * 1000);
+      const newTrack: TrackItem = {
+        id: randomId,
+        title: `Random Song ${Math.floor(Math.random() * 100)}`,
+        artist: 'Random Artist',
+        album: 'Random Album',
+        duration: 120 + Math.floor(Math.random() * 180), // 2-5 minutes
+        url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+        artwork: `https://picsum.photos/id/${randomImageId}/200/200`,
+      };
+
+      // 2. Get current playlist
+      const playlistId = PlayerQueue.getCurrentPlaylistId();
+      if (!playlistId) {
+        console.log('❌ No active playlist to add to');
+        return;
+      }
+
+      // 3. Add track to playlist
+      PlayerQueue.addTrackToPlaylist(playlistId, newTrack);
+      console.log('✅ Added to playlist:', playlistId);
+
+      // 4. Move it to next position (currentIndex + 1)
+      // Use the currentTrack from the hook to find the index
+      if (!currentTrack) {
+        console.log('❌ No track currently playing');
+        return;
+      }
+
+      const playlist = PlayerQueue.getPlaylist(playlistId);
+      if (playlist) {
+        // Find current track index in the playlist
+        const currentTrackIndex = (await TrackPlayer.getState()).currentIndex;
+        console.log('Current track index:', currentTrackIndex);
+        PlayerQueue.reorderTrackInPlaylist(playlistId, newTrack.id, currentTrackIndex + 1);
+          console.log(`✅ Moved track ${newTrack.id} to index ${currentTrackIndex + 1} (Play Next)`);
+       
+      }
+
+      
+    } catch (error) {
+      console.error('❌ Error in insertRandomSongNext:', error);
+    }
+  }, [refreshPlaylists, refreshQueue]);
+
   return (
     <SafeAreaView style={commonStyles.container}>
       <ScrollView
@@ -68,6 +118,12 @@ export default function UpNextScreen() {
               • Temporary tracks are auto-removed after playing
             </Text>
           </View>
+
+          <TouchableOpacity
+            style={[commonStyles.button, styles.primaryButton, { marginTop: spacing.md }]}
+            onPress={insertRandomSongNext}>
+            <Text style={commonStyles.buttonText}>🎲 Add Random & Play Next</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Currently Playing */}
