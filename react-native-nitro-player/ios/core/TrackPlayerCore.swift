@@ -1785,6 +1785,7 @@ class TrackPlayerCore: NSObject {
     if self.player?.currentItem != nil {
       self.rebuildAVQueueFromCurrentPosition()
     }
+    mediaSessionManager?.onQueueChanged()
   }
 
   /**
@@ -1814,6 +1815,7 @@ class TrackPlayerCore: NSObject {
     if self.player?.currentItem != nil {
       self.rebuildAVQueueFromCurrentPosition()
     }
+    mediaSessionManager?.onQueueChanged()
   }
 
   /**
