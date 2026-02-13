@@ -149,9 +149,6 @@ class DownloadWorker(
 
                 val finalExtension = if (extension.isNullOrEmpty()) "mp3" else extension
 
-                // Extract extension from URL
-                val extension = MimeTypeMap.getFileExtensionFromUrl(urlString)
-                val finalExtension = if (extension.isNullOrEmpty()) "mp3" else extension
 
                 // Create destination file
                 val destinationFile = fileManager.createDownloadFile(trackId, storageLocation, finalExtension)
