@@ -123,9 +123,31 @@ class DownloadWorker(
                 if (responseCode != HttpURLConnection.HTTP_OK) {
                     throw Exception("Server returned HTTP $responseCode")
                 }
+                // Determine extension
+                var extension = MimeTypeMap.getFileExtensionFromUrl(urlString)
 
-                val totalBytes = connection.contentLengthLong
-                var bytesDownloaded: Long = 0
+                // 1. Try Content-Disposition
+                if (extension.isNullOrEmpty()) {
+                    val contentDisposition = connection.getHeaderField("Content-Disposition")
+                    if (contentDisposition != null) {
+                        val match = Regex("filename=\"?([^\";]+)\"?").find(contentDisposition)
+                        if (match != null) {
+                            val filename = match.groupValues[1]
+                            extension = MimeTypeMap.getFileExtensionFromUrl(filename)
+                        }
+                    }
+                }
+
+                // 2. Try Content-Type
+                if (extension.isNullOrEmpty()) {
+                    val contentType = connection.contentType
+                    if (contentType != null) {
+                        val mimeType = contentType.split(";")[0].trim()
+                        extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType)
+                    }
+                }
+
+                val finalExtension = if (extension.isNullOrEmpty()) "mp3" else extension
 
                 // Extract extension from URL
                 val extension = MimeTypeMap.getFileExtensionFromUrl(urlString)
@@ -136,6 +158,9 @@ class DownloadWorker(
 
                 inputStream = BufferedInputStream(connection.inputStream)
                 outputStream = FileOutputStream(destinationFile)
+
+                val totalBytes = connection.contentLengthLong
+                var bytesDownloaded: Long = 0
 
                 val buffer = ByteArray(BUFFER_SIZE)
                 var bytesRead: Int
