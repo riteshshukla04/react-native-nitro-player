@@ -56,20 +56,28 @@ final class DownloadFileManager {
 
   func saveDownloadedFile(
     from temporaryLocation: URL, trackId: String, storageLocation: StorageLocation,
-    originalURL: String? = nil
+    originalURL: String? = nil,
+    suggestedFilename: String? = nil
   ) -> String? {
     print("🎯 DownloadFileManager: saveDownloadedFile called for trackId=\(trackId)")
     print("   From: \(temporaryLocation.path)")
     print("   Original URL: \(originalURL ?? "nil")")
+    print("   Suggested Filename: \(suggestedFilename ?? "nil")")
 
     let destinationDirectory =
       storageLocation == .private ? privateDownloadsDirectory : publicDownloadsDirectory
     print("   Destination directory: \(destinationDirectory.path)")
 
-    // Determine file extension from the original URL, not the temp file
-    // The temp file has .tmp extension which AVPlayer cannot play
+    // Determine file extension
     var fileExtension = "mp3"  // Default fallback
-    if let originalURL = originalURL, let url = URL(string: originalURL) {
+
+    if let suggestedFilename = suggestedFilename, !suggestedFilename.isEmpty {
+      let url = URL(fileURLWithPath: suggestedFilename)
+      let pathExtension = url.pathExtension.lowercased()
+      if !pathExtension.isEmpty {
+        fileExtension = pathExtension
+      }
+    } else if let originalURL = originalURL, let url = URL(string: originalURL) {
       let pathExtension = url.pathExtension.lowercased()
       if !pathExtension.isEmpty {
         fileExtension = pathExtension

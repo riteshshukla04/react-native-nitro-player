@@ -8,6 +8,7 @@ import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
+import android.webkit.MimeTypeMap
 import com.margelo.nitro.nitroplayer.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -126,8 +127,12 @@ class DownloadWorker(
                 val totalBytes = connection.contentLengthLong
                 var bytesDownloaded: Long = 0
 
+                // Extract extension from URL
+                val extension = MimeTypeMap.getFileExtensionFromUrl(urlString)
+                val finalExtension = if (extension.isNullOrEmpty()) "mp3" else extension
+
                 // Create destination file
-                val destinationFile = fileManager.createDownloadFile(trackId, storageLocation)
+                val destinationFile = fileManager.createDownloadFile(trackId, storageLocation, finalExtension)
 
                 inputStream = BufferedInputStream(connection.inputStream)
                 outputStream = FileOutputStream(destinationFile)

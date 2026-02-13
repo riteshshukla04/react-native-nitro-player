@@ -50,6 +50,7 @@ class DownloadFileManager private constructor(
     fun createDownloadFile(
         trackId: String,
         storageLocation: StorageLocation,
+        extension: String = "mp3",
     ): File {
         val destinationDir =
             when (storageLocation) {
@@ -58,7 +59,7 @@ class DownloadFileManager private constructor(
             }
 
         // Create unique filename based on trackId
-        val fileName = "$trackId.mp3"
+        val fileName = "$trackId.$extension"
         return File(destinationDir, fileName)
     }
 
@@ -119,15 +120,17 @@ class DownloadFileManager private constructor(
 
     fun getLocalPath(trackId: String): String? {
         // Check private directory first
-        val privateFile = File(privateDownloadsDir, "$trackId.mp3")
-        if (privateFile.exists()) {
-            return privateFile.absolutePath
+        privateDownloadsDir.listFiles()?.forEach { file ->
+            if (file.nameWithoutExtension == trackId) {
+                return file.absolutePath
+            }
         }
 
         // Check public directory
-        val publicFile = File(publicDownloadsDir, "$trackId.mp3")
-        if (publicFile.exists()) {
-            return publicFile.absolutePath
+        publicDownloadsDir.listFiles()?.forEach { file ->
+            if (file.nameWithoutExtension == trackId) {
+                return file.absolutePath
+            }
         }
 
         return null

@@ -681,11 +681,16 @@ extension DownloadManagerCore: URLSessionDownloadDelegate {
     let (storageLocation, originalURL) = queue.sync {
       (self.config.storageLocation ?? .private, self.trackMetadata[trackId]?.url)
     }
+
+    // Get suggested filename from response
+    let suggestedFilename = downloadTask.response?.suggestedFilename
+
     let destinationPath = DownloadFileManager.shared.saveDownloadedFile(
       from: location,
       trackId: trackId,
       storageLocation: storageLocation,
-      originalURL: originalURL
+      originalURL: originalURL,
+      suggestedFilename: suggestedFilename
     )
 
     // Now handle the rest asynchronously
