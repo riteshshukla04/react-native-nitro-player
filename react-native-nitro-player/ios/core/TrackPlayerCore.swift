@@ -125,9 +125,10 @@ class TrackPlayerCore: NSObject {
 
     // MARK: - Gapless Playback Configuration
 
-    // Disable automatic waiting to minimize stalling - this allows smoother transitions
-    // between tracks as AVPlayer won't pause to buffer excessively
-    player?.automaticallyWaitsToMinimizeStalling = false
+    // Start with stall-waiting enabled so the first track buffers before playing.
+    // Once the first item is ready (readyToPlay), this is flipped to false for
+    // gapless inter-track transitions (see setupCurrentItemObservers).
+    player?.automaticallyWaitsToMinimizeStalling = true
 
     // Set playback rate to 1.0 immediately when ready (reduces gap between tracks)
     player?.actionAtItemEnd = .advance
@@ -138,7 +139,7 @@ class TrackPlayerCore: NSObject {
     }
 
     print(
-      "🎵 TrackPlayerCore: Gapless playback configured - automaticallyWaitsToMinimizeStalling=false")
+      "🎵 TrackPlayerCore: Gapless playback configured - automaticallyWaitsToMinimizeStalling=true (flipped to false on first readyToPlay)")
 
     setupPlayerObservers()
   }
@@ -569,6 +570,8 @@ class TrackPlayerCore: NSObject {
       if item.status == .readyToPlay {
         print("✅ TrackPlayerCore: Item ready, setting up boundaries")
         self?.setupBoundaryTimeObserver()
+        // First item is buffered and ready — disable stall waiting for gapless inter-track transitions
+        self?.player?.automaticallyWaitsToMinimizeStalling = false
         // Update now playing info now that duration is available
         self?.mediaSessionManager?.updateNowPlayingInfo()
       } else if item.status == .failed {
@@ -691,9 +694,9 @@ class TrackPlayerCore: NSObject {
   // MARK: - Gapless Playback Helpers
 
   /// Creates a gapless-optimized AVPlayerItem with proper buffering configuration
-  private func createGaplessPlayerItem(for track: TrackItem, isPreload: Bool = false)
-    -> AVPlayerItem?
-  {
+  private func createGaplessPlayerItem(
+    for track: TrackItem, isPreload: Bool = false, needsPreciseTiming: Bool = false
+  ) -> AVPlayerItem? {
     // Get effective URL - uses local path if downloaded, otherwise remote URL
     let effectiveUrlString = DownloadManagerCore.shared.getEffectiveUrl(track: track)
 
@@ -736,12 +739,11 @@ class TrackPlayerCore: NSObject {
       asset = preloadedAsset
       print("🚀 TrackPlayerCore: Using preloaded asset for \(track.title)")
     } else {
-      // Create asset with options optimized for gapless playback
-      asset = AVURLAsset(
-        url: url,
-        options: [
-          AVURLAssetPreferPreciseDurationAndTimingKey: true  // Ensures accurate duration for gapless transitions
-        ])
+      // Create asset — only request precise timing for upcoming tracks (not the first track).
+      // Precise timing requires deep file scanning which delays readyToPlay on the first item.
+      let assetOptions: [String: Any] = needsPreciseTiming
+        ? [AVURLAssetPreferPreciseDurationAndTimingKey: true] : [:]
+      asset = AVURLAsset(url: url, options: assetOptions)
     }
 
     let item = AVPlayerItem(asset: asset)
@@ -1000,7 +1002,7 @@ class TrackPlayerCore: NSObject {
     print("📋 TrackPlayerCore: UPDATE PLAYER QUEUE - Received \(tracks.count) tracks")
     print(String(repeating: "=", count: Constants.separatorLineLength))
 
-    // Print the full playlist being fed and check download status
+    #if DEBUG
     for (index, track) in tracks.enumerated() {
       let isDownloaded = DownloadManagerCore.shared.isTrackDownloaded(trackId: track.id)
       let downloadStatus = isDownloaded ? "📥 DOWNLOADED" : "🌐 REMOTE"
@@ -1013,6 +1015,7 @@ class TrackPlayerCore: NSObject {
       }
     }
     print(String(repeating: "=", count: Constants.separatorLineLength) + "\n")
+    #endif
 
     // Store tracks for index tracking
     currentTracks = tracks
@@ -1025,14 +1028,19 @@ class TrackPlayerCore: NSObject {
       boundaryTimeObserver = nil
     }
 
+    // Re-enable stall waiting for the new first track so it buffers before playing.
+    // Will be flipped back to false once the first item reaches readyToPlay.
+    player?.automaticallyWaitsToMinimizeStalling = true
+
     // Clear old preloaded assets when loading new queue
     preloadedAssets.removeAll()
 
-    // Create gapless-optimized AVPlayerItems from tracks
+    // Create gapless-optimized AVPlayerItems from tracks.
+    // First track (index 0) skips precise timing so readyToPlay fires immediately.
+    // Subsequent tracks use precise timing for accurate gapless duration info.
     let items = tracks.enumerated().compactMap { (index, track) -> AVPlayerItem? in
-      // First few items get preload treatment for faster initial playback
       let isPreload = index < Constants.gaplessPreloadCount
-      return createGaplessPlayerItem(for: track, isPreload: isPreload)
+      return createGaplessPlayerItem(for: track, isPreload: isPreload, needsPreciseTiming: index > 0)
     }
 
     print("🎵 TrackPlayerCore: Created \(items.count) gapless-optimized player items")
@@ -1068,23 +1076,25 @@ class TrackPlayerCore: NSObject {
       }
     }
 
-    // Verify what's actually in the player now
+    #if DEBUG
+    let trackById = Dictionary(uniqueKeysWithValues: tracks.map { ($0.id, $0) })
     print(
       "\n🔍 TrackPlayerCore: VERIFICATION - Player now has \(existingPlayer.items().count) items:")
     for (index, item) in existingPlayer.items().enumerated() {
-      if let trackId = item.trackId, let track = tracks.first(where: { $0.id == trackId }) {
+      if let trackId = item.trackId, let track = trackById[trackId] {
         print("  [\(index + 1)] ✓ \(track.title) - \(track.artist) (ID: \(track.id))")
       } else {
         print("  [\(index + 1)] ⚠️ Unknown item (no trackId)")
       }
     }
-
-    if let currentItem = existingPlayer.currentItem, let trackId = currentItem.trackId {
-      if let track = tracks.first(where: { $0.id == trackId }) {
-        print("▶️  Current item: \(track.title)")
-      }
+    if let currentItem = existingPlayer.currentItem,
+      let trackId = currentItem.trackId,
+      let track = trackById[trackId]
+    {
+      print("▶️  Current item: \(track.title)")
     }
     print(String(repeating: "=", count: Constants.separatorLineLength) + "\n")
+    #endif
 
     // Note: Boundary time observers will be set up automatically when item becomes ready
     // This happens in setupCurrentItemObservers() -> status observer -> setupBoundaryTimeObserver()
@@ -1713,11 +1723,12 @@ class TrackPlayerCore: NSObject {
       "   🔄 Creating gapless queue with \(tracksToPlay.count) tracks starting from index \(index)"
     )
 
-    // Create gapless-optimized player items
+    // Create gapless-optimized player items.
+    // offset 0 is the track about to play — skip precise timing so readyToPlay fires immediately.
     let items = tracksToPlay.enumerated().compactMap { (offset, track) -> AVPlayerItem? in
-      // First few items get preload treatment for faster playback
       let isPreload = offset < Constants.gaplessPreloadCount
-      return self.createGaplessPlayerItem(for: track, isPreload: isPreload)
+      return self.createGaplessPlayerItem(
+        for: track, isPreload: isPreload, needsPreciseTiming: offset > 0)
     }
 
     guard let player = self.player, !items.isEmpty else {
@@ -1730,6 +1741,10 @@ class TrackPlayerCore: NSObject {
       player.removeTimeObserver(boundaryObserver)
       self.boundaryTimeObserver = nil
     }
+
+    // Re-enable stall waiting for the new first track so it buffers before playing.
+    // Will be flipped back to false once the first item reaches readyToPlay.
+    player.automaticallyWaitsToMinimizeStalling = true
 
     // Clear and rebuild queue
     player.removeAllItems()
