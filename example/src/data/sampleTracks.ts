@@ -227,4 +227,13 @@ export const sampleTracks3: TrackItem[] = [
     url: 'https://raw.githubusercontent.com/abhinavshukla19/music-json-file/main/Khuda%20Bhi%20-%20Ek%20Paheli%20Leela%20320%20Kbps.mp3',
     artwork: 'https://i.ytimg.com/vi/kyp1IufU9iw/sddefault.jpg',
   },
+  {
+    id: 'test-20',
+    title: 'Khuda Bhi',
+    artist: 'Mohit Chauhan',
+    album: 'Ek Paheli Leela',
+    duration: 280,
+    url: 'https://demo.navidrome.org/rest/stream.view?u=demo&t=2be31c6ae776bc8f728d6a779f6e691c&s=a7m30qkrien&v=1.16.0&c=Yuzic&id=JdoGszcIPIlKCUkFLFRyOu',
+    artwork: 'https://i.ytimg.com/vi/kyp1IufU9iw/sddefault.jpg',
+  },
 ];

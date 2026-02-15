@@ -57,7 +57,8 @@ final class DownloadFileManager {
   func saveDownloadedFile(
     from temporaryLocation: URL, trackId: String, storageLocation: StorageLocation,
     originalURL: String? = nil,
-    suggestedFilename: String? = nil
+    suggestedFilename: String? = nil,
+    httpResponse: HTTPURLResponse? = nil
   ) -> String? {
     print("🎯 DownloadFileManager: saveDownloadedFile called for trackId=\(trackId)")
     print("   From: \(temporaryLocation.path)")
@@ -68,21 +69,12 @@ final class DownloadFileManager {
       storageLocation == .private ? privateDownloadsDirectory : publicDownloadsDirectory
     print("   Destination directory: \(destinationDirectory.path)")
 
-    // Determine file extension
-    var fileExtension = "mp3"  // Default fallback
-
-    if let suggestedFilename = suggestedFilename, !suggestedFilename.isEmpty {
-      let url = URL(fileURLWithPath: suggestedFilename)
-      let pathExtension = url.pathExtension.lowercased()
-      if !pathExtension.isEmpty {
-        fileExtension = pathExtension
-      }
-    } else if let originalURL = originalURL, let url = URL(string: originalURL) {
-      let pathExtension = url.pathExtension.lowercased()
-      if !pathExtension.isEmpty {
-        fileExtension = pathExtension
-      }
-    }
+    // Determine file extension using headers first, then URL path, then default
+    let fileExtension = Self.resolveFileExtension(
+      httpResponse: httpResponse,
+      suggestedFilename: suggestedFilename,
+      originalURL: originalURL
+    )
     print("   File extension: \(fileExtension)")
 
     let fileName = "\(trackId).\(fileExtension)"
@@ -111,6 +103,95 @@ final class DownloadFileManager {
       print("❌ DownloadFileManager: Failed to save file: \(error)")
       return nil
     }
+  }
+
+  // MARK: - Extension Resolution
+
+  private static let mimeTypeToExtension: [String: String] = [
+    "audio/mpeg": "mp3",
+    "audio/mp3": "mp3",
+    "audio/mp4": "m4a",
+    "audio/m4a": "m4a",
+    "audio/x-m4a": "m4a",
+    "audio/aac": "aac",
+    "audio/ogg": "ogg",
+    "audio/flac": "flac",
+    "audio/x-flac": "flac",
+    "audio/wav": "wav",
+    "audio/x-wav": "wav",
+    "audio/webm": "webm",
+    "audio/opus": "opus",
+  ]
+
+  /// Resolves the audio file extension from HTTP response headers, suggested filename, or URL.
+  /// Priority: Content-Disposition filename → Content-Type MIME → suggestedFilename → URL path ext → "mp3"
+  private static func resolveFileExtension(
+    httpResponse: HTTPURLResponse?,
+    suggestedFilename: String?,
+    originalURL: String?
+  ) -> String {
+    // 1. Content-Disposition: attachment; filename="track.mp3"
+    if let disposition = httpResponse?.value(forHTTPHeaderField: "Content-Disposition") {
+      if let ext = extensionFromContentDisposition(disposition), !ext.isEmpty {
+        print("   [ExtResolve] Content-Disposition → .\(ext)")
+        return ext
+      }
+    }
+
+    // 2. Content-Type MIME type
+    if let contentType = httpResponse?.value(forHTTPHeaderField: "Content-Type") {
+      let mime = contentType.split(separator: ";").first.map(String.init)?.trimmingCharacters(in: .whitespaces) ?? contentType
+      if let ext = mimeTypeToExtension[mime.lowercased()] {
+        print("   [ExtResolve] Content-Type '\(mime)' → .\(ext)")
+        return ext
+      }
+    }
+
+    // 3. Suggested filename from URLSession
+    if let name = suggestedFilename, !name.isEmpty {
+      let ext = URL(fileURLWithPath: name).pathExtension.lowercased()
+      if !ext.isEmpty && isAudioExtension(ext) {
+        print("   [ExtResolve] suggestedFilename → .\(ext)")
+        return ext
+      }
+    }
+
+    // 4. URL path extension (only if it looks like an audio format, not e.g. ".view")
+    if let urlString = originalURL, let url = URL(string: urlString) {
+      let ext = url.pathExtension.lowercased()
+      if !ext.isEmpty && isAudioExtension(ext) {
+        print("   [ExtResolve] URL path ext → .\(ext)")
+        return ext
+      }
+    }
+
+    print("   [ExtResolve] fallback → .mp3")
+    return "mp3"
+  }
+
+  private static func extensionFromContentDisposition(_ disposition: String) -> String? {
+    // Match: filename="foo.mp3" or filename=foo.mp3
+    let patterns = [
+      #"filename\*?=(?:UTF-8'')?\"?([^\";\r\n]+)\"?"#,
+    ]
+    for pattern in patterns {
+      if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
+        let range = NSRange(disposition.startIndex..., in: disposition)
+        if let match = regex.firstMatch(in: disposition, range: range),
+          let filenameRange = Range(match.range(at: 1), in: disposition)
+        {
+          let filename = String(disposition[filenameRange]).trimmingCharacters(in: .whitespaces)
+          let ext = URL(fileURLWithPath: filename).pathExtension.lowercased()
+          if !ext.isEmpty { return ext }
+        }
+      }
+    }
+    return nil
+  }
+
+  private static func isAudioExtension(_ ext: String) -> Bool {
+    let audioExtensions: Set<String> = ["mp3", "m4a", "aac", "ogg", "flac", "wav", "webm", "opus", "mp4"]
+    return audioExtensions.contains(ext)
   }
 
   func deleteFile(at path: String) {

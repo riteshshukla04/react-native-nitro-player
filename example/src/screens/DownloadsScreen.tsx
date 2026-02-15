@@ -17,7 +17,7 @@ import {
 } from 'react-native-nitro-player';
 import type { TrackItem, DownloadProgress } from 'react-native-nitro-player';
 import { colors, commonStyles, spacing, borderRadius, typography } from '../styles/theme';
-import { sampleTracks1, sampleTracks2 } from '../data/sampleTracks';
+import { sampleTracks1, sampleTracks2, sampleTracks3 } from '../data/sampleTracks';
 
 export default function DownloadsScreen() {
   const [activeTab, setActiveTab] = useState<'available' | 'downloaded' | 'progress'>('available');
@@ -29,7 +29,7 @@ export default function DownloadsScreen() {
   const { storageInfo, formattedSize, formattedAvailable } = useDownloadStorage();
 
   // All available tracks
-  const allTracks = [...sampleTracks1, ...sampleTracks2];
+  const allTracks = [...sampleTracks1, ...sampleTracks2,...sampleTracks3];
 
   useEffect(() => {
     // Configure download manager on mount

@@ -682,15 +682,17 @@ extension DownloadManagerCore: URLSessionDownloadDelegate {
       (self.config.storageLocation ?? .private, self.trackMetadata[trackId]?.url)
     }
 
-    // Get suggested filename from response
+    // Get suggested filename and HTTP headers from response
     let suggestedFilename = downloadTask.response?.suggestedFilename
+    let httpResponse = downloadTask.response as? HTTPURLResponse
 
     let destinationPath = DownloadFileManager.shared.saveDownloadedFile(
       from: location,
       trackId: trackId,
       storageLocation: storageLocation,
       originalURL: originalURL,
-      suggestedFilename: suggestedFilename
+      suggestedFilename: suggestedFilename,
+      httpResponse: httpResponse
     )
 
     // Now handle the rest asynchronously

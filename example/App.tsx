@@ -17,7 +17,7 @@ TrackPlayer.configure({
   showInNotification: true,
 });
 
-export default function App() {
+export default  function App() {
   return (
     <>
       <StatusBar barStyle="dark-content" />
