@@ -14,9 +14,9 @@ class NitroPlayerLogger {
     static var isEnabled = false
     #endif
 
-    static func log(_ header: String = "NitroPlayer", _ message: String) {
+    static func log(_ header: String = "NitroPlayer", _ message: @autoclosure () -> String) {
         if isEnabled {
-            print("[\(header)] \(message)")
+            print("[\(header)] \(message())")
         }
     }
 }

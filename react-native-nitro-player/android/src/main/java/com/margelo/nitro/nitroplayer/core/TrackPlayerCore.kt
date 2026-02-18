@@ -180,21 +180,20 @@ class TrackPlayerCore private constructor(
                             mediaItem: MediaItem?,
                             reason: Int,
                         ) {
-                            NitroPlayerLogger.log("TrackPlayerCore", "\n🔄 onMediaItemTransition called")
-                            NitroPlayerLogger.log(
-                                "TrackPlayerCore",
+                            NitroPlayerLogger.log("TrackPlayerCore") { "\n🔄 onMediaItemTransition called" }
+                            NitroPlayerLogger.log("TrackPlayerCore") {
                                 "   reason: ${when (reason) {
                                     Player.MEDIA_ITEM_TRANSITION_REASON_AUTO -> "AUTO (track ended)"
                                     Player.MEDIA_ITEM_TRANSITION_REASON_SEEK -> "SEEK"
                                     Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED -> "PLAYLIST_CHANGED"
                                     Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT -> "REPEAT"
                                     else -> "UNKNOWN($reason)"
-                                }}",
-                            )
-                            NitroPlayerLogger.log("TrackPlayerCore", "   previousMediaItem: ${previousMediaItem?.mediaId}")
-                            NitroPlayerLogger.log("TrackPlayerCore", "   new mediaItem: ${mediaItem?.mediaId}")
-                            NitroPlayerLogger.log("TrackPlayerCore", "   playNextStack: ${playNextStack.map { it.id }}")
-                            NitroPlayerLogger.log("TrackPlayerCore", "   upNextQueue: ${upNextQueue.map { it.id }}")
+                                }}"
+                            }
+                            NitroPlayerLogger.log("TrackPlayerCore") { "   previousMediaItem: ${previousMediaItem?.mediaId}" }
+                            NitroPlayerLogger.log("TrackPlayerCore") { "   new mediaItem: ${mediaItem?.mediaId}" }
+                            NitroPlayerLogger.log("TrackPlayerCore") { "   playNextStack: ${playNextStack.map { it.id }}" }
+                            NitroPlayerLogger.log("TrackPlayerCore") { "   upNextQueue: ${upNextQueue.map { it.id }}" }
 
                             // Remove finished track from temporary lists
                             // Handle AUTO (natural end) and SEEK (skip next) transitions
@@ -206,26 +205,26 @@ class TrackPlayerCore private constructor(
                             ) {
                                 previousMediaItem?.mediaId?.let { mediaId ->
                                     val trackId = extractTrackId(mediaId)
-                                    NitroPlayerLogger.log("TrackPlayerCore", "🏁 Track finished/skipped, checking for removal: $trackId")
+                                    NitroPlayerLogger.log("TrackPlayerCore") { "🏁 Track finished/skipped, checking for removal: $trackId" }
 
                                     // Find and remove from playNext stack (like iOS does)
                                     val playNextIndex = playNextStack.indexOfFirst { it.id == trackId }
                                     if (playNextIndex >= 0) {
                                         val track = playNextStack.removeAt(playNextIndex)
-                                        NitroPlayerLogger.log("TrackPlayerCore", "   ✅ Removed from playNext stack: ${track.title}")
+                                        NitroPlayerLogger.log("TrackPlayerCore") { "   ✅ Removed from playNext stack: ${track.title}" }
                                     } else {
                                         // Find and remove from upNext queue
                                         val upNextIndex = upNextQueue.indexOfFirst { it.id == trackId }
                                         if (upNextIndex >= 0) {
                                             val track = upNextQueue.removeAt(upNextIndex)
-                                            NitroPlayerLogger.log("TrackPlayerCore", "   ✅ Removed from upNext queue: ${track.title}")
+                                            NitroPlayerLogger.log("TrackPlayerCore") { "   ✅ Removed from upNext queue: ${track.title}" }
                                         } else {
-                                            NitroPlayerLogger.log("TrackPlayerCore", "   ℹ️  Was an original playlist track")
+                                            NitroPlayerLogger.log("TrackPlayerCore") { "   ℹ️  Was an original playlist track" }
                                         }
                                     }
                                 }
                             } else {
-                                NitroPlayerLogger.log("TrackPlayerCore", "   ⏭️  Skipping removal (reason=$reason, prev=${previousMediaItem != null})")
+                                NitroPlayerLogger.log("TrackPlayerCore") { "   ⏭️  Skipping removal (reason=$reason, prev=${previousMediaItem != null})" }
                             }
 
                             // Store current item as previous for next transition
@@ -233,14 +232,14 @@ class TrackPlayerCore private constructor(
 
                             // Update temporary type for current track
                             currentTemporaryType = determineCurrentTemporaryType()
-                            NitroPlayerLogger.log("TrackPlayerCore", "   Updated currentTemporaryType: $currentTemporaryType")
+                            NitroPlayerLogger.log("TrackPlayerCore") { "   Updated currentTemporaryType: $currentTemporaryType" }
 
                             // Update currentTrackIndex when we land on an original playlist track
                             if (currentTemporaryType == TemporaryType.NONE && mediaItem != null) {
                                 val trackId = extractTrackId(mediaItem.mediaId)
                                 val newIndex = currentTracks.indexOfFirst { it.id == trackId }
                                 if (newIndex >= 0 && newIndex != currentTrackIndex) {
-                                    NitroPlayerLogger.log("TrackPlayerCore", "   📍 Updating currentTrackIndex from $currentTrackIndex to $newIndex")
+                                    NitroPlayerLogger.log("TrackPlayerCore") { "   📍 Updating currentTrackIndex from $currentTrackIndex to $newIndex" }
                                     currentTrackIndex = newIndex
                                 }
                             }
@@ -500,8 +499,9 @@ class TrackPlayerCore private constructor(
                 mediaId
             }
 
-        val playlist = currentPlaylistId?.let { playlistManager.getPlaylist(it) }
-        return playlist?.tracks?.find { it.id == trackId }
+        // currentTracks is already the cached tracks for currentPlaylistId — no need to
+        // re-fetch from PlaylistManager on every call.
+        return currentTracks.find { it.id == trackId }
     }
 
     fun play() {
@@ -1026,13 +1026,13 @@ class TrackPlayerCore private constructor(
             return
         }
 
-        NitroPlayerLogger.log("TrackPlayerCore", "\n🔄 TrackPlayerCore: REBUILD QUEUE AND PLAY FROM INDEX $index")
-        NitroPlayerLogger.log("TrackPlayerCore", "   currentTracks.size: ${currentTracks.size}")
-        NitroPlayerLogger.log("TrackPlayerCore", "   currentTracks IDs: ${currentTracks.map { it.id }}")
+        NitroPlayerLogger.log("TrackPlayerCore") { "\n🔄 TrackPlayerCore: REBUILD QUEUE AND PLAY FROM INDEX $index" }
+        NitroPlayerLogger.log("TrackPlayerCore") { "   currentTracks.size: ${currentTracks.size}" }
+        NitroPlayerLogger.log("TrackPlayerCore") { "   currentTracks IDs: ${currentTracks.map { it.id }}" }
 
         // Build queue from the target index onwards
         val tracksToPlay = currentTracks.subList(index, currentTracks.size)
-        NitroPlayerLogger.log("TrackPlayerCore", "   tracksToPlay (${tracksToPlay.size}): ${tracksToPlay.map { it.id }}")
+        NitroPlayerLogger.log("TrackPlayerCore") { "   tracksToPlay (${tracksToPlay.size}): ${tracksToPlay.map { it.id }}" }
 
         val playlistId = currentPlaylistId ?: ""
         val mediaItems =
@@ -1043,7 +1043,7 @@ class TrackPlayerCore private constructor(
 
         // Update our internal tracking of the position in original playlist
         currentTrackIndex = index
-        NitroPlayerLogger.log("TrackPlayerCore", "   Setting currentTrackIndex to $index")
+        NitroPlayerLogger.log("TrackPlayerCore") { "   Setting currentTrackIndex to $index" }
 
         // Clear the entire player queue and set new items
         player.clearMediaItems()
@@ -1052,7 +1052,7 @@ class TrackPlayerCore private constructor(
         player.playWhenReady = true
         player.prepare()
 
-        NitroPlayerLogger.log("TrackPlayerCore", "   ✅ Queue rebuilt with ${player.mediaItemCount} items, playing from index 0 (track ${tracksToPlay.firstOrNull()?.id})")
+        NitroPlayerLogger.log("TrackPlayerCore") { "   ✅ Queue rebuilt with ${player.mediaItemCount} items, playing from index 0 (track ${tracksToPlay.firstOrNull()?.id})" }
     }
 
     // MARK: - Temporary Track Management
@@ -1159,9 +1159,9 @@ class TrackPlayerCore private constructor(
                 track.toMediaItem(mediaId)
             }
 
-        // Remove all items after current
-        while (player.mediaItemCount > currentIndex + 1) {
-            player.removeMediaItem(currentIndex + 1)
+        // Remove all items after current in one batch (single timeline event vs N events)
+        if (player.mediaItemCount > currentIndex + 1) {
+            player.removeMediaItems(currentIndex + 1, player.mediaItemCount)
         }
 
         // Add new items
