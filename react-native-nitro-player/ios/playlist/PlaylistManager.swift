@@ -389,7 +389,7 @@ class PlaylistManager {
       UserDefaults.standard.set(data, forKey: "NitroPlayerPlaylists")
       UserDefaults.standard.set(currentPlaylistId, forKey: "NitroPlayerCurrentPlaylistId")
     } catch {
-      print("❌ PlaylistManager: Error saving playlists - \(error)")
+      NitroPlayerLogger.log("PlaylistManager", "❌ Error saving playlists - \(error)")
     }
   }
 
@@ -471,7 +471,7 @@ class PlaylistManager {
 
       currentPlaylistId = UserDefaults.standard.string(forKey: "NitroPlayerCurrentPlaylistId")
     } catch {
-      print("❌ PlaylistManager: Error loading playlists - \(error)")
+      NitroPlayerLogger.log("PlaylistManager", "❌ Error loading playlists - \(error)")
     }
   }
 }

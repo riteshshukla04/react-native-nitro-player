@@ -1,6 +1,7 @@
 package com.margelo.nitro.nitroplayer.media
 
 import android.content.Context
+import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
 
 /**
  * Manages the Android Auto media library structure
@@ -27,7 +28,7 @@ class MediaLibraryManager private constructor(
      */
     fun setMediaLibrary(library: MediaLibrary) {
         mediaLibrary = library
-        println("📚 MediaLibraryManager: Media library set with ${library.rootItems.size} root items")
+        NitroPlayerLogger.log("MediaLibraryManager", "📚 MediaLibraryManager: Media library set with ${library.rootItems.size} root items")
     }
 
     /**
@@ -72,6 +73,6 @@ class MediaLibraryManager private constructor(
      */
     fun clear() {
         mediaLibrary = null
-        println("📚 MediaLibraryManager: Media library cleared")
+        NitroPlayerLogger.log("MediaLibraryManager", "📚 MediaLibraryManager: Media library cleared")
     }
 }

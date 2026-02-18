@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import android.util.Log
 import com.margelo.nitro.core.NullType
 import com.margelo.nitro.nitroplayer.*
+import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
 import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
 import org.json.JSONArray
 import org.json.JSONObject
@@ -253,13 +254,13 @@ class DownloadDatabase private constructor(
     /** Validates all downloads and removes records for missing files */
     fun syncDownloads(): Int {
         synchronized(this) {
-            Log.d(TAG, "syncDownloads called")
+            NitroPlayerLogger.log("DownloadDatabase", "syncDownloads called")
 
             val trackIdsToRemove = mutableListOf<String>()
 
             for ((trackId, record) in downloadedTracks) {
                 if (!File(record.localPath).exists()) {
-                    Log.d(TAG, "Missing file for track $trackId: ${record.localPath}")
+                    NitroPlayerLogger.log("DownloadDatabase", "Missing file for track $trackId: ${record.localPath}")
                     trackIdsToRemove.add(trackId)
                 }
             }
@@ -282,9 +283,9 @@ class DownloadDatabase private constructor(
 
             if (trackIdsToRemove.isNotEmpty()) {
                 saveToDisk()
-                Log.d(TAG, "Cleaned up ${trackIdsToRemove.size} orphaned records")
+                NitroPlayerLogger.log("DownloadDatabase", "Cleaned up ${trackIdsToRemove.size} orphaned records")
             } else {
-                Log.d(TAG, "All downloads are valid")
+                NitroPlayerLogger.log("DownloadDatabase", "All downloads are valid")
             }
 
             return trackIdsToRemove.size
@@ -432,7 +433,7 @@ internal data class DownloadedTrackRecord(
                 trackId = json.getString("trackId"),
                 originalTrack = TrackItemRecord.fromJson(json.getJSONObject("originalTrack")),
                 localPath = json.getString("localPath"),
-                localArtworkPath = json.optString("localArtworkPath", null),
+                localArtworkPath = if (json.isNull("localArtworkPath")) null else json.getString("localArtworkPath"),
                 downloadedAt = json.getDouble("downloadedAt"),
                 fileSize = json.getDouble("fileSize"),
                 storageLocation = json.getString("storageLocation"),
@@ -469,7 +470,7 @@ internal data class TrackItemRecord(
                 album = json.getString("album"),
                 duration = json.getDouble("duration"),
                 url = json.getString("url"),
-                artwork = json.optString("artwork", null),
+                artwork = if (json.isNull("artwork")) null else json.getString("artwork"),
             )
     }
 }

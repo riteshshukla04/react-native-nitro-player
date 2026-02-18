@@ -67,18 +67,16 @@ final class DownloadDatabase {
   func isTrackDownloaded(trackId: String) -> Bool {
     return queue.sync {
       guard let record = downloadedTracks[trackId] else {
-        print("🔍 DownloadDatabase: Track \(trackId) NOT found in database")
+        NitroPlayerLogger.log("DownloadDatabase", "🔍 Track \(trackId) NOT found in database")
         return false
       }
       // Verify file still exists
       let absolutePath = resolveAbsolutePath(for: record)
       let exists = FileManager.default.fileExists(atPath: absolutePath)
       if exists {
-        print("✅ DownloadDatabase: Track \(trackId) IS downloaded at \(absolutePath)")
+        NitroPlayerLogger.log("DownloadDatabase", "✅ Track \(trackId) IS downloaded at \(absolutePath)")
       } else {
-        print(
-          "❌ DownloadDatabase: Track \(trackId) record exists but file NOT found at \(absolutePath)"
-        )
+        NitroPlayerLogger.log("DownloadDatabase", "❌ Track \(trackId) record exists but file NOT found at \(absolutePath)")
       }
       return exists
     }
@@ -121,21 +119,21 @@ final class DownloadDatabase {
 
   func getDownloadedTrack(trackId: String) -> DownloadedTrack? {
     return queue.sync {
-      print("🔍 DownloadDatabase.getDownloadedTrack() for trackId: \(trackId)")
-      print("   Total records in memory: \(downloadedTracks.count)")
-      print("   Available trackIds: \(Array(downloadedTracks.keys))")
+      NitroPlayerLogger.log("DownloadDatabase", "🔍 DownloadDatabase.getDownloadedTrack() for trackId: \(trackId)")
+      NitroPlayerLogger.log("DownloadDatabase", "   Total records in memory: \(downloadedTracks.count)")
+      NitroPlayerLogger.log("DownloadDatabase", "   Available trackIds: \(Array(downloadedTracks.keys))")
 
       guard let record = downloadedTracks[trackId] else {
-        print("   ❌ No record found for trackId: \(trackId)")
+        NitroPlayerLogger.log("DownloadDatabase", "   ❌ No record found for trackId: \(trackId)")
         return nil
       }
 
       let absolutePath = resolveAbsolutePath(for: record)
-      print("   Found record, checking file at: \(absolutePath)")
+      NitroPlayerLogger.log("DownloadDatabase", "   Found record, checking file at: \(absolutePath)")
 
       // Verify file still exists
       guard FileManager.default.fileExists(atPath: absolutePath) else {
-        print("   ❌ File does NOT exist, cleaning up record")
+        NitroPlayerLogger.log("DownloadDatabase", "   ❌ File does NOT exist, cleaning up record")
         // File was deleted externally, clean up record
         queue.async(flags: .barrier) {
           self.downloadedTracks.removeValue(forKey: trackId)
@@ -144,34 +142,33 @@ final class DownloadDatabase {
         return nil
       }
 
-      print("   ✅ File exists, returning track")
+      NitroPlayerLogger.log("DownloadDatabase", "   ✅ File exists, returning track")
       return recordToDownloadedTrack(record)
     }
   }
 
   func getAllDownloadedTracks() -> [DownloadedTrack] {
     return queue.sync {
-      print(
-        "🎯 DownloadDatabase: getAllDownloadedTracks called, have \(downloadedTracks.count) records")
+      NitroPlayerLogger.log("DownloadDatabase", "🎯 getAllDownloadedTracks called, have \(downloadedTracks.count) records")
 
       var validTracks: [DownloadedTrack] = []
       var invalidTrackIds: [String] = []
 
       for (trackId, record) in downloadedTracks {
         let absolutePath = resolveAbsolutePath(for: record)
-        print("   Checking track \(trackId) at path: \(absolutePath)")
+        NitroPlayerLogger.log("DownloadDatabase", "   Checking track \(trackId) at path: \(absolutePath)")
         if FileManager.default.fileExists(atPath: absolutePath) {
-          print("   ✅ File exists")
+          NitroPlayerLogger.log("DownloadDatabase", "   ✅ File exists")
           validTracks.append(recordToDownloadedTrack(record))
         } else {
-          print("   ❌ File NOT found")
+          NitroPlayerLogger.log("DownloadDatabase", "   ❌ File NOT found")
           invalidTrackIds.append(trackId)
         }
       }
 
       // Clean up invalid records
       if !invalidTrackIds.isEmpty {
-        print("   Cleaning up \(invalidTrackIds.count) invalid records")
+        NitroPlayerLogger.log("DownloadDatabase", "   Cleaning up \(invalidTrackIds.count) invalid records")
         queue.async(flags: .barrier) {
           for trackId in invalidTrackIds {
             self.downloadedTracks.removeValue(forKey: trackId)
@@ -180,7 +177,7 @@ final class DownloadDatabase {
         }
       }
 
-      print("🎯 DownloadDatabase: Returning \(validTracks.count) valid tracks")
+      NitroPlayerLogger.log("DownloadDatabase", "🎯 Returning \(validTracks.count) valid tracks")
       return validTracks
     }
   }
@@ -238,7 +235,7 @@ final class DownloadDatabase {
   /// Returns the number of orphaned records that were cleaned up
   func syncDownloads() -> Int {
     return queue.sync(flags: .barrier) {
-      print("🔄 DownloadDatabase: syncDownloads called")
+      NitroPlayerLogger.log("DownloadDatabase", "🔄 syncDownloads called")
 
       var removedCount = 0
       var trackIdsToRemove: [String] = []
@@ -246,7 +243,7 @@ final class DownloadDatabase {
       for (trackId, record) in downloadedTracks {
         let absolutePath = resolveAbsolutePath(for: record)
         if !FileManager.default.fileExists(atPath: absolutePath) {
-          print("   ❌ Missing file for track \(trackId): \(absolutePath)")
+          NitroPlayerLogger.log("DownloadDatabase", "   ❌ Missing file for track \(trackId): \(absolutePath)")
           trackIdsToRemove.append(trackId)
         }
       }
@@ -271,9 +268,9 @@ final class DownloadDatabase {
 
       if removedCount > 0 {
         saveToDisk()
-        print("   ✅ Cleaned up \(removedCount) orphaned records")
+        NitroPlayerLogger.log("DownloadDatabase", "   ✅ Cleaned up \(removedCount) orphaned records")
       } else {
-        print("   ✅ All downloads are valid")
+        NitroPlayerLogger.log("DownloadDatabase", "   ✅ All downloads are valid")
       }
 
       return removedCount
@@ -363,14 +360,14 @@ final class DownloadDatabase {
       let playlistData = try JSONEncoder().encode(playlistTracksDict)
       UserDefaults.standard.set(playlistData, forKey: Self.playlistTracksKey)
     } catch {
-      print("[DownloadDatabase] Failed to save to disk: \(error)")
+      NitroPlayerLogger.log("DownloadDatabase", "Failed to save to disk: \(error)")
     }
   }
 
   private func loadFromDisk() {
-    print("\n" + String(repeating: "📀", count: 40))
-    print("📀 DownloadDatabase: LOADING FROM DISK")
-    print(String(repeating: "📀", count: 40))
+    NitroPlayerLogger.log("DownloadDatabase", "\n" + String(repeating: "📀", count: 40))
+    NitroPlayerLogger.log("DownloadDatabase", "📀 LOADING FROM DISK")
+    NitroPlayerLogger.log("DownloadDatabase", String(repeating: "📀", count: 40))
 
     // Load synchronously to ensure data is available immediately
     // Load downloaded tracks
@@ -378,7 +375,7 @@ final class DownloadDatabase {
       do {
         self.downloadedTracks = try JSONDecoder().decode(
           [String: DownloadedTrackRecord].self, from: tracksData)
-        print("✅ DownloadDatabase: Loaded \(self.downloadedTracks.count) tracks from disk")
+        NitroPlayerLogger.log("DownloadDatabase", "✅ Loaded \(self.downloadedTracks.count) tracks from disk")
 
         // Migrate absolute paths → filenames (one-time, for existing installs)
         var needsMigration = false
@@ -401,15 +398,15 @@ final class DownloadDatabase {
 
         // Log each downloaded track
         for (trackId, record) in self.downloadedTracks {
-          print("   📥 \(trackId)")
-          print("      Title: \(record.originalTrack.title)")
-          print("      Path (filename): \(record.localPath)")
+          NitroPlayerLogger.log("DownloadDatabase", "   📥 \(trackId)")
+          NitroPlayerLogger.log("DownloadDatabase", "      Title: \(record.originalTrack.title)")
+          NitroPlayerLogger.log("DownloadDatabase", "      Path (filename): \(record.localPath)")
         }
       } catch {
-        print("❌ DownloadDatabase: Failed to load tracks from disk: \(error)")
+        NitroPlayerLogger.log("DownloadDatabase", "❌ Failed to load tracks from disk: \(error)")
       }
     } else {
-      print("⚠️  DownloadDatabase: No saved tracks found in UserDefaults")
+      NitroPlayerLogger.log("DownloadDatabase", "⚠️  No saved tracks found in UserDefaults")
     }
 
     // Load playlist associations
@@ -418,21 +415,20 @@ final class DownloadDatabase {
         let playlistTracksDict = try JSONDecoder().decode(
           [String: [String]].self, from: playlistData)
         self.playlistTracks = playlistTracksDict.mapValues { Set($0) }
-        print(
-          "✅ DownloadDatabase: Loaded \(self.playlistTracks.count) playlist associations from disk")
+        NitroPlayerLogger.log("DownloadDatabase", "✅ Loaded \(self.playlistTracks.count) playlist associations from disk")
 
         // Log playlist associations
         for (playlistId, trackIds) in self.playlistTracks {
-          print("   📋 Playlist \(playlistId): \(trackIds.count) tracks")
+          NitroPlayerLogger.log("DownloadDatabase", "   📋 Playlist \(playlistId): \(trackIds.count) tracks")
         }
       } catch {
-        print("❌ DownloadDatabase: Failed to load playlist tracks from disk: \(error)")
+        NitroPlayerLogger.log("DownloadDatabase", "❌ Failed to load playlist tracks from disk: \(error)")
       }
     } else {
-      print("⚠️  DownloadDatabase: No playlist associations found")
+      NitroPlayerLogger.log("DownloadDatabase", "⚠️  No playlist associations found")
     }
 
-    print(String(repeating: "📀", count: 40) + "\n")
+    NitroPlayerLogger.log("DownloadDatabase", String(repeating: "📀", count: 40) + "\n")
   }
 
   // MARK: - Conversion Helpers

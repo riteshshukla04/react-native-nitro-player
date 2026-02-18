@@ -11,6 +11,7 @@ import com.margelo.nitro.nitroplayer.EqualizerState
 import com.margelo.nitro.nitroplayer.GainRange
 import com.margelo.nitro.nitroplayer.PresetType
 import com.margelo.nitro.nitroplayer.Variant_NullType_String
+import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
 import org.json.JSONArray
 import org.json.JSONObject
 import java.lang.ref.WeakReference
@@ -99,7 +100,7 @@ class EqualizerCore private constructor(
             setupBandMapping()
             restoreSettings()
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize equalizer: ${e.message}")
+            NitroPlayerLogger.log("EqualizerCore", "Failed to initialize equalizer: ${e.message}")
         }
     }
 
@@ -144,7 +145,7 @@ class EqualizerCore private constructor(
             saveEnabled(enabled)
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to set enabled: ${e.message}")
+            NitroPlayerLogger.log("EqualizerCore", "Failed to set enabled: ${e.message}")
             false
         }
     }

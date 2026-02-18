@@ -91,22 +91,22 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
   // MARK: - Event Callbacks
 
   func onChangeTrack(callback: @escaping (TrackItem, Reason?) -> Void) throws {
-    print("🎯 HybridTrackPlayer: onChangeTrack callback registered")
+    NitroPlayerLogger.log("HybridTrackPlayer", "onChangeTrack callback registered")
     core.addOnChangeTrackListener(owner: self, callback)
   }
 
   func onPlaybackStateChange(callback: @escaping (TrackPlayerState, Reason?) -> Void) throws {
-    print("🎯 HybridTrackPlayer: onPlaybackStateChange callback registered")
+    NitroPlayerLogger.log("HybridTrackPlayer", "onPlaybackStateChange callback registered")
     core.addOnPlaybackStateChangeListener(owner: self, callback)
   }
 
   func onSeek(callback: @escaping (Double, Double) -> Void) throws {
-    print("🎯 HybridTrackPlayer: onSeek callback registered")
+    NitroPlayerLogger.log("HybridTrackPlayer", "onSeek callback registered")
     core.addOnSeekListener(owner: self, callback)
   }
 
   func onPlaybackProgressChange(callback: @escaping (Double, Double, Bool?) -> Void) throws {
-    print("🎯 HybridTrackPlayer: onPlaybackProgressChange callback registered")
+    NitroPlayerLogger.log("HybridTrackPlayer", "onPlaybackProgressChange callback registered")
     core.addOnPlaybackProgressChangeListener(owner: self, callback)
   }
 

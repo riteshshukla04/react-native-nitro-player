@@ -2,6 +2,7 @@ package com.margelo.nitro.nitroplayer.playlist
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.margelo.nitro.core.AnyMap
 import com.margelo.nitro.core.NullType
 import com.margelo.nitro.nitroplayer.QueueOperation
 import com.margelo.nitro.nitroplayer.TrackItem
@@ -12,8 +13,6 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
-
-import com.margelo.nitro.core.AnyMap
 
 /**
  * Manages multiple playlists using ExoPlayer's native playlist functionality

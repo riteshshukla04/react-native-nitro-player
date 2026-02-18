@@ -116,7 +116,7 @@ class TrackPlayerCore: NSObject {
       try audioSession.setCategory(.playback, mode: .default, options: [])
       try audioSession.setActive(true)
     } catch {
-      print("❌ TrackPlayerCore: Failed to setup audio session - \(error)")
+      NitroPlayerLogger.log("TrackPlayerCore", "❌ Failed to setup audio session - \(error)")
     }
   }
 
@@ -138,8 +138,7 @@ class TrackPlayerCore: NSObject {
       player?.audiovisualBackgroundPlaybackPolicy = .continuesIfPossible
     }
 
-    print(
-      "🎵 TrackPlayerCore: Gapless playback configured - automaticallyWaitsToMinimizeStalling=true (flipped to false on first readyToPlay)")
+    NitroPlayerLogger.log("TrackPlayerCore", "🎵 Gapless playback configured - automaticallyWaitsToMinimizeStalling=true (flipped to false on first readyToPlay)")
 
     setupPlayerObservers()
   }
@@ -201,19 +200,19 @@ class TrackPlayerCore: NSObject {
     guard let player = player,
       let currentItem = player.currentItem
     else {
-      print("⚠️ TrackPlayerCore: Cannot setup boundary observer - no player or item")
+      NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Cannot setup boundary observer - no player or item")
       return
     }
 
     // Wait for duration to be available
     guard currentItem.status == .readyToPlay else {
-      print("⚠️ TrackPlayerCore: Item not ready, will setup boundaries when ready")
+      NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Item not ready, will setup boundaries when ready")
       return
     }
 
     let duration = currentItem.duration.seconds
     guard duration > 0 && !duration.isNaN && !duration.isInfinite else {
-      print("⚠️ TrackPlayerCore: Invalid duration: \(duration), cannot setup boundaries")
+      NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Invalid duration: \(duration), cannot setup boundaries")
       return
     }
 
@@ -236,9 +235,7 @@ class TrackPlayerCore: NSObject {
       time += interval
     }
 
-    print(
-      "⏱️ TrackPlayerCore: Setting up \(boundaryTimes.count) boundary observers (interval: \(interval)s, duration: \(Int(duration))s)"
-    )
+    NitroPlayerLogger.log("TrackPlayerCore", "⏱️ Setting up \(boundaryTimes.count) boundary observers (interval: \(interval)s, duration: \(Int(duration))s)")
 
     // Add boundary time observer
     boundaryTimeObserver = player.addBoundaryTimeObserver(forTimes: boundaryTimes, queue: .main) {
@@ -247,7 +244,7 @@ class TrackPlayerCore: NSObject {
       self.handleBoundaryTimeCrossed()
     }
 
-    print("⏱️ TrackPlayerCore: Boundary time observer setup complete")
+    NitroPlayerLogger.log("TrackPlayerCore", "⏱️ Boundary time observer setup complete")
   }
 
   private func handleBoundaryTimeCrossed() {
@@ -263,9 +260,7 @@ class TrackPlayerCore: NSObject {
 
     guard duration > 0 && !duration.isNaN && !duration.isInfinite else { return }
 
-    print(
-      "⏱️ TrackPlayerCore: Boundary crossed - position: \(Int(position))s / \(Int(duration))s, callback exists: \(!onPlaybackProgressChangeListeners.isEmpty)"
-    )
+    NitroPlayerLogger.log("TrackPlayerCore", "⏱️ Boundary crossed - position: \(Int(position))s / \(Int(duration))s, callback exists: \(!onPlaybackProgressChangeListeners.isEmpty)")
 
     notifyPlaybackProgress(
       position,
@@ -278,7 +273,7 @@ class TrackPlayerCore: NSObject {
   // MARK: - Notification Handlers
 
   @objc private func playerItemDidPlayToEndTime(notification: Notification) {
-    print("\n🏁 TrackPlayerCore: Track finished playing")
+    NitroPlayerLogger.log("TrackPlayerCore", "\n🏁 Track finished playing")
 
     guard let finishedItem = notification.object as? AVPlayerItem else {
       // Don't call skipToNext — AVQueuePlayer with actionAtItemEnd = .advance already auto-advances
@@ -290,29 +285,29 @@ class TrackPlayerCore: NSObject {
       // Check if it was a playNext track
       if let index = playNextStack.firstIndex(where: { $0.id == trackId }) {
         let track = playNextStack.remove(at: index)
-        print("🏁 Finished playNext track: \(track.title) - removed from stack")
+        NitroPlayerLogger.log("TrackPlayerCore", "🏁 Finished playNext track: \(track.title) - removed from stack")
       }
       // Check if it was an upNext track
       else if let index = upNextQueue.firstIndex(where: { $0.id == trackId }) {
         let track = upNextQueue.remove(at: index)
-        print("🏁 Finished upNext track: \(track.title) - removed from queue")
+        NitroPlayerLogger.log("TrackPlayerCore", "🏁 Finished upNext track: \(track.title) - removed from queue")
       }
       // Otherwise it was from original playlist
       else if let track = currentTracks.first(where: { $0.id == trackId }) {
-        print("🏁 Finished original track: \(track.title)")
+        NitroPlayerLogger.log("TrackPlayerCore", "🏁 Finished original track: \(track.title)")
       }
     }
 
     // Check remaining queue
     if let player = player {
-      print("📋 Remaining items in queue: \(player.items().count)")
+      NitroPlayerLogger.log("TrackPlayerCore", "📋 Remaining items in queue: \(player.items().count)")
     }
 
     // Handle repeat modes
     switch repeatMode {
     case .track:
       // Repeat current track - seek to beginning and play
-      print("🔁 TrackPlayerCore: Repeat mode is TRACK - replaying current track")
+      NitroPlayerLogger.log("TrackPlayerCore", "🔁 Repeat mode is TRACK - replaying current track")
       DispatchQueue.main.async { [weak self] in
         guard let self = self, let player = self.player else { return }
         // For temporary tracks, just seek to beginning
@@ -331,9 +326,9 @@ class TrackPlayerCore: NSObject {
       if currentTemporaryType == .none && currentTrackIndex >= currentTracks.count - 1 {
         // Check if there are still temporary tracks
         if !playNextStack.isEmpty || !upNextQueue.isEmpty {
-          print("🔁 TrackPlayerCore: Temporary tracks remaining, continuing...")
+          NitroPlayerLogger.log("TrackPlayerCore", "🔁 Temporary tracks remaining, continuing...")
         } else {
-          print("🔁 TrackPlayerCore: Repeat mode is PLAYLIST - restarting from beginning")
+          NitroPlayerLogger.log("TrackPlayerCore", "🔁 Repeat mode is PLAYLIST - restarting from beginning")
           // Clear temps and restart
           playNextStack.removeAll()
           upNextQueue.removeAll()
@@ -344,12 +339,12 @@ class TrackPlayerCore: NSObject {
           return
         }
       } else {
-        print("🔁 TrackPlayerCore: Repeat mode is PLAYLIST - continuing to next track")
+        NitroPlayerLogger.log("TrackPlayerCore", "🔁 Repeat mode is PLAYLIST - continuing to next track")
       }
 
     case .off:
       // Default behavior - stop at end of playlist
-      print("🔁 TrackPlayerCore: Repeat mode is OFF")
+      NitroPlayerLogger.log("TrackPlayerCore", "🔁 Repeat mode is OFF")
     }
 
     // Track ended naturally — notify with .end reason
@@ -371,7 +366,7 @@ class TrackPlayerCore: NSObject {
 
   @objc private func playerItemFailedToPlayToEndTime(notification: Notification) {
     if let error = notification.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error {
-      print("❌ TrackPlayerCore: Playback failed - \(error)")
+      NitroPlayerLogger.log("TrackPlayerCore", "❌ Playback failed - \(error)")
       notifyPlaybackStateChange(.stopped, .error)
     }
   }
@@ -382,14 +377,12 @@ class TrackPlayerCore: NSObject {
     else { return }
 
     for event in errorLog.events ?? [] {
-      print(
-        "❌ TrackPlayerCore: Error log - \(event.errorComment ?? "Unknown error") - Code: \(event.errorStatusCode)"
-      )
+      NitroPlayerLogger.log("TrackPlayerCore", "❌ Error log - \(event.errorComment ?? "Unknown error") - Code: \(event.errorStatusCode)")
     }
 
     // Also check item error
     if let error = item.error {
-      print("❌ TrackPlayerCore: Item error - \(error.localizedDescription)")
+      NitroPlayerLogger.log("TrackPlayerCore", "❌ Item error - \(error.localizedDescription)")
     }
   }
 
@@ -401,7 +394,7 @@ class TrackPlayerCore: NSObject {
     let position = currentItem.currentTime().seconds
     let duration = currentItem.duration.seconds
 
-    print("🎯 TrackPlayerCore: Time jumped (seek detected) - position: \(Int(position))s")
+    NitroPlayerLogger.log("TrackPlayerCore", "🎯 Time jumped (seek detected) - position: \(Int(position))s")
 
     // Call onSeek callback immediately
     notifySeek(position, duration)
@@ -421,24 +414,24 @@ class TrackPlayerCore: NSObject {
   ) {
     guard let player = player else { return }
 
-    print("👀 TrackPlayerCore: KVO - keyPath: \(keyPath ?? "nil")")
+    NitroPlayerLogger.log("TrackPlayerCore", "👀 KVO - keyPath: \(keyPath ?? "nil")")
 
     if keyPath == "status" {
-      print("👀 TrackPlayerCore: Player status changed to: \(player.status.rawValue)")
+      NitroPlayerLogger.log("TrackPlayerCore", "👀 Player status changed to: \(player.status.rawValue)")
       if player.status == .readyToPlay {
         emitStateChange()
       } else if player.status == .failed {
-        print("❌ TrackPlayerCore: Player failed")
+        NitroPlayerLogger.log("TrackPlayerCore", "❌ Player failed")
         notifyPlaybackStateChange(.stopped, .error)
       }
     } else if keyPath == "rate" {
-      print("👀 TrackPlayerCore: Rate changed to: \(player.rate)")
+      NitroPlayerLogger.log("TrackPlayerCore", "👀 Rate changed to: \(player.rate)")
       emitStateChange()
     } else if keyPath == "timeControlStatus" {
-      print("👀 TrackPlayerCore: TimeControlStatus changed to: \(player.timeControlStatus.rawValue)")
+      NitroPlayerLogger.log("TrackPlayerCore", "👀 TimeControlStatus changed to: \(player.timeControlStatus.rawValue)")
       emitStateChange()
     } else if keyPath == "currentItem" {
-      print("👀 TrackPlayerCore: Current item changed")
+      NitroPlayerLogger.log("TrackPlayerCore", "👀 Current item changed")
       currentItemDidChange()
     }
   }
@@ -453,43 +446,43 @@ class TrackPlayerCore: NSObject {
     guard let player = player,
       let currentItem = player.currentItem
     else {
-      print("⚠️ TrackPlayerCore: Current item changed to nil")
+      NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Current item changed to nil")
       return
     }
 
-    print("\n" + String(repeating: "▶", count: Constants.separatorLineLength))
-    print("🔄 TrackPlayerCore: CURRENT ITEM CHANGED")
-    print(String(repeating: "▶", count: Constants.separatorLineLength))
+    NitroPlayerLogger.log("TrackPlayerCore", "\n" + String(repeating: "▶", count: Constants.separatorLineLength))
+    NitroPlayerLogger.log("TrackPlayerCore", "🔄 CURRENT ITEM CHANGED")
+    NitroPlayerLogger.log("TrackPlayerCore", String(repeating: "▶", count: Constants.separatorLineLength))
 
     // Log current item details
     if let trackId = currentItem.trackId,
       let track = currentTracks.first(where: { $0.id == trackId })
     {
-      print("▶️  NOW PLAYING: \(track.title) - \(track.artist) (ID: \(track.id))")
+      NitroPlayerLogger.log("TrackPlayerCore", "▶️  NOW PLAYING: \(track.title) - \(track.artist) (ID: \(track.id))")
     } else {
-      print("⚠️  NOW PLAYING: Unknown track (trackId: \(currentItem.trackId ?? "nil"))")
+      NitroPlayerLogger.log("TrackPlayerCore", "⚠️  NOW PLAYING: Unknown track (trackId: \(currentItem.trackId ?? "nil"))")
     }
 
     // Show remaining items in queue
     let remainingItems = player.items()
-    print("\n📋 REMAINING ITEMS IN QUEUE: \(remainingItems.count)")
+    NitroPlayerLogger.log("TrackPlayerCore", "\n📋 REMAINING ITEMS IN QUEUE: \(remainingItems.count)")
     for (index, item) in remainingItems.enumerated() {
       if let trackId = item.trackId, let track = currentTracks.first(where: { $0.id == trackId }) {
         let marker = item == currentItem ? "▶️" : "  "
-        print("\(marker) [\(index + 1)] \(track.title) - \(track.artist)")
+        NitroPlayerLogger.log("TrackPlayerCore", "\(marker) [\(index + 1)] \(track.title) - \(track.artist)")
       } else {
-        print("   [\(index + 1)] ⚠️ Unknown track")
+        NitroPlayerLogger.log("TrackPlayerCore", "   [\(index + 1)] ⚠️ Unknown track")
       }
     }
 
-    print(String(repeating: "▶", count: Constants.separatorLineLength) + "\n")
+    NitroPlayerLogger.log("TrackPlayerCore", String(repeating: "▶", count: Constants.separatorLineLength) + "\n")
 
     // Log item status
-    print("📱 TrackPlayerCore: Item status: \(currentItem.status.rawValue)")
+    NitroPlayerLogger.log("TrackPlayerCore", "📱 Item status: \(currentItem.status.rawValue)")
 
     // Check for errors
     if let error = currentItem.error {
-      print("❌ TrackPlayerCore: Current item has error - \(error.localizedDescription)")
+      NitroPlayerLogger.log("TrackPlayerCore", "❌ Current item has error - \(error.localizedDescription)")
     }
 
     // Setup KVO observers for current item
@@ -497,12 +490,12 @@ class TrackPlayerCore: NSObject {
 
     // Update track index and determine temporary type
     if let trackId = currentItem.trackId {
-      print("🔍 TrackPlayerCore: Looking up trackId '\(trackId)' in currentTracks...")
-      print("   Current index BEFORE lookup: \(currentTrackIndex)")
+      NitroPlayerLogger.log("TrackPlayerCore", "🔍 Looking up trackId '\(trackId)' in currentTracks...")
+      NitroPlayerLogger.log("TrackPlayerCore", "   Current index BEFORE lookup: \(currentTrackIndex)")
 
       // Update temporary type
       currentTemporaryType = determineCurrentTemporaryType()
-      print("   🎯 Track type: \(currentTemporaryType)")
+      NitroPlayerLogger.log("TrackPlayerCore", "   🎯 Track type: \(currentTemporaryType)")
 
       // If it's a temporary track, don't update currentTrackIndex
       if currentTemporaryType != .none {
@@ -515,38 +508,38 @@ class TrackPlayerCore: NSObject {
         }
 
         if let track = tempTrack {
-          print("   🎵 Temporary track: \(track.title) - \(track.artist)")
-          print("   📢 Emitting onChangeTrack for temporary track")
+          NitroPlayerLogger.log("TrackPlayerCore", "   🎵 Temporary track: \(track.title) - \(track.artist)")
+          NitroPlayerLogger.log("TrackPlayerCore", "   📢 Emitting onChangeTrack for temporary track")
           notifyTrackChange(track, .skip)
           mediaSessionManager?.onTrackChanged()
         }
       }
       // It's an original playlist track
       else if let index = currentTracks.firstIndex(where: { $0.id == trackId }) {
-        print("   ✅ Found track at index: \(index)")
-        print("   Setting currentTrackIndex from \(currentTrackIndex) to \(index)")
+        NitroPlayerLogger.log("TrackPlayerCore", "   ✅ Found track at index: \(index)")
+        NitroPlayerLogger.log("TrackPlayerCore", "   Setting currentTrackIndex from \(currentTrackIndex) to \(index)")
 
         let oldIndex = currentTrackIndex
         currentTrackIndex = index
 
         if let track = currentTracks[safe: index] {
-          print("   🎵 Track: \(track.title) - \(track.artist)")
+          NitroPlayerLogger.log("TrackPlayerCore", "   🎵 Track: \(track.title) - \(track.artist)")
 
           // Only emit onChangeTrack if index actually changed
           // This prevents duplicate emissions
           if oldIndex != index {
-            print("   📢 Emitting onChangeTrack (index changed from \(oldIndex) to \(index))")
+            NitroPlayerLogger.log("TrackPlayerCore", "   📢 Emitting onChangeTrack (index changed from \(oldIndex) to \(index))")
             notifyTrackChange(track, .skip)
             mediaSessionManager?.onTrackChanged()
           } else {
-            print("   ⏭️ Skipping onChangeTrack emission (index unchanged)")
+            NitroPlayerLogger.log("TrackPlayerCore", "   ⏭️ Skipping onChangeTrack emission (index unchanged)")
           }
         }
       } else {
-        print("   ⚠️ Track ID '\(trackId)' NOT FOUND in currentTracks!")
-        print("   Current tracks:")
+        NitroPlayerLogger.log("TrackPlayerCore", "   ⚠️ Track ID '\(trackId)' NOT FOUND in currentTracks!")
+        NitroPlayerLogger.log("TrackPlayerCore", "   Current tracks:")
         for (idx, track) in currentTracks.enumerated() {
-          print("      [\(idx)] \(track.id) - \(track.title)")
+          NitroPlayerLogger.log("TrackPlayerCore", "      [\(idx)] \(track.id) - \(track.title)")
         }
       }
     }
@@ -563,19 +556,19 @@ class TrackPlayerCore: NSObject {
   }
 
   private func setupCurrentItemObservers(item: AVPlayerItem) {
-    print("📱 TrackPlayerCore: Setting up item observers")
+    NitroPlayerLogger.log("TrackPlayerCore", "📱 Setting up item observers")
 
     // Observe status - recreate boundaries when ready and update now playing info
     let statusObserver = item.observe(\.status, options: [.new]) { [weak self] item, _ in
       if item.status == .readyToPlay {
-        print("✅ TrackPlayerCore: Item ready, setting up boundaries")
+        NitroPlayerLogger.log("TrackPlayerCore", "✅ Item ready, setting up boundaries")
         self?.setupBoundaryTimeObserver()
         // First item is buffered and ready — disable stall waiting for gapless inter-track transitions
         self?.player?.automaticallyWaitsToMinimizeStalling = false
         // Update now playing info now that duration is available
         self?.mediaSessionManager?.updateNowPlayingInfo()
       } else if item.status == .failed {
-        print("❌ TrackPlayerCore: Item failed")
+        NitroPlayerLogger.log("TrackPlayerCore", "❌ Item failed")
         self?.notifyPlaybackStateChange(.stopped, .error)
       }
     }
@@ -584,7 +577,7 @@ class TrackPlayerCore: NSObject {
     // Observe playback buffer
     let bufferEmptyObserver = item.observe(\.isPlaybackBufferEmpty, options: [.new]) { item, _ in
       if item.isPlaybackBufferEmpty {
-        print("⏸️ TrackPlayerCore: Buffer empty (buffering)")
+        NitroPlayerLogger.log("TrackPlayerCore", "⏸️ Buffer empty (buffering)")
       }
     }
     currentItemObservers.append(bufferEmptyObserver)
@@ -592,7 +585,7 @@ class TrackPlayerCore: NSObject {
     let bufferKeepUpObserver = item.observe(\.isPlaybackLikelyToKeepUp, options: [.new]) {
       item, _ in
       if item.isPlaybackLikelyToKeepUp {
-        print("▶️ TrackPlayerCore: Buffer likely to keep up")
+        NitroPlayerLogger.log("TrackPlayerCore", "▶️ Buffer likely to keep up")
       }
     }
     currentItemObservers.append(bufferKeepUpObserver)
@@ -611,32 +604,32 @@ class TrackPlayerCore: NSObject {
   }
 
   private func loadPlaylistInternal(playlistId: String) {
-    print("\n" + String(repeating: "🎼", count: Constants.playlistSeparatorLength))
-    print("📂 TrackPlayerCore: LOAD PLAYLIST REQUEST")
-    print("   Playlist ID: \(playlistId)")
+    NitroPlayerLogger.log("TrackPlayerCore", "\n" + String(repeating: "🎼", count: Constants.playlistSeparatorLength))
+    NitroPlayerLogger.log("TrackPlayerCore", "📂 LOAD PLAYLIST REQUEST")
+    NitroPlayerLogger.log("TrackPlayerCore", "   Playlist ID: \(playlistId)")
 
     // Clear temporary tracks when loading new playlist
     self.playNextStack.removeAll()
     self.upNextQueue.removeAll()
     self.currentTemporaryType = .none
-    print("   🧹 Cleared temporary tracks")
+    NitroPlayerLogger.log("TrackPlayerCore", "   🧹 Cleared temporary tracks")
 
     let playlist = self.playlistManager.getPlaylist(playlistId: playlistId)
     if let playlist = playlist {
-      print("   ✅ Found playlist: \(playlist.name)")
-      print("   📋 Contains \(playlist.tracks.count) tracks:")
+      NitroPlayerLogger.log("TrackPlayerCore", "   ✅ Found playlist: \(playlist.name)")
+      NitroPlayerLogger.log("TrackPlayerCore", "   📋 Contains \(playlist.tracks.count) tracks:")
       for (index, track) in playlist.tracks.enumerated() {
-        print("      [\(index + 1)] \(track.title) - \(track.artist)")
+        NitroPlayerLogger.log("TrackPlayerCore", "      [\(index + 1)] \(track.title) - \(track.artist)")
       }
-      print(String(repeating: "🎼", count: Constants.playlistSeparatorLength) + "\n")
+      NitroPlayerLogger.log("TrackPlayerCore", String(repeating: "🎼", count: Constants.playlistSeparatorLength) + "\n")
 
       self.currentPlaylistId = playlistId
       self.updatePlayerQueue(tracks: playlist.tracks)
       // Emit initial state (paused/stopped before play)
       self.emitStateChange()
     } else {
-      print("   ❌ Playlist NOT FOUND")
-      print(String(repeating: "🎼", count: Constants.playlistSeparatorLength) + "\n")
+      NitroPlayerLogger.log("TrackPlayerCore", "   ❌ Playlist NOT FOUND")
+      NitroPlayerLogger.log("TrackPlayerCore", String(repeating: "🎼", count: Constants.playlistSeparatorLength) + "\n")
     }
   }
 
@@ -685,8 +678,8 @@ class TrackPlayerCore: NSObject {
       state = .stopped
     }
 
-    print("🔔 TrackPlayerCore: Emitting state change: \(state)")
-    print("🔔 TrackPlayerCore: Callback exists: \(!onPlaybackStateChangeListeners.isEmpty)")
+    NitroPlayerLogger.log("TrackPlayerCore", "🔔 Emitting state change: \(state)")
+    NitroPlayerLogger.log("TrackPlayerCore", "🔔 Callback exists: \(!onPlaybackStateChangeListeners.isEmpty)")
     notifyPlaybackStateChange(state, reason)
     mediaSessionManager?.onPlaybackStateChanged()
   }
@@ -706,19 +699,19 @@ class TrackPlayerCore: NSObject {
 
     if isLocal {
       // Local file - use fileURLWithPath
-      print("📥 TrackPlayerCore: Using DOWNLOADED version for \(track.title)")
-      print("   Local path: \(effectiveUrlString)")
+      NitroPlayerLogger.log("TrackPlayerCore", "📥 Using DOWNLOADED version for \(track.title)")
+      NitroPlayerLogger.log("TrackPlayerCore", "   Local path: \(effectiveUrlString)")
 
       // Verify file exists
       if FileManager.default.fileExists(atPath: effectiveUrlString) {
         url = URL(fileURLWithPath: effectiveUrlString)
-        print("   File URL: \(url.absoluteString)")
-        print("   ✅ File verified to exist")
+        NitroPlayerLogger.log("TrackPlayerCore", "   File URL: \(url.absoluteString)")
+        NitroPlayerLogger.log("TrackPlayerCore", "   ✅ File verified to exist")
       } else {
-        print("   ❌ Downloaded file does NOT exist at path!")
-        print("   Falling back to remote URL: \(track.url)")
+        NitroPlayerLogger.log("TrackPlayerCore", "   ❌ Downloaded file does NOT exist at path!")
+        NitroPlayerLogger.log("TrackPlayerCore", "   Falling back to remote URL: \(track.url)")
         guard let remoteUrl = URL(string: track.url) else {
-          print("❌ TrackPlayerCore: Invalid remote URL: \(track.url)")
+          NitroPlayerLogger.log("TrackPlayerCore", "❌ Invalid remote URL: \(track.url)")
           return nil
         }
         url = remoteUrl
@@ -726,18 +719,18 @@ class TrackPlayerCore: NSObject {
     } else {
       // Remote URL
       guard let remoteUrl = URL(string: effectiveUrlString) else {
-        print("❌ TrackPlayerCore: Invalid URL for track: \(track.title) - \(effectiveUrlString)")
+        NitroPlayerLogger.log("TrackPlayerCore", "❌ Invalid URL for track: \(track.title) - \(effectiveUrlString)")
         return nil
       }
       url = remoteUrl
-      print("🌐 TrackPlayerCore: Using REMOTE version for \(track.title)")
+      NitroPlayerLogger.log("TrackPlayerCore", "🌐 Using REMOTE version for \(track.title)")
     }
 
     // Check if we have a preloaded asset for this track
     let asset: AVURLAsset
     if let preloadedAsset = preloadedAssets[track.id] {
       asset = preloadedAsset
-      print("🚀 TrackPlayerCore: Using preloaded asset for \(track.title)")
+      NitroPlayerLogger.log("TrackPlayerCore", "🚀 Using preloaded asset for \(track.title)")
     } else {
       // No AVURLAssetPreferPreciseDurationAndTimingKey — gapless playback is achieved via
       // AVQueuePlayer's internal audio buffer pre-roll, not timing metadata.
@@ -763,7 +756,7 @@ class TrackPlayerCore: NSObject {
     // Apply equalizer audio mix to the player item
     // This enables real-time EQ processing via MTAudioProcessingTap
     EqualizerCore.shared.applyAudioMix(to: item)
-    print("🎛️ TrackPlayerCore: Requesting EQ audio mix application for \(track.title)")
+    NitroPlayerLogger.log("TrackPlayerCore", "🎛️ Requesting EQ audio mix application for \(track.title)")
 
     // If this is a preload request, start loading asset keys asynchronously
     if isPreload {
@@ -774,14 +767,12 @@ class TrackPlayerCore: NSObject {
           var error: NSError?
           let status = asset.statusOfValue(forKey: key, error: &error)
           if status == .failed {
-            print(
-              "⚠️ TrackPlayerCore: Failed to load key '\(key)' for \(track.title): \(error?.localizedDescription ?? "unknown")"
-            )
+            NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Failed to load key '\(key)' for \(track.title): \(error?.localizedDescription ?? "unknown")")
             allKeysLoaded = false
           }
         }
         if allKeysLoaded {
-          print("✅ TrackPlayerCore: All asset keys preloaded for \(track.title)")
+          NitroPlayerLogger.log("TrackPlayerCore", "✅ All asset keys preloaded for \(track.title)")
         }
       }
     }
@@ -826,7 +817,7 @@ class TrackPlayerCore: NSObject {
           if allKeysLoaded {
             DispatchQueue.main.async {
               self?.preloadedAssets[track.id] = asset
-              print("🎯 TrackPlayerCore: Preloaded asset for upcoming track: \(track.title)")
+              NitroPlayerLogger.log("TrackPlayerCore", "🎯 Preloaded asset for upcoming track: \(track.title)")
             }
           }
         }
@@ -851,7 +842,7 @@ class TrackPlayerCore: NSObject {
       }
 
       if !assetsToRemove.isEmpty {
-        print("🧹 TrackPlayerCore: Cleaned up \(assetsToRemove.count) preloaded assets")
+        NitroPlayerLogger.log("TrackPlayerCore", "🧹 Cleaned up \(assetsToRemove.count) preloaded assets")
       }
     }
   }
@@ -864,9 +855,7 @@ class TrackPlayerCore: NSObject {
     let box = WeakCallbackBox(owner: owner, callback: listener)
     listenersQueue.async(flags: .barrier) { [weak self] in
       self?.onChangeTrackListeners.append(box)
-      print(
-        "🎯 TrackPlayerCore: Added onChangeTrack listener (total: \(self?.onChangeTrackListeners.count ?? 0))"
-      )
+      NitroPlayerLogger.log("TrackPlayerCore", "🎯 Added onChangeTrack listener (total: \(self?.onChangeTrackListeners.count ?? 0))")
     }
   }
 
@@ -877,9 +866,7 @@ class TrackPlayerCore: NSObject {
     let box = WeakCallbackBox(owner: owner, callback: listener)
     listenersQueue.async(flags: .barrier) { [weak self] in
       self?.onPlaybackStateChangeListeners.append(box)
-      print(
-        "🎯 TrackPlayerCore: Added onPlaybackStateChange listener (total: \(self?.onPlaybackStateChangeListeners.count ?? 0))"
-      )
+      NitroPlayerLogger.log("TrackPlayerCore", "🎯 Added onPlaybackStateChange listener (total: \(self?.onPlaybackStateChangeListeners.count ?? 0))")
     }
   }
 
@@ -887,7 +874,7 @@ class TrackPlayerCore: NSObject {
     let box = WeakCallbackBox(owner: owner, callback: listener)
     listenersQueue.async(flags: .barrier) { [weak self] in
       self?.onSeekListeners.append(box)
-      print("🎯 TrackPlayerCore: Added onSeek listener (total: \(self?.onSeekListeners.count ?? 0))")
+      NitroPlayerLogger.log("TrackPlayerCore", "🎯 Added onSeek listener (total: \(self?.onSeekListeners.count ?? 0))")
     }
   }
 
@@ -898,9 +885,7 @@ class TrackPlayerCore: NSObject {
     let box = WeakCallbackBox(owner: owner, callback: listener)
     listenersQueue.async(flags: .barrier) { [weak self] in
       self?.onPlaybackProgressChangeListeners.append(box)
-      print(
-        "🎯 TrackPlayerCore: Added onPlaybackProgressChange listener (total: \(self?.onPlaybackProgressChangeListeners.count ?? 0))"
-      )
+      NitroPlayerLogger.log("TrackPlayerCore", "🎯 Added onPlaybackProgressChange listener (total: \(self?.onPlaybackProgressChangeListeners.count ?? 0))")
     }
   }
 
@@ -994,29 +979,28 @@ class TrackPlayerCore: NSObject {
   // MARK: - Queue Management
 
   private func updatePlayerQueue(tracks: [TrackItem]) {
-    print("\n" + String(repeating: "=", count: Constants.separatorLineLength))
-    print("📋 TrackPlayerCore: UPDATE PLAYER QUEUE - Received \(tracks.count) tracks")
-    print(String(repeating: "=", count: Constants.separatorLineLength))
+    NitroPlayerLogger.log("TrackPlayerCore", "\n" + String(repeating: "=", count: Constants.separatorLineLength))
+    NitroPlayerLogger.log("TrackPlayerCore", "📋 UPDATE PLAYER QUEUE - Received \(tracks.count) tracks")
+    NitroPlayerLogger.log("TrackPlayerCore", String(repeating: "=", count: Constants.separatorLineLength))
 
     #if DEBUG
     for (index, track) in tracks.enumerated() {
       let isDownloaded = DownloadManagerCore.shared.isTrackDownloaded(trackId: track.id)
       let downloadStatus = isDownloaded ? "📥 DOWNLOADED" : "🌐 REMOTE"
-      print(
-        "  [\(index + 1)] 🎵 \(track.title) - \(track.artist) (ID: \(track.id)) - \(downloadStatus)")
+      NitroPlayerLogger.log("TrackPlayerCore", "  [\(index + 1)] 🎵 \(track.title) - \(track.artist) (ID: \(track.id)) - \(downloadStatus)")
       if isDownloaded {
         if let localPath = DownloadManagerCore.shared.getLocalPath(trackId: track.id) {
-          print("      Local path: \(localPath)")
+          NitroPlayerLogger.log("TrackPlayerCore", "      Local path: \(localPath)")
         }
       }
     }
-    print(String(repeating: "=", count: Constants.separatorLineLength) + "\n")
+    NitroPlayerLogger.log("TrackPlayerCore", String(repeating: "=", count: Constants.separatorLineLength) + "\n")
     #endif
 
     // Store tracks for index tracking
     currentTracks = tracks
     currentTrackIndex = 0
-    print("🔢 TrackPlayerCore: Reset currentTrackIndex to 0 (will be updated by KVO observer)")
+    NitroPlayerLogger.log("TrackPlayerCore", "🔢 Reset currentTrackIndex to 0 (will be updated by KVO observer)")
 
     // Remove old boundary observer if exists (this is safe)
     if let boundaryObserver = boundaryTimeObserver, let currentPlayer = player {
@@ -1037,22 +1021,20 @@ class TrackPlayerCore: NSObject {
       return createGaplessPlayerItem(for: track, isPreload: isPreload)
     }
 
-    print("🎵 TrackPlayerCore: Created \(items.count) gapless-optimized player items")
+    NitroPlayerLogger.log("TrackPlayerCore", "🎵 Created \(items.count) gapless-optimized player items")
 
     guard !items.isEmpty else {
-      print("❌ TrackPlayerCore: No valid items to play")
+      NitroPlayerLogger.log("TrackPlayerCore", "❌ No valid items to play")
       return
     }
 
     // Replace current queue (player should always exist after setupPlayer)
     guard let existingPlayer = self.player else {
-      print("❌ TrackPlayerCore: No player available - this should never happen!")
+      NitroPlayerLogger.log("TrackPlayerCore", "❌ No player available - this should never happen!")
       return
     }
 
-    print(
-      "🔄 TrackPlayerCore: Updating queue - removing \(existingPlayer.items().count) items, adding \(items.count) new items"
-    )
+    NitroPlayerLogger.log("TrackPlayerCore", "🔄 Updating queue - removing \(existingPlayer.items().count) items, adding \(items.count) new items")
 
     // Remove all existing items
     existingPlayer.removeAllItems()
@@ -1066,28 +1048,27 @@ class TrackPlayerCore: NSObject {
       lastItem = item
 
       if let trackId = item.trackId, let track = tracks.first(where: { $0.id == trackId }) {
-        print("  ➕ Added to player queue [\(index + 1)]: \(track.title)")
+        NitroPlayerLogger.log("TrackPlayerCore", "  ➕ Added to player queue [\(index + 1)]: \(track.title)")
       }
     }
 
     #if DEBUG
     let trackById = Dictionary(uniqueKeysWithValues: tracks.map { ($0.id, $0) })
-    print(
-      "\n🔍 TrackPlayerCore: VERIFICATION - Player now has \(existingPlayer.items().count) items:")
+    NitroPlayerLogger.log("TrackPlayerCore", "\n🔍 VERIFICATION - Player now has \(existingPlayer.items().count) items:")
     for (index, item) in existingPlayer.items().enumerated() {
       if let trackId = item.trackId, let track = trackById[trackId] {
-        print("  [\(index + 1)] ✓ \(track.title) - \(track.artist) (ID: \(track.id))")
+        NitroPlayerLogger.log("TrackPlayerCore", "  [\(index + 1)] ✓ \(track.title) - \(track.artist) (ID: \(track.id))")
       } else {
-        print("  [\(index + 1)] ⚠️ Unknown item (no trackId)")
+        NitroPlayerLogger.log("TrackPlayerCore", "  [\(index + 1)] ⚠️ Unknown item (no trackId)")
       }
     }
     if let currentItem = existingPlayer.currentItem,
       let trackId = currentItem.trackId,
       let track = trackById[trackId]
     {
-      print("▶️  Current item: \(track.title)")
+      NitroPlayerLogger.log("TrackPlayerCore", "▶️  Current item: \(track.title)")
     }
-    print(String(repeating: "=", count: Constants.separatorLineLength) + "\n")
+    NitroPlayerLogger.log("TrackPlayerCore", String(repeating: "=", count: Constants.separatorLineLength) + "\n")
     #endif
 
     // Note: Boundary time observers will be set up automatically when item becomes ready
@@ -1095,8 +1076,8 @@ class TrackPlayerCore: NSObject {
 
     // Notify track change
     if let firstTrack = tracks.first {
-      print("🎵 TrackPlayerCore: Emitting track change: \(firstTrack.title)")
-      print("🎵 TrackPlayerCore: onChangeTrack callbacks count: \(onChangeTrackListeners.count)")
+      NitroPlayerLogger.log("TrackPlayerCore", "🎵 Emitting track change: \(firstTrack.title)")
+      NitroPlayerLogger.log("TrackPlayerCore", "🎵 onChangeTrack callbacks count: \(onChangeTrackListeners.count)")
       notifyTrackChange(firstTrack, nil)
       mediaSessionManager?.onTrackChanged()
     }
@@ -1104,7 +1085,7 @@ class TrackPlayerCore: NSObject {
     // Start preloading upcoming tracks for gapless playback
     preloadUpcomingTracks(from: 1)
 
-    print("✅ TrackPlayerCore: Queue updated with \(items.count) gapless-optimized tracks")
+    NitroPlayerLogger.log("TrackPlayerCore", "✅ Queue updated with \(items.count) gapless-optimized tracks")
   }
 
   func getCurrentTrack() -> TrackItem? {
@@ -1183,7 +1164,7 @@ class TrackPlayerCore: NSObject {
   }
 
   func play() {
-    print("▶️ TrackPlayerCore: play() called")
+    NitroPlayerLogger.log("TrackPlayerCore", "▶️ play() called")
     if Thread.isMainThread {
       playInternal()
     } else {
@@ -1194,13 +1175,13 @@ class TrackPlayerCore: NSObject {
   }
 
   private func playInternal() {
-    print("▶️ TrackPlayerCore: Calling player.play()")
+    NitroPlayerLogger.log("TrackPlayerCore", "▶️ Calling player.play()")
     if let player = self.player {
-      print("▶️ TrackPlayerCore: Player status: \(player.status.rawValue)")
+      NitroPlayerLogger.log("TrackPlayerCore", "▶️ Player status: \(player.status.rawValue)")
       if let currentItem = player.currentItem {
-        print("▶️ TrackPlayerCore: Current item status: \(currentItem.status.rawValue)")
+        NitroPlayerLogger.log("TrackPlayerCore", "▶️ Current item status: \(currentItem.status.rawValue)")
         if let error = currentItem.error {
-          print("❌ TrackPlayerCore: Current item error: \(error.localizedDescription)")
+          NitroPlayerLogger.log("TrackPlayerCore", "❌ Current item error: \(error.localizedDescription)")
         }
       }
       player.play()
@@ -1211,12 +1192,12 @@ class TrackPlayerCore: NSObject {
         self?.emitStateChange()
       }
     } else {
-      print("❌ TrackPlayerCore: No player available")
+      NitroPlayerLogger.log("TrackPlayerCore", "❌ No player available")
     }
   }
 
   func pause() {
-    print("⏸️ TrackPlayerCore: pause() called")
+    NitroPlayerLogger.log("TrackPlayerCore", "⏸️ pause() called")
     if Thread.isMainThread {
       pauseInternal()
     } else {
@@ -1245,31 +1226,31 @@ class TrackPlayerCore: NSObject {
     self.playNextStack.removeAll()
     self.upNextQueue.removeAll()
     self.currentTemporaryType = .none
-    print("   🧹 Cleared temporary tracks")
+    NitroPlayerLogger.log("TrackPlayerCore", "   🧹 Cleared temporary tracks")
 
     var targetPlaylistId: String?
     var songIndex: Int = -1
 
     // Case 1: If fromPlaylist is provided, use that playlist
     if let playlistId = fromPlaylist {
-      print("🎵 TrackPlayerCore: Looking for song in specified playlist: \(playlistId)")
+      NitroPlayerLogger.log("TrackPlayerCore", "🎵 Looking for song in specified playlist: \(playlistId)")
       if let playlist = self.playlistManager.getPlaylist(playlistId: playlistId) {
         if let index = playlist.tracks.firstIndex(where: { $0.id == songId }) {
           targetPlaylistId = playlistId
           songIndex = index
-          print("✅ Found song at index \(index) in playlist \(playlistId)")
+          NitroPlayerLogger.log("TrackPlayerCore", "✅ Found song at index \(index) in playlist \(playlistId)")
         } else {
-          print("⚠️ Song \(songId) not found in specified playlist \(playlistId)")
+          NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Song \(songId) not found in specified playlist \(playlistId)")
           return
         }
       } else {
-        print("⚠️ Playlist \(playlistId) not found")
+        NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Playlist \(playlistId) not found")
         return
       }
     }
     // Case 2: If fromPlaylist is not provided, search in current/loaded playlist first
     else {
-      print("🎵 TrackPlayerCore: No playlist specified, checking current playlist")
+      NitroPlayerLogger.log("TrackPlayerCore", "🎵 No playlist specified, checking current playlist")
 
       // Check if song exists in currently loaded playlist
       if let currentId = self.currentPlaylistId,
@@ -1278,20 +1259,20 @@ class TrackPlayerCore: NSObject {
         if let index = currentPlaylist.tracks.firstIndex(where: { $0.id == songId }) {
           targetPlaylistId = currentId
           songIndex = index
-          print("✅ Found song at index \(index) in current playlist \(currentId)")
+          NitroPlayerLogger.log("TrackPlayerCore", "✅ Found song at index \(index) in current playlist \(currentId)")
         }
       }
 
       // If not found in current playlist, search in all playlists
       if songIndex == -1 {
-        print("🔍 Song not found in current playlist, searching all playlists...")
+        NitroPlayerLogger.log("TrackPlayerCore", "🔍 Song not found in current playlist, searching all playlists...")
         let allPlaylists = self.playlistManager.getAllPlaylists()
 
         for playlist in allPlaylists {
           if let index = playlist.tracks.firstIndex(where: { $0.id == songId }) {
             targetPlaylistId = playlist.id
             songIndex = index
-            print("✅ Found song at index \(index) in playlist \(playlist.id)")
+            NitroPlayerLogger.log("TrackPlayerCore", "✅ Found song at index \(index) in playlist \(playlist.id)")
             break
           }
         }
@@ -1300,20 +1281,20 @@ class TrackPlayerCore: NSObject {
         if songIndex == -1 && !allPlaylists.isEmpty {
           targetPlaylistId = allPlaylists[0].id
           songIndex = 0
-          print("⚠️ Song not found in any playlist, using first playlist and starting at index 0")
+          NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Song not found in any playlist, using first playlist and starting at index 0")
         }
       }
     }
 
     // Now play the song
     guard let playlistId = targetPlaylistId, songIndex >= 0 else {
-      print("❌ Could not determine playlist or song index")
+      NitroPlayerLogger.log("TrackPlayerCore", "❌ Could not determine playlist or song index")
       return
     }
 
     // Load playlist if it's different from current
     if self.currentPlaylistId != playlistId {
-      print("🔄 Loading new playlist: \(playlistId)")
+      NitroPlayerLogger.log("TrackPlayerCore", "🔄 Loading new playlist: \(playlistId)")
       if let playlist = self.playlistManager.getPlaylist(playlistId: playlistId) {
         self.currentPlaylistId = playlistId
         self.updatePlayerQueue(tracks: playlist.tracks)
@@ -1321,7 +1302,7 @@ class TrackPlayerCore: NSObject {
     }
 
     // Play from the found index
-    print("▶️ Playing from index: \(songIndex)")
+    NitroPlayerLogger.log("TrackPlayerCore", "▶️ Playing from index: \(songIndex)")
     self.playFromIndex(index: songIndex)
   }
 
@@ -1432,7 +1413,7 @@ class TrackPlayerCore: NSObject {
   // MARK: - Repeat Mode
 
   func setRepeatMode(mode: RepeatMode) -> Bool {
-    print("🔁 TrackPlayerCore: setRepeatMode called with mode: \(mode)")
+    NitroPlayerLogger.log("TrackPlayerCore", "🔁 setRepeatMode called with mode: \(mode)")
     if Thread.isMainThread {
       self.repeatMode = mode
     } else {
@@ -1544,7 +1525,7 @@ class TrackPlayerCore: NSObject {
 
   func setVolume(volume: Double) -> Bool {
     guard let player = player else {
-      print("⚠️ TrackPlayerCore: Cannot set volume - no player available")
+      NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Cannot set volume - no player available")
       return false
     }
     DispatchQueue.main.async { [weak self] in
@@ -1556,8 +1537,7 @@ class TrackPlayerCore: NSObject {
       // Convert to 0.0-1.0 range for AVQueuePlayer
       let normalizedVolume = Float(clampedVolume / 100.0)
       currentPlayer.volume = normalizedVolume
-      print(
-        "🔊 TrackPlayerCore: Volume set to \(Int(clampedVolume))% (normalized: \(normalizedVolume))")
+      NitroPlayerLogger.log("TrackPlayerCore", "🔊 Volume set to \(Int(clampedVolume))% (normalized: \(normalizedVolume))")
     }
     return true
   }
@@ -1688,21 +1668,19 @@ class TrackPlayerCore: NSObject {
 
   private func playFromIndexInternalWithResult(index: Int) -> Bool {
     guard index >= 0 && index < self.currentTracks.count else {
-      print(
-        "❌ TrackPlayerCore: playFromIndex - invalid index \(index), currentTracks.count = \(self.currentTracks.count)"
-      )
+      NitroPlayerLogger.log("TrackPlayerCore", "❌ playFromIndex - invalid index \(index), currentTracks.count = \(self.currentTracks.count)")
       return false
     }
 
-    print("\n🎯 TrackPlayerCore: PLAY FROM INDEX \(index)")
-    print("   Total tracks in playlist: \(self.currentTracks.count)")
-    print("   Current index: \(self.currentTrackIndex), target index: \(index)")
+    NitroPlayerLogger.log("TrackPlayerCore", "\n🎯 PLAY FROM INDEX \(index)")
+    NitroPlayerLogger.log("TrackPlayerCore", "   Total tracks in playlist: \(self.currentTracks.count)")
+    NitroPlayerLogger.log("TrackPlayerCore", "   Current index: \(self.currentTrackIndex), target index: \(index)")
 
     // Clear temporary tracks when jumping to specific index
     self.playNextStack.removeAll()
     self.upNextQueue.removeAll()
     self.currentTemporaryType = .none
-    print("   🧹 Cleared temporary tracks")
+    NitroPlayerLogger.log("TrackPlayerCore", "   🧹 Cleared temporary tracks")
 
     // Store the full playlist
     let fullPlaylist = self.currentTracks
@@ -1713,9 +1691,7 @@ class TrackPlayerCore: NSObject {
     // Recreate the queue starting from the target index
     // This ensures all remaining tracks are in the queue
     let tracksToPlay = Array(fullPlaylist[index...])
-    print(
-      "   🔄 Creating gapless queue with \(tracksToPlay.count) tracks starting from index \(index)"
-    )
+    NitroPlayerLogger.log("TrackPlayerCore", "   🔄 Creating gapless queue with \(tracksToPlay.count) tracks starting from index \(index)")
 
     // Create gapless-optimized player items
     let items = tracksToPlay.enumerated().compactMap { (offset, track) -> AVPlayerItem? in
@@ -1724,7 +1700,7 @@ class TrackPlayerCore: NSObject {
     }
 
     guard let player = self.player, !items.isEmpty else {
-      print("❌ No player or no items to play")
+      NitroPlayerLogger.log("TrackPlayerCore", "❌ No player or no items to play")
       return false
     }
 
@@ -1749,9 +1725,9 @@ class TrackPlayerCore: NSObject {
     // Restore the full playlist reference (don't slice it!)
     self.currentTracks = fullPlaylist
 
-    print("   ✅ Gapless queue recreated. Now at index: \(self.currentTrackIndex)")
+    NitroPlayerLogger.log("TrackPlayerCore", "   ✅ Gapless queue recreated. Now at index: \(self.currentTrackIndex)")
     if let track = self.getCurrentTrack() {
-      print("   🎵 Playing: \(track.title)")
+      NitroPlayerLogger.log("TrackPlayerCore", "   🎵 Playing: \(track.title)")
       notifyTrackChange(track, .skip)
       self.mediaSessionManager?.onTrackChanged()
     }
@@ -1776,17 +1752,17 @@ class TrackPlayerCore: NSObject {
   }
 
   private func addToUpNextInternal(trackId: String) {
-    print("📋 TrackPlayerCore: addToUpNext(\(trackId))")
+    NitroPlayerLogger.log("TrackPlayerCore", "📋 addToUpNext(\(trackId))")
 
     // Find the track from current playlist or all playlists
     guard let track = self.findTrackById(trackId) else {
-      print("❌ TrackPlayerCore: Track \(trackId) not found")
+      NitroPlayerLogger.log("TrackPlayerCore", "❌ Track \(trackId) not found")
       return
     }
 
     // Add to end of upNext queue (FIFO)
     self.upNextQueue.append(track)
-    print("   ✅ Added '\(track.title)' to upNext queue (position: \(self.upNextQueue.count))")
+    NitroPlayerLogger.log("TrackPlayerCore", "   ✅ Added '\(track.title)' to upNext queue (position: \(self.upNextQueue.count))")
 
     // Rebuild the player queue if actively playing
     if self.player?.currentItem != nil {
@@ -1806,17 +1782,17 @@ class TrackPlayerCore: NSObject {
   }
 
   private func playNextInternal(trackId: String) {
-    print("⏭️ TrackPlayerCore: playNext(\(trackId))")
+    NitroPlayerLogger.log("TrackPlayerCore", "⏭️ playNext(\(trackId))")
 
     // Find the track from current playlist or all playlists
     guard let track = self.findTrackById(trackId) else {
-      print("❌ TrackPlayerCore: Track \(trackId) not found")
+      NitroPlayerLogger.log("TrackPlayerCore", "❌ Track \(trackId) not found")
       return
     }
 
     // Insert at beginning of playNext stack (LIFO)
     self.playNextStack.insert(track, at: 0)
-    print("   ✅ Added '\(track.title)' to playNext stack (position: 1)")
+    NitroPlayerLogger.log("TrackPlayerCore", "   ✅ Added '\(track.title)' to playNext stack (position: 1)")
 
     // Rebuild the player queue if actively playing
     if self.player?.currentItem != nil {
@@ -1921,7 +1897,7 @@ class TrackPlayerCore: NSObject {
   // MARK: - Cleanup
 
   deinit {
-    print("🧹 TrackPlayerCore: Cleaning up...")
+    NitroPlayerLogger.log("TrackPlayerCore", "🧹 Cleaning up...")
 
     // Clear preloaded assets for gapless playback
     preloadedAssets.removeAll()
@@ -1940,12 +1916,12 @@ class TrackPlayerCore: NSObject {
       currentPlayer.removeObserver(self, forKeyPath: "rate")
       currentPlayer.removeObserver(self, forKeyPath: "timeControlStatus")
       currentPlayer.removeObserver(self, forKeyPath: "currentItem")
-      print("✅ TrackPlayerCore: Player observers removed")
+      NitroPlayerLogger.log("TrackPlayerCore", "✅ Player observers removed")
     }
 
     // Remove all notification observers
     NotificationCenter.default.removeObserver(self)
-    print("✅ TrackPlayerCore: Cleanup complete")
+    NitroPlayerLogger.log("TrackPlayerCore", "✅ Cleanup complete")
   }
 }
 

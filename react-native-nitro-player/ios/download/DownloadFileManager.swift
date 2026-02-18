@@ -60,14 +60,14 @@ final class DownloadFileManager {
     suggestedFilename: String? = nil,
     httpResponse: HTTPURLResponse? = nil
   ) -> String? {
-    print("🎯 DownloadFileManager: saveDownloadedFile called for trackId=\(trackId)")
-    print("   From: \(temporaryLocation.path)")
-    print("   Original URL: \(originalURL ?? "nil")")
-    print("   Suggested Filename: \(suggestedFilename ?? "nil")")
+    NitroPlayerLogger.log("DownloadFileManager", "saveDownloadedFile called for trackId=\(trackId)")
+    NitroPlayerLogger.log("DownloadFileManager", "   From: \(temporaryLocation.path)")
+    NitroPlayerLogger.log("DownloadFileManager", "   Original URL: \(originalURL ?? "nil")")
+    NitroPlayerLogger.log("DownloadFileManager", "   Suggested Filename: \(suggestedFilename ?? "nil")")
 
     let destinationDirectory =
       storageLocation == .private ? privateDownloadsDirectory : publicDownloadsDirectory
-    print("   Destination directory: \(destinationDirectory.path)")
+    NitroPlayerLogger.log("DownloadFileManager", "   Destination directory: \(destinationDirectory.path)")
 
     // Determine file extension using headers first, then URL path, then default
     let fileExtension = Self.resolveFileExtension(
@@ -75,32 +75,32 @@ final class DownloadFileManager {
       suggestedFilename: suggestedFilename,
       originalURL: originalURL
     )
-    print("   File extension: \(fileExtension)")
+    NitroPlayerLogger.log("DownloadFileManager", "   File extension: \(fileExtension)")
 
     let fileName = "\(trackId).\(fileExtension)"
     let destinationURL = destinationDirectory.appendingPathComponent(fileName)
-    print("   Destination: \(destinationURL.path)")
+    NitroPlayerLogger.log("DownloadFileManager", "   Destination: \(destinationURL.path)")
 
     // Verify source file exists
     guard fileManager.fileExists(atPath: temporaryLocation.path) else {
-      print("❌ DownloadFileManager: Source file does not exist at \(temporaryLocation.path)")
+      NitroPlayerLogger.log("DownloadFileManager", "❌ Source file does not exist at \(temporaryLocation.path)")
       return nil
     }
 
     do {
       // Remove existing file if present
       if fileManager.fileExists(atPath: destinationURL.path) {
-        print("   Removing existing file at destination")
+        NitroPlayerLogger.log("DownloadFileManager", "   Removing existing file at destination")
         try fileManager.removeItem(at: destinationURL)
       }
 
       // Move from temporary location to permanent location
       try fileManager.moveItem(at: temporaryLocation, to: destinationURL)
 
-      print("✅ DownloadFileManager: File saved successfully")
+      NitroPlayerLogger.log("DownloadFileManager", "✅ File saved successfully")
       return destinationURL.path
     } catch {
-      print("❌ DownloadFileManager: Failed to save file: \(error)")
+      NitroPlayerLogger.log("DownloadFileManager", "❌ Failed to save file: \(error)")
       return nil
     }
   }
@@ -133,7 +133,7 @@ final class DownloadFileManager {
     // 1. Content-Disposition: attachment; filename="track.mp3"
     if let disposition = httpResponse?.value(forHTTPHeaderField: "Content-Disposition") {
       if let ext = extensionFromContentDisposition(disposition), !ext.isEmpty {
-        print("   [ExtResolve] Content-Disposition → .\(ext)")
+        NitroPlayerLogger.log("DownloadFileManager", "   [ExtResolve] Content-Disposition → .\(ext)")
         return ext
       }
     }
@@ -142,7 +142,7 @@ final class DownloadFileManager {
     if let contentType = httpResponse?.value(forHTTPHeaderField: "Content-Type") {
       let mime = contentType.split(separator: ";").first.map(String.init)?.trimmingCharacters(in: .whitespaces) ?? contentType
       if let ext = mimeTypeToExtension[mime.lowercased()] {
-        print("   [ExtResolve] Content-Type '\(mime)' → .\(ext)")
+        NitroPlayerLogger.log("DownloadFileManager", "   [ExtResolve] Content-Type '\(mime)' → .\(ext)")
         return ext
       }
     }
@@ -151,7 +151,7 @@ final class DownloadFileManager {
     if let name = suggestedFilename, !name.isEmpty {
       let ext = URL(fileURLWithPath: name).pathExtension.lowercased()
       if !ext.isEmpty && isAudioExtension(ext) {
-        print("   [ExtResolve] suggestedFilename → .\(ext)")
+        NitroPlayerLogger.log("DownloadFileManager", "   [ExtResolve] suggestedFilename → .\(ext)")
         return ext
       }
     }
@@ -160,12 +160,12 @@ final class DownloadFileManager {
     if let urlString = originalURL, let url = URL(string: urlString) {
       let ext = url.pathExtension.lowercased()
       if !ext.isEmpty && isAudioExtension(ext) {
-        print("   [ExtResolve] URL path ext → .\(ext)")
+        NitroPlayerLogger.log("DownloadFileManager", "   [ExtResolve] URL path ext → .\(ext)")
         return ext
       }
     }
 
-    print("   [ExtResolve] fallback → .mp3")
+    NitroPlayerLogger.log("DownloadFileManager", "   [ExtResolve] fallback → .mp3")
     return "mp3"
   }
 
@@ -200,7 +200,7 @@ final class DownloadFileManager {
         try fileManager.removeItem(atPath: path)
       }
     } catch {
-      print("[DownloadFileManager] Failed to delete file: \(error)")
+      NitroPlayerLogger.log("DownloadFileManager", "Failed to delete file: \(error)")
     }
   }
 

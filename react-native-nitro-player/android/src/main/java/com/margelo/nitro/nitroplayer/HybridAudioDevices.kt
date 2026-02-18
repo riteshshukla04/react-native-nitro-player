@@ -7,6 +7,7 @@ import android.os.Build
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
 import com.margelo.nitro.NitroModules
+import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
 
 @DoNotStrip
 @Keep
@@ -83,7 +84,7 @@ class HybridAudioDevices : HybridAudioDevicesSpec() {
 
         // Check if device type is valid for communication
         if (!validCommunicationDeviceTypes.contains(device.type)) {
-            android.util.Log.w(TAG, "Device type ${device.type} is not a valid communication device")
+            NitroPlayerLogger.log("HybridAudioDevices", "Device type ${device.type} is not a valid communication device")
             return false
         }
 
@@ -115,13 +116,14 @@ class HybridAudioDevices : HybridAudioDevicesSpec() {
                     }
 
                     else -> {
-                        android.util.Log.w(TAG, "Unsupported device type for pre-Android 12: ${device.type}")
+                        NitroPlayerLogger.log("HybridAudioDevices", "Unsupported device type for pre-Android 12: ${device.type}")
                         false
                     }
                 }
             }
         } catch (e: Exception) {
-            android.util.Log.e(TAG, "Error setting audio device: ${e.message}", e)
+            NitroPlayerLogger.log("HybridAudioDevices", "Error setting audio device: ${e.message}")
+            e.printStackTrace()
             false
         }
     }
