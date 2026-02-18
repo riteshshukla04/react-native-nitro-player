@@ -327,4 +327,11 @@ final class DownloadFileManager {
 
     return nil
   }
+
+  /// Reconstructs the current absolute path for a stored filename and storage location.
+  /// Always uses the current app container path, so it survives container UUID changes.
+  func absolutePath(forFilename filename: String, storageLocation: StorageLocation) -> String {
+    let dir = storageLocation == .private ? privateDownloadsDirectory : publicDownloadsDirectory
+    return dir.appendingPathComponent(filename).path
+  }
 }

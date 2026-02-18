@@ -41,7 +41,7 @@ final class DownloadDatabase {
       let record = DownloadedTrackRecord(
         trackId: track.trackId,
         originalTrack: self.trackItemToRecord(track.originalTrack),
-        localPath: track.localPath,
+        localPath: URL(fileURLWithPath: track.localPath).lastPathComponent,
         localArtworkPath: self.variantToString(track.localArtworkPath),
         downloadedAt: track.downloadedAt,
         fileSize: track.fileSize,
@@ -71,12 +71,13 @@ final class DownloadDatabase {
         return false
       }
       // Verify file still exists
-      let exists = FileManager.default.fileExists(atPath: record.localPath)
+      let absolutePath = resolveAbsolutePath(for: record)
+      let exists = FileManager.default.fileExists(atPath: absolutePath)
       if exists {
-        print("✅ DownloadDatabase: Track \(trackId) IS downloaded at \(record.localPath)")
+        print("✅ DownloadDatabase: Track \(trackId) IS downloaded at \(absolutePath)")
       } else {
         print(
-          "❌ DownloadDatabase: Track \(trackId) record exists but file NOT found at \(record.localPath)"
+          "❌ DownloadDatabase: Track \(trackId) record exists but file NOT found at \(absolutePath)"
         )
       }
       return exists
@@ -129,10 +130,11 @@ final class DownloadDatabase {
         return nil
       }
 
-      print("   Found record, checking file at: \(record.localPath)")
+      let absolutePath = resolveAbsolutePath(for: record)
+      print("   Found record, checking file at: \(absolutePath)")
 
       // Verify file still exists
-      guard FileManager.default.fileExists(atPath: record.localPath) else {
+      guard FileManager.default.fileExists(atPath: absolutePath) else {
         print("   ❌ File does NOT exist, cleaning up record")
         // File was deleted externally, clean up record
         queue.async(flags: .barrier) {
@@ -156,8 +158,9 @@ final class DownloadDatabase {
       var invalidTrackIds: [String] = []
 
       for (trackId, record) in downloadedTracks {
-        print("   Checking track \(trackId) at path: \(record.localPath)")
-        if FileManager.default.fileExists(atPath: record.localPath) {
+        let absolutePath = resolveAbsolutePath(for: record)
+        print("   Checking track \(trackId) at path: \(absolutePath)")
+        if FileManager.default.fileExists(atPath: absolutePath) {
           print("   ✅ File exists")
           validTracks.append(recordToDownloadedTrack(record))
         } else {
@@ -241,8 +244,9 @@ final class DownloadDatabase {
       var trackIdsToRemove: [String] = []
 
       for (trackId, record) in downloadedTracks {
-        if !FileManager.default.fileExists(atPath: record.localPath) {
-          print("   ❌ Missing file for track \(trackId): \(record.localPath)")
+        let absolutePath = resolveAbsolutePath(for: record)
+        if !FileManager.default.fileExists(atPath: absolutePath) {
+          print("   ❌ Missing file for track \(trackId): \(absolutePath)")
           trackIdsToRemove.append(trackId)
         }
       }
@@ -283,7 +287,7 @@ final class DownloadDatabase {
       guard let record = self.downloadedTracks[trackId] else { return }
 
       // Delete the file
-      DownloadFileManager.shared.deleteFile(at: record.localPath)
+      DownloadFileManager.shared.deleteFile(at: self.resolveAbsolutePath(for: record))
 
       // Delete artwork if exists
       if let artworkPath = record.localArtworkPath {
@@ -314,7 +318,7 @@ final class DownloadDatabase {
       // Delete all tracks in the playlist
       for trackId in trackIds {
         if let record = self.downloadedTracks[trackId] {
-          DownloadFileManager.shared.deleteFile(at: record.localPath)
+          DownloadFileManager.shared.deleteFile(at: self.resolveAbsolutePath(for: record))
           if let artworkPath = record.localArtworkPath {
             DownloadFileManager.shared.deleteFile(at: artworkPath)
           }
@@ -333,7 +337,7 @@ final class DownloadDatabase {
     queue.async(flags: .barrier) {
       // Delete all files
       for record in self.downloadedTracks.values {
-        DownloadFileManager.shared.deleteFile(at: record.localPath)
+        DownloadFileManager.shared.deleteFile(at: self.resolveAbsolutePath(for: record))
         if let artworkPath = record.localArtworkPath {
           DownloadFileManager.shared.deleteFile(at: artworkPath)
         }
@@ -376,12 +380,30 @@ final class DownloadDatabase {
           [String: DownloadedTrackRecord].self, from: tracksData)
         print("✅ DownloadDatabase: Loaded \(self.downloadedTracks.count) tracks from disk")
 
+        // Migrate absolute paths → filenames (one-time, for existing installs)
+        var needsMigration = false
+        for (trackId, record) in self.downloadedTracks {
+          if record.localPath.contains("/") {
+            let filename = URL(fileURLWithPath: record.localPath).lastPathComponent
+            self.downloadedTracks[trackId] = DownloadedTrackRecord(
+              trackId: record.trackId,
+              originalTrack: record.originalTrack,
+              localPath: filename,
+              localArtworkPath: record.localArtworkPath,
+              downloadedAt: record.downloadedAt,
+              fileSize: record.fileSize,
+              storageLocation: record.storageLocation
+            )
+            needsMigration = true
+          }
+        }
+        if needsMigration { self.saveToDisk() }
+
         // Log each downloaded track
         for (trackId, record) in self.downloadedTracks {
           print("   📥 \(trackId)")
           print("      Title: \(record.originalTrack.title)")
-          print("      Path: \(record.localPath)")
-          print("      Exists: \(FileManager.default.fileExists(atPath: record.localPath))")
+          print("      Path (filename): \(record.localPath)")
         }
       } catch {
         print("❌ DownloadDatabase: Failed to load tracks from disk: \(error)")
@@ -414,6 +436,11 @@ final class DownloadDatabase {
   }
 
   // MARK: - Conversion Helpers
+
+  private func resolveAbsolutePath(for record: DownloadedTrackRecord) -> String {
+    let location: StorageLocation = record.storageLocation == "private" ? .private : .public
+    return DownloadFileManager.shared.absolutePath(forFilename: record.localPath, storageLocation: location)
+  }
 
   /// Convert Variant_NullType_String? to String?
   private func variantToString(_ variant: Variant_NullType_String?) -> String? {
@@ -461,7 +488,7 @@ final class DownloadDatabase {
     return DownloadedTrack(
       trackId: record.trackId,
       originalTrack: recordToTrackItem(record.originalTrack),
-      localPath: record.localPath,
+      localPath: resolveAbsolutePath(for: record),
       localArtworkPath: stringToVariant(record.localArtworkPath),
       downloadedAt: record.downloadedAt,
       fileSize: record.fileSize,
