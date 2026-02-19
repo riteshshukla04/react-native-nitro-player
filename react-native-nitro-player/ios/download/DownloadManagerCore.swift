@@ -18,8 +18,9 @@ final class DownloadManagerCore: NSObject {
   // MARK: - Constants
 
   private static let backgroundSessionIdentifier = "com.nitroplayer.backgroundDownloads"
-  private static let trackMetadataKey = "NitroPlayerTrackMetadata"
-  private static let playlistAssociationsKey = "NitroPlayerPlaylistAssociations"
+  // Legacy UserDefaults keys (migration only)
+  private static let legacyTrackMetadataKey = "NitroPlayerTrackMetadata"
+  private static let legacyPlaylistAssociationsKey = "NitroPlayerPlaylistAssociations"
 
   // MARK: - Properties
 
@@ -507,48 +508,87 @@ final class DownloadManagerCore: NSObject {
   private func loadPersistedMetadata() {
     NitroPlayerLogger.log("DownloadManagerCore", "📦 Loading persisted metadata...")
 
-    // Load track metadata
-    if let data = UserDefaults.standard.data(forKey: Self.trackMetadataKey) {
+    // 1. Try new JSON file (post-migration)
+    if let data = NitroPlayerStorage.read(filename: "download_metadata.json") {
+      do {
+        if let wrapper = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+          if let tracksObj = wrapper["trackMetadata"] as? [String: Any] {
+            let tracksData = try JSONSerialization.data(withJSONObject: tracksObj)
+            let records = try JSONDecoder().decode([String: TrackItemRecord].self, from: tracksData)
+            for (trackId, record) in records {
+              trackMetadata[trackId] = recordToTrackItem(record)
+            }
+            NitroPlayerLogger.log("DownloadManagerCore", "   ✅ Loaded \(trackMetadata.count) track metadata entries from file")
+          }
+          if let assocObj = wrapper["playlistAssociations"] as? [String: String] {
+            playlistAssociations = assocObj
+            NitroPlayerLogger.log("DownloadManagerCore", "   ✅ Loaded \(playlistAssociations.count) playlist associations from file")
+          }
+        }
+      } catch {
+        NitroPlayerLogger.log("DownloadManagerCore", "   ❌ Failed to load metadata from file: \(error)")
+      }
+      return
+    }
+
+    // 2. Migrate from UserDefaults (one-time, existing installs)
+    var didMigrate = false
+
+    if let data = UserDefaults.standard.data(forKey: Self.legacyTrackMetadataKey) {
       do {
         let records = try JSONDecoder().decode([String: TrackItemRecord].self, from: data)
         for (trackId, record) in records {
           trackMetadata[trackId] = recordToTrackItem(record)
         }
-        NitroPlayerLogger.log("DownloadManagerCore", "   ✅ Loaded \(trackMetadata.count) track metadata entries")
+        NitroPlayerLogger.log("DownloadManagerCore", "   ✅ Migrated \(trackMetadata.count) track metadata entries from UserDefaults")
+        UserDefaults.standard.removeObject(forKey: Self.legacyTrackMetadataKey)
+        didMigrate = true
       } catch {
-        NitroPlayerLogger.log("DownloadManagerCore", "   ❌ Failed to load track metadata: \(error)")
+        NitroPlayerLogger.log("DownloadManagerCore", "   ❌ Failed to migrate track metadata: \(error)")
       }
     } else {
       NitroPlayerLogger.log("DownloadManagerCore", "   ⚠️ No persisted track metadata found")
     }
 
-    // Load playlist associations
-    if let data = UserDefaults.standard.data(forKey: Self.playlistAssociationsKey) {
+    if let data = UserDefaults.standard.data(forKey: Self.legacyPlaylistAssociationsKey) {
       do {
         playlistAssociations = try JSONDecoder().decode([String: String].self, from: data)
-        NitroPlayerLogger.log("DownloadManagerCore", "   ✅ Loaded \(playlistAssociations.count) playlist associations")
+        NitroPlayerLogger.log("DownloadManagerCore", "   ✅ Migrated \(playlistAssociations.count) playlist associations from UserDefaults")
+        UserDefaults.standard.removeObject(forKey: Self.legacyPlaylistAssociationsKey)
+        didMigrate = true
       } catch {
-        NitroPlayerLogger.log("DownloadManagerCore", "   ❌ Failed to load playlist associations: \(error)")
+        NitroPlayerLogger.log("DownloadManagerCore", "   ❌ Failed to migrate playlist associations: \(error)")
       }
     } else {
       NitroPlayerLogger.log("DownloadManagerCore", "   ⚠️ No persisted playlist associations found")
+    }
+
+    if didMigrate {
+      savePersistedMetadata()
     }
   }
 
   /// Persist track metadata and playlist associations to disk
   private func savePersistedMetadata() {
-    // Convert TrackItem to TrackItemRecord for encoding
     var records: [String: TrackItemRecord] = [:]
     for (trackId, track) in trackMetadata {
       records[trackId] = trackItemToRecord(track)
     }
 
     do {
-      let trackData = try JSONEncoder().encode(records)
-      UserDefaults.standard.set(trackData, forKey: Self.trackMetadataKey)
-
+      let tracksData = try JSONEncoder().encode(records)
       let playlistData = try JSONEncoder().encode(playlistAssociations)
-      UserDefaults.standard.set(playlistData, forKey: Self.playlistAssociationsKey)
+
+      guard let tracksJson = try JSONSerialization.jsonObject(with: tracksData) as? [String: Any],
+            let assocJson = try JSONSerialization.jsonObject(with: playlistData) as? [String: Any]
+      else { return }
+
+      let wrapper: [String: Any] = [
+        "trackMetadata": tracksJson,
+        "playlistAssociations": assocJson,
+      ]
+      let data = try JSONSerialization.data(withJSONObject: wrapper, options: [])
+      try NitroPlayerStorage.write(filename: "download_metadata.json", data: data)
     } catch {
       NitroPlayerLogger.log("DownloadManagerCore", "❌ Failed to save metadata: \(error)")
     }

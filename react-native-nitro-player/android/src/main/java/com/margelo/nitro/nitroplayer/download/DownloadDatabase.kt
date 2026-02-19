@@ -1,27 +1,27 @@
 package com.margelo.nitro.nitroplayer.download
 
 import android.content.Context
-import android.content.SharedPreferences
-import android.util.Log
 import com.margelo.nitro.core.NullType
 import com.margelo.nitro.nitroplayer.*
 import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
 import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
+import com.margelo.nitro.nitroplayer.storage.NitroPlayerStorage
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
 /**
- * Manages persistence of downloaded track metadata using SharedPreferences
+ * Manages persistence of downloaded track metadata using file storage
  */
 class DownloadDatabase private constructor(
     private val context: Context,
 ) {
     companion object {
         private const val TAG = "DownloadDatabase"
-        private const val PREFS_NAME = "NitroPlayerDownloads"
-        private const val KEY_DOWNLOADED_TRACKS = "downloaded_tracks"
-        private const val KEY_PLAYLIST_TRACKS = "playlist_tracks"
+        // Legacy SharedPreferences keys (migration only)
+        private const val LEGACY_PREFS_NAME = "NitroPlayerDownloads"
+        private const val LEGACY_KEY_DOWNLOADED_TRACKS = "downloaded_tracks"
+        private const val LEGACY_KEY_PLAYLIST_TRACKS = "playlist_tracks"
 
         @Volatile
         private var instance: DownloadDatabase? = null
@@ -32,7 +32,6 @@ class DownloadDatabase private constructor(
             }
     }
 
-    private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private val downloadedTracks = mutableMapOf<String, DownloadedTrackRecord>()
     private val playlistTracks = mutableMapOf<String, MutableSet<String>>()
     private val fileManager = DownloadFileManager.getInstance(context)
@@ -254,13 +253,13 @@ class DownloadDatabase private constructor(
     /** Validates all downloads and removes records for missing files */
     fun syncDownloads(): Int {
         synchronized(this) {
-            NitroPlayerLogger.log("DownloadDatabase", "syncDownloads called")
+            NitroPlayerLogger.log(TAG, "syncDownloads called")
 
             val trackIdsToRemove = mutableListOf<String>()
 
             for ((trackId, record) in downloadedTracks) {
                 if (!File(record.localPath).exists()) {
-                    NitroPlayerLogger.log("DownloadDatabase", "Missing file for track $trackId: ${record.localPath}")
+                    NitroPlayerLogger.log(TAG, "Missing file for track $trackId: ${record.localPath}")
                     trackIdsToRemove.add(trackId)
                 }
             }
@@ -283,9 +282,9 @@ class DownloadDatabase private constructor(
 
             if (trackIdsToRemove.isNotEmpty()) {
                 saveToDisk()
-                NitroPlayerLogger.log("DownloadDatabase", "Cleaned up ${trackIdsToRemove.size} orphaned records")
+                NitroPlayerLogger.log(TAG, "Cleaned up ${trackIdsToRemove.size} orphaned records")
             } else {
-                NitroPlayerLogger.log("DownloadDatabase", "All downloads are valid")
+                NitroPlayerLogger.log(TAG, "All downloads are valid")
             }
 
             return trackIdsToRemove.size
@@ -295,39 +294,80 @@ class DownloadDatabase private constructor(
     // Persistence
     private fun saveToDisk() {
         try {
-            // Save downloaded tracks
             val tracksJson = JSONObject()
             for ((trackId, record) in downloadedTracks) {
                 tracksJson.put(trackId, record.toJson())
             }
-            prefs.edit().putString(KEY_DOWNLOADED_TRACKS, tracksJson.toString()).apply()
 
-            // Save playlist associations
             val playlistJson = JSONObject()
             for ((playlistId, trackIds) in playlistTracks) {
                 playlistJson.put(playlistId, JSONArray(trackIds.toList()))
             }
-            prefs.edit().putString(KEY_PLAYLIST_TRACKS, playlistJson.toString()).apply()
+
+            val wrapper = JSONObject().apply {
+                put("downloadedTracks", tracksJson)
+                put("playlistTracks", playlistJson)
+            }
+            NitroPlayerStorage.write(context, "downloads.json", wrapper.toString())
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
 
     private fun loadFromDisk() {
-        try {
-            // Load downloaded tracks
-            val tracksString = prefs.getString(KEY_DOWNLOADED_TRACKS, null)
-            if (tracksString != null) {
+        // 1. Try new JSON file (post-migration)
+        val json = NitroPlayerStorage.read(context, "downloads.json")
+        if (json != null) {
+            try {
+                val wrapper = JSONObject(json)
+
+                val tracksJson = wrapper.optJSONObject("downloadedTracks")
+                if (tracksJson != null) {
+                    for (trackId in tracksJson.keys()) {
+                        val record = DownloadedTrackRecord.fromJson(tracksJson.getJSONObject(trackId))
+                        downloadedTracks[trackId] = record
+                    }
+                }
+
+                val playlistJson = wrapper.optJSONObject("playlistTracks")
+                if (playlistJson != null) {
+                    for (playlistId in playlistJson.keys()) {
+                        val trackIdsArray = playlistJson.getJSONArray(playlistId)
+                        val trackIds = mutableSetOf<String>()
+                        for (i in 0 until trackIdsArray.length()) {
+                            trackIds.add(trackIdsArray.getString(i))
+                        }
+                        playlistTracks[playlistId] = trackIds
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            return
+        }
+
+        // 2. Migrate from SharedPreferences (one-time, existing installs)
+        val prefs = context.getSharedPreferences(LEGACY_PREFS_NAME, Context.MODE_PRIVATE)
+        var didMigrate = false
+
+        val tracksString = prefs.getString(LEGACY_KEY_DOWNLOADED_TRACKS, null)
+        if (tracksString != null) {
+            try {
                 val tracksJson = JSONObject(tracksString)
                 for (trackId in tracksJson.keys()) {
                     val record = DownloadedTrackRecord.fromJson(tracksJson.getJSONObject(trackId))
                     downloadedTracks[trackId] = record
                 }
+                prefs.edit().remove(LEGACY_KEY_DOWNLOADED_TRACKS).apply()
+                didMigrate = true
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
+        }
 
-            // Load playlist associations
-            val playlistString = prefs.getString(KEY_PLAYLIST_TRACKS, null)
-            if (playlistString != null) {
+        val playlistString = prefs.getString(LEGACY_KEY_PLAYLIST_TRACKS, null)
+        if (playlistString != null) {
+            try {
                 val playlistJson = JSONObject(playlistString)
                 for (playlistId in playlistJson.keys()) {
                     val trackIdsArray = playlistJson.getJSONArray(playlistId)
@@ -337,9 +377,15 @@ class DownloadDatabase private constructor(
                     }
                     playlistTracks[playlistId] = trackIds
                 }
+                prefs.edit().remove(LEGACY_KEY_PLAYLIST_TRACKS).apply()
+                didMigrate = true
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
+        }
+
+        if (didMigrate) {
+            saveToDisk()
         }
     }
 
@@ -395,12 +441,11 @@ class DownloadDatabase private constructor(
     }
 
     private fun convertPlaylistManagerToNitro(playlist: com.margelo.nitro.nitroplayer.playlist.Playlist): Playlist {
-        // PlaylistManager already uses TrackItem from generated code with proper Variant types
         return Playlist(
             id = playlist.id,
             name = playlist.name,
-            description = null, // PlaylistManager doesn't have description in Nitro Playlist
-            artwork = null, // PlaylistManager doesn't have artwork in Nitro Playlist
+            description = null,
+            artwork = null,
             tracks = playlist.tracks.toTypedArray(),
         )
     }

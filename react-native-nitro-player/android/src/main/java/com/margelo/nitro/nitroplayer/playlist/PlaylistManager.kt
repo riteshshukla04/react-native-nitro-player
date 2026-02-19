@@ -1,14 +1,13 @@
 package com.margelo.nitro.nitroplayer.playlist
 
 import android.content.Context
-import android.content.SharedPreferences
 import com.margelo.nitro.core.AnyMap
-import com.margelo.nitro.core.NullType
 import com.margelo.nitro.nitroplayer.QueueOperation
 import com.margelo.nitro.nitroplayer.TrackItem
 import com.margelo.nitro.nitroplayer.Variant_NullType_String
 import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
 import com.margelo.nitro.nitroplayer.media.NitroPlayerMediaBrowserService
+import com.margelo.nitro.nitroplayer.storage.NitroPlayerStorage
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
@@ -26,11 +25,8 @@ class PlaylistManager private constructor(
     private val playlistListeners = mutableMapOf<String, CopyOnWriteArrayList<(Playlist, QueueOperation?) -> Unit>>()
     private var currentPlaylistId: String? = null
 
-    private val sharedPreferences: SharedPreferences =
-        context.getSharedPreferences("NitroPlayerPlaylists", Context.MODE_PRIVATE)
-
     private val saveHandler = android.os.Handler(android.os.Looper.getMainLooper())
-    private val saveRunnable = Runnable { savePlaylistsToPreferences() }
+    private val saveRunnable = Runnable { saveToFile() }
 
     private fun scheduleSave() {
         saveHandler.removeCallbacks(saveRunnable)
@@ -42,6 +38,9 @@ class PlaylistManager private constructor(
         @Suppress("ktlint:standard:property-naming")
         private var INSTANCE: PlaylistManager? = null
 
+        // Legacy SharedPreferences name (migration only)
+        private const val LEGACY_PREFS_NAME = "NitroPlayerPlaylists"
+
         @JvmStatic
         fun getInstance(context: Context): PlaylistManager =
             INSTANCE ?: synchronized(this) {
@@ -50,7 +49,7 @@ class PlaylistManager private constructor(
     }
 
     init {
-        // Don't load from preferences on init - only load when Android Auto needs it
+        // Don't load from file on init - only load when Android Auto needs it
     }
 
     /**
@@ -368,7 +367,9 @@ class PlaylistManager private constructor(
         playlistListeners[playlistId]?.forEach { it(playlist, operation) }
     }
 
-    private fun savePlaylistsToPreferences() {
+    // MARK: - Persistence
+
+    private fun saveToFile() {
         try {
             val jsonArray = JSONArray()
             synchronized(playlists) {
@@ -390,7 +391,6 @@ class PlaylistManager private constructor(
                                         put("duration", track.duration)
                                         put("url", track.url)
                                         track.artwork?.let { put("artwork", it) }
-                                        // Serialize extraPayload to JSON for persistence
                                         track.extraPayload?.let { payload ->
                                             val extraPayloadMap = payload.toHashMap()
                                             val extraPayloadJson = JSONObject(extraPayloadMap)
@@ -405,84 +405,111 @@ class PlaylistManager private constructor(
                 }
             }
 
-            sharedPreferences
-                .edit()
-                .putString("playlists", jsonArray.toString())
-                .putString("currentPlaylistId", currentPlaylistId)
-                .apply()
+            val wrapper = JSONObject().apply {
+                put("playlists", jsonArray)
+                put("currentPlaylistId", currentPlaylistId)
+            }
+            NitroPlayerStorage.write(context, "playlists.json", wrapper.toString())
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
 
-    private fun loadPlaylistsFromPreferences() {
-        try {
-            val jsonString = sharedPreferences.getString("playlists", null)
-            if (jsonString != null) {
-                val jsonArray = JSONArray(jsonString)
-                synchronized(playlists) {
-                    playlists.clear()
-                    for (i in 0 until jsonArray.length()) {
-                        val jsonObject = jsonArray.getJSONObject(i)
-                        val tracks = mutableListOf<TrackItem>()
-                        val tracksArray = jsonObject.getJSONArray("tracks")
-                        for (j in 0 until tracksArray.length()) {
-                            val trackObj = tracksArray.getJSONObject(j)
-                            val artworkStr = trackObj.optString("artwork")
-                            val artwork: Variant_NullType_String? =
-                                if (!artworkStr.isNullOrEmpty()) {
-                                    Variant_NullType_String.create(artworkStr)
-                                } else {
-                                    null
-                                }
-                            // Deserialize extraPayload from JSON
-                            val extraPayload: AnyMap? =
-                                if (trackObj.has("extraPayload")) {
-                                    val extraPayloadJson = trackObj.getJSONObject("extraPayload")
-                                    val map = AnyMap()
-                                    val keyIterator = extraPayloadJson.keys()
-                                    while (keyIterator.hasNext()) {
-                                        val key = keyIterator.next()
-                                        when (val value = extraPayloadJson.get(key)) {
-                                            is String -> map.setString(key, value)
-                                            is Number -> map.setDouble(key, value.toDouble())
-                                            is Boolean -> map.setBoolean(key, value)
-                                        }
-                                    }
-                                    map
-                                } else {
-                                    null
-                                }
-                            tracks.add(
-                                TrackItem(
-                                    id = trackObj.getString("id"),
-                                    title = trackObj.getString("title"),
-                                    artist = trackObj.getString("artist"),
-                                    album = trackObj.getString("album"),
-                                    duration = trackObj.getDouble("duration"),
-                                    url = trackObj.getString("url"),
-                                    artwork = artwork,
-                                    extraPayload = extraPayload,
-                                ),
-                            )
-                        }
-                        val descriptionStr = jsonObject.optString("description")
-                        val artworkStr = jsonObject.optString("artwork")
-                        val playlist =
-                            Playlist(
-                                id = jsonObject.getString("id"),
-                                name = jsonObject.getString("name"),
-                                description = if (!descriptionStr.isNullOrEmpty()) descriptionStr else null,
-                                artwork = if (!artworkStr.isNullOrEmpty()) artworkStr else null,
-                                tracks = tracks,
-                            )
-                        playlists[playlist.id] = playlist
-                    }
-                }
-                currentPlaylistId = sharedPreferences.getString("currentPlaylistId", null)
+    fun loadPlaylistsFromFile() {
+        // 1. Try new JSON file (post-migration)
+        val json = NitroPlayerStorage.read(context, "playlists.json")
+        if (json != null) {
+            try {
+                val wrapper = JSONObject(json)
+                val jsonArray = wrapper.optJSONArray("playlists") ?: JSONArray()
+                parseAndLoadPlaylists(jsonArray)
+                currentPlaylistId = if (wrapper.isNull("currentPlaylistId")) null
+                                    else wrapper.optString("currentPlaylistId", null.toString()).takeIf { it != "null" }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
+            return
+        }
+
+        // 2. Migrate from SharedPreferences (one-time, existing installs)
+        val prefs = context.getSharedPreferences(LEGACY_PREFS_NAME, Context.MODE_PRIVATE)
+        val legacyJson = prefs.getString("playlists", null)
+        if (legacyJson != null) {
+            try {
+                val jsonArray = JSONArray(legacyJson)
+                parseAndLoadPlaylists(jsonArray)
+                currentPlaylistId = prefs.getString("currentPlaylistId", null)
+                // Remove old SharedPreferences data to free space
+                prefs.edit().remove("playlists").remove("currentPlaylistId").apply()
+                // Persist in new format
+                saveToFile()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            return
+        }
+
+        // 3. Fresh install — nothing to load
+    }
+
+    private fun parseAndLoadPlaylists(jsonArray: JSONArray) {
+        synchronized(playlists) {
+            playlists.clear()
+            for (i in 0 until jsonArray.length()) {
+                val jsonObject = jsonArray.getJSONObject(i)
+                val tracks = mutableListOf<TrackItem>()
+                val tracksArray = jsonObject.getJSONArray("tracks")
+                for (j in 0 until tracksArray.length()) {
+                    val trackObj = tracksArray.getJSONObject(j)
+                    val artworkStr = trackObj.optString("artwork")
+                    val artwork: Variant_NullType_String? =
+                        if (!artworkStr.isNullOrEmpty()) {
+                            Variant_NullType_String.create(artworkStr)
+                        } else {
+                            null
+                        }
+                    val extraPayload: AnyMap? =
+                        if (trackObj.has("extraPayload")) {
+                            val extraPayloadJson = trackObj.getJSONObject("extraPayload")
+                            val map = AnyMap()
+                            val keyIterator = extraPayloadJson.keys()
+                            while (keyIterator.hasNext()) {
+                                val key = keyIterator.next()
+                                when (val value = extraPayloadJson.get(key)) {
+                                    is String -> map.setString(key, value)
+                                    is Number -> map.setDouble(key, value.toDouble())
+                                    is Boolean -> map.setBoolean(key, value)
+                                }
+                            }
+                            map
+                        } else {
+                            null
+                        }
+                    tracks.add(
+                        TrackItem(
+                            id = trackObj.getString("id"),
+                            title = trackObj.getString("title"),
+                            artist = trackObj.getString("artist"),
+                            album = trackObj.getString("album"),
+                            duration = trackObj.getDouble("duration"),
+                            url = trackObj.getString("url"),
+                            artwork = artwork,
+                            extraPayload = extraPayload,
+                        ),
+                    )
+                }
+                val descriptionStr = jsonObject.optString("description")
+                val artworkStr = jsonObject.optString("artwork")
+                val playlist =
+                    Playlist(
+                        id = jsonObject.getString("id"),
+                        name = jsonObject.getString("name"),
+                        description = if (!descriptionStr.isNullOrEmpty()) descriptionStr else null,
+                        artwork = if (!artworkStr.isNullOrEmpty()) artworkStr else null,
+                        tracks = tracks,
+                    )
+                playlists[playlist.id] = playlist
+            }
         }
     }
 }

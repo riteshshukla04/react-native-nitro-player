@@ -8,17 +8,17 @@
 import Foundation
 import NitroModules
 
-/// Manages persistence of downloaded track metadata using UserDefaults
+/// Manages persistence of downloaded track metadata using file storage
 final class DownloadDatabase {
 
   // MARK: - Singleton
 
   static let shared = DownloadDatabase()
 
-  // MARK: - Constants
+  // MARK: - Legacy UserDefaults Keys (migration only)
 
-  private static let downloadedTracksKey = "NitroPlayerDownloadedTracks"
-  private static let playlistTracksKey = "NitroPlayerPlaylistTracks"
+  private static let legacyDownloadedTracksKey = "NitroPlayerDownloadedTracks"
+  private static let legacyPlaylistTracksKey = "NitroPlayerPlaylistTracks"
 
   // MARK: - Properties
 
@@ -353,12 +353,21 @@ final class DownloadDatabase {
   private func saveToDisk() {
     do {
       let tracksData = try JSONEncoder().encode(downloadedTracks)
-      UserDefaults.standard.set(tracksData, forKey: Self.downloadedTracksKey)
-
       // Convert Set to Array for encoding
       let playlistTracksDict = playlistTracks.mapValues { Array($0) }
       let playlistData = try JSONEncoder().encode(playlistTracksDict)
-      UserDefaults.standard.set(playlistData, forKey: Self.playlistTracksKey)
+
+      // Combine both into a single JSON wrapper object
+      guard let tracksJson = try JSONSerialization.jsonObject(with: tracksData) as? [String: Any],
+            let playlistJson = try JSONSerialization.jsonObject(with: playlistData) as? [String: Any]
+      else { return }
+
+      let wrapper: [String: Any] = [
+        "downloadedTracks": tracksJson,
+        "playlistTracks": playlistJson,
+      ]
+      let data = try JSONSerialization.data(withJSONObject: wrapper, options: [])
+      try NitroPlayerStorage.write(filename: "downloads.json", data: data)
     } catch {
       NitroPlayerLogger.log("DownloadDatabase", "Failed to save to disk: \(error)")
     }
@@ -369,16 +378,42 @@ final class DownloadDatabase {
     NitroPlayerLogger.log("DownloadDatabase", "📀 LOADING FROM DISK")
     NitroPlayerLogger.log("DownloadDatabase", String(repeating: "📀", count: 40))
 
-    // Load synchronously to ensure data is available immediately
-    // Load downloaded tracks
-    if let tracksData = UserDefaults.standard.data(forKey: Self.downloadedTracksKey) {
+    // 1. Try new JSON file (post-migration)
+    if let data = NitroPlayerStorage.read(filename: "downloads.json") {
+      do {
+        if let wrapper = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+          if let tracksObj = wrapper["downloadedTracks"] as? [String: Any] {
+            let tracksData = try JSONSerialization.data(withJSONObject: tracksObj)
+            self.downloadedTracks = try JSONDecoder().decode(
+              [String: DownloadedTrackRecord].self, from: tracksData)
+            NitroPlayerLogger.log("DownloadDatabase", "✅ Loaded \(self.downloadedTracks.count) tracks from file")
+          }
+          if let playlistObj = wrapper["playlistTracks"] as? [String: Any] {
+            let playlistData = try JSONSerialization.data(withJSONObject: playlistObj)
+            let playlistTracksDict = try JSONDecoder().decode(
+              [String: [String]].self, from: playlistData)
+            self.playlistTracks = playlistTracksDict.mapValues { Set($0) }
+            NitroPlayerLogger.log("DownloadDatabase", "✅ Loaded \(self.playlistTracks.count) playlist associations from file")
+          }
+        }
+      } catch {
+        NitroPlayerLogger.log("DownloadDatabase", "❌ Failed to load from file: \(error)")
+      }
+      NitroPlayerLogger.log("DownloadDatabase", String(repeating: "📀", count: 40) + "\n")
+      return
+    }
+
+    // 2. Migrate from UserDefaults (one-time, existing installs)
+    var didMigrate = false
+
+    if let tracksData = UserDefaults.standard.data(forKey: Self.legacyDownloadedTracksKey) {
       do {
         self.downloadedTracks = try JSONDecoder().decode(
           [String: DownloadedTrackRecord].self, from: tracksData)
-        NitroPlayerLogger.log("DownloadDatabase", "✅ Loaded \(self.downloadedTracks.count) tracks from disk")
+        NitroPlayerLogger.log("DownloadDatabase", "✅ Migrated \(self.downloadedTracks.count) tracks from UserDefaults")
 
-        // Migrate absolute paths → filenames (one-time, for existing installs)
-        var needsMigration = false
+        // Migrate absolute paths → filenames (pre-existing migration)
+        var needsPathMigration = false
         for (trackId, record) in self.downloadedTracks {
           if record.localPath.contains("/") {
             let filename = URL(fileURLWithPath: record.localPath).lastPathComponent
@@ -391,41 +426,40 @@ final class DownloadDatabase {
               fileSize: record.fileSize,
               storageLocation: record.storageLocation
             )
-            needsMigration = true
+            needsPathMigration = true
           }
         }
-        if needsMigration { self.saveToDisk() }
-
-        // Log each downloaded track
-        for (trackId, record) in self.downloadedTracks {
-          NitroPlayerLogger.log("DownloadDatabase", "   📥 \(trackId)")
-          NitroPlayerLogger.log("DownloadDatabase", "      Title: \(record.originalTrack.title)")
-          NitroPlayerLogger.log("DownloadDatabase", "      Path (filename): \(record.localPath)")
+        if needsPathMigration {
+          NitroPlayerLogger.log("DownloadDatabase", "✅ Migrated absolute paths to filenames")
         }
+
+        UserDefaults.standard.removeObject(forKey: Self.legacyDownloadedTracksKey)
+        didMigrate = true
       } catch {
-        NitroPlayerLogger.log("DownloadDatabase", "❌ Failed to load tracks from disk: \(error)")
+        NitroPlayerLogger.log("DownloadDatabase", "❌ Failed to migrate tracks from UserDefaults: \(error)")
       }
     } else {
       NitroPlayerLogger.log("DownloadDatabase", "⚠️  No saved tracks found in UserDefaults")
     }
 
-    // Load playlist associations
-    if let playlistData = UserDefaults.standard.data(forKey: Self.playlistTracksKey) {
+    if let playlistData = UserDefaults.standard.data(forKey: Self.legacyPlaylistTracksKey) {
       do {
         let playlistTracksDict = try JSONDecoder().decode(
           [String: [String]].self, from: playlistData)
         self.playlistTracks = playlistTracksDict.mapValues { Set($0) }
-        NitroPlayerLogger.log("DownloadDatabase", "✅ Loaded \(self.playlistTracks.count) playlist associations from disk")
-
-        // Log playlist associations
-        for (playlistId, trackIds) in self.playlistTracks {
-          NitroPlayerLogger.log("DownloadDatabase", "   📋 Playlist \(playlistId): \(trackIds.count) tracks")
-        }
+        NitroPlayerLogger.log("DownloadDatabase", "✅ Migrated \(self.playlistTracks.count) playlist associations from UserDefaults")
+        UserDefaults.standard.removeObject(forKey: Self.legacyPlaylistTracksKey)
+        didMigrate = true
       } catch {
-        NitroPlayerLogger.log("DownloadDatabase", "❌ Failed to load playlist tracks from disk: \(error)")
+        NitroPlayerLogger.log("DownloadDatabase", "❌ Failed to migrate playlist tracks from UserDefaults: \(error)")
       }
     } else {
-      NitroPlayerLogger.log("DownloadDatabase", "⚠️  No playlist associations found")
+      NitroPlayerLogger.log("DownloadDatabase", "⚠️  No playlist associations found in UserDefaults")
+    }
+
+    if didMigrate {
+      // Persist migrated data in new file format
+      saveToDisk()
     }
 
     NitroPlayerLogger.log("DownloadDatabase", String(repeating: "📀", count: 40) + "\n")

@@ -21,7 +21,7 @@ class PlaylistManager {
   static let shared = PlaylistManager()
 
   private init() {
-    loadPlaylistsFromUserDefaults()
+    loadFromFile()
   }
 
   /**
@@ -352,20 +352,18 @@ class PlaylistManager {
 
   private func scheduleSave() {
     saveDebounceWorkItem?.cancel()
-    let work = DispatchWorkItem { [weak self] in self?.savePlaylistsToUserDefaults() }
+    let work = DispatchWorkItem { [weak self] in self?.saveToFile() }
     saveDebounceWorkItem = work
-    // Use global background queue — savePlaylistsToUserDefaults calls queue.sync internally,
+    // Use global background queue — saveToFile calls queue.sync internally,
     // which would deadlock if scheduled on queue itself.
     DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 0.3, execute: work)
   }
 
-  private func savePlaylistsToUserDefaults() {
-    // Save playlists to UserDefaults for persistence
-    // Implementation similar to Android SharedPreferences
+  // MARK: - Persistence
+
+  private func saveToFile() {
     do {
-      let playlistsArray = queue.sync {
-        return Array(playlists.values)
-      }
+      let playlistsArray = queue.sync { Array(playlists.values) }
       let playlistsData = playlistsArray.map { playlist -> [String: Any] in
         return [
           "id": playlist.id,
@@ -381,13 +379,11 @@ class PlaylistManager {
               "duration": track.duration,
               "url": track.url,
             ]
-            // Handle artwork - unwrap Variant_NullType_String
             if let artwork = track.artwork, case .second(let artworkUrl) = artwork {
               trackDict["artwork"] = artworkUrl
             } else {
               trackDict["artwork"] = ""
             }
-            // Serialize extraPayload to dictionary for persistence
             if let extraPayload = track.extraPayload {
               trackDict["extraPayload"] = extraPayload.toDictionary()
             }
@@ -395,93 +391,118 @@ class PlaylistManager {
           },
         ]
       }
-      let data = try JSONSerialization.data(withJSONObject: playlistsData, options: [])
-      UserDefaults.standard.set(data, forKey: "NitroPlayerPlaylists")
-      UserDefaults.standard.set(currentPlaylistId, forKey: "NitroPlayerCurrentPlaylistId")
+      let wrapper: [String: Any] = [
+        "playlists": playlistsData,
+        "currentPlaylistId": currentPlaylistId as Any,
+      ]
+      let data = try JSONSerialization.data(withJSONObject: wrapper, options: [])
+      try NitroPlayerStorage.write(filename: "playlists.json", data: data)
     } catch {
       NitroPlayerLogger.log("PlaylistManager", "❌ Error saving playlists - \(error)")
     }
   }
 
-  private func loadPlaylistsFromUserDefaults() {
-    guard let data = UserDefaults.standard.data(forKey: "NitroPlayerPlaylists") else {
+  private func loadFromFile() {
+    // 1. Try new JSON file (post-migration)
+    if let data = NitroPlayerStorage.read(filename: "playlists.json") {
+      do {
+        if let wrapper = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+          let playlistsDict = wrapper["playlists"] as? [[String: Any]] ?? []
+          parsePlaylists(from: playlistsDict)
+          currentPlaylistId = wrapper["currentPlaylistId"] as? String
+        }
+      } catch {
+        NitroPlayerLogger.log("PlaylistManager", "❌ Error loading playlists - \(error)")
+      }
       return
     }
 
-    do {
-      let playlistsDict = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] ?? []
+    // 2. Migrate from UserDefaults (one-time, existing installs)
+    if let data = UserDefaults.standard.data(forKey: "NitroPlayerPlaylists") {
+      do {
+        let playlistsDict = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] ?? []
+        parsePlaylists(from: playlistsDict)
+        currentPlaylistId = UserDefaults.standard.string(forKey: "NitroPlayerCurrentPlaylistId")
+        // Remove old keys to free UserDefaults space
+        UserDefaults.standard.removeObject(forKey: "NitroPlayerPlaylists")
+        UserDefaults.standard.removeObject(forKey: "NitroPlayerCurrentPlaylistId")
+        // Persist in new format
+        saveToFile()
+      } catch {
+        NitroPlayerLogger.log("PlaylistManager", "❌ Error migrating playlists - \(error)")
+      }
+      return
+    }
 
-      queue.sync {
-        playlists.removeAll()
-        for playlistDict in playlistsDict {
-          guard let id = playlistDict["id"] as? String,
-            let name = playlistDict["name"] as? String
+    // 3. Fresh install — nothing to load
+  }
+
+  private func parsePlaylists(from playlistsDict: [[String: Any]]) {
+    queue.sync {
+      playlists.removeAll()
+      for playlistDict in playlistsDict {
+        guard let id = playlistDict["id"] as? String,
+          let name = playlistDict["name"] as? String
+        else {
+          continue
+        }
+
+        let description = playlistDict["description"] as? String
+        let artwork = playlistDict["artwork"] as? String
+        let tracksArray = playlistDict["tracks"] as? [[String: Any]] ?? []
+
+        let tracks = tracksArray.compactMap { trackDict -> TrackItem? in
+          guard let id = trackDict["id"] as? String,
+            let title = trackDict["title"] as? String,
+            let artist = trackDict["artist"] as? String,
+            let album = trackDict["album"] as? String,
+            let duration = trackDict["duration"] as? Double,
+            let url = trackDict["url"] as? String
           else {
-            continue
+            return nil
           }
 
-          let description = playlistDict["description"] as? String
-          let artwork = playlistDict["artwork"] as? String
-          let tracksArray = playlistDict["tracks"] as? [[String: Any]] ?? []
+          let artworkString = trackDict["artwork"] as? String
+          let artwork = artworkString.flatMap {
+            !$0.isEmpty ? Variant_NullType_String.second($0) : nil
+          }
 
-          let tracks = tracksArray.compactMap { trackDict -> TrackItem? in
-            guard let id = trackDict["id"] as? String,
-              let title = trackDict["title"] as? String,
-              let artist = trackDict["artist"] as? String,
-              let album = trackDict["album"] as? String,
-              let duration = trackDict["duration"] as? Double,
-              let url = trackDict["url"] as? String
-            else {
-              return nil
-            }
-
-            let artworkString = trackDict["artwork"] as? String
-            let artwork = artworkString.flatMap {
-              !$0.isEmpty ? Variant_NullType_String.second($0) : nil
-            }
-            
-            // Deserialize extraPayload from dictionary
-            var extraPayload: AnyMap? = nil
-            if let extraPayloadDict = trackDict["extraPayload"] as? [String: Any] {
-              extraPayload = AnyMap()
-              for (key, value) in extraPayloadDict {
-                if let stringValue = value as? String {
-                  extraPayload?.setString(key: key, value: stringValue)
-                } else if let doubleValue = value as? Double {
-                  extraPayload?.setDouble(key: key, value: doubleValue)
-                } else if let intValue = value as? Int {
-                  extraPayload?.setDouble(key: key, value: Double(intValue))
-                } else if let boolValue = value as? Bool {
-                  extraPayload?.setBoolean(key: key, value: boolValue)
-                }
+          var extraPayload: AnyMap? = nil
+          if let extraPayloadDict = trackDict["extraPayload"] as? [String: Any] {
+            extraPayload = AnyMap()
+            for (key, value) in extraPayloadDict {
+              if let stringValue = value as? String {
+                extraPayload?.setString(key: key, value: stringValue)
+              } else if let doubleValue = value as? Double {
+                extraPayload?.setDouble(key: key, value: doubleValue)
+              } else if let intValue = value as? Int {
+                extraPayload?.setDouble(key: key, value: Double(intValue))
+              } else if let boolValue = value as? Bool {
+                extraPayload?.setBoolean(key: key, value: boolValue)
               }
             }
-            
-            return TrackItem(
-              id: id,
-              title: title,
-              artist: artist,
-              album: album,
-              duration: duration,
-              url: url,
-              artwork: artwork,
-              extraPayload: extraPayload
-            )
           }
 
-          playlists[id] = PlaylistModel(
+          return TrackItem(
             id: id,
-            name: name,
-            description: description,
+            title: title,
+            artist: artist,
+            album: album,
+            duration: duration,
+            url: url,
             artwork: artwork,
-            tracks: tracks
+            extraPayload: extraPayload
           )
         }
-      }
 
-      currentPlaylistId = UserDefaults.standard.string(forKey: "NitroPlayerCurrentPlaylistId")
-    } catch {
-      NitroPlayerLogger.log("PlaylistManager", "❌ Error loading playlists - \(error)")
+        playlists[id] = PlaylistModel(
+          id: id,
+          name: name,
+          description: description,
+          artwork: artwork,
+          tracks: tracks
+        )
+      }
     }
   }
 }
