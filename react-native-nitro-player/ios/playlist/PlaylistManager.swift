@@ -16,6 +16,7 @@ class PlaylistManager {
     [:]
   private var currentPlaylistId: String?
   private let queue = DispatchQueue(label: "com.margelo.nitro.nitroplayer.playlist")
+  private var saveDebounceWorkItem: DispatchWorkItem?
 
   static let shared = PlaylistManager()
 
@@ -34,7 +35,7 @@ class PlaylistManager {
       playlists[id] = playlist
     }
 
-    savePlaylistsToUserDefaults()
+    scheduleSave()
     notifyPlaylistsChanged(.add)
 
     return id
@@ -53,7 +54,7 @@ class PlaylistManager {
         currentPlaylistId = nil
       }
       playlistListeners.removeValue(forKey: playlistId)
-      savePlaylistsToUserDefaults()
+      scheduleSave()
       notifyPlaylistsChanged(.remove)
       return true
     }
@@ -81,7 +82,7 @@ class PlaylistManager {
       )
     }
 
-    savePlaylistsToUserDefaults()
+    scheduleSave()
     notifyPlaylistChanged(playlistId, .update)
     notifyPlaylistsChanged(.update)
 
@@ -130,7 +131,7 @@ class PlaylistManager {
       )
     }
 
-    savePlaylistsToUserDefaults()
+    scheduleSave()
     notifyPlaylistChanged(playlistId, .add)
 
     // Update TrackPlayerCore if this is the current playlist
@@ -165,7 +166,7 @@ class PlaylistManager {
       )
     }
 
-    savePlaylistsToUserDefaults()
+    scheduleSave()
     notifyPlaylistChanged(playlistId, .add)
 
     // Update TrackPlayerCore if this is the current playlist
@@ -204,7 +205,7 @@ class PlaylistManager {
     }
 
     if removed {
-      savePlaylistsToUserDefaults()
+      scheduleSave()
       notifyPlaylistChanged(playlistId, .remove)
 
       // Update TrackPlayerCore if this is the current playlist
@@ -245,7 +246,7 @@ class PlaylistManager {
       )
     }
 
-    savePlaylistsToUserDefaults()
+    scheduleSave()
     notifyPlaylistChanged(playlistId, .update)
 
     // Update TrackPlayerCore if this is the current playlist
@@ -347,6 +348,15 @@ class PlaylistManager {
     DispatchQueue.main.async {
       currentListeners.forEach { $0.1(playlist, operation) }
     }
+  }
+
+  private func scheduleSave() {
+    saveDebounceWorkItem?.cancel()
+    let work = DispatchWorkItem { [weak self] in self?.savePlaylistsToUserDefaults() }
+    saveDebounceWorkItem = work
+    // Use global background queue — savePlaylistsToUserDefaults calls queue.sync internally,
+    // which would deadlock if scheduled on queue itself.
+    DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 0.3, execute: work)
   }
 
   private func savePlaylistsToUserDefaults() {

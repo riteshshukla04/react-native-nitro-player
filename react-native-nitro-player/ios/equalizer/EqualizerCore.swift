@@ -29,6 +29,9 @@ class EqualizerCore {
   // Current gains storage - internal so TapContext can access
   private(set) var currentGains: [Double] = [0, 0, 0, 0, 0]
 
+  // Dirty flag: set when gains change so TapContext only recalculates when needed
+  var gainsDirty: Bool = true
+
   // UserDefaults keys
   private let enabledKey = "eq_enabled"
   private let bandGainsKey = "eq_band_gains"
@@ -186,6 +189,7 @@ class EqualizerCore {
 
     let clampedGain = max(-12.0, min(12.0, gainDb))
     currentGains[bandIndex] = clampedGain
+    gainsDirty = true
 
     currentPresetName = nil
     notifyBandChange(getBands())
@@ -203,6 +207,7 @@ class EqualizerCore {
     for i in 0..<5 {
       currentGains[i] = max(-12.0, min(12.0, gains[i]))
     }
+    gainsDirty = true
 
     notifyBandChange(getBands())
     saveBandGains(currentGains)
@@ -504,6 +509,7 @@ private class TapContext {
         sampleRate: Double(sampleRate)
       )
     }
+    eqCore.gainsDirty = false
   }
 
   /// Calculate biquad coefficients for a peaking EQ filter
@@ -617,8 +623,10 @@ private func tapProcessCallback(
     return
   }
 
-  // Update coefficients (in case gains changed)
-  context.updateCoefficients()
+  // Update coefficients only when gains have changed
+  if context.eqCore?.gainsDirty == true {
+    context.updateCoefficients()
+  }
 
   // Process each buffer (channel)
   let bufferList = UnsafeMutableAudioBufferListPointer(bufferListInOut)

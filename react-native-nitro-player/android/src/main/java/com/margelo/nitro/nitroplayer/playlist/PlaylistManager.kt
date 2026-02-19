@@ -29,6 +29,14 @@ class PlaylistManager private constructor(
     private val sharedPreferences: SharedPreferences =
         context.getSharedPreferences("NitroPlayerPlaylists", Context.MODE_PRIVATE)
 
+    private val saveHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val saveRunnable = Runnable { savePlaylistsToPreferences() }
+
+    private fun scheduleSave() {
+        saveHandler.removeCallbacks(saveRunnable)
+        saveHandler.postDelayed(saveRunnable, 300)
+    }
+
     companion object {
         @Volatile
         @Suppress("ktlint:standard:property-naming")
@@ -62,7 +70,7 @@ class PlaylistManager private constructor(
 
         // Only cache for Android Auto if connected
         if (NitroPlayerMediaBrowserService.isAndroidAutoConnected) {
-            savePlaylistsToPreferences()
+            scheduleSave()
         }
         notifyPlaylistsChanged(QueueOperation.ADD)
         NitroPlayerMediaBrowserService.getInstance()?.onPlaylistsUpdated()
@@ -86,7 +94,7 @@ class PlaylistManager private constructor(
             playlistListeners.remove(playlistId)
             // Only cache for Android Auto if connected
             if (NitroPlayerMediaBrowserService.isAndroidAutoConnected) {
-                savePlaylistsToPreferences()
+                scheduleSave()
             }
             notifyPlaylistsChanged(QueueOperation.REMOVE)
             NitroPlayerMediaBrowserService.getInstance()?.onPlaylistsUpdated()
@@ -121,7 +129,7 @@ class PlaylistManager private constructor(
 
         // Only cache for Android Auto if connected
         if (NitroPlayerMediaBrowserService.isAndroidAutoConnected) {
-            savePlaylistsToPreferences()
+            scheduleSave()
         }
         notifyPlaylistChanged(playlistId, QueueOperation.UPDATE)
         notifyPlaylistsChanged(QueueOperation.UPDATE)
@@ -171,7 +179,7 @@ class PlaylistManager private constructor(
 
         // Only cache for Android Auto if connected
         if (NitroPlayerMediaBrowserService.isAndroidAutoConnected) {
-            savePlaylistsToPreferences()
+            scheduleSave()
         }
         notifyPlaylistChanged(playlistId, QueueOperation.ADD)
         NitroPlayerMediaBrowserService.getInstance()?.onPlaylistUpdated(playlistId)
@@ -209,7 +217,7 @@ class PlaylistManager private constructor(
 
         // Only cache for Android Auto if connected
         if (NitroPlayerMediaBrowserService.isAndroidAutoConnected) {
-            savePlaylistsToPreferences()
+            scheduleSave()
         }
         notifyPlaylistChanged(playlistId, QueueOperation.ADD)
         NitroPlayerMediaBrowserService.getInstance()?.onPlaylistUpdated(playlistId)
@@ -245,7 +253,7 @@ class PlaylistManager private constructor(
             }
 
         if (removed) {
-            savePlaylistsToPreferences()
+            scheduleSave()
             notifyPlaylistChanged(playlistId, QueueOperation.REMOVE)
             NitroPlayerMediaBrowserService.getInstance()?.onPlaylistUpdated(playlistId)
 
@@ -283,7 +291,7 @@ class PlaylistManager private constructor(
             playlists[playlistId] = playlist.copy(tracks = tracks)
         }
 
-        savePlaylistsToPreferences()
+        scheduleSave()
         notifyPlaylistChanged(playlistId, QueueOperation.UPDATE)
         NitroPlayerMediaBrowserService.getInstance()?.onPlaylistUpdated(playlistId)
 

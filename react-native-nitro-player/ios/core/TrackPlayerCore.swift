@@ -867,10 +867,8 @@ class TrackPlayerCore: NSObject {
       // Remove dead listeners
       self.onChangeTrackListeners.removeAll { !$0.isAlive }
 
-      // Get live callbacks
-      let liveCallbacks = self.onChangeTrackListeners.compactMap {
-        $0.isAlive ? $0.callback : nil
-      }
+      // Get live callbacks (all remaining are alive after removeAll)
+      let liveCallbacks = self.onChangeTrackListeners.map { $0.callback }
 
       // Call on main thread
       if !liveCallbacks.isEmpty {
@@ -889,9 +887,7 @@ class TrackPlayerCore: NSObject {
 
       self.onPlaybackStateChangeListeners.removeAll { !$0.isAlive }
 
-      let liveCallbacks = self.onPlaybackStateChangeListeners.compactMap {
-        $0.isAlive ? $0.callback : nil
-      }
+      let liveCallbacks = self.onPlaybackStateChangeListeners.map { $0.callback }
 
       if !liveCallbacks.isEmpty {
         DispatchQueue.main.async {
@@ -909,9 +905,7 @@ class TrackPlayerCore: NSObject {
 
       self.onSeekListeners.removeAll { !$0.isAlive }
 
-      let liveCallbacks = self.onSeekListeners.compactMap {
-        $0.isAlive ? $0.callback : nil
-      }
+      let liveCallbacks = self.onSeekListeners.map { $0.callback }
 
       if !liveCallbacks.isEmpty {
         DispatchQueue.main.async {
@@ -929,9 +923,7 @@ class TrackPlayerCore: NSObject {
 
       self.onPlaybackProgressChangeListeners.removeAll { !$0.isAlive }
 
-      let liveCallbacks = self.onPlaybackProgressChangeListeners.compactMap {
-        $0.isAlive ? $0.callback : nil
-      }
+      let liveCallbacks = self.onPlaybackProgressChangeListeners.map { $0.callback }
 
       if !liveCallbacks.isEmpty {
         DispatchQueue.main.async {
@@ -1093,6 +1085,7 @@ class TrackPlayerCore: NSObject {
 
   private func getActualQueueInternal() -> [TrackItem] {
     var queue: [TrackItem] = []
+    queue.reserveCapacity(currentTracks.count + playNextStack.count + upNextQueue.count)
 
     // Add tracks before current (original playlist)
     // When a temp track is playing, include the original track at currentTrackIndex
@@ -1100,7 +1093,7 @@ class TrackPlayerCore: NSObject {
     let beforeEnd = currentTemporaryType != .none
       ? min(currentTrackIndex + 1, currentTracks.count) : currentTrackIndex
     if beforeEnd > 0 {
-      queue.append(contentsOf: Array(currentTracks[0..<beforeEnd]))
+      queue.append(contentsOf: currentTracks[0..<beforeEnd])
     }
 
     // Add current track (temp or original)
@@ -1111,7 +1104,7 @@ class TrackPlayerCore: NSObject {
     // Add playNext stack (LIFO - most recently added plays first)
     // Skip index 0 if current track is from playNext (it's already added as current)
     if currentTemporaryType == .playNext && playNextStack.count > 1 {
-      queue.append(contentsOf: Array(playNextStack.dropFirst()))
+      queue.append(contentsOf: playNextStack.dropFirst())
     } else if currentTemporaryType != .playNext {
       queue.append(contentsOf: playNextStack)
     }
@@ -1119,14 +1112,14 @@ class TrackPlayerCore: NSObject {
     // Add upNext queue (in order, FIFO)
     // Skip index 0 if current track is from upNext (it's already added as current)
     if currentTemporaryType == .upNext && upNextQueue.count > 1 {
-      queue.append(contentsOf: Array(upNextQueue.dropFirst()))
+      queue.append(contentsOf: upNextQueue.dropFirst())
     } else if currentTemporaryType != .upNext {
       queue.append(contentsOf: upNextQueue)
     }
 
     // Add remaining original tracks
     if currentTrackIndex + 1 < currentTracks.count {
-      queue.append(contentsOf: Array(currentTracks[(currentTrackIndex + 1)...]))
+      queue.append(contentsOf: currentTracks[(currentTrackIndex + 1)...])
     }
 
     return queue

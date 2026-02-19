@@ -764,9 +764,6 @@ class TrackPlayerCore private constructor(
                     else -> TrackPlayerState.STOPPED
                 }
 
-            // Get current playlist
-            val currentPlaylist = currentPlaylistId?.let { playlistManager.getPlaylist(it) }
-
             // Use ExoPlayer's currentMediaItemIndex
             val currentIndex =
                 if (player.currentMediaItemIndex >= 0) {
@@ -1148,7 +1145,7 @@ class TrackPlayerCore private constructor(
         val currentIndex = player.currentMediaItemIndex
         if (currentIndex < 0) return
 
-        val newQueueTracks = mutableListOf<TrackItem>()
+        val newQueueTracks = ArrayList<TrackItem>(playNextStack.size + upNextQueue.size + currentTracks.size)
 
         // Add playNext stack (LIFO - most recently added plays first)
         // Skip index 0 if current track is from playNext (it's already playing)
@@ -1311,7 +1308,7 @@ class TrackPlayerCore private constructor(
         val liveCallbacks =
             synchronized(onChangeTrackListeners) {
                 onChangeTrackListeners.removeAll { !it.isAlive }
-                onChangeTrackListeners.filter { it.isAlive }.map { it.callback }
+                onChangeTrackListeners.map { it.callback }
             }
 
         handler.post {
@@ -1332,7 +1329,7 @@ class TrackPlayerCore private constructor(
         val liveCallbacks =
             synchronized(onPlaybackStateChangeListeners) {
                 onPlaybackStateChangeListeners.removeAll { !it.isAlive }
-                onPlaybackStateChangeListeners.filter { it.isAlive }.map { it.callback }
+                onPlaybackStateChangeListeners.map { it.callback }
             }
 
         handler.post {
@@ -1353,7 +1350,7 @@ class TrackPlayerCore private constructor(
         val liveCallbacks =
             synchronized(onSeekListeners) {
                 onSeekListeners.removeAll { !it.isAlive }
-                onSeekListeners.filter { it.isAlive }.map { it.callback }
+                onSeekListeners.map { it.callback }
             }
 
         handler.post {
@@ -1375,7 +1372,7 @@ class TrackPlayerCore private constructor(
         val liveCallbacks =
             synchronized(onPlaybackProgressChangeListeners) {
                 onPlaybackProgressChangeListeners.removeAll { !it.isAlive }
-                onPlaybackProgressChangeListeners.filter { it.isAlive }.map { it.callback }
+                onPlaybackProgressChangeListeners.map { it.callback }
             }
 
         handler.post {
@@ -1423,7 +1420,8 @@ class TrackPlayerCore private constructor(
     }
 
     private fun getActualQueueInternal(): List<TrackItem> {
-        val queue = mutableListOf<TrackItem>()
+        val capacity = currentTracks.size + playNextStack.size + upNextQueue.size
+        val queue = ArrayList<TrackItem>(capacity)
 
         if (!::player.isInitialized) return emptyList()
 
