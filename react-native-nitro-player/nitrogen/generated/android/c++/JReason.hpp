@@ -45,6 +45,7 @@ namespace margelo::nitro::nitroplayer {
       static const auto fieldSKIP = clazz->getStaticField<JReason>("SKIP");
       static const auto fieldEND = clazz->getStaticField<JReason>("END");
       static const auto fieldERROR = clazz->getStaticField<JReason>("ERROR");
+      static const auto fieldREPEAT = clazz->getStaticField<JReason>("REPEAT");
       
       switch (value) {
         case Reason::USER_ACTION:
@@ -55,6 +56,8 @@ namespace margelo::nitro::nitroplayer {
           return clazz->getStaticFieldValue(fieldEND);
         case Reason::ERROR:
           return clazz->getStaticFieldValue(fieldERROR);
+        case Reason::REPEAT:
+          return clazz->getStaticFieldValue(fieldREPEAT);
         default:
           std::string stringValue = std::to_string(static_cast<int>(value));
           throw std::invalid_argument("Invalid enum value (" + stringValue + "!");

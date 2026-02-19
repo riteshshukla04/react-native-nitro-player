@@ -19,5 +19,6 @@ enum class Reason(@DoNotStrip @Keep val value: Int) {
   USER_ACTION(0),
   SKIP(1),
   END(2),
-  ERROR(3);
+  ERROR(3),
+  REPEAT(4);
 }

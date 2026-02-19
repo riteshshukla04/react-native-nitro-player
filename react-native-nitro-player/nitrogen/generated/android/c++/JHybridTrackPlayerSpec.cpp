@@ -215,6 +215,11 @@ namespace margelo::nitro::nitroplayer {
     auto __result = method(_javaPart, JRepeatMode::fromCpp(mode));
     return static_cast<bool>(__result);
   }
+  RepeatMode JHybridTrackPlayerSpec::getRepeatMode() {
+    static const auto method = javaClassStatic()->getMethod<jni::local_ref<JRepeatMode>()>("getRepeatMode");
+    auto __result = method(_javaPart);
+    return __result->toCpp();
+  }
   void JHybridTrackPlayerSpec::configure(const PlayerConfig& config) {
     static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<JPlayerConfig> /* config */)>("configure");
     method(_javaPart, JPlayerConfig::fromCpp(config));

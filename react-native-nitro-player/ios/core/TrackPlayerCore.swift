@@ -49,7 +49,7 @@ class TrackPlayerCore: NSObject {
   private var currentTrackIndex: Int = -1
   private var currentTracks: [TrackItem] = []
   private var isManuallySeeked = false
-  private var repeatMode: RepeatMode = .off
+  private var currentRepeatMode: RepeatMode = .off
   private var boundaryTimeObserver: Any?
   private var currentItemObservers: [NSKeyValueObservation] = []
 
@@ -276,11 +276,18 @@ class TrackPlayerCore: NSObject {
     NitroPlayerLogger.log("TrackPlayerCore", "\n🏁 Track finished playing")
 
     guard let finishedItem = notification.object as? AVPlayerItem else {
-      // Don't call skipToNext — AVQueuePlayer with actionAtItemEnd = .advance already auto-advances
       return
     }
 
-    // Determine what type of track just finished and remove it from temporary lists
+    // 1. TRACK repeat — handle FIRST, before any temp-track removal
+    if currentRepeatMode == .track {
+      NitroPlayerLogger.log("TrackPlayerCore", "🔁 TRACK repeat — seeking to zero and replaying")
+      player?.seek(to: .zero)
+      player?.play()
+      return  // do not remove temp tracks, do not notify track change (same track looping)
+    }
+
+    // 2. Remove finished temp track from its list
     if let trackId = finishedItem.trackId {
       // Check if it was a playNext track
       if let index = playNextStack.firstIndex(where: { $0.id == trackId }) {
@@ -298,70 +305,11 @@ class TrackPlayerCore: NSObject {
       }
     }
 
-    // Check remaining queue
+    // 3. Normal next-track advance happens via actionAtItemEnd = .advance
+    // The KVO observer (currentItemDidChange) will handle the track change notification
     if let player = player {
       NitroPlayerLogger.log("TrackPlayerCore", "📋 Remaining items in queue: \(player.items().count)")
     }
-
-    // Handle repeat modes
-    switch repeatMode {
-    case .track:
-      // Repeat current track - seek to beginning and play
-      NitroPlayerLogger.log("TrackPlayerCore", "🔁 Repeat mode is TRACK - replaying current track")
-      DispatchQueue.main.async { [weak self] in
-        guard let self = self, let player = self.player else { return }
-        // For temporary tracks, just seek to beginning
-        if self.currentTemporaryType != .none {
-          player.seek(to: .zero)
-          player.play()
-        } else {
-          // For original tracks, recreate via playFromIndex
-          self.playFromIndex(index: self.currentTrackIndex)
-        }
-      }
-      return
-
-    case .playlist:
-      // Check if we're at the end of the ORIGINAL playlist (ignore temps)
-      if currentTemporaryType == .none && currentTrackIndex >= currentTracks.count - 1 {
-        // Check if there are still temporary tracks
-        if !playNextStack.isEmpty || !upNextQueue.isEmpty {
-          NitroPlayerLogger.log("TrackPlayerCore", "🔁 Temporary tracks remaining, continuing...")
-        } else {
-          NitroPlayerLogger.log("TrackPlayerCore", "🔁 Repeat mode is PLAYLIST - restarting from beginning")
-          // Clear temps and restart
-          playNextStack.removeAll()
-          upNextQueue.removeAll()
-          DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            self.playFromIndex(index: 0)
-          }
-          return
-        }
-      } else {
-        NitroPlayerLogger.log("TrackPlayerCore", "🔁 Repeat mode is PLAYLIST - continuing to next track")
-      }
-
-    case .off:
-      // Default behavior - stop at end of playlist
-      NitroPlayerLogger.log("TrackPlayerCore", "🔁 Repeat mode is OFF")
-    }
-
-    // Track ended naturally — notify with .end reason
-    // AVQueuePlayer with actionAtItemEnd = .advance auto-advances to next item
-    // The KVO observer (currentItemDidChange) will handle the track change notification
-    notifyTrackChange(
-      getCurrentTrack()
-        ?? TrackItem(
-          id: "",
-          title: "",
-          artist: "",
-          album: "",
-          duration: 0,
-          url: "",
-          artwork: nil,
-          extraPayload: nil
-        ), .end)
   }
 
   @objc private func playerItemFailedToPlayToEndTime(notification: Notification) {
@@ -447,6 +395,27 @@ class TrackPlayerCore: NSObject {
       let currentItem = player.currentItem
     else {
       NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Current item changed to nil")
+      // Queue exhausted — handle PLAYLIST repeat
+      if currentRepeatMode == .playlist && !currentTracks.isEmpty, let player = player {
+        NitroPlayerLogger.log("TrackPlayerCore", "🔁 PLAYLIST repeat — rebuilding original queue and restarting")
+        playNextStack.removeAll()
+        upNextQueue.removeAll()
+        currentTemporaryType = .none
+
+        let allItems = currentTracks.compactMap { createGaplessPlayerItem(for: $0, isPreload: false) }
+        var lastItem: AVPlayerItem? = nil
+        for item in allItems {
+          player.insert(item, after: lastItem)
+          lastItem = item
+        }
+        currentTrackIndex = 0
+        player.play()
+
+        if let firstTrack = currentTracks.first {
+          notifyTrackChange(firstTrack, .repeat)
+          mediaSessionManager?.onTrackChanged()
+        }
+      }
       return
     }
 
@@ -1413,15 +1382,16 @@ class TrackPlayerCore: NSObject {
   // MARK: - Repeat Mode
 
   func setRepeatMode(mode: RepeatMode) -> Bool {
-    NitroPlayerLogger.log("TrackPlayerCore", "🔁 setRepeatMode called with mode: \(mode)")
-    if Thread.isMainThread {
-      self.repeatMode = mode
-    } else {
-      DispatchQueue.main.sync { [weak self] in
-        self?.repeatMode = mode
-      }
+    currentRepeatMode = mode
+    DispatchQueue.main.async { [weak self] in
+      self?.player?.actionAtItemEnd = (mode == .track) ? .none : .advance
     }
+    NitroPlayerLogger.log("TrackPlayerCore", "🔁 setRepeatMode: \(mode)")
     return true
+  }
+
+  func getRepeatMode() -> RepeatMode {
+    return currentRepeatMode
   }
 
   func getState() -> PlayerState {

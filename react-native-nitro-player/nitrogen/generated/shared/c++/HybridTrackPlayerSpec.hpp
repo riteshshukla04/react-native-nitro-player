@@ -81,6 +81,7 @@ namespace margelo::nitro::nitroplayer {
       virtual std::shared_ptr<Promise<std::vector<TrackItem>>> getActualQueue() = 0;
       virtual std::shared_ptr<Promise<PlayerState>> getState() = 0;
       virtual bool setRepeatMode(RepeatMode mode) = 0;
+      virtual RepeatMode getRepeatMode() = 0;
       virtual void configure(const PlayerConfig& config) = 0;
       virtual void onChangeTrack(const std::function<void(const TrackItem& /* track */, std::optional<Reason> /* reason */)>& callback) = 0;
       virtual void onPlaybackStateChange(const std::function<void(TrackPlayerState /* state */, std::optional<Reason> /* reason */)>& callback) = 0;

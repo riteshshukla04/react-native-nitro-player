@@ -33,6 +33,7 @@ namespace margelo::nitro::nitroplayer {
     SKIP      SWIFT_NAME(skip) = 1,
     END      SWIFT_NAME(end) = 2,
     ERROR      SWIFT_NAME(error) = 3,
+    REPEAT      SWIFT_NAME(repeat) = 4,
   } CLOSED_ENUM;
 
 } // namespace margelo::nitro::nitroplayer
@@ -49,6 +50,7 @@ namespace margelo::nitro {
         case hashString("skip"): return margelo::nitro::nitroplayer::Reason::SKIP;
         case hashString("end"): return margelo::nitro::nitroplayer::Reason::END;
         case hashString("error"): return margelo::nitro::nitroplayer::Reason::ERROR;
+        case hashString("repeat"): return margelo::nitro::nitroplayer::Reason::REPEAT;
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert \"" + unionValue + "\" to enum Reason - invalid value!");
       }
@@ -59,6 +61,7 @@ namespace margelo::nitro {
         case margelo::nitro::nitroplayer::Reason::SKIP: return JSIConverter<std::string>::toJSI(runtime, "skip");
         case margelo::nitro::nitroplayer::Reason::END: return JSIConverter<std::string>::toJSI(runtime, "end");
         case margelo::nitro::nitroplayer::Reason::ERROR: return JSIConverter<std::string>::toJSI(runtime, "error");
+        case margelo::nitro::nitroplayer::Reason::REPEAT: return JSIConverter<std::string>::toJSI(runtime, "repeat");
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert Reason to JS - invalid value: "
                                     + std::to_string(static_cast<int>(arg)) + "!");
@@ -74,6 +77,7 @@ namespace margelo::nitro {
         case hashString("skip"):
         case hashString("end"):
         case hashString("error"):
+        case hashString("repeat"):
           return true;
         default:
           return false;

@@ -70,6 +70,7 @@ export interface TrackPlayer
   getActualQueue(): Promise<TrackItem[]>
   getState(): Promise<PlayerState>
   setRepeatMode(mode: RepeatMode): boolean
+  getRepeatMode(): RepeatMode
   configure(config: PlayerConfig): void
   onChangeTrack(callback: (track: TrackItem, reason?: Reason) => void): void
   onPlaybackStateChange(

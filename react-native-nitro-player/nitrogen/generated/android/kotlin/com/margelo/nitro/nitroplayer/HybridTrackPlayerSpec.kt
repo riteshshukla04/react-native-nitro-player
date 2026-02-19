@@ -96,6 +96,10 @@ abstract class HybridTrackPlayerSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
+  abstract fun getRepeatMode(): RepeatMode
+  
+  @DoNotStrip
+  @Keep
   abstract fun configure(config: PlayerConfig): Unit
   
   abstract fun onChangeTrack(callback: (track: TrackItem, reason: Reason?) -> Unit): Unit

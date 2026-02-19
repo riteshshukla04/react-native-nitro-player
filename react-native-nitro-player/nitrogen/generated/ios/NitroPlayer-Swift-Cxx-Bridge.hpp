@@ -60,6 +60,8 @@ namespace margelo::nitro::nitroplayer { enum class PresetType; }
 namespace margelo::nitro::nitroplayer { enum class QueueOperation; }
 // Forward declaration of `Reason` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class Reason; }
+// Forward declaration of `RepeatMode` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class RepeatMode; }
 // Forward declaration of `StorageLocation` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class StorageLocation; }
 // Forward declaration of `TrackItem` to properly resolve imports.
@@ -106,6 +108,7 @@ namespace NitroPlayer { class HybridTrackPlayerSpec_cxx; }
 #include "PresetType.hpp"
 #include "QueueOperation.hpp"
 #include "Reason.hpp"
+#include "RepeatMode.hpp"
 #include "StorageLocation.hpp"
 #include "TrackItem.hpp"
 #include "TrackPlayerState.hpp"
@@ -1451,6 +1454,15 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
   }
   inline Result_std__shared_ptr_Promise_PlayerState___ create_Result_std__shared_ptr_Promise_PlayerState___(const std::exception_ptr& error) noexcept {
     return Result<std::shared_ptr<Promise<PlayerState>>>::withError(error);
+  }
+  
+  // pragma MARK: Result<RepeatMode>
+  using Result_RepeatMode_ = Result<RepeatMode>;
+  inline Result_RepeatMode_ create_Result_RepeatMode_(RepeatMode value) noexcept {
+    return Result<RepeatMode>::withValue(std::move(value));
+  }
+  inline Result_RepeatMode_ create_Result_RepeatMode_(const std::exception_ptr& error) noexcept {
+    return Result<RepeatMode>::withError(error);
   }
 
 } // namespace margelo::nitro::nitroplayer::bridge::swift

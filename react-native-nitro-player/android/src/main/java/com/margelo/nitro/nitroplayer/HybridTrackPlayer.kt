@@ -79,6 +79,10 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
     @Keep
     override fun setRepeatMode(mode: RepeatMode): Boolean = core.setRepeatMode(mode)
 
+    @DoNotStrip
+    @Keep
+    override fun getRepeatMode(): RepeatMode = core.getRepeatMode()
+
     override fun onChangeTrack(callback: (track: TrackItem, reason: Reason?) -> Unit) {
         core.addOnChangeTrackListener(callback)
     }

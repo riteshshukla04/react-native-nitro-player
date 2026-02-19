@@ -82,6 +82,8 @@ class TrackPlayerCore private constructor(
     private val onPlaybackProgressChangeListeners =
         Collections.synchronizedList(mutableListOf<WeakCallbackBox<(Double, Double, Boolean?) -> Unit>>())
 
+    private var currentRepeatMode: RepeatMode = RepeatMode.OFF
+
     // Temporary tracks for addToUpNext and playNext
     private var playNextStack: MutableList<TrackItem> = mutableListOf() // LIFO - last added plays first
     private var upNextQueue: MutableList<TrackItem> = mutableListOf() // FIFO - first added plays first
@@ -186,7 +188,6 @@ class TrackPlayerCore private constructor(
                                     Player.MEDIA_ITEM_TRANSITION_REASON_AUTO -> "AUTO (track ended)"
                                     Player.MEDIA_ITEM_TRANSITION_REASON_SEEK -> "SEEK"
                                     Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED -> "PLAYLIST_CHANGED"
-                                    Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT -> "REPEAT"
                                     else -> "UNKNOWN($reason)"
                                 }}"
                             }
@@ -194,6 +195,12 @@ class TrackPlayerCore private constructor(
                             NitroPlayerLogger.log("TrackPlayerCore") { "   new mediaItem: ${mediaItem?.mediaId}" }
                             NitroPlayerLogger.log("TrackPlayerCore") { "   playNextStack: ${playNextStack.map { it.id }}" }
                             NitroPlayerLogger.log("TrackPlayerCore") { "   upNextQueue: ${upNextQueue.map { it.id }}" }
+
+                            // TRACK repeat: REPEAT_MODE_ONE fires this callback every loop — skip entirely
+                            if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT) {
+                                NitroPlayerLogger.log("TrackPlayerCore") { "   🔁 TRACK repeat loop — skipping notifyTrackChange" }
+                                return
+                            }
 
                             // Remove finished track from temporary lists
                             // Handle AUTO (natural end) and SEEK (skip next) transitions
@@ -302,6 +309,19 @@ class TrackPlayerCore private constructor(
                         }
 
                         override fun onPlaybackStateChanged(playbackState: Int) {
+                            if (playbackState == Player.STATE_ENDED && currentRepeatMode == RepeatMode.PLAYLIST) {
+                                NitroPlayerLogger.log("TrackPlayerCore") { "🔁 PLAYLIST repeat — rebuilding original queue and restarting" }
+                                handler.post {
+                                    playNextStack.clear()
+                                    upNextQueue.clear()
+                                    currentTemporaryType = TemporaryType.NONE
+                                    // Rebuild ExoPlayer queue from beginning of original playlist
+                                    rebuildQueueAndPlayFromIndex(0)
+                                    val firstTrack = currentTracks.getOrNull(0)
+                                    if (firstTrack != null) notifyTrackChange(firstTrack, Reason.REPEAT)
+                                }
+                                return
+                            }
                             emitStateChange()
                         }
 
@@ -675,19 +695,20 @@ class TrackPlayerCore private constructor(
     }
 
     fun setRepeatMode(mode: RepeatMode): Boolean {
-        NitroPlayerLogger.log("TrackPlayerCore", "🔁 TrackPlayerCore: setRepeatMode called with mode: $mode")
-        handler.post {
-            val exoRepeatMode =
-                when (mode) {
-                    RepeatMode.OFF -> Player.REPEAT_MODE_OFF
+        currentRepeatMode = mode
+        if (::player.isInitialized) {
+            handler.post {
+                player.repeatMode = when (mode) {
                     RepeatMode.TRACK -> Player.REPEAT_MODE_ONE
-                    RepeatMode.PLAYLIST -> Player.REPEAT_MODE_ALL
+                    else -> Player.REPEAT_MODE_OFF
                 }
-            player.repeatMode = exoRepeatMode
-            NitroPlayerLogger.log("TrackPlayerCore", "🔁 TrackPlayerCore: ExoPlayer repeat mode set to: $exoRepeatMode")
+            }
         }
+        NitroPlayerLogger.log("TrackPlayerCore", "🔁 setRepeatMode: $mode")
         return true
     }
+
+    fun getRepeatMode(): RepeatMode = currentRepeatMode
 
     fun getState(): PlayerState {
         // Called from Promise.async background thread

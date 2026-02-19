@@ -25,6 +25,8 @@ public extension Reason {
         self = .end
       case "error":
         self = .error
+      case "repeat":
+        self = .repeat
       default:
         return nil
     }
@@ -43,6 +45,8 @@ public extension Reason {
         return "end"
       case .error:
         return "error"
+      case .repeat:
+        return "repeat"
     }
   }
 }

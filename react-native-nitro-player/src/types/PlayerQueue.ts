@@ -28,7 +28,7 @@ export type QueueOperation = 'add' | 'remove' | 'clear' | 'update'
 
 export type TrackPlayerState = 'playing' | 'paused' | 'stopped'
 
-export type Reason = 'user_action' | 'skip' | 'end' | 'error'
+export type Reason = 'user_action' | 'skip' | 'end' | 'error' | 'repeat'
 
 export interface PlayerState {
   currentTrack: TrackItem | null
