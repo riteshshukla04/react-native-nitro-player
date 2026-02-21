@@ -698,10 +698,11 @@ class TrackPlayerCore private constructor(
         currentRepeatMode = mode
         if (::player.isInitialized) {
             handler.post {
-                player.repeatMode = when (mode) {
-                    RepeatMode.TRACK -> Player.REPEAT_MODE_ONE
-                    else -> Player.REPEAT_MODE_OFF
-                }
+                player.repeatMode =
+                    when (mode) {
+                        RepeatMode.TRACK -> Player.REPEAT_MODE_ONE
+                        else -> Player.REPEAT_MODE_OFF
+                    }
             }
         }
         NitroPlayerLogger.log("TrackPlayerCore", "🔁 setRepeatMode: $mode")

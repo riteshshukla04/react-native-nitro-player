@@ -401,6 +401,7 @@ describe('DownloadManager - Comprehensive Tests', () => {
           await DownloadManager.deleteDownloadedTrack(trackWithPayload.id);
         } catch (e) {
           // Ignore cleanup errors
+          console.warn('Error cleaning up partial download:', e);
         }
         // Test passes but doesn't verify extraPayload
         return;

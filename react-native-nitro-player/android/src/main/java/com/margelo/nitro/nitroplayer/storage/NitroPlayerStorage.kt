@@ -9,7 +9,10 @@ object NitroPlayerStorage {
     private const val DIR_NAME = "nitroplayer"
 
     /** Reads the contents of [filename] from the NitroPlayer storage directory, or null if absent. */
-    fun read(context: Context, filename: String): String? {
+    fun read(
+        context: Context,
+        filename: String,
+    ): String? {
         val file = File(storageDirectory(context), filename)
         return if (file.exists()) {
             try {
@@ -28,7 +31,11 @@ object NitroPlayerStorage {
      * Writes to `<filename>.tmp` first, then renames — leaving the prior file
      * untouched on failure (crash-safe).
      */
-    fun write(context: Context, filename: String, json: String) {
+    fun write(
+        context: Context,
+        filename: String,
+        json: String,
+    ) {
         try {
             val dir = storageDirectory(context)
             dir.mkdirs()

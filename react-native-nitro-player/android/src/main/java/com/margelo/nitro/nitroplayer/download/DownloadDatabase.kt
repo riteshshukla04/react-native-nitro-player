@@ -19,6 +19,7 @@ class DownloadDatabase private constructor(
 ) {
     companion object {
         private const val TAG = "DownloadDatabase"
+
         // Legacy SharedPreferences keys (migration only)
         private const val LEGACY_PREFS_NAME = "NitroPlayerDownloads"
         private const val LEGACY_KEY_DOWNLOADED_TRACKS = "downloaded_tracks"
@@ -305,10 +306,11 @@ class DownloadDatabase private constructor(
                 playlistJson.put(playlistId, JSONArray(trackIds.toList()))
             }
 
-            val wrapper = JSONObject().apply {
-                put("downloadedTracks", tracksJson)
-                put("playlistTracks", playlistJson)
-            }
+            val wrapper =
+                JSONObject().apply {
+                    put("downloadedTracks", tracksJson)
+                    put("playlistTracks", playlistJson)
+                }
             NitroPlayerStorage.write(context, "downloads.json", wrapper.toString())
         } catch (e: Exception) {
             e.printStackTrace()
@@ -392,10 +394,11 @@ class DownloadDatabase private constructor(
 
     // Conversion Helpers
     private fun trackItemToRecord(track: TrackItem): TrackItemRecord {
-        val extraPayloadJson = track.extraPayload?.let { payload ->
-            val extraPayloadMap = payload.toHashMap()
-            JSONObject(extraPayloadMap)
-        }
+        val extraPayloadJson =
+            track.extraPayload?.let { payload ->
+                val extraPayloadMap = payload.toHashMap()
+                JSONObject(extraPayloadMap)
+            }
 
         return TrackItemRecord(
             id = track.id,
@@ -417,19 +420,20 @@ class DownloadDatabase private constructor(
                 null
             }
 
-        val extraPayload: AnyMap? = record.extraPayload?.let { extraPayloadJson ->
-            val map = AnyMap()
-            val keyIterator = extraPayloadJson.keys()
-            while (keyIterator.hasNext()) {
-                val key = keyIterator.next()
-                when (val value = extraPayloadJson.get(key)) {
-                    is String -> map.setString(key, value)
-                    is Number -> map.setDouble(key, value.toDouble())
-                    is Boolean -> map.setBoolean(key, value)
+        val extraPayload: AnyMap? =
+            record.extraPayload?.let { extraPayloadJson ->
+                val map = AnyMap()
+                val keyIterator = extraPayloadJson.keys()
+                while (keyIterator.hasNext()) {
+                    val key = keyIterator.next()
+                    when (val value = extraPayloadJson.get(key)) {
+                        is String -> map.setString(key, value)
+                        is Number -> map.setDouble(key, value.toDouble())
+                        is Boolean -> map.setBoolean(key, value)
+                    }
                 }
+                map
             }
-            map
-        }
 
         return TrackItem(
             id = record.id,
@@ -462,15 +466,14 @@ class DownloadDatabase private constructor(
         )
     }
 
-    private fun convertPlaylistManagerToNitro(playlist: com.margelo.nitro.nitroplayer.playlist.Playlist): Playlist {
-        return Playlist(
+    private fun convertPlaylistManagerToNitro(playlist: com.margelo.nitro.nitroplayer.playlist.Playlist): Playlist =
+        Playlist(
             id = playlist.id,
             name = playlist.name,
             description = null,
             artwork = null,
             tracks = playlist.tracks.toTypedArray(),
         )
-    }
 }
 
 // Internal record classes
@@ -540,11 +543,12 @@ internal data class TrackItemRecord(
                 duration = json.getDouble("duration"),
                 url = json.getString("url"),
                 artwork = if (json.isNull("artwork")) null else json.getString("artwork"),
-                extraPayload = if (json.has("extraPayload") && !json.isNull("extraPayload")) {
-                    json.getJSONObject("extraPayload")
-                } else {
-                    null
-                },
+                extraPayload =
+                    if (json.has("extraPayload") && !json.isNull("extraPayload")) {
+                        json.getJSONObject("extraPayload")
+                    } else {
+                        null
+                    },
             )
     }
 }

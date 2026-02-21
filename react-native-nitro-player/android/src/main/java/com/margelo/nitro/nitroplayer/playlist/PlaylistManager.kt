@@ -405,10 +405,11 @@ class PlaylistManager private constructor(
                 }
             }
 
-            val wrapper = JSONObject().apply {
-                put("playlists", jsonArray)
-                put("currentPlaylistId", currentPlaylistId)
-            }
+            val wrapper =
+                JSONObject().apply {
+                    put("playlists", jsonArray)
+                    put("currentPlaylistId", currentPlaylistId)
+                }
             NitroPlayerStorage.write(context, "playlists.json", wrapper.toString())
         } catch (e: Exception) {
             e.printStackTrace()
@@ -423,8 +424,12 @@ class PlaylistManager private constructor(
                 val wrapper = JSONObject(json)
                 val jsonArray = wrapper.optJSONArray("playlists") ?: JSONArray()
                 parseAndLoadPlaylists(jsonArray)
-                currentPlaylistId = if (wrapper.isNull("currentPlaylistId")) null
-                                    else wrapper.optString("currentPlaylistId", null.toString()).takeIf { it != "null" }
+                currentPlaylistId =
+                    if (wrapper.isNull("currentPlaylistId")) {
+                        null
+                    } else {
+                        wrapper.optString("currentPlaylistId", null.toString()).takeIf { it != "null" }
+                    }
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -440,7 +445,11 @@ class PlaylistManager private constructor(
                 parseAndLoadPlaylists(jsonArray)
                 currentPlaylistId = prefs.getString("currentPlaylistId", null)
                 // Remove old SharedPreferences data to free space
-                prefs.edit().remove("playlists").remove("currentPlaylistId").apply()
+                prefs
+                    .edit()
+                    .remove("playlists")
+                    .remove("currentPlaylistId")
+                    .apply()
                 // Persist in new format
                 saveToFile()
             } catch (e: Exception) {
