@@ -490,6 +490,11 @@ final class DownloadDatabase {
   }
 
   private func trackItemToRecord(_ track: TrackItem) -> TrackItemRecord {
+    var extraPayloadDict: [String: Any]? = nil
+    if let extraPayload = track.extraPayload {
+      extraPayloadDict = extraPayload.toDictionary()
+    }
+
     return TrackItemRecord(
       id: track.id,
       title: track.title,
@@ -497,11 +502,28 @@ final class DownloadDatabase {
       album: track.album,
       duration: track.duration,
       url: track.url,
-      artwork: variantToString(track.artwork)
+      artwork: variantToString(track.artwork),
+      extraPayload: extraPayloadDict
     )
   }
 
   private func recordToTrackItem(_ record: TrackItemRecord) -> TrackItem {
+    var extraPayload: AnyMap? = nil
+    if let extraPayloadDict = record.extraPayload {
+      extraPayload = AnyMap()
+      for (key, value) in extraPayloadDict {
+        if let stringValue = value as? String {
+          extraPayload?.setString(key: key, value: stringValue)
+        } else if let doubleValue = value as? Double {
+          extraPayload?.setDouble(key: key, value: doubleValue)
+        } else if let intValue = value as? Int {
+          extraPayload?.setDouble(key: key, value: Double(intValue))
+        } else if let boolValue = value as? Bool {
+          extraPayload?.setBoolean(key: key, value: boolValue)
+        }
+      }
+    }
+
     return TrackItem(
       id: record.id,
       title: record.title,
@@ -510,7 +532,7 @@ final class DownloadDatabase {
       duration: record.duration,
       url: record.url,
       artwork: stringToVariant(record.artwork),
-      extraPayload: nil
+      extraPayload: extraPayload
     )
   }
 
@@ -547,4 +569,59 @@ private struct TrackItemRecord: Codable {
   let duration: Double
   let url: String
   let artwork: String?
+  let extraPayload: [String: Any]?
+
+  enum CodingKeys: String, CodingKey {
+    case id, title, artist, album, duration, url, artwork, extraPayload
+  }
+
+  // Manual encoding to handle [String: Any]
+  func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(id, forKey: .id)
+    try container.encode(title, forKey: .title)
+    try container.encode(artist, forKey: .artist)
+    try container.encode(album, forKey: .album)
+    try container.encode(duration, forKey: .duration)
+    try container.encode(url, forKey: .url)
+    try container.encodeIfPresent(artwork, forKey: .artwork)
+
+    if let extraPayload = extraPayload {
+      let jsonData = try JSONSerialization.data(withJSONObject: extraPayload)
+      if let jsonString = String(data: jsonData, encoding: .utf8) {
+        try container.encode(jsonString, forKey: .extraPayload)
+      }
+    }
+  }
+
+  // Manual decoding to handle [String: Any]
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    id = try container.decode(String.self, forKey: .id)
+    title = try container.decode(String.self, forKey: .title)
+    artist = try container.decode(String.self, forKey: .artist)
+    album = try container.decode(String.self, forKey: .album)
+    duration = try container.decode(Double.self, forKey: .duration)
+    url = try container.decode(String.self, forKey: .url)
+    artwork = try container.decodeIfPresent(String.self, forKey: .artwork)
+
+    if let jsonString = try? container.decodeIfPresent(String.self, forKey: .extraPayload),
+       let jsonData = jsonString.data(using: .utf8) {
+      extraPayload = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
+    } else {
+      extraPayload = nil
+    }
+  }
+
+  // Initializer for code creation
+  init(id: String, title: String, artist: String, album: String, duration: Double, url: String, artwork: String?, extraPayload: [String: Any]?) {
+    self.id = id
+    self.title = title
+    self.artist = artist
+    self.album = album
+    self.duration = duration
+    self.url = url
+    self.artwork = artwork
+    self.extraPayload = extraPayload
+  }
 }

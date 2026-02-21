@@ -22,9 +22,8 @@
     "react-native-nitro-modules": "^0.33.7",
     "react-native-nitro-player": "../react-native-nitro-player",
     "react-native-safe-area-context": "^5.6.2",
-    "react-native-screens": "^4.19.0",
-    "react-native-superconfig": "0.15.0"
-  },
+    "react-native-screens": "^4.19.0"
+    },
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@babel/preset-env": "^7.25.3",

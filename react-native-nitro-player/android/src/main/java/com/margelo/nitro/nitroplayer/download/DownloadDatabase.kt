@@ -1,6 +1,7 @@
 package com.margelo.nitro.nitroplayer.download
 
 import android.content.Context
+import com.margelo.nitro.core.AnyMap
 import com.margelo.nitro.core.NullType
 import com.margelo.nitro.nitroplayer.*
 import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
@@ -390,8 +391,13 @@ class DownloadDatabase private constructor(
     }
 
     // Conversion Helpers
-    private fun trackItemToRecord(track: TrackItem): TrackItemRecord =
-        TrackItemRecord(
+    private fun trackItemToRecord(track: TrackItem): TrackItemRecord {
+        val extraPayloadJson = track.extraPayload?.let { payload ->
+            val extraPayloadMap = payload.toHashMap()
+            JSONObject(extraPayloadMap)
+        }
+
+        return TrackItemRecord(
             id = track.id,
             title = track.title,
             artist = track.artist,
@@ -399,7 +405,9 @@ class DownloadDatabase private constructor(
             duration = track.duration,
             url = track.url,
             artwork = track.artwork?.asSecondOrNull(),
+            extraPayload = extraPayloadJson,
         )
+    }
 
     private fun recordToTrackItem(record: TrackItemRecord): TrackItem {
         val artworkVariant =
@@ -409,6 +417,20 @@ class DownloadDatabase private constructor(
                 null
             }
 
+        val extraPayload: AnyMap? = record.extraPayload?.let { extraPayloadJson ->
+            val map = AnyMap()
+            val keyIterator = extraPayloadJson.keys()
+            while (keyIterator.hasNext()) {
+                val key = keyIterator.next()
+                when (val value = extraPayloadJson.get(key)) {
+                    is String -> map.setString(key, value)
+                    is Number -> map.setDouble(key, value.toDouble())
+                    is Boolean -> map.setBoolean(key, value)
+                }
+            }
+            map
+        }
+
         return TrackItem(
             id = record.id,
             title = record.title,
@@ -417,7 +439,7 @@ class DownloadDatabase private constructor(
             duration = record.duration,
             url = record.url,
             artwork = artworkVariant,
-            extraPayload = null,
+            extraPayload = extraPayload,
         )
     }
 
@@ -494,6 +516,7 @@ internal data class TrackItemRecord(
     val duration: Double,
     val url: String,
     val artwork: String?,
+    val extraPayload: JSONObject?,
 ) {
     fun toJson(): JSONObject =
         JSONObject().apply {
@@ -504,6 +527,7 @@ internal data class TrackItemRecord(
             put("duration", duration)
             put("url", url)
             put("artwork", artwork)
+            put("extraPayload", extraPayload)
         }
 
     companion object {
@@ -516,6 +540,11 @@ internal data class TrackItemRecord(
                 duration = json.getDouble("duration"),
                 url = json.getString("url"),
                 artwork = if (json.isNull("artwork")) null else json.getString("artwork"),
+                extraPayload = if (json.has("extraPayload") && !json.isNull("extraPayload")) {
+                    json.getJSONObject("extraPayload")
+                } else {
+                    null
+                },
             )
     }
 }

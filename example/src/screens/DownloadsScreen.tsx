@@ -28,6 +28,7 @@ export default function DownloadsScreen() {
   const { downloadTrack, deleteTrack, configure, setPlaybackSourcePreference } = useDownloadActions();
   const { storageInfo, formattedSize, formattedAvailable } = useDownloadStorage();
 
+    console.log('downloadedTracks', downloadedTracks);
   // All available tracks
   const allTracks = [...sampleTracks1, ...sampleTracks2,...sampleTracks3];
 

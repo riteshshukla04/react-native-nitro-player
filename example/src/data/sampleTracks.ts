@@ -10,7 +10,13 @@ export const sampleTracks1: TrackItem[] = [
     url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
     artwork:
       'https://img.freepik.com/free-photo/sunset-time-tropical-beach-sea-with-coconut-palm-tree_74190-1075.jpg?w=740',
-    extraPayload: undefined,
+    extraPayload: {
+      genre: 'Lofi',
+      rating: 4.5,
+      favorite: true,
+      playCount: 100,
+      customTag: 'test-tag',
+    },
   },
   {
     id: '2',
