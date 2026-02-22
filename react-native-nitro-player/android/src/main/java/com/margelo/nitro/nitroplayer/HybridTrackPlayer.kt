@@ -106,6 +106,7 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
             androidAutoEnabled = config.androidAutoEnabled,
             carPlayEnabled = config.carPlayEnabled,
             showInNotification = config.showInNotification,
+            lookaheadCount = config.lookaheadCount?.toInt(),
         )
     }
 
@@ -127,4 +128,35 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
         Promise.async {
             core.skipToIndex(index.toInt())
         }
+
+    override fun updateTracks(tracks: Array<TrackItem>): Promise<Unit> =
+        Promise.async {
+            core.updateTracks(tracks.toList())
+        }
+
+    override fun getTracksById(trackIds: Array<String>): Promise<Array<TrackItem>> =
+        Promise.async {
+            core.getTracksById(trackIds.toList()).toTypedArray()
+        }
+
+    override fun getTracksNeedingUrls(): Promise<Array<TrackItem>> =
+        Promise.async {
+            core.getTracksNeedingUrls().toTypedArray()
+        }
+
+    override fun getNextTracks(count: Double): Promise<Array<TrackItem>> =
+        Promise.async {
+            core.getNextTracks(count.toInt()).toTypedArray()
+        }
+
+    override fun getCurrentTrackIndex(): Promise<Double> =
+        Promise.async {
+            core.getCurrentTrackIndex().toDouble()
+        }
+
+    override fun onTracksNeedUpdate(callback: (tracks: Array<TrackItem>, lookahead: Double) -> Unit) {
+        core.addOnTracksNeedUpdateListener { tracks, lookahead ->
+            callback(tracks.toTypedArray(), lookahead.toDouble())
+        }
+    }
 }

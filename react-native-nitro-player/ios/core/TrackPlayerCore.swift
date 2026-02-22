@@ -50,6 +50,7 @@ class TrackPlayerCore: NSObject {
   private var currentTracks: [TrackItem] = []
   private var isManuallySeeked = false
   private var currentRepeatMode: RepeatMode = .off
+  private var lookaheadCount: Int = 5  // Number of tracks to preload ahead
   private var boundaryTimeObserver: Any?
   private var currentItemObservers: [NSKeyValueObservation] = []
 
@@ -310,6 +311,9 @@ class TrackPlayerCore: NSObject {
     if let player = player {
       NitroPlayerLogger.log("TrackPlayerCore", "📋 Remaining items in queue: \(player.items().count)")
     }
+
+    // Check if upcoming tracks need URLs
+    checkUpcomingTracksForUrls(lookahead: lookaheadCount)
   }
 
   @objc private func playerItemFailedToPlayToEndTime(notification: Notification) {
@@ -596,6 +600,9 @@ class TrackPlayerCore: NSObject {
       self.updatePlayerQueue(tracks: playlist.tracks)
       // Emit initial state (paused/stopped before play)
       self.emitStateChange()
+
+      // Check if upcoming tracks need URLs
+      self.checkUpcomingTracksForUrls(lookahead: lookaheadCount)
     } else {
       NitroPlayerLogger.log("TrackPlayerCore", "   ❌ Playlist NOT FOUND")
       NitroPlayerLogger.log("TrackPlayerCore", String(repeating: "🎼", count: Constants.playlistSeparatorLength) + "\n")
@@ -1301,6 +1308,9 @@ class TrackPlayerCore: NSObject {
       queuePlayer.pause()
       self.notifyPlaybackStateChange(.stopped, .end)
     }
+
+    // Check if upcoming tracks need URLs
+    checkUpcomingTracksForUrls(lookahead: lookaheadCount)
   }
 
   func skipToPrevious() {
@@ -1343,6 +1353,9 @@ class TrackPlayerCore: NSObject {
       // Already at first track, restart it
       queuePlayer.seek(to: .zero)
     }
+
+    // Check if upcoming tracks need URLs
+    checkUpcomingTracksForUrls(lookahead: lookaheadCount)
   }
 
   func seek(position: Double) {
@@ -1469,9 +1482,14 @@ class TrackPlayerCore: NSObject {
   func configure(
     androidAutoEnabled: Bool?,
     carPlayEnabled: Bool?,
-    showInNotification: Bool?
+    showInNotification: Bool?,
+    lookaheadCount: Int? = nil
   ) {
     DispatchQueue.main.async { [weak self] in
+      if let lookahead = lookaheadCount {
+        self?.lookaheadCount = lookahead
+        NitroPlayerLogger.log("TrackPlayerCore", "🔄 Lookahead count set to: \(lookahead)")
+      }
       self?.mediaSessionManager?.configure(
         androidAutoEnabled: androidAutoEnabled,
         carPlayEnabled: carPlayEnabled,
@@ -1619,8 +1637,16 @@ class TrackPlayerCore: NSObject {
       upNextQueue.removeAll()
       currentTemporaryType = .none
 
-      return playFromIndexInternalWithResult(index: originalIndex)
+      let result = playFromIndexInternalWithResult(index: originalIndex)
+
+      // Check if upcoming tracks need URLs
+      checkUpcomingTracksForUrls(lookahead: lookaheadCount)
+
+      return result
     }
+
+    // Check if upcoming tracks need URLs after any successful skip
+    checkUpcomingTracksForUrls(lookahead: lookaheadCount)
 
     return false
   }
@@ -1855,6 +1881,224 @@ class TrackPlayerCore: NSObject {
     }
 
     return .none
+  }
+
+  // MARK: - Lazy URL Loading Support
+
+  /**
+   * Update entire track objects and rebuild queue if needed
+   * Skips currently playing track to preserve gapless playback
+   * CRITICAL: Invalidates preloaded assets and re-preloads for gapless
+   */
+  func updateTracks(tracks: [TrackItem]) {
+    DispatchQueue.main.async { [weak self] in
+      guard let self = self else { return }
+
+      NitroPlayerLogger.log("TrackPlayerCore", "🔄 updateTracks: \(tracks.count) updates")
+
+      // Get current track ID to avoid updating it (preserves gapless playback)
+      let currentTrackId = self.getCurrentTrack()?.id
+
+      // Filter out current track and validate
+      let safeTracks = tracks.filter { track in
+        switch true {
+        case track.id == currentTrackId:
+          NitroPlayerLogger.log(
+            "TrackPlayerCore",
+            "⚠️ Skipping update for currently playing track: \(track.id) (preserves gapless)")
+          return false
+        case track.url.isEmpty:
+          NitroPlayerLogger.log(
+            "TrackPlayerCore", "⚠️ Skipping track with empty URL: \(track.id)")
+          return false
+        default:
+          return true
+        }
+      }
+
+      guard !safeTracks.isEmpty else {
+        NitroPlayerLogger.log("TrackPlayerCore", "✅ No valid updates to apply")
+        return
+      }
+
+      // Invalidate preloaded assets for tracks with updated data
+      // This is CRITICAL for gapless playback - old assets might use old URLs
+      let updatedTrackIds = Set(safeTracks.map { $0.id })
+      for trackId in updatedTrackIds {
+        if self.preloadedAssets[trackId] != nil {
+          NitroPlayerLogger.log(
+            "TrackPlayerCore", "🗑️ Invalidating preloaded asset for track: \(trackId)")
+          self.preloadedAssets.removeValue(forKey: trackId)
+        }
+      }
+
+      // Update in PlaylistManager
+      let affectedPlaylists = self.playlistManager.updateTracks(tracks: safeTracks)
+
+      // Rebuild queue if current playlist was affected
+      if let currentId = self.currentPlaylistId,
+        let updateCount = affectedPlaylists[currentId]
+      {
+        NitroPlayerLogger.log(
+          "TrackPlayerCore",
+          "🔄 Rebuilding queue - \(updateCount) tracks updated in current playlist")
+
+        // This method preserves current item
+        self.rebuildAVQueueFromCurrentPosition()
+
+        // Re-preload upcoming tracks for gapless playback
+        // CRITICAL: This restores gapless buffering after queue rebuild
+        self.preloadUpcomingTracks(from: self.currentTrackIndex + 1)
+
+        NitroPlayerLogger.log("TrackPlayerCore", "✅ Queue rebuilt, gapless playback preserved")
+      }
+
+      NitroPlayerLogger.log(
+        "TrackPlayerCore",
+        "✅ Track updates complete - \(affectedPlaylists.count) playlists affected")
+    }
+  }
+
+  /**
+   * Get tracks by IDs from all playlists
+   */
+  func getTracksById(trackIds: [String]) -> [TrackItem] {
+    if Thread.isMainThread {
+      return playlistManager.getTracksById(trackIds: trackIds)
+    } else {
+      var tracks: [TrackItem] = []
+      DispatchQueue.main.sync { [weak self] in
+        tracks = self?.playlistManager.getTracksById(trackIds: trackIds) ?? []
+      }
+      return tracks
+    }
+  }
+
+  /**
+   * Get tracks needing URLs from current playlist
+   */
+  func getTracksNeedingUrls() -> [TrackItem] {
+    if Thread.isMainThread {
+      return getTracksNeedingUrlsInternal()
+    } else {
+      var tracks: [TrackItem] = []
+      DispatchQueue.main.sync { [weak self] in
+        tracks = self?.getTracksNeedingUrlsInternal() ?? []
+      }
+      return tracks
+    }
+  }
+
+  private func getTracksNeedingUrlsInternal() -> [TrackItem] {
+    guard let currentId = currentPlaylistId,
+      let playlist = playlistManager.getPlaylist(playlistId: currentId)
+    else {
+      return []
+    }
+
+    return playlist.tracks.filter { $0.url.isEmpty }
+  }
+
+  /**
+   * Get next N tracks from current position
+   */
+  func getNextTracks(count: Int) -> [TrackItem] {
+    if Thread.isMainThread {
+      return getNextTracksInternal(count: count)
+    } else {
+      var tracks: [TrackItem] = []
+      DispatchQueue.main.sync { [weak self] in
+        tracks = self?.getNextTracksInternal(count: count) ?? []
+      }
+      return tracks
+    }
+  }
+
+  private func getNextTracksInternal(count: Int) -> [TrackItem] {
+    let actualQueue = getActualQueueInternal()
+    guard !actualQueue.isEmpty else { return [] }
+
+    guard let currentTrack = getCurrentTrack(),
+      let currentIndex = actualQueue.firstIndex(where: { $0.id == currentTrack.id })
+    else {
+      return []
+    }
+
+    let startIndex = currentIndex + 1
+    let endIndex = min(startIndex + count, actualQueue.count)
+
+    return startIndex < actualQueue.count ? Array(actualQueue[startIndex..<endIndex]) : []
+  }
+
+  /**
+   * Get current track index in playlist
+   */
+  func getCurrentTrackIndex() -> Int {
+    if Thread.isMainThread {
+      return currentTrackIndex
+    } else {
+      var index = -1
+      DispatchQueue.main.sync { [weak self] in
+        index = self?.currentTrackIndex ?? -1
+      }
+      return index
+    }
+  }
+
+  /**
+   * Callback for tracks needing update
+   */
+  typealias OnTracksNeedUpdateCallback = ([TrackItem], Int) -> Void
+
+  // Add to class properties
+  private var onTracksNeedUpdateListeners: [(callback: OnTracksNeedUpdateCallback, isAlive: Bool)] =
+    []
+  private let tracksNeedUpdateQueue = DispatchQueue(
+    label: "com.nitroplayer.tracksneedupdate", attributes: .concurrent)
+
+  /**
+   * Register listener for when tracks need update
+   */
+  func addOnTracksNeedUpdateListener(callback: @escaping OnTracksNeedUpdateCallback) {
+    tracksNeedUpdateQueue.async(flags: .barrier) { [weak self] in
+      self?.onTracksNeedUpdateListeners.append((callback: callback, isAlive: true))
+    }
+  }
+
+  /**
+   * Notify listeners that tracks need updating
+   */
+  private func notifyTracksNeedUpdate(tracks: [TrackItem], lookahead: Int) {
+    tracksNeedUpdateQueue.async(flags: .barrier) { [weak self] in
+      guard let self = self else { return }
+
+      // Clean up dead listeners
+      self.onTracksNeedUpdateListeners.removeAll { !$0.isAlive }
+      let liveCallbacks = self.onTracksNeedUpdateListeners.map { $0.callback }
+
+      if !liveCallbacks.isEmpty {
+        DispatchQueue.main.async {
+          for callback in liveCallbacks {
+            callback(tracks, lookahead)
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Check if upcoming tracks need URLs and notify listeners
+   * Call this in playerItemDidPlayToEndTime or after skip operations
+   */
+  private func checkUpcomingTracksForUrls(lookahead: Int = 5) {
+    let nextTracks = getNextTracksInternal(count: lookahead)
+    let tracksNeedingUrls = nextTracks.filter { $0.url.isEmpty }
+
+    if !tracksNeedingUrls.isEmpty {
+      NitroPlayerLogger.log(
+        "TrackPlayerCore", "⚠️ \(tracksNeedingUrls.count) upcoming tracks need URLs")
+      notifyTracksNeedUpdate(tracks: tracksNeedingUrls, lookahead: lookahead)
+    }
   }
 
   // MARK: - Cleanup

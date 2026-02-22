@@ -33,6 +33,7 @@
 #include "JFunc_void_TrackPlayerState_std__optional_Reason_.hpp"
 #include "JFunc_void_double_double.hpp"
 #include "JFunc_void_double_double_std__optional_bool_.hpp"
+#include "JFunc_void_std__vector_TrackItem__double.hpp"
 #include <NitroModules/DefaultConstructableObject.hpp>
 
 namespace margelo::nitro::nitroplayer {
@@ -62,6 +63,7 @@ int initialize(JavaVM* vm) {
     margelo::nitro::nitroplayer::JFunc_void_TrackPlayerState_std__optional_Reason__cxx::registerNatives();
     margelo::nitro::nitroplayer::JFunc_void_double_double_cxx::registerNatives();
     margelo::nitro::nitroplayer::JFunc_void_double_double_std__optional_bool__cxx::registerNatives();
+    margelo::nitro::nitroplayer::JFunc_void_std__vector_TrackItem__double_cxx::registerNatives();
 
     // Register Nitro Hybrid Objects
     HybridObjectRegistry::registerHybridObjectConstructor(

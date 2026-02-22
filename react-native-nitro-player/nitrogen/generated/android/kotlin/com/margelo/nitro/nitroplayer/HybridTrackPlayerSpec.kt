@@ -154,6 +154,35 @@ abstract class HybridTrackPlayerSpec: HybridObject() {
   @DoNotStrip
   @Keep
   abstract fun setVolume(volume: Double): Boolean
+  
+  @DoNotStrip
+  @Keep
+  abstract fun updateTracks(tracks: Array<TrackItem>): Promise<Unit>
+  
+  @DoNotStrip
+  @Keep
+  abstract fun getTracksById(trackIds: Array<String>): Promise<Array<TrackItem>>
+  
+  @DoNotStrip
+  @Keep
+  abstract fun getTracksNeedingUrls(): Promise<Array<TrackItem>>
+  
+  @DoNotStrip
+  @Keep
+  abstract fun getNextTracks(count: Double): Promise<Array<TrackItem>>
+  
+  @DoNotStrip
+  @Keep
+  abstract fun getCurrentTrackIndex(): Promise<Double>
+  
+  abstract fun onTracksNeedUpdate(callback: (tracks: Array<TrackItem>, lookahead: Double) -> Unit): Unit
+  
+  @DoNotStrip
+  @Keep
+  private fun onTracksNeedUpdate_cxx(callback: Func_void_std__vector_TrackItem__double): Unit {
+    val __result = onTracksNeedUpdate(callback)
+    return __result
+  }
 
   private external fun initHybrid(): HybridData
 

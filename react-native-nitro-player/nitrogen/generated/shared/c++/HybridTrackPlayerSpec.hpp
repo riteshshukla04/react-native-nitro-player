@@ -90,6 +90,12 @@ namespace margelo::nitro::nitroplayer {
       virtual void onAndroidAutoConnectionChange(const std::function<void(bool /* connected */)>& callback) = 0;
       virtual bool isAndroidAutoConnected() = 0;
       virtual bool setVolume(double volume) = 0;
+      virtual std::shared_ptr<Promise<void>> updateTracks(const std::vector<TrackItem>& tracks) = 0;
+      virtual std::shared_ptr<Promise<std::vector<TrackItem>>> getTracksById(const std::vector<std::string>& trackIds) = 0;
+      virtual std::shared_ptr<Promise<std::vector<TrackItem>>> getTracksNeedingUrls() = 0;
+      virtual std::shared_ptr<Promise<std::vector<TrackItem>>> getNextTracks(double count) = 0;
+      virtual std::shared_ptr<Promise<double>> getCurrentTrackIndex() = 0;
+      virtual void onTracksNeedUpdate(const std::function<void(const std::vector<TrackItem>& /* tracks */, double /* lookahead */)>& callback) = 0;
 
     protected:
       // Hybrid Setup

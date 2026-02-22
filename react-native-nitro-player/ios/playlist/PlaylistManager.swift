@@ -275,6 +275,74 @@ class PlaylistManager {
   }
 
   /**
+   * Update entire track objects across all playlists
+   * Matches by track.id and replaces the entire track object
+   * @param tracks Array of full TrackItem objects to update
+   * @return Dictionary of playlistId -> count of tracks updated
+   */
+  func updateTracks(tracks: [TrackItem]) -> [String: Int] {
+    let tracksMap = Dictionary(uniqueKeysWithValues: tracks.map { ($0.id, $0) })
+    var affectedPlaylists: [String: Int] = [:]
+
+    queue.sync {
+      for (playlistId, playlist) in playlists {
+        var updateCount = 0
+        let newTracks = playlist.tracks.map { track -> TrackItem in
+          if let updatedTrack = tracksMap[track.id] {
+            updateCount += 1
+            return updatedTrack
+          }
+          return track
+        }
+
+        if updateCount > 0 {
+          affectedPlaylists[playlistId] = updateCount
+          playlists[playlistId] = PlaylistModel(
+            id: playlist.id,
+            name: playlist.name,
+            description: playlist.description,
+            artwork: playlist.artwork,
+            tracks: newTracks
+          )
+        }
+      }
+    }
+
+    if !affectedPlaylists.isEmpty {
+      scheduleSave()
+      affectedPlaylists.keys.forEach { playlistId in
+        notifyPlaylistChanged(playlistId, .update)
+      }
+      notifyPlaylistsChanged(.update)
+    }
+
+    return affectedPlaylists
+  }
+
+  /**
+   * Get tracks by IDs from all playlists
+   * @param trackIds Array of track IDs to fetch
+   * @return Array of matching TrackItem objects
+   */
+  func getTracksById(trackIds: [String]) -> [TrackItem] {
+    let trackIdSet = Set(trackIds)
+    var foundTracks: [String: TrackItem] = [:]
+
+    queue.sync {
+      for playlist in playlists.values {
+        for track in playlist.tracks {
+          if trackIdSet.contains(track.id) && foundTracks[track.id] == nil {
+            foundTracks[track.id] = track
+          }
+        }
+      }
+    }
+
+    // Return in same order as requested
+    return trackIds.compactMap { foundTracks[$0] }
+  }
+
+  /**
    * Get the current playlist ID
    */
   func getCurrentPlaylistId() -> String? {

@@ -303,6 +303,65 @@ class PlaylistManager private constructor(
     }
 
     /**
+     * Update entire track objects across all playlists
+     * Matches by track.id and replaces the entire track object
+     * @param tracks List of full TrackItem objects to update
+     * @return Map of playlistId -> count of tracks updated
+     */
+    fun updateTracks(tracks: List<TrackItem>): Map<String, Int> {
+        val tracksMap = tracks.associateBy { it.id }
+        val affectedPlaylists = mutableMapOf<String, Int>()
+
+        synchronized(playlists) {
+            playlists.forEach { (playlistId, playlist) ->
+                var updateCount = 0
+                val newTracks =
+                    playlist.tracks.map { track ->
+                        tracksMap[track.id]?.also { updateCount++ } ?: track
+                    }.toMutableList()
+
+                if (updateCount > 0) {
+                    affectedPlaylists[playlistId] = updateCount
+                    playlists[playlistId] = playlist.copy(tracks = newTracks)
+                }
+            }
+        }
+
+        if (affectedPlaylists.isNotEmpty()) {
+            scheduleSave()
+            affectedPlaylists.keys.forEach { playlistId ->
+                notifyPlaylistChanged(playlistId, QueueOperation.UPDATE)
+            }
+            notifyPlaylistsChanged(QueueOperation.UPDATE)
+        }
+
+        return affectedPlaylists
+    }
+
+    /**
+     * Get tracks by IDs from all playlists
+     * @param trackIds List of track IDs to fetch
+     * @return List of matching TrackItem objects
+     */
+    fun getTracksById(trackIds: List<String>): List<TrackItem> {
+        val trackIdSet = trackIds.toSet()
+        val foundTracks = mutableMapOf<String, TrackItem>()
+
+        synchronized(playlists) {
+            playlists.values.forEach { playlist ->
+                playlist.tracks.forEach { track ->
+                    if (trackIdSet.contains(track.id) && !foundTracks.containsKey(track.id)) {
+                        foundTracks[track.id] = track
+                    }
+                }
+            }
+        }
+
+        // Return in same order as requested
+        return trackIds.mapNotNull { foundTracks[it] }
+    }
+
+    /**
      * Load a playlist for playback (sets it as current)
      */
     fun loadPlaylist(playlistId: String): Boolean {

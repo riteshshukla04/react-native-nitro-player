@@ -88,7 +88,8 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
     core.configure(
       androidAutoEnabled: config.androidAutoEnabled,
       carPlayEnabled: config.carPlayEnabled,
-      showInNotification: config.showInNotification
+      showInNotification: config.showInNotification,
+      lookaheadCount: config.lookaheadCount.map { Int($0) }
     )
   }
 
@@ -138,5 +139,43 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
 
   func setVolume(volume: Double) throws -> Bool {
     return core.setVolume(volume: volume)
+  }
+
+  // MARK: - Lazy URL Loading
+
+  func updateTracks(tracks: [TrackItem]) throws -> Promise<Void> {
+    return Promise.async {
+      self.core.updateTracks(tracks: tracks)
+    }
+  }
+
+  func getTracksById(trackIds: [String]) throws -> Promise<[TrackItem]> {
+    return Promise.async {
+      return self.core.getTracksById(trackIds: trackIds)
+    }
+  }
+
+  func getTracksNeedingUrls() throws -> Promise<[TrackItem]> {
+    return Promise.async {
+      return self.core.getTracksNeedingUrls()
+    }
+  }
+
+  func getNextTracks(count: Double) throws -> Promise<[TrackItem]> {
+    return Promise.async {
+      return self.core.getNextTracks(count: Int(count))
+    }
+  }
+
+  func getCurrentTrackIndex() throws -> Promise<Double> {
+    return Promise.async {
+      return Double(self.core.getCurrentTrackIndex())
+    }
+  }
+
+  func onTracksNeedUpdate(callback: @escaping ([TrackItem], Double) -> Void) throws {
+    core.addOnTracksNeedUpdateListener { tracks, lookahead in
+      callback(tracks, Double(lookahead))
+    }
   }
 }

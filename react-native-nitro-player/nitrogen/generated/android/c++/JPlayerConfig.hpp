@@ -37,10 +37,13 @@ namespace margelo::nitro::nitroplayer {
       jni::local_ref<jni::JBoolean> carPlayEnabled = this->getFieldValue(fieldCarPlayEnabled);
       static const auto fieldShowInNotification = clazz->getField<jni::JBoolean>("showInNotification");
       jni::local_ref<jni::JBoolean> showInNotification = this->getFieldValue(fieldShowInNotification);
+      static const auto fieldLookaheadCount = clazz->getField<jni::JDouble>("lookaheadCount");
+      jni::local_ref<jni::JDouble> lookaheadCount = this->getFieldValue(fieldLookaheadCount);
       return PlayerConfig(
         androidAutoEnabled != nullptr ? std::make_optional(static_cast<bool>(androidAutoEnabled->value())) : std::nullopt,
         carPlayEnabled != nullptr ? std::make_optional(static_cast<bool>(carPlayEnabled->value())) : std::nullopt,
-        showInNotification != nullptr ? std::make_optional(static_cast<bool>(showInNotification->value())) : std::nullopt
+        showInNotification != nullptr ? std::make_optional(static_cast<bool>(showInNotification->value())) : std::nullopt,
+        lookaheadCount != nullptr ? std::make_optional(lookaheadCount->value()) : std::nullopt
       );
     }
 
@@ -50,14 +53,15 @@ namespace margelo::nitro::nitroplayer {
      */
     [[maybe_unused]]
     static jni::local_ref<JPlayerConfig::javaobject> fromCpp(const PlayerConfig& value) {
-      using JSignature = JPlayerConfig(jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JBoolean>);
+      using JSignature = JPlayerConfig(jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JDouble>);
       static const auto clazz = javaClassStatic();
       static const auto create = clazz->getStaticMethod<JSignature>("fromCpp");
       return create(
         clazz,
         value.androidAutoEnabled.has_value() ? jni::JBoolean::valueOf(value.androidAutoEnabled.value()) : nullptr,
         value.carPlayEnabled.has_value() ? jni::JBoolean::valueOf(value.carPlayEnabled.value()) : nullptr,
-        value.showInNotification.has_value() ? jni::JBoolean::valueOf(value.showInNotification.value()) : nullptr
+        value.showInNotification.has_value() ? jni::JBoolean::valueOf(value.showInNotification.value()) : nullptr,
+        value.lookaheadCount.has_value() ? jni::JDouble::valueOf(value.lookaheadCount.value()) : nullptr
       );
     }
   };

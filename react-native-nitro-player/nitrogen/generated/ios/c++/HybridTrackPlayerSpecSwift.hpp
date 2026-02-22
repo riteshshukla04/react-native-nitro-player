@@ -233,6 +233,52 @@ namespace margelo::nitro::nitroplayer {
       auto __value = std::move(__result.value());
       return __value;
     }
+    inline std::shared_ptr<Promise<void>> updateTracks(const std::vector<TrackItem>& tracks) override {
+      auto __result = _swiftPart.updateTracks(tracks);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline std::shared_ptr<Promise<std::vector<TrackItem>>> getTracksById(const std::vector<std::string>& trackIds) override {
+      auto __result = _swiftPart.getTracksById(trackIds);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline std::shared_ptr<Promise<std::vector<TrackItem>>> getTracksNeedingUrls() override {
+      auto __result = _swiftPart.getTracksNeedingUrls();
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline std::shared_ptr<Promise<std::vector<TrackItem>>> getNextTracks(double count) override {
+      auto __result = _swiftPart.getNextTracks(std::forward<decltype(count)>(count));
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline std::shared_ptr<Promise<double>> getCurrentTrackIndex() override {
+      auto __result = _swiftPart.getCurrentTrackIndex();
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline void onTracksNeedUpdate(const std::function<void(const std::vector<TrackItem>& /* tracks */, double /* lookahead */)>& callback) override {
+      auto __result = _swiftPart.onTracksNeedUpdate(callback);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+    }
 
   private:
     NitroPlayer::HybridTrackPlayerSpec_cxx _swiftPart;

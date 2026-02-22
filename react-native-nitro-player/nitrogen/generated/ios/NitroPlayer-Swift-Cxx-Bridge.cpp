@@ -234,6 +234,22 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     };
   }
   
+  // pragma MARK: std::function<void(double /* result */)>
+  Func_void_double create_Func_void_double(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_double::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](double result) mutable -> void {
+      swiftClosure.call(result);
+    };
+  }
+  
+  // pragma MARK: std::function<void(const std::vector<TrackItem>& /* tracks */, double /* lookahead */)>
+  Func_void_std__vector_TrackItem__double create_Func_void_std__vector_TrackItem__double(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_std__vector_TrackItem__double::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const std::vector<TrackItem>& tracks, double lookahead) mutable -> void {
+      swiftClosure.call(tracks, lookahead);
+    };
+  }
+  
   // pragma MARK: std::shared_ptr<HybridTrackPlayerSpec>
   std::shared_ptr<HybridTrackPlayerSpec> create_std__shared_ptr_HybridTrackPlayerSpec_(void* NON_NULL swiftUnsafePointer) noexcept {
     NitroPlayer::HybridTrackPlayerSpec_cxx swiftPart = NitroPlayer::HybridTrackPlayerSpec_cxx::fromUnsafe(swiftUnsafePointer);

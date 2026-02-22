@@ -37,10 +37,11 @@ namespace margelo::nitro::nitroplayer {
     std::optional<bool> androidAutoEnabled     SWIFT_PRIVATE;
     std::optional<bool> carPlayEnabled     SWIFT_PRIVATE;
     std::optional<bool> showInNotification     SWIFT_PRIVATE;
+    std::optional<double> lookaheadCount     SWIFT_PRIVATE;
 
   public:
     PlayerConfig() = default;
-    explicit PlayerConfig(std::optional<bool> androidAutoEnabled, std::optional<bool> carPlayEnabled, std::optional<bool> showInNotification): androidAutoEnabled(androidAutoEnabled), carPlayEnabled(carPlayEnabled), showInNotification(showInNotification) {}
+    explicit PlayerConfig(std::optional<bool> androidAutoEnabled, std::optional<bool> carPlayEnabled, std::optional<bool> showInNotification, std::optional<double> lookaheadCount): androidAutoEnabled(androidAutoEnabled), carPlayEnabled(carPlayEnabled), showInNotification(showInNotification), lookaheadCount(lookaheadCount) {}
   };
 
 } // namespace margelo::nitro::nitroplayer
@@ -55,7 +56,8 @@ namespace margelo::nitro {
       return margelo::nitro::nitroplayer::PlayerConfig(
         JSIConverter<std::optional<bool>>::fromJSI(runtime, obj.getProperty(runtime, "androidAutoEnabled")),
         JSIConverter<std::optional<bool>>::fromJSI(runtime, obj.getProperty(runtime, "carPlayEnabled")),
-        JSIConverter<std::optional<bool>>::fromJSI(runtime, obj.getProperty(runtime, "showInNotification"))
+        JSIConverter<std::optional<bool>>::fromJSI(runtime, obj.getProperty(runtime, "showInNotification")),
+        JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, "lookaheadCount"))
       );
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroplayer::PlayerConfig& arg) {
@@ -63,6 +65,7 @@ namespace margelo::nitro {
       obj.setProperty(runtime, "androidAutoEnabled", JSIConverter<std::optional<bool>>::toJSI(runtime, arg.androidAutoEnabled));
       obj.setProperty(runtime, "carPlayEnabled", JSIConverter<std::optional<bool>>::toJSI(runtime, arg.carPlayEnabled));
       obj.setProperty(runtime, "showInNotification", JSIConverter<std::optional<bool>>::toJSI(runtime, arg.showInNotification));
+      obj.setProperty(runtime, "lookaheadCount", JSIConverter<std::optional<double>>::toJSI(runtime, arg.lookaheadCount));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -76,6 +79,7 @@ namespace margelo::nitro {
       if (!JSIConverter<std::optional<bool>>::canConvert(runtime, obj.getProperty(runtime, "androidAutoEnabled"))) return false;
       if (!JSIConverter<std::optional<bool>>::canConvert(runtime, obj.getProperty(runtime, "carPlayEnabled"))) return false;
       if (!JSIConverter<std::optional<bool>>::canConvert(runtime, obj.getProperty(runtime, "showInNotification"))) return false;
+      if (!JSIConverter<std::optional<double>>::canConvert(runtime, obj.getProperty(runtime, "lookaheadCount"))) return false;
       return true;
     }
   };

@@ -87,4 +87,47 @@ export interface TrackPlayer
   onAndroidAutoConnectionChange(callback: (connected: boolean) => void): void
   isAndroidAutoConnected(): boolean
   setVolume(volume: number): boolean
+
+  /**
+   * Update entire track objects across all playlists
+   * Matches by track.id and updates all properties (url, artwork, title, etc.)
+   * Note: Empty string "" is valid for TrackItem.url to support lazy loading
+   * @param tracks Array of full TrackItem objects to update
+   * @returns Promise that resolves when updates complete
+   */
+  updateTracks(tracks: TrackItem[]): Promise<void>
+
+  /**
+   * Get tracks by IDs from all playlists
+   * @param trackIds Array of track IDs to fetch
+   * @returns Promise resolving to array of matching tracks
+   */
+  getTracksById(trackIds: string[]): Promise<TrackItem[]>
+
+  /**
+   * Get tracks with missing/empty URLs from current playlist
+   * @returns Promise resolving to array of tracks needing URLs
+   */
+  getTracksNeedingUrls(): Promise<TrackItem[]>
+
+  /**
+   * Get next N tracks from current position in playlist
+   * Useful for preloading URLs before they're needed
+   * @param count Number of upcoming tracks to return
+   * @returns Promise resolving to array of next tracks
+   */
+  getNextTracks(count: number): Promise<TrackItem[]>
+
+  /**
+   * Get current track index in the active playlist
+   * @returns Promise resolving to 0-based index, or -1 if no track playing
+   */
+  getCurrentTrackIndex(): Promise<number>
+
+  /**
+   * Register callback that fires when tracks will be needed soon
+   * Useful for proactive URL resolution in Android Auto/CarPlay
+   * @param callback Function called with tracks needing URLs and lookahead count
+   */
+  onTracksNeedUpdate(callback: (tracks: TrackItem[], lookahead: number) => void): void
 }

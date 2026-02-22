@@ -75,6 +75,12 @@ namespace margelo::nitro::nitroplayer {
     void onAndroidAutoConnectionChange(const std::function<void(bool /* connected */)>& callback) override;
     bool isAndroidAutoConnected() override;
     bool setVolume(double volume) override;
+    std::shared_ptr<Promise<void>> updateTracks(const std::vector<TrackItem>& tracks) override;
+    std::shared_ptr<Promise<std::vector<TrackItem>>> getTracksById(const std::vector<std::string>& trackIds) override;
+    std::shared_ptr<Promise<std::vector<TrackItem>>> getTracksNeedingUrls() override;
+    std::shared_ptr<Promise<std::vector<TrackItem>>> getNextTracks(double count) override;
+    std::shared_ptr<Promise<double>> getCurrentTrackIndex() override;
+    void onTracksNeedUpdate(const std::function<void(const std::vector<TrackItem>& /* tracks */, double /* lookahead */)>& callback) override;
 
   private:
     friend HybridBase;

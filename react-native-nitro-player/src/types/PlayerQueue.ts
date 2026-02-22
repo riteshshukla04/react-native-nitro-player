@@ -44,4 +44,9 @@ export interface PlayerConfig {
   androidAutoEnabled?: boolean
   carPlayEnabled?: boolean
   showInNotification?: boolean
+  /**
+   * Number of upcoming tracks to preload URLs for (default: 5)
+   * Higher values = more proactive loading, but more network requests
+   */
+  lookaheadCount?: number
 }

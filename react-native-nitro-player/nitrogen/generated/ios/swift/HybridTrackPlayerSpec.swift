@@ -35,6 +35,12 @@ public protocol HybridTrackPlayerSpec_protocol: HybridObject {
   func onAndroidAutoConnectionChange(callback: @escaping (_ connected: Bool) -> Void) throws -> Void
   func isAndroidAutoConnected() throws -> Bool
   func setVolume(volume: Double) throws -> Bool
+  func updateTracks(tracks: [TrackItem]) throws -> Promise<Void>
+  func getTracksById(trackIds: [String]) throws -> Promise<[TrackItem]>
+  func getTracksNeedingUrls() throws -> Promise<[TrackItem]>
+  func getNextTracks(count: Double) throws -> Promise<[TrackItem]>
+  func getCurrentTrackIndex() throws -> Promise<Double>
+  func onTracksNeedUpdate(callback: @escaping (_ tracks: [TrackItem], _ lookahead: Double) -> Void) throws -> Void
 }
 
 public extension HybridTrackPlayerSpec_protocol {

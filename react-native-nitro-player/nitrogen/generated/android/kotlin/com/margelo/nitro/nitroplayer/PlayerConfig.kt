@@ -25,7 +25,10 @@ data class PlayerConfig(
   val carPlayEnabled: Boolean?,
   @DoNotStrip
   @Keep
-  val showInNotification: Boolean?
+  val showInNotification: Boolean?,
+  @DoNotStrip
+  @Keep
+  val lookaheadCount: Double?
 ) {
   /* primary constructor */
 
@@ -37,8 +40,8 @@ data class PlayerConfig(
     @Keep
     @Suppress("unused")
     @JvmStatic
-    private fun fromCpp(androidAutoEnabled: Boolean?, carPlayEnabled: Boolean?, showInNotification: Boolean?): PlayerConfig {
-      return PlayerConfig(androidAutoEnabled, carPlayEnabled, showInNotification)
+    private fun fromCpp(androidAutoEnabled: Boolean?, carPlayEnabled: Boolean?, showInNotification: Boolean?, lookaheadCount: Double?): PlayerConfig {
+      return PlayerConfig(androidAutoEnabled, carPlayEnabled, showInNotification, lookaheadCount)
     }
   }
 }

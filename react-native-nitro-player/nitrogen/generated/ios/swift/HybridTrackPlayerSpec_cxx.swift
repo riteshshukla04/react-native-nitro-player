@@ -455,4 +455,139 @@ open class HybridTrackPlayerSpec_cxx {
       return bridge.create_Result_bool_(__exceptionPtr)
     }
   }
+  
+  @inline(__always)
+  public final func updateTracks(tracks: bridge.std__vector_TrackItem_) -> bridge.Result_std__shared_ptr_Promise_void___ {
+    do {
+      let __result = try self.__implementation.updateTracks(tracks: tracks.map({ __item in __item }))
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_void__ in
+        let __promise = bridge.create_std__shared_ptr_Promise_void__()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_void__(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve() })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
+      }()
+      return bridge.create_Result_std__shared_ptr_Promise_void___(__resultCpp)
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_std__shared_ptr_Promise_void___(__exceptionPtr)
+    }
+  }
+  
+  @inline(__always)
+  public final func getTracksById(trackIds: bridge.std__vector_std__string_) -> bridge.Result_std__shared_ptr_Promise_std__vector_TrackItem____ {
+    do {
+      let __result = try self.__implementation.getTracksById(trackIds: trackIds.map({ __item in String(__item) }))
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_std__vector_TrackItem___ in
+        let __promise = bridge.create_std__shared_ptr_Promise_std__vector_TrackItem___()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_std__vector_TrackItem___(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve({ () -> bridge.std__vector_TrackItem_ in
+              var __vector = bridge.create_std__vector_TrackItem_(__result.count)
+              for __item in __result {
+                __vector.push_back(__item)
+              }
+              return __vector
+            }()) })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
+      }()
+      return bridge.create_Result_std__shared_ptr_Promise_std__vector_TrackItem____(__resultCpp)
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_std__shared_ptr_Promise_std__vector_TrackItem____(__exceptionPtr)
+    }
+  }
+  
+  @inline(__always)
+  public final func getTracksNeedingUrls() -> bridge.Result_std__shared_ptr_Promise_std__vector_TrackItem____ {
+    do {
+      let __result = try self.__implementation.getTracksNeedingUrls()
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_std__vector_TrackItem___ in
+        let __promise = bridge.create_std__shared_ptr_Promise_std__vector_TrackItem___()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_std__vector_TrackItem___(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve({ () -> bridge.std__vector_TrackItem_ in
+              var __vector = bridge.create_std__vector_TrackItem_(__result.count)
+              for __item in __result {
+                __vector.push_back(__item)
+              }
+              return __vector
+            }()) })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
+      }()
+      return bridge.create_Result_std__shared_ptr_Promise_std__vector_TrackItem____(__resultCpp)
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_std__shared_ptr_Promise_std__vector_TrackItem____(__exceptionPtr)
+    }
+  }
+  
+  @inline(__always)
+  public final func getNextTracks(count: Double) -> bridge.Result_std__shared_ptr_Promise_std__vector_TrackItem____ {
+    do {
+      let __result = try self.__implementation.getNextTracks(count: count)
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_std__vector_TrackItem___ in
+        let __promise = bridge.create_std__shared_ptr_Promise_std__vector_TrackItem___()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_std__vector_TrackItem___(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve({ () -> bridge.std__vector_TrackItem_ in
+              var __vector = bridge.create_std__vector_TrackItem_(__result.count)
+              for __item in __result {
+                __vector.push_back(__item)
+              }
+              return __vector
+            }()) })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
+      }()
+      return bridge.create_Result_std__shared_ptr_Promise_std__vector_TrackItem____(__resultCpp)
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_std__shared_ptr_Promise_std__vector_TrackItem____(__exceptionPtr)
+    }
+  }
+  
+  @inline(__always)
+  public final func getCurrentTrackIndex() -> bridge.Result_std__shared_ptr_Promise_double___ {
+    do {
+      let __result = try self.__implementation.getCurrentTrackIndex()
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_double__ in
+        let __promise = bridge.create_std__shared_ptr_Promise_double__()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_double__(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve(__result) })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
+      }()
+      return bridge.create_Result_std__shared_ptr_Promise_double___(__resultCpp)
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_std__shared_ptr_Promise_double___(__exceptionPtr)
+    }
+  }
+  
+  @inline(__always)
+  public final func onTracksNeedUpdate(callback: bridge.Func_void_std__vector_TrackItem__double) -> bridge.Result_void_ {
+    do {
+      try self.__implementation.onTracksNeedUpdate(callback: { () -> ([TrackItem], Double) -> Void in
+        let __wrappedFunction = bridge.wrap_Func_void_std__vector_TrackItem__double(callback)
+        return { (__tracks: [TrackItem], __lookahead: Double) -> Void in
+          __wrappedFunction.call({ () -> bridge.std__vector_TrackItem_ in
+            var __vector = bridge.create_std__vector_TrackItem_(__tracks.count)
+            for __item in __tracks {
+              __vector.push_back(__item)
+            }
+            return __vector
+          }(), __lookahead)
+        }
+      }())
+      return bridge.create_Result_void_()
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_void_(__exceptionPtr)
+    }
+  }
 }
