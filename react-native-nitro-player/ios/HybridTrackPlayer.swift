@@ -178,4 +178,18 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
       callback(tracks, Double(lookahead))
     }
   }
+  
+  func setPlaybackSpeed(speed: Double) throws -> Promise<Void> {
+    Promise.async{
+      self.core.setPlaybackSpeed(speed)
+    }
+    
+  }
+  
+  func getPlaybackSpeed() throws -> Promise<Double> {
+    return Promise.async{
+      return self.core.getPlaybackSpeed()
+    }
+    
+  }
 }

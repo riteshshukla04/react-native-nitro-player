@@ -50,6 +50,8 @@ npm install react-native-nitro-modules
 | `skipToNext()`              | Both     | Skips to the next track in the queue.                               |
 | `skipToPrevious()`          | Both     | Skips to the previous track.                                        |
 | `seek(position)`            | Both     | Seeks to a specific time position in seconds.                       |
+| `setPlaybackSpeed(speed)`   | Both     | **Async**. Sets playback speed (e.g. 0.5x, 1x, 1.5x, 2x).           |
+| `getPlaybackSpeed()`        | Both     | **Async**. Gets the current playback speed.                         |
 | `setVolume(0-100)`          | Both     | Sets playback volume (0-100).                                       |
 | `setRepeatMode(mode)`       | Both     | Sets repeat mode (`off`, `track`, `Playlist`).                      |
 | `addToUpNext(id)`           | Both     | **Async**. Adds a track to the "up next" queue (FIFO).              |

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -30,8 +30,20 @@ export default function PlayerScreen() {
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+  const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
+  const fetchPlaybackSpeed = async () => {
+    const current = await TrackPlayer.getPlaybackSpeed();
+    setPlaybackSpeed(current);
+  };
 
+  useEffect(() => {
+    fetchPlaybackSpeed();
+  }, []);
 
+  const setPlaybackSpeedState = (speed: number) => {
+    TrackPlayer.setPlaybackSpeed(speed);
+    fetchPlaybackSpeed();
+  };
   const [repeatMode, setRepeatModeState] = useState<RepeatMode>('off');
 
   const REPEAT_MODES: RepeatMode[] = ['off', 'track', 'Playlist'];
@@ -86,6 +98,10 @@ export default function PlayerScreen() {
             </View>
             <Text style={styles.timeText}>{formatTime(totalDuration)}</Text>
           </View>
+        </View>
+        <View style={commonStyles.section}>
+          <Text style={commonStyles.sectionTitle}>Playback Speed</Text>
+          <Text style={commonStyles.infoText}>{playbackSpeed}x</Text>
         </View>
 
         {/* Playback Controls */}
@@ -196,6 +212,33 @@ export default function PlayerScreen() {
               <Text style={commonStyles.buttonText}>-10s</Text>
             </TouchableOpacity>
           </View>
+        </View>
+
+        <View style={commonStyles.section}>
+          <Text style={commonStyles.sectionTitle}>Playback Speed</Text>
+          <View style={styles.playbackSpeedRow}>
+          <TouchableOpacity
+            style={commonStyles.smallButton}
+            onPress={() => setPlaybackSpeedState(1.5)}>
+            <Text style={commonStyles.buttonText}>1.5x</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={commonStyles.smallButton}
+            onPress={() => setPlaybackSpeedState(2)}>
+            <Text style={commonStyles.buttonText}>2x</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={commonStyles.smallButton}
+            onPress={() => setPlaybackSpeedState(0.5)}>
+            <Text style={commonStyles.buttonText}>0.5x</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={commonStyles.smallButton}
+            onPress={() => setPlaybackSpeedState(0)}>
+            <Text style={commonStyles.buttonText}>0x</Text>
+          </TouchableOpacity>
+          </View>
+          
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -319,5 +362,10 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     fontSize: 13,
     color: colors.textSecondary,
+  },
+  playbackSpeedRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
   },
 });

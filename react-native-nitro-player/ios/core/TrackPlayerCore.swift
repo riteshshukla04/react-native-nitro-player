@@ -575,6 +575,14 @@ class TrackPlayerCore: NSObject {
       }
     }
   }
+  
+  func setPlaybackSpeed(_ speed: Double) {
+    player?.rate = Float(speed)
+  }
+  
+  func getPlaybackSpeed() -> Double {
+    return Double(player?.rate ?? 1.0)
+  }
 
   private func loadPlaylistInternal(playlistId: String) {
     NitroPlayerLogger.log("TrackPlayerCore", "\n" + String(repeating: "🎼", count: Constants.playlistSeparatorLength))

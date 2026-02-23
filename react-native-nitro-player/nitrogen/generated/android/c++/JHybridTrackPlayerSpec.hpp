@@ -81,6 +81,8 @@ namespace margelo::nitro::nitroplayer {
     std::shared_ptr<Promise<std::vector<TrackItem>>> getNextTracks(double count) override;
     std::shared_ptr<Promise<double>> getCurrentTrackIndex() override;
     void onTracksNeedUpdate(const std::function<void(const std::vector<TrackItem>& /* tracks */, double /* lookahead */)>& callback) override;
+    std::shared_ptr<Promise<void>> setPlaybackSpeed(double speed) override;
+    std::shared_ptr<Promise<double>> getPlaybackSpeed() override;
 
   private:
     friend HybridBase;

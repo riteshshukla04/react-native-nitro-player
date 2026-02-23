@@ -154,6 +154,17 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
             core.getCurrentTrackIndex().toDouble()
         }
 
+    override fun setPlaybackSpeed(speed: Double): Promise<Unit> =
+        Promise.async {
+            core.setPlayBackSpeed(speed)
+            Unit
+        }
+
+    override fun getPlaybackSpeed(): Promise<Double> =
+        Promise.async {
+            core.getPlayBackSpeed()
+        }
+
     override fun onTracksNeedUpdate(callback: (tracks: Array<TrackItem>, lookahead: Double) -> Unit) {
         core.addOnTracksNeedUpdateListener { tracks, lookahead ->
             callback(tracks.toTypedArray(), lookahead.toDouble())

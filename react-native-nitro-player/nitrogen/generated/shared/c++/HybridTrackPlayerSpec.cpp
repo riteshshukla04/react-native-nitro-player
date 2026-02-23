@@ -41,6 +41,8 @@ namespace margelo::nitro::nitroplayer {
       prototype.registerHybridMethod("getNextTracks", &HybridTrackPlayerSpec::getNextTracks);
       prototype.registerHybridMethod("getCurrentTrackIndex", &HybridTrackPlayerSpec::getCurrentTrackIndex);
       prototype.registerHybridMethod("onTracksNeedUpdate", &HybridTrackPlayerSpec::onTracksNeedUpdate);
+      prototype.registerHybridMethod("setPlaybackSpeed", &HybridTrackPlayerSpec::setPlaybackSpeed);
+      prototype.registerHybridMethod("getPlaybackSpeed", &HybridTrackPlayerSpec::getPlaybackSpeed);
     });
   }
 

@@ -183,6 +183,14 @@ abstract class HybridTrackPlayerSpec: HybridObject() {
     val __result = onTracksNeedUpdate(callback)
     return __result
   }
+  
+  @DoNotStrip
+  @Keep
+  abstract fun setPlaybackSpeed(speed: Double): Promise<Unit>
+  
+  @DoNotStrip
+  @Keep
+  abstract fun getPlaybackSpeed(): Promise<Double>
 
   private external fun initHybrid(): HybridData
 

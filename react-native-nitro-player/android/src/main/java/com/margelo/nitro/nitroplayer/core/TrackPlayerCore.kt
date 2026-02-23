@@ -1515,11 +1515,15 @@ class TrackPlayerCore private constructor(
                             NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Skipping update for currently playing track: ${track.id} (preserves gapless)")
                             false
                         }
+
                         track.url.isEmpty() -> {
                             NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Skipping track with empty URL: ${track.id}")
                             false
                         }
-                        else -> true
+
+                        else -> {
+                            true
+                        }
                     }
                 }
 
@@ -1750,4 +1754,58 @@ class TrackPlayerCore private constructor(
             notifyTracksNeedUpdate(tracksNeedingUrls, lookahead)
         }
     }
+
+    fun setPlayBackSpeed(speed: Double) {
+        if (android.os.Looper.myLooper() == handler.looper) {
+            setPlayBackSpeedInternal(speed)
+            return
+        }
+        val latch = CountDownLatch(1)
+        handler.post {
+            try {
+                setPlayBackSpeedInternal(speed)
+            } finally {
+                latch.countDown()
+            }
+        }
+        try {
+            latch.await(5, TimeUnit.SECONDS)
+        } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt()
+        }
+    }
+
+    private fun setPlayBackSpeedInternal(speed: Double) {
+        if (::player.isInitialized) {
+            player.setPlaybackSpeed(speed.toFloat())
+        }
+    }
+
+    fun getPlayBackSpeed(): Double {
+        if (android.os.Looper.myLooper() == handler.looper) {
+            return getPlayBackSpeedInternal()
+        }
+        val latch = CountDownLatch(1)
+        var result = 1.0
+        handler.post {
+            try {
+                result = getPlayBackSpeedInternal()
+            } finally {
+                latch.countDown()
+            }
+        }
+        try {
+            latch.await(5, TimeUnit.SECONDS)
+        } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt()
+        }
+        return result
+    }
+
+    private fun getPlayBackSpeedInternal(): Double =
+        if (::player.isInitialized) {
+            player.playbackParameters.speed.toDouble()
+        } else {
+            1.0
+        }
 }

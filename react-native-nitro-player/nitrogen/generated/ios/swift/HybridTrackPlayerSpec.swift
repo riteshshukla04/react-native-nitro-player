@@ -41,6 +41,8 @@ public protocol HybridTrackPlayerSpec_protocol: HybridObject {
   func getNextTracks(count: Double) throws -> Promise<[TrackItem]>
   func getCurrentTrackIndex() throws -> Promise<Double>
   func onTracksNeedUpdate(callback: @escaping (_ tracks: [TrackItem], _ lookahead: Double) -> Void) throws -> Void
+  func setPlaybackSpeed(speed: Double) throws -> Promise<Void>
+  func getPlaybackSpeed() throws -> Promise<Double>
 }
 
 public extension HybridTrackPlayerSpec_protocol {

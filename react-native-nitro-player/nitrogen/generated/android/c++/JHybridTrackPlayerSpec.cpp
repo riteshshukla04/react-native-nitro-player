@@ -383,5 +383,36 @@ namespace margelo::nitro::nitroplayer {
     static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_std__vector_TrackItem__double::javaobject> /* callback */)>("onTracksNeedUpdate_cxx");
     method(_javaPart, JFunc_void_std__vector_TrackItem__double_cxx::fromCpp(callback));
   }
+  std::shared_ptr<Promise<void>> JHybridTrackPlayerSpec::setPlaybackSpeed(double speed) {
+    static const auto method = javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(double /* speed */)>("setPlaybackSpeed");
+    auto __result = method(_javaPart, speed);
+    return [&]() {
+      auto __promise = Promise<void>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& /* unit */) {
+        __promise->resolve();
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
+  }
+  std::shared_ptr<Promise<double>> JHybridTrackPlayerSpec::getPlaybackSpeed() {
+    static const auto method = javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>()>("getPlaybackSpeed");
+    auto __result = method(_javaPart);
+    return [&]() {
+      auto __promise = Promise<double>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {
+        auto __result = jni::static_ref_cast<jni::JDouble>(__boxedResult);
+        __promise->resolve(__result->value());
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
+  }
 
 } // namespace margelo::nitro::nitroplayer

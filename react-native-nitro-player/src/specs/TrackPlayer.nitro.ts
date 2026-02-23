@@ -129,5 +129,19 @@ export interface TrackPlayer
    * Useful for proactive URL resolution in Android Auto/CarPlay
    * @param callback Function called with tracks needing URLs and lookahead count
    */
-  onTracksNeedUpdate(callback: (tracks: TrackItem[], lookahead: number) => void): void
+  onTracksNeedUpdate(
+    callback: (tracks: TrackItem[], lookahead: number) => void
+  ): void
+
+  /**
+   * Get the current track index in the active playlist
+   * @returns Promise resolving to 0-based index, or -1 if no track playing
+   */
+  setPlaybackSpeed(speed: number): Promise<void>
+
+  /**
+   * Get the current playback speed
+   * @returns Promise resolving to playback speed
+   */
+  getPlaybackSpeed(): Promise<number>
 }

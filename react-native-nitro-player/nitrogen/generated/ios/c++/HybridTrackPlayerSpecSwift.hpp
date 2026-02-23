@@ -279,6 +279,22 @@ namespace margelo::nitro::nitroplayer {
         std::rethrow_exception(__result.error());
       }
     }
+    inline std::shared_ptr<Promise<void>> setPlaybackSpeed(double speed) override {
+      auto __result = _swiftPart.setPlaybackSpeed(std::forward<decltype(speed)>(speed));
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline std::shared_ptr<Promise<double>> getPlaybackSpeed() override {
+      auto __result = _swiftPart.getPlaybackSpeed();
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
 
   private:
     NitroPlayer::HybridTrackPlayerSpec_cxx _swiftPart;

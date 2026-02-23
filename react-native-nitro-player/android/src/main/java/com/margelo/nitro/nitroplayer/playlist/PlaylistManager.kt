@@ -316,9 +316,10 @@ class PlaylistManager private constructor(
             playlists.forEach { (playlistId, playlist) ->
                 var updateCount = 0
                 val newTracks =
-                    playlist.tracks.map { track ->
-                        tracksMap[track.id]?.also { updateCount++ } ?: track
-                    }.toMutableList()
+                    playlist.tracks
+                        .map { track ->
+                            tracksMap[track.id]?.also { updateCount++ } ?: track
+                        }.toMutableList()
 
                 if (updateCount > 0) {
                     affectedPlaylists[playlistId] = updateCount

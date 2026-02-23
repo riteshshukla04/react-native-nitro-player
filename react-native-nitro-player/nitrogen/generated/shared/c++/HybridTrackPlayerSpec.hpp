@@ -96,6 +96,8 @@ namespace margelo::nitro::nitroplayer {
       virtual std::shared_ptr<Promise<std::vector<TrackItem>>> getNextTracks(double count) = 0;
       virtual std::shared_ptr<Promise<double>> getCurrentTrackIndex() = 0;
       virtual void onTracksNeedUpdate(const std::function<void(const std::vector<TrackItem>& /* tracks */, double /* lookahead */)>& callback) = 0;
+      virtual std::shared_ptr<Promise<void>> setPlaybackSpeed(double speed) = 0;
+      virtual std::shared_ptr<Promise<double>> getPlaybackSpeed() = 0;
 
     protected:
       // Hybrid Setup

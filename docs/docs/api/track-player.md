@@ -63,6 +63,24 @@ Seeks to a specific time position in seconds.
 TrackPlayer.seek(30) // Seek to 30 seconds
 ```
 
+### `setPlaybackSpeed(speed)`
+
+Sets the playback speed multiplier.
+- **speed**: `number` (e.g. `0.5`, `1`, `1.5`, `2`)
+
+```typescript
+await TrackPlayer.setPlaybackSpeed(1.5) // 1.5x speed
+```
+
+### `getPlaybackSpeed()`
+
+Gets the current playback speed multiplier.
+- **Returns**: `Promise<number>`
+
+```typescript
+const speed = await TrackPlayer.getPlaybackSpeed() // e.g. 1, 1.5, 2
+```
+
 ### `setVolume(volume)`
 
 Sets the playback volume (0-100).
