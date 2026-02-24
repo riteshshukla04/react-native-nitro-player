@@ -130,6 +130,40 @@ repositories {
 
 
 def media3_version = "1.9.0"
+def nitro_version = "0.33.7"
+
+def compareSemver(String a, String b) {
+  def parse = { v ->
+    def parts = v.replaceAll(/-.*$/, "").tokenize(".")
+    return [parts[0].toInteger(), (parts.size() > 1 ? parts[1] : "0").toInteger(), (parts.size() > 2 ? parts[2] : "0").toInteger()]
+  }
+  def pa = parse(a)
+  def pb = parse(b)
+  for (int i = 0; i < 3; i++) {
+    if (pa[i] != pb[i]) return pa[i] < pb[i] ? -1 : 1
+  }
+  return 0
+}
+
+def getNitroModulesVersion() {
+    
+    def nitroModulesPackage = file(providers.exec {
+        workingDir(rootDir)
+        commandLine("node", "--print", "require.resolve('react-native-nitro-modules/package.json')")
+    }.standardOutput.asText.get().trim())
+    if (nitroModulesPackage.exists()) {
+        return new groovy.json.JsonSlurper().parseText(nitroModulesPackage.text).version
+    }
+
+    throw new GradleException("[NitroPlayer] Unable to resolve react-native-nitro-modules location in node_modules. Nitro Player requires react-native-nitro-modules to be installed")
+}
+
+def installedNitroVersion = getNitroModulesVersion()
+if (compareSemver(installedNitroVersion, nitro_version) < 0) {
+    throw new GradleException("[NitroPlayer] react-native-nitro-player requires react-native-nitro-modules version ${nitro_version} or higher. Please upgrade")
+}
+
+
 dependencies {
   // For < 0.71, this will be from the local maven repo
   // For > 0.71, this will be replaced by `com.facebook.react:react-android:$version` by react gradle plugin
