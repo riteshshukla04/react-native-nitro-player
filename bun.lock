@@ -18,7 +18,7 @@
     },
     "example": {
       "name": "example",
-      "version": "0.5.5",
+      "version": "0.5.8",
       "dependencies": {
         "@react-native-harness/platform-android": "^1.0.0-alpha.21",
         "@react-native-harness/platform-apple": "^1.0.0-alpha.21",
@@ -29,7 +29,7 @@
         "react-native": "0.82.1",
         "react-native-audio-pro": "^10.1.2",
         "react-native-harness": "^1.0.0-alpha.21",
-        "react-native-nitro-modules": "^0.33.7",
+        "react-native-nitro-modules": "^0.34.1",
         "react-native-nitro-player": "../react-native-nitro-player",
         "react-native-safe-area-context": "^5.6.2",
         "react-native-screens": "^4.19.0",
@@ -57,7 +57,7 @@
     },
     "react-native-nitro-player": {
       "name": "react-native-nitro-player",
-      "version": "0.5.5",
+      "version": "0.5.8",
       "devDependencies": {
         "@react-native/eslint-config": "0.82.0",
         "@release-it-plugins/workspaces": "^5.0.3",
@@ -71,7 +71,7 @@
         "prettier": "^3.3.3",
         "react": "19.1.1",
         "react-native": "0.82.0",
-        "react-native-nitro-modules": "*",
+        "react-native-nitro-modules": "^0.34.1",
         "release-it": "^19.0.4",
         "typescript": "^5.8.3",
       },
@@ -1721,7 +1721,7 @@
 
     "react-native-harness": ["react-native-harness@1.0.0-alpha.21", "", { "dependencies": { "@react-native-harness/babel-preset": "1.0.0-alpha.21", "@react-native-harness/cli": "1.0.0-alpha.21", "@react-native-harness/jest": "1.0.0-alpha.21", "@react-native-harness/metro": "1.0.0-alpha.21", "@react-native-harness/runtime": "1.0.0-alpha.21", "tslib": "^2.3.0" }, "bin": { "react-native-harness": "bin.js" } }, "sha512-HasDD5vEf71aX2Y9J14vj4yZVIUTAEOWMQpQ6QBzSvh/1xP0Oo8SCHMWU/VENkEO7/MOvCAVqqIQcsKUfm+6Hw=="],
 
-    "react-native-nitro-modules": ["react-native-nitro-modules@0.33.7", "", { "peerDependencies": { "react": "*", "react-native": "*" } }, "sha512-WepMobWe4j1Ae5GQ5RxYGBdBpJBwzP6zaOxJ7r6nhbY5iyl01DL3Gsh4gk8edzNFRuAh1rvXDAHIipq8SahxeQ=="],
+    "react-native-nitro-modules": ["react-native-nitro-modules@0.34.1", "", { "peerDependencies": { "react": "*", "react-native": "*" } }, "sha512-ga6MBmG5CXBJ69d7BXXOMZ4sI3mEz6Q5pOjV1lyWEV60B/Ma/zGJGBNowsix1wx74zQEvq7gf+O0ovgazE4IKA=="],
 
     "react-native-nitro-player": ["react-native-nitro-player@workspace:react-native-nitro-player"],
 
