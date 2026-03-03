@@ -12,6 +12,7 @@
     "player": "bun --cwd react-native-nitro-player",
     "specs": "bun player specs",
     "example": "bun --cwd example",
+    "link": "bun link --cwd react-native-nitro-player",
     "lint": "eslint \"**/*.{js,ts,tsx}\" --ignore-path .eslintignore",
     "lint:fix": "eslint \"**/*.{js,ts,tsx}\" --fix --ignore-path .eslintignore",
     "lint:ci": "eslint \"**/*.{js,ts,tsx}\" -f @jamesacarr/eslint-formatter-github-actions --ignore-path .eslintignore",
