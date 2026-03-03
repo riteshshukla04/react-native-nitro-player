@@ -14,7 +14,7 @@ import ObjectiveC
 class TrackPlayerCore: NSObject {
   // MARK: - Constants
 
-  private enum Constants {
+  enum Constants {
     // Time thresholds (in seconds)
     static let skipToPreviousThreshold: Double = 2.0
     static let stateChangeDelay: TimeInterval = 0.1
@@ -41,13 +41,15 @@ class TrackPlayerCore: NSObject {
   }
 
   // MARK: - Properties
+  var player: AVQueuePlayer?
 
-  private var player: AVQueuePlayer?
-  private let playlistManager = PlaylistManager.shared
+  var currentPlaylistId: String?
+  var currentTrackIndex: Int = -1
+  var currentTracks: [TrackItem] = []
+
+  let playlistManager = PlaylistManager.shared
+
   private var mediaSessionManager: MediaSessionManager?
-  private var currentPlaylistId: String?
-  private var currentTrackIndex: Int = -1
-  private var currentTracks: [TrackItem] = []
   private var isManuallySeeked = false
   private var currentRepeatMode: RepeatMode = .off
   private var lookaheadCount: Int = 5  // Number of tracks to preload ahead
@@ -55,7 +57,7 @@ class TrackPlayerCore: NSObject {
   private var currentItemObservers: [NSKeyValueObservation] = []
 
   // Gapless playback: Cache for preloaded assets
-  private var preloadedAssets: [String: AVURLAsset] = [:]
+  var preloadedAssets: [String: AVURLAsset] = [:]
   private let preloadQueue = DispatchQueue(label: "com.nitroplayer.preload", qos: .utility)
 
   // Temporary tracks for addToUpNext and playNext
@@ -679,7 +681,7 @@ class TrackPlayerCore: NSObject {
   // MARK: - Gapless Playback Helpers
 
   /// Creates a gapless-optimized AVPlayerItem with proper buffering configuration
-  private func createGaplessPlayerItem(for track: TrackItem, isPreload: Bool = false)
+  func createGaplessPlayerItem(for track: TrackItem, isPreload: Bool = false)
     -> AVPlayerItem?
   {
     // Get effective URL - uses local path if downloaded, otherwise remote URL
@@ -773,7 +775,7 @@ class TrackPlayerCore: NSObject {
   }
 
   /// Preloads assets for upcoming tracks to enable gapless playback
-  private func preloadUpcomingTracks(from startIndex: Int) {
+  func preloadUpcomingTracks(from startIndex: Int) {
     preloadQueue.async { [weak self] in
       guard let self = self else { return }
 
@@ -818,7 +820,7 @@ class TrackPlayerCore: NSObject {
   }
 
   /// Clears preloaded assets that are no longer needed
-  private func cleanupPreloadedAssets(keepingFrom currentIndex: Int) {
+  func cleanupPreloadedAssets(keepingFrom currentIndex: Int) {
     preloadQueue.async { [weak self] in
       guard let self = self else { return }
 
@@ -1116,7 +1118,7 @@ class TrackPlayerCore: NSObject {
     }
   }
 
-  private func getActualQueueInternal() -> [TrackItem] {
+  func getActualQueueInternal() -> [TrackItem] {
     var queue: [TrackItem] = []
     queue.reserveCapacity(currentTracks.count + playNextStack.count + upNextQueue.count)
 
@@ -1831,7 +1833,7 @@ class TrackPlayerCore: NSObject {
    * Rebuild the AVQueuePlayer from current position with temporary tracks
    * Order: [current] + [playNext stack reversed] + [upNext queue] + [remaining original]
    */
-  private func rebuildAVQueueFromCurrentPosition() {
+  func rebuildAVQueueFromCurrentPosition() {
     guard let player = self.player else { return }
 
     let currentItem = player.currentItem

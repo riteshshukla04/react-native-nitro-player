@@ -151,7 +151,7 @@ extension TrackPlayerCore {
     }
   }
 
-  private func getTracksNeedingUrlsInternal() -> [TrackItem] {
+  fileprivate func getTracksNeedingUrlsInternal() -> [TrackItem] {
     guard let currentId = currentPlaylistId,
       let playlist = playlistManager.getPlaylist(playlistId: currentId)
     else {

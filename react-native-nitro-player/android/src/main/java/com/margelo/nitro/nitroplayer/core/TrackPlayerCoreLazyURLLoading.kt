@@ -130,7 +130,7 @@ fun TrackPlayerCore.getTracksNeedingUrls(): List<TrackItem> {
     return result ?: emptyList()
 }
 
-private fun TrackPlayerCore.getTracksNeedingUrlsInternal(): List<TrackItem> {
+internal fun TrackPlayerCore.getTracksNeedingUrlsInternal(): List<TrackItem> {
     if (currentPlaylistId == null) return emptyList()
 
     val playlist = playlistManager.getPlaylist(currentPlaylistId!!)
@@ -165,7 +165,7 @@ fun TrackPlayerCore.getNextTracks(count: Int): List<TrackItem> {
     return result ?: emptyList()
 }
 
-private fun TrackPlayerCore.getNextTracksInternal(count: Int): List<TrackItem> {
+internal fun TrackPlayerCore.getNextTracksInternal(count: Int): List<TrackItem> {
     val actualQueue = getActualQueueInternal()
     if (actualQueue.isEmpty()) return emptyList()
 
@@ -232,7 +232,7 @@ fun TrackPlayerCore.removeOnTracksNeedUpdateListener(listener: OnTracksNeedUpdat
  * Notify listeners that tracks need updating.
  * Called internally when moving to next track and upcoming tracks have empty URLs.
  */
-private fun TrackPlayerCore.notifyTracksNeedUpdate(
+internal fun TrackPlayerCore.notifyTracksNeedUpdate(
     tracks: List<TrackItem>,
     lookahead: Int,
 ) {
