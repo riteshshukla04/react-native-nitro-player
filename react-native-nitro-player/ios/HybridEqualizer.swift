@@ -95,17 +95,17 @@ final class HybridEqualizer: HybridEqualizerSpec {
   // MARK: - Event Callbacks
 
   func onEnabledChange(callback: @escaping (Bool) -> Void) throws {
-    print("🎯 HybridEqualizer: onEnabledChange callback registered")
+    NitroPlayerLogger.log("HybridEqualizer", "onEnabledChange callback registered")
     core.addOnEnabledChangeListener(owner: self, callback)
   }
 
   func onBandChange(callback: @escaping ([EqualizerBand]) -> Void) throws {
-    print("🎯 HybridEqualizer: onBandChange callback registered")
+    NitroPlayerLogger.log("HybridEqualizer", "onBandChange callback registered")
     core.addOnBandChangeListener(owner: self, callback)
   }
 
   func onPresetChange(callback: @escaping (Variant_NullType_String?) -> Void) throws {
-    print("🎯 HybridEqualizer: onPresetChange callback registered")
+    NitroPlayerLogger.log("HybridEqualizer", "onPresetChange callback registered")
     core.addOnPresetChangeListener(owner: self, callback)
   }
 }

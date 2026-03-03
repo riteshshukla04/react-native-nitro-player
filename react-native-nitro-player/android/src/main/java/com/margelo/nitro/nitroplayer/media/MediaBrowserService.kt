@@ -10,6 +10,7 @@ import android.support.v4.media.MediaDescriptionCompat
 import androidx.media.MediaBrowserServiceCompat
 import androidx.media.utils.MediaConstants
 import com.margelo.nitro.nitroplayer.TrackItem
+import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
 import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
 import com.margelo.nitro.nitroplayer.playlist.Playlist
 import kotlinx.coroutines.CoroutineScope
@@ -53,23 +54,23 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
                 sessionToken =
                     android.support.v4.media.session.MediaSessionCompat.Token
                         .fromToken(session.platformToken)
-                println("🎵 NitroPlayerMediaBrowserService: MediaSession token set successfully")
+                NitroPlayerLogger.log("MediaBrowserService", "🎵 NitroPlayerMediaBrowserService: MediaSession token set successfully")
             } else {
-                println("⚠️ NitroPlayerMediaBrowserService: MediaSession not available yet")
+                NitroPlayerLogger.log("MediaBrowserService", "⚠️ NitroPlayerMediaBrowserService: MediaSession not available yet")
             }
         } catch (e: Exception) {
-            println("❌ NitroPlayerMediaBrowserService: Error setting session token - ${e.message}")
+            NitroPlayerLogger.log("MediaBrowserService", "❌ NitroPlayerMediaBrowserService: Error setting session token - ${e.message}")
             e.printStackTrace()
         }
 
-        println("🚀 NitroPlayerMediaBrowserService: Service created")
+        NitroPlayerLogger.log("MediaBrowserService", "🚀 NitroPlayerMediaBrowserService: Service created")
     }
 
     override fun onDestroy() {
         super.onDestroy()
         instance = null
         serviceScope.cancel()
-        println("🛑 NitroPlayerMediaBrowserService: Service destroyed")
+        NitroPlayerLogger.log("MediaBrowserService", "🛑 NitroPlayerMediaBrowserService: Service destroyed")
     }
 
     override fun onGetRoot(
@@ -77,11 +78,11 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
         clientUid: Int,
         rootHints: Bundle?,
     ): BrowserRoot? {
-        println("📂 NitroPlayerMediaBrowserService: onGetRoot called from $clientPackageName")
+        NitroPlayerLogger.log("MediaBrowserService", "📂 NitroPlayerMediaBrowserService: onGetRoot called from $clientPackageName")
 
         // Check if Android Auto is enabled
         if (!isAndroidAutoEnabled) {
-            println("⚠️ NitroPlayerMediaBrowserService: Android Auto not enabled")
+            NitroPlayerLogger.log("MediaBrowserService", "⚠️ NitroPlayerMediaBrowserService: Android Auto not enabled")
             return BrowserRoot(EMPTY_ROOT_ID, null)
         }
 
@@ -94,7 +95,7 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
                     MediaConstants.DESCRIPTION_EXTRAS_VALUE_CONTENT_STYLE_GRID_ITEM,
                 )
             }
-        println("✅ NitroPlayerMediaBrowserService: Allowing connection from $clientPackageName with grid layout")
+        NitroPlayerLogger.log("MediaBrowserService", "✅ NitroPlayerMediaBrowserService: Allowing connection from $clientPackageName with grid layout")
         return BrowserRoot(ROOT_ID, extras)
     }
 
@@ -102,10 +103,10 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
         parentId: String,
         result: Result<MutableList<MediaBrowserCompat.MediaItem>>,
     ) {
-        println("📂 NitroPlayerMediaBrowserService: onLoadChildren called for parentId: $parentId")
+        NitroPlayerLogger.log("MediaBrowserService", "📂 NitroPlayerMediaBrowserService: onLoadChildren called for parentId: $parentId")
 
         if (!isAndroidAutoEnabled) {
-            println("⚠️ NitroPlayerMediaBrowserService: Android Auto not enabled, returning empty")
+            NitroPlayerLogger.log("MediaBrowserService", "⚠️ NitroPlayerMediaBrowserService: Android Auto not enabled, returning empty")
             result.sendResult(mutableListOf())
             return
         }
@@ -121,7 +122,7 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
 
                         if (library == null) {
                             // Fallback: show playlists if no media library is set
-                            println("⚠️ NitroPlayerMediaBrowserService: No media library set, using fallback playlists")
+                            NitroPlayerLogger.log("MediaBrowserService", "⚠️ NitroPlayerMediaBrowserService: No media library set, using fallback playlists")
                             val mediaItems = loadFallbackPlaylists()
                             result.sendResult(mediaItems)
                             return@launch
@@ -133,10 +134,10 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
                             mediaItems.add(convertToMediaBrowserItem(item, library.layoutType))
                         }
 
-                        println("✅ NitroPlayerMediaBrowserService: Returning ${mediaItems.size} root items")
+                        NitroPlayerLogger.log("MediaBrowserService", "✅ NitroPlayerMediaBrowserService: Returning ${mediaItems.size} root items")
                         result.sendResult(mediaItems)
                     } catch (e: Exception) {
-                        println("❌ NitroPlayerMediaBrowserService: Error loading root items - ${e.message}")
+                        NitroPlayerLogger.log("MediaBrowserService", "❌ NitroPlayerMediaBrowserService: Error loading root items - ${e.message}")
                         e.printStackTrace()
                         result.sendResult(mutableListOf())
                     }
@@ -154,7 +155,7 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
                         val playlist = trackPlayerCore?.getPlaylistManager()?.getPlaylist(playlistId)
 
                         if (playlist == null) {
-                            println("⚠️ NitroPlayerMediaBrowserService: Playlist '$playlistId' not found")
+                            NitroPlayerLogger.log("MediaBrowserService", "⚠️ NitroPlayerMediaBrowserService: Playlist '$playlistId' not found")
                             result.sendResult(mutableListOf())
                             return@launch
                         }
@@ -188,10 +189,10 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
                             )
                         }
 
-                        println("✅ NitroPlayerMediaBrowserService: Returning ${mediaItems.size} tracks from playlist '$playlistId'")
+                        NitroPlayerLogger.log("MediaBrowserService", "✅ NitroPlayerMediaBrowserService: Returning ${mediaItems.size} tracks from playlist '$playlistId'")
                         result.sendResult(mediaItems)
                     } catch (e: Exception) {
-                        println("❌ NitroPlayerMediaBrowserService: Error loading playlist tracks - ${e.message}")
+                        NitroPlayerLogger.log("MediaBrowserService", "❌ NitroPlayerMediaBrowserService: Error loading playlist tracks - ${e.message}")
                         e.printStackTrace()
                         result.sendResult(mutableListOf())
                     }
@@ -211,7 +212,7 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
                         val children = mediaLibraryManager.getChildrenById(parentId)
 
                         if (children == null) {
-                            println("⚠️ NitroPlayerMediaBrowserService: No children found for parentId: $parentId")
+                            NitroPlayerLogger.log("MediaBrowserService", "⚠️ NitroPlayerMediaBrowserService: No children found for parentId: $parentId")
                             result.sendResult(mutableListOf())
                             return@launch
                         }
@@ -224,10 +225,10 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
                                     convertToMediaBrowserItem(item, defaultLayout)
                                 }.toMutableList()
 
-                        println("✅ NitroPlayerMediaBrowserService: Returning ${mediaItems.size} items for parentId: $parentId")
+                        NitroPlayerLogger.log("MediaBrowserService", "✅ NitroPlayerMediaBrowserService: Returning ${mediaItems.size} items for parentId: $parentId")
                         result.sendResult(mediaItems)
                     } catch (e: Exception) {
-                        println("❌ NitroPlayerMediaBrowserService: Error loading children - ${e.message}")
+                        NitroPlayerLogger.log("MediaBrowserService", "❌ NitroPlayerMediaBrowserService: Error loading children - ${e.message}")
                         e.printStackTrace()
                         result.sendResult(mutableListOf())
                     }
@@ -239,18 +240,18 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
     fun onPlaylistsUpdated() {
         try {
             notifyChildrenChanged(ROOT_ID)
-            println("📢 NitroPlayerMediaBrowserService: Notified Android Auto of playlist update")
+            NitroPlayerLogger.log("MediaBrowserService", "📢 NitroPlayerMediaBrowserService: Notified Android Auto of playlist update")
         } catch (e: Exception) {
-            println("⚠️ NitroPlayerMediaBrowserService: Error notifying children changed: ${e.message}")
+            NitroPlayerLogger.log("MediaBrowserService", "⚠️ NitroPlayerMediaBrowserService: Error notifying children changed: ${e.message}")
         }
     }
 
     fun onPlaylistUpdated(playlistId: String) {
         try {
             notifyChildrenChanged("$PLAYLIST_PREFIX$playlistId")
-            println("📢 NitroPlayerMediaBrowserService: Notified Android Auto of playlist '$playlistId' update")
+            NitroPlayerLogger.log("MediaBrowserService", "📢 NitroPlayerMediaBrowserService: Notified Android Auto of playlist '$playlistId' update")
         } catch (e: Exception) {
-            println("⚠️ NitroPlayerMediaBrowserService: Error notifying playlist changed: ${e.message}")
+            NitroPlayerLogger.log("MediaBrowserService", "⚠️ NitroPlayerMediaBrowserService: Error notifying playlist changed: ${e.message}")
         }
     }
 
@@ -348,7 +349,7 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
             )
         }
 
-        println("✅ NitroPlayerMediaBrowserService: Loaded ${mediaItems.size} playlists as fallback")
+        NitroPlayerLogger.log("MediaBrowserService", "✅ NitroPlayerMediaBrowserService: Loaded ${mediaItems.size} playlists as fallback")
         return mediaItems
     }
 }

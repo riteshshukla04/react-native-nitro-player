@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -25,20 +25,44 @@ export default function PlayerScreen() {
   const { state: playbackState } = useOnPlaybackStateChange();
   const { position: playbackPosition, totalDuration } =
     useOnPlaybackProgressChange();
-  const [repeatMode, setRepeatMode] = useState<RepeatMode>('off');
-
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+  const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
+  const fetchPlaybackSpeed = async () => {
+    const current = await TrackPlayer.getPlaybackSpeed();
+    setPlaybackSpeed(current);
+  };
+
+  useEffect(() => {
+    fetchPlaybackSpeed();
+  }, []);
+
+  const setPlaybackSpeedState = (speed: number) => {
+    TrackPlayer.setPlaybackSpeed(speed);
+    fetchPlaybackSpeed();
+  };
+  const [repeatMode, setRepeatModeState] = useState<RepeatMode>('off');
+
+  const REPEAT_MODES: RepeatMode[] = ['off', 'track', 'Playlist'];
+  const REPEAT_LABELS: Record<RepeatMode, string> = {
+    off: '🚫 Off',
+    track: '🔂 Track',
+    Playlist: '🔁 Playlist',
+  };
 
   const cycleRepeatMode = () => {
-    const modes: RepeatMode[] = ['off', 'Playlist', 'track'];
-    const currentIndex = modes.indexOf(repeatMode);
-    const nextMode = modes[(currentIndex + 1) % modes.length];
-    setRepeatMode(nextMode);
-    TrackPlayer.setRepeatMode(nextMode);
+    const nextIndex = (REPEAT_MODES.indexOf(repeatMode) + 1) % REPEAT_MODES.length;
+    const next = REPEAT_MODES[nextIndex];
+    TrackPlayer.setRepeatMode(next);
+    setRepeatModeState(next);
+  };
+
+  const fetchRepeatMode = async () => {
+    const current = TrackPlayer.getRepeatMode();
+    setRepeatModeState(current);
   };
 
   return (
@@ -75,6 +99,10 @@ export default function PlayerScreen() {
             <Text style={styles.timeText}>{formatTime(totalDuration)}</Text>
           </View>
         </View>
+        <View style={commonStyles.section}>
+          <Text style={commonStyles.sectionTitle}>Playback Speed</Text>
+          <Text style={commonStyles.infoText}>{playbackSpeed}x</Text>
+        </View>
 
         {/* Playback Controls */}
         <View style={commonStyles.section}>
@@ -104,9 +132,12 @@ export default function PlayerScreen() {
           </View>
           <View style={styles.secondaryControls}>
             <TouchableOpacity
-              style={commonStyles.smallButton}
+              style={[
+                commonStyles.smallButton,
+                repeatMode !== 'off' && styles.repeatActiveButton,
+              ]}
               onPress={cycleRepeatMode}>
-              <Text style={commonStyles.buttonText}>🔁 {repeatMode}</Text>
+              <Text style={commonStyles.buttonText}>{REPEAT_LABELS[repeatMode]}</Text>
             </TouchableOpacity>
             {Platform.OS === 'ios' && (
               <TouchableOpacity
@@ -122,6 +153,41 @@ export default function PlayerScreen() {
               </TouchableOpacity>
             )}
           </View>
+        </View>
+
+        {/* Repeat Mode */}
+        <View style={commonStyles.section}>
+          <Text style={commonStyles.sectionTitle}>Repeat Mode</Text>
+          <View style={styles.repeatRow}>
+            {REPEAT_MODES.map(mode => (
+              <TouchableOpacity
+                key={mode}
+                style={[
+                  styles.repeatModeButton,
+                  repeatMode === mode && styles.repeatModeButtonActive,
+                ]}
+                onPress={() => {
+                  TrackPlayer.setRepeatMode(mode);
+                  setRepeatModeState(mode);
+                }}>
+                <Text
+                  style={[
+                    styles.repeatModeText,
+                    repeatMode === mode && styles.repeatModeTextActive,
+                  ]}>
+                  {REPEAT_LABELS[mode]}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <TouchableOpacity
+            style={[commonStyles.smallButton, { alignSelf: 'center', marginTop: spacing.sm }]}
+            onPress={fetchRepeatMode}>
+            <Text style={commonStyles.buttonText}>🔍 Get Repeat Mode</Text>
+          </TouchableOpacity>
+          <Text style={styles.repeatStatus}>
+            Current: {REPEAT_LABELS[repeatMode]}
+          </Text>
         </View>
 
         {/* Seek Controls */}
@@ -146,6 +212,33 @@ export default function PlayerScreen() {
               <Text style={commonStyles.buttonText}>-10s</Text>
             </TouchableOpacity>
           </View>
+        </View>
+
+        <View style={commonStyles.section}>
+          <Text style={commonStyles.sectionTitle}>Playback Speed</Text>
+          <View style={styles.playbackSpeedRow}>
+          <TouchableOpacity
+            style={commonStyles.smallButton}
+            onPress={() => setPlaybackSpeedState(1.5)}>
+            <Text style={commonStyles.buttonText}>1.5x</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={commonStyles.smallButton}
+            onPress={() => setPlaybackSpeedState(2)}>
+            <Text style={commonStyles.buttonText}>2x</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={commonStyles.smallButton}
+            onPress={() => setPlaybackSpeedState(0.5)}>
+            <Text style={commonStyles.buttonText}>0.5x</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={commonStyles.smallButton}
+            onPress={() => setPlaybackSpeedState(0)}>
+            <Text style={commonStyles.buttonText}>0x</Text>
+          </TouchableOpacity>
+          </View>
+          
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -233,5 +326,46 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderRadius: borderRadius.md,
     alignItems: 'center',
+  },
+  repeatActiveButton: {
+    backgroundColor: colors.primary,
+  },
+  repeatRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  repeatModeButton: {
+    flex: 1,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.cardBackground,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  repeatModeButtonActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  repeatModeText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  repeatModeTextActive: {
+    color: colors.text,
+    fontWeight: '700',
+  },
+  repeatStatus: {
+    textAlign: 'center',
+    marginTop: spacing.sm,
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  playbackSpeedRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
   },
 });

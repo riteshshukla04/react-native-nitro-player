@@ -56,53 +56,142 @@ final class DownloadFileManager {
 
   func saveDownloadedFile(
     from temporaryLocation: URL, trackId: String, storageLocation: StorageLocation,
-    originalURL: String? = nil
+    originalURL: String? = nil,
+    suggestedFilename: String? = nil,
+    httpResponse: HTTPURLResponse? = nil
   ) -> String? {
-    print("🎯 DownloadFileManager: saveDownloadedFile called for trackId=\(trackId)")
-    print("   From: \(temporaryLocation.path)")
-    print("   Original URL: \(originalURL ?? "nil")")
+    NitroPlayerLogger.log("DownloadFileManager", "saveDownloadedFile called for trackId=\(trackId)")
+    NitroPlayerLogger.log("DownloadFileManager", "   From: \(temporaryLocation.path)")
+    NitroPlayerLogger.log("DownloadFileManager", "   Original URL: \(originalURL ?? "nil")")
+    NitroPlayerLogger.log("DownloadFileManager", "   Suggested Filename: \(suggestedFilename ?? "nil")")
 
     let destinationDirectory =
       storageLocation == .private ? privateDownloadsDirectory : publicDownloadsDirectory
-    print("   Destination directory: \(destinationDirectory.path)")
+    NitroPlayerLogger.log("DownloadFileManager", "   Destination directory: \(destinationDirectory.path)")
 
-    // Determine file extension from the original URL, not the temp file
-    // The temp file has .tmp extension which AVPlayer cannot play
-    var fileExtension = "mp3"  // Default fallback
-    if let originalURL = originalURL, let url = URL(string: originalURL) {
-      let pathExtension = url.pathExtension.lowercased()
-      if !pathExtension.isEmpty {
-        fileExtension = pathExtension
-      }
-    }
-    print("   File extension: \(fileExtension)")
+    // Determine file extension using headers first, then URL path, then default
+    let fileExtension = Self.resolveFileExtension(
+      httpResponse: httpResponse,
+      suggestedFilename: suggestedFilename,
+      originalURL: originalURL
+    )
+    NitroPlayerLogger.log("DownloadFileManager", "   File extension: \(fileExtension)")
 
     let fileName = "\(trackId).\(fileExtension)"
     let destinationURL = destinationDirectory.appendingPathComponent(fileName)
-    print("   Destination: \(destinationURL.path)")
+    NitroPlayerLogger.log("DownloadFileManager", "   Destination: \(destinationURL.path)")
 
     // Verify source file exists
     guard fileManager.fileExists(atPath: temporaryLocation.path) else {
-      print("❌ DownloadFileManager: Source file does not exist at \(temporaryLocation.path)")
+      NitroPlayerLogger.log("DownloadFileManager", "❌ Source file does not exist at \(temporaryLocation.path)")
       return nil
     }
 
     do {
       // Remove existing file if present
       if fileManager.fileExists(atPath: destinationURL.path) {
-        print("   Removing existing file at destination")
+        NitroPlayerLogger.log("DownloadFileManager", "   Removing existing file at destination")
         try fileManager.removeItem(at: destinationURL)
       }
 
       // Move from temporary location to permanent location
       try fileManager.moveItem(at: temporaryLocation, to: destinationURL)
 
-      print("✅ DownloadFileManager: File saved successfully")
+      NitroPlayerLogger.log("DownloadFileManager", "✅ File saved successfully")
       return destinationURL.path
     } catch {
-      print("❌ DownloadFileManager: Failed to save file: \(error)")
+      NitroPlayerLogger.log("DownloadFileManager", "❌ Failed to save file: \(error)")
       return nil
     }
+  }
+
+  // MARK: - Extension Resolution
+
+  private static let mimeTypeToExtension: [String: String] = [
+    "audio/mpeg": "mp3",
+    "audio/mp3": "mp3",
+    "audio/mp4": "m4a",
+    "audio/m4a": "m4a",
+    "audio/x-m4a": "m4a",
+    "audio/aac": "aac",
+    "audio/ogg": "ogg",
+    "audio/flac": "flac",
+    "audio/x-flac": "flac",
+    "audio/wav": "wav",
+    "audio/x-wav": "wav",
+    "audio/webm": "webm",
+    "audio/opus": "opus",
+  ]
+
+  /// Resolves the audio file extension from HTTP response headers, suggested filename, or URL.
+  /// Priority: Content-Disposition filename → Content-Type MIME → suggestedFilename → URL path ext → "mp3"
+  private static func resolveFileExtension(
+    httpResponse: HTTPURLResponse?,
+    suggestedFilename: String?,
+    originalURL: String?
+  ) -> String {
+    // 1. Content-Disposition: attachment; filename="track.mp3"
+    if let disposition = httpResponse?.value(forHTTPHeaderField: "Content-Disposition") {
+      if let ext = extensionFromContentDisposition(disposition), !ext.isEmpty {
+        NitroPlayerLogger.log("DownloadFileManager", "   [ExtResolve] Content-Disposition → .\(ext)")
+        return ext
+      }
+    }
+
+    // 2. Content-Type MIME type
+    if let contentType = httpResponse?.value(forHTTPHeaderField: "Content-Type") {
+      let mime = contentType.split(separator: ";").first.map(String.init)?.trimmingCharacters(in: .whitespaces) ?? contentType
+      if let ext = mimeTypeToExtension[mime.lowercased()] {
+        NitroPlayerLogger.log("DownloadFileManager", "   [ExtResolve] Content-Type '\(mime)' → .\(ext)")
+        return ext
+      }
+    }
+
+    // 3. Suggested filename from URLSession
+    if let name = suggestedFilename, !name.isEmpty {
+      let ext = URL(fileURLWithPath: name).pathExtension.lowercased()
+      if !ext.isEmpty && isAudioExtension(ext) {
+        NitroPlayerLogger.log("DownloadFileManager", "   [ExtResolve] suggestedFilename → .\(ext)")
+        return ext
+      }
+    }
+
+    // 4. URL path extension (only if it looks like an audio format, not e.g. ".view")
+    if let urlString = originalURL, let url = URL(string: urlString) {
+      let ext = url.pathExtension.lowercased()
+      if !ext.isEmpty && isAudioExtension(ext) {
+        NitroPlayerLogger.log("DownloadFileManager", "   [ExtResolve] URL path ext → .\(ext)")
+        return ext
+      }
+    }
+
+    NitroPlayerLogger.log("DownloadFileManager", "   [ExtResolve] fallback → .mp3")
+    return "mp3"
+  }
+
+  private static func extensionFromContentDisposition(_ disposition: String) -> String? {
+    // Match: filename="foo.mp3" or filename=foo.mp3
+    let patterns = [
+      #"filename\*?=(?:UTF-8'')?\"?([^\";\r\n]+)\"?"#,
+    ]
+    for pattern in patterns {
+      if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
+        let range = NSRange(disposition.startIndex..., in: disposition)
+        if let match = regex.firstMatch(in: disposition, range: range),
+          let filenameRange = Range(match.range(at: 1), in: disposition)
+        {
+          let filename = String(disposition[filenameRange]).trimmingCharacters(in: .whitespaces)
+          let ext = URL(fileURLWithPath: filename).pathExtension.lowercased()
+          if !ext.isEmpty { return ext }
+        }
+      }
+    }
+    return nil
+  }
+
+  private static func isAudioExtension(_ ext: String) -> Bool {
+    let audioExtensions: Set<String> = ["mp3", "m4a", "aac", "ogg", "flac", "wav", "webm", "opus", "mp4"]
+    return audioExtensions.contains(ext)
   }
 
   func deleteFile(at path: String) {
@@ -111,7 +200,7 @@ final class DownloadFileManager {
         try fileManager.removeItem(atPath: path)
       }
     } catch {
-      print("[DownloadFileManager] Failed to delete file: \(error)")
+      NitroPlayerLogger.log("DownloadFileManager", "Failed to delete file: \(error)")
     }
   }
 
@@ -237,5 +326,12 @@ final class DownloadFileManager {
     }
 
     return nil
+  }
+
+  /// Reconstructs the current absolute path for a stored filename and storage location.
+  /// Always uses the current app container path, so it survives container UUID changes.
+  func absolutePath(forFilename filename: String, storageLocation: StorageLocation) -> String {
+    let dir = storageLocation == .private ? privateDownloadsDirectory : publicDownloadsDirectory
+    return dir.appendingPathComponent(filename).path
   }
 }

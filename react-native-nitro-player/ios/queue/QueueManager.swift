@@ -114,7 +114,7 @@ class QueueManager {
           wrapper.listener(currentTracks, operation)
         } catch {
           // Log error but don't break other listeners
-          print("Error in queue change listener: \(error)")
+          NitroPlayerLogger.log("QueueManager", "Error in queue change listener: \(error)")
         }
       }
     }

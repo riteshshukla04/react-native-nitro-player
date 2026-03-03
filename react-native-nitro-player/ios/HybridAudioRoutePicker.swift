@@ -30,7 +30,7 @@ class HybridAudioRoutePicker: HybridAudioRoutePickerSpec {
           .flatMap({ $0.windows })
           .first(where: { $0.isKeyWindow })
       else {
-        print("HybridAudioRoutePicker: Could not find key window")
+        NitroPlayerLogger.log("HybridAudioRoutePicker", "Could not find key window")
         return
       }
 

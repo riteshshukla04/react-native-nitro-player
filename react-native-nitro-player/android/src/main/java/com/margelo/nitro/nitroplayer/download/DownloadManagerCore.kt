@@ -7,6 +7,7 @@ import android.util.Log
 import androidx.work.*
 import com.margelo.nitro.core.NullType
 import com.margelo.nitro.nitroplayer.*
+import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
@@ -289,7 +290,7 @@ class DownloadManagerCore private constructor(
     fun syncDownloads(): Int {
         val removedCount = database.syncDownloads()
         val bytesFreed = fileManager.cleanupOrphanedFiles(database.getAllDownloadedTracks().map { it.trackId }.toSet())
-        Log.d(TAG, "syncDownloads: removed $removedCount orphaned records, freed $bytesFreed bytes")
+        NitroPlayerLogger.log("DownloadManagerCore", "syncDownloads: removed $removedCount orphaned records, freed $bytesFreed bytes")
         return removedCount
     }
 

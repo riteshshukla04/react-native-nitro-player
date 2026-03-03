@@ -82,6 +82,9 @@ class TrackPlayerCore private constructor(
     private val onPlaybackProgressChangeListeners =
         Collections.synchronizedList(mutableListOf<WeakCallbackBox<(Double, Double, Boolean?) -> Unit>>())
 
+    private var currentRepeatMode: RepeatMode = RepeatMode.OFF
+    private var lookaheadCount: Int = 5 // Number of tracks to preload ahead
+
     // Temporary tracks for addToUpNext and playNext
     private var playNextStack: MutableList<TrackItem> = mutableListOf() // LIFO - last added plays first
     private var upNextQueue: MutableList<TrackItem> = mutableListOf() // FIFO - first added plays first
@@ -168,7 +171,7 @@ class TrackPlayerCore private constructor(
                                 // Notify JavaScript
                                 onAndroidAutoConnectionChange?.invoke(connected)
 
-                                println("🚗 Android Auto connection changed: connected=$connected, type=$connectionType")
+                                NitroPlayerLogger.log("TrackPlayerCore", "🚗 Android Auto connection changed: connected=$connected, type=$connectionType")
                             }
                         }
                         registerCarConnectionReceiver()
@@ -180,20 +183,25 @@ class TrackPlayerCore private constructor(
                             mediaItem: MediaItem?,
                             reason: Int,
                         ) {
-                            println("\n🔄 onMediaItemTransition called")
-                            println(
+                            NitroPlayerLogger.log("TrackPlayerCore") { "\n🔄 onMediaItemTransition called" }
+                            NitroPlayerLogger.log("TrackPlayerCore") {
                                 "   reason: ${when (reason) {
                                     Player.MEDIA_ITEM_TRANSITION_REASON_AUTO -> "AUTO (track ended)"
                                     Player.MEDIA_ITEM_TRANSITION_REASON_SEEK -> "SEEK"
                                     Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED -> "PLAYLIST_CHANGED"
-                                    Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT -> "REPEAT"
                                     else -> "UNKNOWN($reason)"
-                                }}",
-                            )
-                            println("   previousMediaItem: ${previousMediaItem?.mediaId}")
-                            println("   new mediaItem: ${mediaItem?.mediaId}")
-                            println("   playNextStack: ${playNextStack.map { it.id }}")
-                            println("   upNextQueue: ${upNextQueue.map { it.id }}")
+                                }}"
+                            }
+                            NitroPlayerLogger.log("TrackPlayerCore") { "   previousMediaItem: ${previousMediaItem?.mediaId}" }
+                            NitroPlayerLogger.log("TrackPlayerCore") { "   new mediaItem: ${mediaItem?.mediaId}" }
+                            NitroPlayerLogger.log("TrackPlayerCore") { "   playNextStack: ${playNextStack.map { it.id }}" }
+                            NitroPlayerLogger.log("TrackPlayerCore") { "   upNextQueue: ${upNextQueue.map { it.id }}" }
+
+                            // TRACK repeat: REPEAT_MODE_ONE fires this callback every loop — skip entirely
+                            if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT) {
+                                NitroPlayerLogger.log("TrackPlayerCore") { "   🔁 TRACK repeat loop — skipping notifyTrackChange" }
+                                return
+                            }
 
                             // Remove finished track from temporary lists
                             // Handle AUTO (natural end) and SEEK (skip next) transitions
@@ -205,26 +213,26 @@ class TrackPlayerCore private constructor(
                             ) {
                                 previousMediaItem?.mediaId?.let { mediaId ->
                                     val trackId = extractTrackId(mediaId)
-                                    println("🏁 Track finished/skipped, checking for removal: $trackId")
+                                    NitroPlayerLogger.log("TrackPlayerCore") { "🏁 Track finished/skipped, checking for removal: $trackId" }
 
                                     // Find and remove from playNext stack (like iOS does)
                                     val playNextIndex = playNextStack.indexOfFirst { it.id == trackId }
                                     if (playNextIndex >= 0) {
                                         val track = playNextStack.removeAt(playNextIndex)
-                                        println("   ✅ Removed from playNext stack: ${track.title}")
+                                        NitroPlayerLogger.log("TrackPlayerCore") { "   ✅ Removed from playNext stack: ${track.title}" }
                                     } else {
                                         // Find and remove from upNext queue
                                         val upNextIndex = upNextQueue.indexOfFirst { it.id == trackId }
                                         if (upNextIndex >= 0) {
                                             val track = upNextQueue.removeAt(upNextIndex)
-                                            println("   ✅ Removed from upNext queue: ${track.title}")
+                                            NitroPlayerLogger.log("TrackPlayerCore") { "   ✅ Removed from upNext queue: ${track.title}" }
                                         } else {
-                                            println("   ℹ️  Was an original playlist track")
+                                            NitroPlayerLogger.log("TrackPlayerCore") { "   ℹ️  Was an original playlist track" }
                                         }
                                     }
                                 }
                             } else {
-                                println("   ⏭️  Skipping removal (reason=$reason, prev=${previousMediaItem != null})")
+                                NitroPlayerLogger.log("TrackPlayerCore") { "   ⏭️  Skipping removal (reason=$reason, prev=${previousMediaItem != null})" }
                             }
 
                             // Store current item as previous for next transition
@@ -232,14 +240,14 @@ class TrackPlayerCore private constructor(
 
                             // Update temporary type for current track
                             currentTemporaryType = determineCurrentTemporaryType()
-                            println("   Updated currentTemporaryType: $currentTemporaryType")
+                            NitroPlayerLogger.log("TrackPlayerCore") { "   Updated currentTemporaryType: $currentTemporaryType" }
 
                             // Update currentTrackIndex when we land on an original playlist track
                             if (currentTemporaryType == TemporaryType.NONE && mediaItem != null) {
                                 val trackId = extractTrackId(mediaItem.mediaId)
                                 val newIndex = currentTracks.indexOfFirst { it.id == trackId }
                                 if (newIndex >= 0 && newIndex != currentTrackIndex) {
-                                    println("   📍 Updating currentTrackIndex from $currentTrackIndex to $newIndex")
+                                    NitroPlayerLogger.log("TrackPlayerCore") { "   📍 Updating currentTrackIndex from $currentTrackIndex to $newIndex" }
                                     currentTrackIndex = newIndex
                                 }
                             }
@@ -255,7 +263,8 @@ class TrackPlayerCore private constructor(
                                         if (playlist != null && currentPlaylistId != playlistId) {
                                             // This shouldn't happen if playlists are loaded correctly,
                                             // but handle it as a safety measure
-                                            println(
+                                            NitroPlayerLogger.log(
+                                                "TrackPlayerCore",
                                                 "⚠️ TrackPlayerCore: Detected track from different playlist, updating...",
                                             )
                                         }
@@ -275,6 +284,9 @@ class TrackPlayerCore private constructor(
                                     }
                                 notifyTrackChange(track, r)
                                 mediaSessionManager?.onTrackChanged()
+
+                                // Check if upcoming tracks need URLs
+                                checkUpcomingTracksForUrls(lookahead = lookaheadCount)
                             }
                         }
 
@@ -301,6 +313,19 @@ class TrackPlayerCore private constructor(
                         }
 
                         override fun onPlaybackStateChanged(playbackState: Int) {
+                            if (playbackState == Player.STATE_ENDED && currentRepeatMode == RepeatMode.PLAYLIST) {
+                                NitroPlayerLogger.log("TrackPlayerCore") { "🔁 PLAYLIST repeat — rebuilding original queue and restarting" }
+                                handler.post {
+                                    playNextStack.clear()
+                                    upNextQueue.clear()
+                                    currentTemporaryType = TemporaryType.NONE
+                                    // Rebuild ExoPlayer queue from beginning of original playlist
+                                    rebuildQueueAndPlayFromIndex(0)
+                                    val firstTrack = currentTracks.getOrNull(0)
+                                    if (firstTrack != null) notifyTrackChange(firstTrack, Reason.REPEAT)
+                                }
+                                return
+                            }
                             emitStateChange()
                         }
 
@@ -353,12 +378,15 @@ class TrackPlayerCore private constructor(
             playNextStack.clear()
             upNextQueue.clear()
             currentTemporaryType = TemporaryType.NONE
-            println("   🧹 Cleared temporary tracks")
+            NitroPlayerLogger.log("TrackPlayerCore", "   🧹 Cleared temporary tracks")
 
             val playlist = playlistManager.getPlaylist(playlistId)
             if (playlist != null) {
                 currentPlaylistId = playlistId
                 updatePlayerQueue(playlist.tracks)
+
+                // Check if upcoming tracks need URLs
+                checkUpcomingTracksForUrls(lookahead = lookaheadCount)
             }
         }
     }
@@ -395,7 +423,7 @@ class TrackPlayerCore private constructor(
                     }
                 }
             } catch (e: Exception) {
-                println("❌ TrackPlayerCore: Error playing from playlist track - ${e.message}")
+                NitroPlayerLogger.log("TrackPlayerCore", "❌ TrackPlayerCore: Error playing from playlist track - ${e.message}")
                 e.printStackTrace()
             }
         }
@@ -498,8 +526,9 @@ class TrackPlayerCore private constructor(
                 mediaId
             }
 
-        val playlist = currentPlaylistId?.let { playlistManager.getPlaylist(it) }
-        return playlist?.tracks?.find { it.id == trackId }
+        // currentTracks is already the cached tracks for currentPlaylistId — no need to
+        // re-fetch from PlaylistManager on every call.
+        return currentTracks.find { it.id == trackId }
     }
 
     fun play() {
@@ -527,32 +556,32 @@ class TrackPlayerCore private constructor(
         playNextStack.clear()
         upNextQueue.clear()
         currentTemporaryType = TemporaryType.NONE
-        println("   🧹 Cleared temporary tracks")
+        NitroPlayerLogger.log("TrackPlayerCore", "   🧹 Cleared temporary tracks")
 
         var targetPlaylistId: String? = null
         var songIndex: Int = -1
 
         // Case 1: If fromPlaylist is provided, use that playlist
         if (fromPlaylist != null) {
-            println("🎵 TrackPlayerCore: Looking for song in specified playlist: $fromPlaylist")
+            NitroPlayerLogger.log("TrackPlayerCore", "🎵 TrackPlayerCore: Looking for song in specified playlist: $fromPlaylist")
             val playlist = playlistManager.getPlaylist(fromPlaylist)
             if (playlist != null) {
                 songIndex = playlist.tracks.indexOfFirst { it.id == songId }
                 if (songIndex >= 0) {
                     targetPlaylistId = fromPlaylist
-                    println("✅ Found song at index $songIndex in playlist $fromPlaylist")
+                    NitroPlayerLogger.log("TrackPlayerCore", "✅ Found song at index $songIndex in playlist $fromPlaylist")
                 } else {
-                    println("⚠️ Song $songId not found in specified playlist $fromPlaylist")
+                    NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Song $songId not found in specified playlist $fromPlaylist")
                     return
                 }
             } else {
-                println("⚠️ Playlist $fromPlaylist not found")
+                NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Playlist $fromPlaylist not found")
                 return
             }
         }
         // Case 2: If fromPlaylist is not provided, search in current/loaded playlist first
         else {
-            println("🎵 TrackPlayerCore: No playlist specified, checking current playlist")
+            NitroPlayerLogger.log("TrackPlayerCore", "🎵 TrackPlayerCore: No playlist specified, checking current playlist")
 
             // Check if song exists in currently loaded playlist
             if (currentPlaylistId != null) {
@@ -561,21 +590,21 @@ class TrackPlayerCore private constructor(
                     songIndex = currentPlaylist.tracks.indexOfFirst { it.id == songId }
                     if (songIndex >= 0) {
                         targetPlaylistId = currentPlaylistId
-                        println("✅ Found song at index $songIndex in current playlist $currentPlaylistId")
+                        NitroPlayerLogger.log("TrackPlayerCore", "✅ Found song at index $songIndex in current playlist $currentPlaylistId")
                     }
                 }
             }
 
             // If not found in current playlist, search in all playlists
             if (songIndex == -1) {
-                println("🔍 Song not found in current playlist, searching all playlists...")
+                NitroPlayerLogger.log("TrackPlayerCore", "🔍 Song not found in current playlist, searching all playlists...")
                 val allPlaylists = playlistManager.getAllPlaylists()
 
                 for (playlist in allPlaylists) {
                     songIndex = playlist.tracks.indexOfFirst { it.id == songId }
                     if (songIndex >= 0) {
                         targetPlaylistId = playlist.id
-                        println("✅ Found song at index $songIndex in playlist ${playlist.id}")
+                        NitroPlayerLogger.log("TrackPlayerCore", "✅ Found song at index $songIndex in playlist ${playlist.id}")
                         break
                     }
                 }
@@ -584,20 +613,20 @@ class TrackPlayerCore private constructor(
                 if (songIndex == -1 && allPlaylists.isNotEmpty()) {
                     targetPlaylistId = allPlaylists[0].id
                     songIndex = 0
-                    println("⚠️ Song not found in any playlist, using first playlist and starting at index 0")
+                    NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Song not found in any playlist, using first playlist and starting at index 0")
                 }
             }
         }
 
         // Now play the song
         if (targetPlaylistId == null || songIndex < 0) {
-            println("❌ Could not determine playlist or song index")
+            NitroPlayerLogger.log("TrackPlayerCore", "❌ Could not determine playlist or song index")
             return
         }
 
         // Load playlist if it's different from current
         if (currentPlaylistId != targetPlaylistId) {
-            println("🔄 Loading new playlist: $targetPlaylistId")
+            NitroPlayerLogger.log("TrackPlayerCore", "🔄 Loading new playlist: $targetPlaylistId")
             val playlist = playlistManager.getPlaylist(targetPlaylistId)
             if (playlist != null) {
                 currentPlaylistId = targetPlaylistId
@@ -605,12 +634,12 @@ class TrackPlayerCore private constructor(
 
                 // Wait a bit for playlist to load, then play from index
                 // Note: Removed postDelayed to avoid race conditions with subsequent queue operations
-                println("▶️ Playing from index: $songIndex")
+                NitroPlayerLogger.log("TrackPlayerCore", "▶️ Playing from index: $songIndex")
                 playFromIndex(songIndex)
             }
         } else {
             // Playlist already loaded, just play from index
-            println("▶️ Playing from index: $songIndex")
+            NitroPlayerLogger.log("TrackPlayerCore", "▶️ Playing from index: $songIndex")
             playFromIndex(songIndex)
         }
     }
@@ -619,6 +648,9 @@ class TrackPlayerCore private constructor(
         handler.post {
             if (player.hasNextMediaItem()) {
                 player.seekToNextMediaItem()
+
+                // Check if upcoming tracks need URLs
+                checkUpcomingTracksForUrls(lookahead = lookaheadCount)
             }
         }
     }
@@ -629,11 +661,11 @@ class TrackPlayerCore private constructor(
 
             if (currentPosition > 2000) {
                 // More than 2 seconds in, restart current track
-                println("🔄 TrackPlayerCore: Past threshold, restarting current track")
+                NitroPlayerLogger.log("TrackPlayerCore", "🔄 TrackPlayerCore: Past threshold, restarting current track")
                 player.seekTo(0)
             } else if (currentTemporaryType != TemporaryType.NONE) {
                 // Playing temporary track within threshold — remove from its list, go back to original
-                println("🔄 TrackPlayerCore: Removing temp track, going back to original")
+                NitroPlayerLogger.log("TrackPlayerCore", "🔄 TrackPlayerCore: Removing temp track, going back to original")
                 val currentMediaItem = player.currentMediaItem
                 if (currentMediaItem != null) {
                     val trackId = extractTrackId(currentMediaItem.mediaId)
@@ -642,10 +674,12 @@ class TrackPlayerCore private constructor(
                             val idx = playNextStack.indexOfFirst { it.id == trackId }
                             if (idx >= 0) playNextStack.removeAt(idx)
                         }
+
                         TemporaryType.UP_NEXT -> {
                             val idx = upNextQueue.indexOfFirst { it.id == trackId }
                             if (idx >= 0) upNextQueue.removeAt(idx)
                         }
+
                         else -> {}
                     }
                 }
@@ -653,13 +687,16 @@ class TrackPlayerCore private constructor(
                 playFromIndexInternal(currentTrackIndex)
             } else if (currentTrackIndex > 0) {
                 // Go to previous track in original playlist
-                println("🔄 TrackPlayerCore: Going to previous track, currentTrackIndex: $currentTrackIndex -> ${currentTrackIndex - 1}")
+                NitroPlayerLogger.log("TrackPlayerCore", "🔄 TrackPlayerCore: Going to previous track, currentTrackIndex: $currentTrackIndex -> ${currentTrackIndex - 1}")
                 playFromIndexInternal(currentTrackIndex - 1)
             } else {
                 // Already at first track, seek to beginning
-                println("🔄 TrackPlayerCore: Already at first track, seeking to beginning")
+                NitroPlayerLogger.log("TrackPlayerCore", "🔄 TrackPlayerCore: Already at first track, seeking to beginning")
                 player.seekTo(0)
             }
+
+            // Check if upcoming tracks need URLs
+            checkUpcomingTracksForUrls(lookahead = lookaheadCount)
         }
     }
 
@@ -671,19 +708,21 @@ class TrackPlayerCore private constructor(
     }
 
     fun setRepeatMode(mode: RepeatMode): Boolean {
-        println("🔁 TrackPlayerCore: setRepeatMode called with mode: $mode")
-        handler.post {
-            val exoRepeatMode =
-                when (mode) {
-                    RepeatMode.OFF -> Player.REPEAT_MODE_OFF
-                    RepeatMode.TRACK -> Player.REPEAT_MODE_ONE
-                    RepeatMode.PLAYLIST -> Player.REPEAT_MODE_ALL
-                }
-            player.repeatMode = exoRepeatMode
-            println("🔁 TrackPlayerCore: ExoPlayer repeat mode set to: $exoRepeatMode")
+        currentRepeatMode = mode
+        if (::player.isInitialized) {
+            handler.post {
+                player.repeatMode =
+                    when (mode) {
+                        RepeatMode.TRACK -> Player.REPEAT_MODE_ONE
+                        else -> Player.REPEAT_MODE_OFF
+                    }
+            }
         }
+        NitroPlayerLogger.log("TrackPlayerCore", "🔁 setRepeatMode: $mode")
         return true
     }
+
+    fun getRepeatMode(): RepeatMode = currentRepeatMode
 
     fun getState(): PlayerState {
         // Called from Promise.async background thread
@@ -739,9 +778,6 @@ class TrackPlayerCore private constructor(
                     else -> TrackPlayerState.STOPPED
                 }
 
-            // Get current playlist
-            val currentPlaylist = currentPlaylistId?.let { playlistManager.getPlaylist(it) }
-
             // Use ExoPlayer's currentMediaItemIndex
             val currentIndex =
                 if (player.currentMediaItemIndex >= 0) {
@@ -788,10 +824,15 @@ class TrackPlayerCore private constructor(
         androidAutoEnabled: Boolean?,
         carPlayEnabled: Boolean?,
         showInNotification: Boolean?,
+        lookaheadCount: Int? = null,
     ) {
         handler.post {
             androidAutoEnabled?.let {
                 NitroPlayerMediaBrowserService.isAndroidAutoEnabled = it
+            }
+            lookaheadCount?.let {
+                this.lookaheadCount = it
+                NitroPlayerLogger.log("TrackPlayerCore", "🔄 Lookahead count set to: $it")
             }
             mediaSessionManager?.configure(
                 androidAutoEnabled,
@@ -894,12 +935,24 @@ class TrackPlayerCore private constructor(
         // (reduced by 1 when current track is from that temp list, matching getActualQueueInternal)
         // When temp is playing, the original track at currentTrackIndex is included in "before",
         // so the current playing position shifts by 1
-        val currentPos = if (currentTemporaryType != TemporaryType.NONE)
-            currentTrackIndex + 1 else currentTrackIndex
-        val effectivePlayNextSize = if (currentTemporaryType == TemporaryType.PLAY_NEXT)
-            maxOf(0, playNextStack.size - 1) else playNextStack.size
-        val effectiveUpNextSize = if (currentTemporaryType == TemporaryType.UP_NEXT)
-            maxOf(0, upNextQueue.size - 1) else upNextQueue.size
+        val currentPos =
+            if (currentTemporaryType != TemporaryType.NONE) {
+                currentTrackIndex + 1
+            } else {
+                currentTrackIndex
+            }
+        val effectivePlayNextSize =
+            if (currentTemporaryType == TemporaryType.PLAY_NEXT) {
+                maxOf(0, playNextStack.size - 1)
+            } else {
+                playNextStack.size
+            }
+        val effectiveUpNextSize =
+            if (currentTemporaryType == TemporaryType.UP_NEXT) {
+                maxOf(0, upNextQueue.size - 1)
+            } else {
+                upNextQueue.size
+            }
 
         val playNextStart = currentPos + 1
         val playNextEnd = playNextStart + effectivePlayNextSize
@@ -923,8 +976,12 @@ class TrackPlayerCore private constructor(
         if (index >= playNextStart && index < playNextEnd) {
             val playNextIndex = index - playNextStart
             // Offset by 1 if current is from playNext (index 0 is already playing)
-            val actualListIndex = if (currentTemporaryType == TemporaryType.PLAY_NEXT)
-                playNextIndex + 1 else playNextIndex
+            val actualListIndex =
+                if (currentTemporaryType == TemporaryType.PLAY_NEXT) {
+                    playNextIndex + 1
+                } else {
+                    playNextIndex
+                }
 
             // Remove tracks before the target from playNext (they're being skipped)
             if (actualListIndex > 0) {
@@ -941,8 +998,12 @@ class TrackPlayerCore private constructor(
         if (index >= upNextStart && index < upNextEnd) {
             val upNextIndex = index - upNextStart
             // Offset by 1 if current is from upNext (index 0 is already playing)
-            val actualListIndex = if (currentTemporaryType == TemporaryType.UP_NEXT)
-                upNextIndex + 1 else upNextIndex
+            val actualListIndex =
+                if (currentTemporaryType == TemporaryType.UP_NEXT) {
+                    upNextIndex + 1
+                } else {
+                    upNextIndex
+                }
 
             // Clear all playNext tracks (they're being skipped)
             playNextStack.clear()
@@ -972,8 +1033,15 @@ class TrackPlayerCore private constructor(
             currentTemporaryType = TemporaryType.NONE
 
             rebuildQueueAndPlayFromIndex(originalIndex)
+
+            // Check if upcoming tracks need URLs
+            checkUpcomingTracksForUrls(lookahead = lookaheadCount)
+
             return true
         }
+
+        // Check if upcoming tracks need URLs after any successful skip
+        checkUpcomingTracksForUrls(lookahead = lookaheadCount)
 
         return false
     }
@@ -993,22 +1061,22 @@ class TrackPlayerCore private constructor(
      */
     private fun rebuildQueueAndPlayFromIndex(index: Int) {
         if (!::player.isInitialized) {
-            println("   ❌ Player not initialized")
+            NitroPlayerLogger.log("TrackPlayerCore", "   ❌ Player not initialized")
             return
         }
 
         if (index < 0 || index >= currentTracks.size) {
-            println("   ❌ Invalid index $index for currentTracks size ${currentTracks.size}")
+            NitroPlayerLogger.log("TrackPlayerCore", "   ❌ Invalid index $index for currentTracks size ${currentTracks.size}")
             return
         }
 
-        println("\n🔄 TrackPlayerCore: REBUILD QUEUE AND PLAY FROM INDEX $index")
-        println("   currentTracks.size: ${currentTracks.size}")
-        println("   currentTracks IDs: ${currentTracks.map { it.id }}")
+        NitroPlayerLogger.log("TrackPlayerCore") { "\n🔄 TrackPlayerCore: REBUILD QUEUE AND PLAY FROM INDEX $index" }
+        NitroPlayerLogger.log("TrackPlayerCore") { "   currentTracks.size: ${currentTracks.size}" }
+        NitroPlayerLogger.log("TrackPlayerCore") { "   currentTracks IDs: ${currentTracks.map { it.id }}" }
 
         // Build queue from the target index onwards
         val tracksToPlay = currentTracks.subList(index, currentTracks.size)
-        println("   tracksToPlay (${tracksToPlay.size}): ${tracksToPlay.map { it.id }}")
+        NitroPlayerLogger.log("TrackPlayerCore") { "   tracksToPlay (${tracksToPlay.size}): ${tracksToPlay.map { it.id }}" }
 
         val playlistId = currentPlaylistId ?: ""
         val mediaItems =
@@ -1019,7 +1087,7 @@ class TrackPlayerCore private constructor(
 
         // Update our internal tracking of the position in original playlist
         currentTrackIndex = index
-        println("   Setting currentTrackIndex to $index")
+        NitroPlayerLogger.log("TrackPlayerCore") { "   Setting currentTrackIndex to $index" }
 
         // Clear the entire player queue and set new items
         player.clearMediaItems()
@@ -1028,7 +1096,7 @@ class TrackPlayerCore private constructor(
         player.playWhenReady = true
         player.prepare()
 
-        println("   ✅ Queue rebuilt with ${player.mediaItemCount} items, playing from index 0 (track ${tracksToPlay.firstOrNull()?.id})")
+        NitroPlayerLogger.log("TrackPlayerCore") { "   ✅ Queue rebuilt with ${player.mediaItemCount} items, playing from index 0 (track ${tracksToPlay.firstOrNull()?.id})" }
     }
 
     // MARK: - Temporary Track Management
@@ -1044,18 +1112,18 @@ class TrackPlayerCore private constructor(
     }
 
     private fun addToUpNextInternal(trackId: String) {
-        println("📋 TrackPlayerCore: addToUpNext($trackId)")
+        NitroPlayerLogger.log("TrackPlayerCore", "📋 TrackPlayerCore: addToUpNext($trackId)")
 
         // Find the track from current playlist or all playlists
         val track = findTrackById(trackId)
         if (track == null) {
-            println("❌ TrackPlayerCore: Track $trackId not found")
+            NitroPlayerLogger.log("TrackPlayerCore", "❌ TrackPlayerCore: Track $trackId not found")
             return
         }
 
         // Add to end of upNext queue (FIFO)
         upNextQueue.add(track)
-        println("   ✅ Added '${track.title}' to upNext queue (position: ${upNextQueue.size})")
+        NitroPlayerLogger.log("TrackPlayerCore", "   ✅ Added '${track.title}' to upNext queue (position: ${upNextQueue.size})")
 
         // Rebuild the player queue if actively playing
         if (::player.isInitialized && player.currentMediaItem != null) {
@@ -1074,18 +1142,18 @@ class TrackPlayerCore private constructor(
     }
 
     private fun playNextInternal(trackId: String) {
-        println("⏭️ TrackPlayerCore: playNext($trackId)")
+        NitroPlayerLogger.log("TrackPlayerCore", "⏭️ TrackPlayerCore: playNext($trackId)")
 
         // Find the track from current playlist or all playlists
         val track = findTrackById(trackId)
         if (track == null) {
-            println("❌ TrackPlayerCore: Track $trackId not found")
+            NitroPlayerLogger.log("TrackPlayerCore", "❌ TrackPlayerCore: Track $trackId not found")
             return
         }
 
         // Insert at beginning of playNext stack (LIFO)
         playNextStack.add(0, track)
-        println("   ✅ Added '${track.title}' to playNext stack (position: 1)")
+        NitroPlayerLogger.log("TrackPlayerCore", "   ✅ Added '${track.title}' to playNext stack (position: 1)")
 
         // Rebuild the player queue if actively playing
         if (::player.isInitialized && player.currentMediaItem != null) {
@@ -1103,7 +1171,7 @@ class TrackPlayerCore private constructor(
         val currentIndex = player.currentMediaItemIndex
         if (currentIndex < 0) return
 
-        val newQueueTracks = mutableListOf<TrackItem>()
+        val newQueueTracks = ArrayList<TrackItem>(playNextStack.size + upNextQueue.size + currentTracks.size)
 
         // Add playNext stack (LIFO - most recently added plays first)
         // Skip index 0 if current track is from playNext (it's already playing)
@@ -1135,9 +1203,9 @@ class TrackPlayerCore private constructor(
                 track.toMediaItem(mediaId)
             }
 
-        // Remove all items after current
-        while (player.mediaItemCount > currentIndex + 1) {
-            player.removeMediaItem(currentIndex + 1)
+        // Remove all items after current in one batch (single timeline event vs N events)
+        if (player.mediaItemCount > currentIndex + 1) {
+            player.removeMediaItems(currentIndex + 1, player.mediaItemCount)
         }
 
         // Add new items
@@ -1204,9 +1272,9 @@ class TrackPlayerCore private constructor(
                 mediaLibraryManager.setMediaLibrary(library)
                 // Notify Android Auto to refresh
                 NitroPlayerMediaBrowserService.getInstance()?.onPlaylistsUpdated()
-                println("✅ TrackPlayerCore: Android Auto media library set successfully")
+                NitroPlayerLogger.log("TrackPlayerCore", "✅ TrackPlayerCore: Android Auto media library set successfully")
             } catch (e: Exception) {
-                println("❌ TrackPlayerCore: Error setting media library - ${e.message}")
+                NitroPlayerLogger.log("TrackPlayerCore", "❌ TrackPlayerCore: Error setting media library - ${e.message}")
                 e.printStackTrace()
             }
         }
@@ -1229,11 +1297,11 @@ class TrackPlayerCore private constructor(
                 // Convert to 0.0-1.0 range for ExoPlayer
                 val normalizedVolume = (clampedVolume / 100.0).toFloat()
                 player.volume = normalizedVolume
-                println("🔊 TrackPlayerCore: Volume set to $clampedVolume% (normalized: $normalizedVolume)")
+                NitroPlayerLogger.log("TrackPlayerCore", "🔊 TrackPlayerCore: Volume set to $clampedVolume% (normalized: $normalizedVolume)")
             }
             true
         } else {
-            println("⚠️ TrackPlayerCore: Cannot set volume - player not initialized")
+            NitroPlayerLogger.log("TrackPlayerCore", "⚠️ TrackPlayerCore: Cannot set volume - player not initialized")
             false
         }
 
@@ -1266,7 +1334,7 @@ class TrackPlayerCore private constructor(
         val liveCallbacks =
             synchronized(onChangeTrackListeners) {
                 onChangeTrackListeners.removeAll { !it.isAlive }
-                onChangeTrackListeners.filter { it.isAlive }.map { it.callback }
+                onChangeTrackListeners.map { it.callback }
             }
 
         handler.post {
@@ -1274,7 +1342,7 @@ class TrackPlayerCore private constructor(
                 try {
                     callback(track, reason)
                 } catch (e: Exception) {
-                    println("⚠️ Error in track change listener: ${e.message}")
+                    NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Error in track change listener: ${e.message}")
                 }
             }
         }
@@ -1287,7 +1355,7 @@ class TrackPlayerCore private constructor(
         val liveCallbacks =
             synchronized(onPlaybackStateChangeListeners) {
                 onPlaybackStateChangeListeners.removeAll { !it.isAlive }
-                onPlaybackStateChangeListeners.filter { it.isAlive }.map { it.callback }
+                onPlaybackStateChangeListeners.map { it.callback }
             }
 
         handler.post {
@@ -1295,7 +1363,7 @@ class TrackPlayerCore private constructor(
                 try {
                     callback(state, reason)
                 } catch (e: Exception) {
-                    println("⚠️ Error in playback state listener: ${e.message}")
+                    NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Error in playback state listener: ${e.message}")
                 }
             }
         }
@@ -1308,7 +1376,7 @@ class TrackPlayerCore private constructor(
         val liveCallbacks =
             synchronized(onSeekListeners) {
                 onSeekListeners.removeAll { !it.isAlive }
-                onSeekListeners.filter { it.isAlive }.map { it.callback }
+                onSeekListeners.map { it.callback }
             }
 
         handler.post {
@@ -1316,7 +1384,7 @@ class TrackPlayerCore private constructor(
                 try {
                     callback(position, duration)
                 } catch (e: Exception) {
-                    println("⚠️ Error in seek listener: ${e.message}")
+                    NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Error in seek listener: ${e.message}")
                 }
             }
         }
@@ -1330,7 +1398,7 @@ class TrackPlayerCore private constructor(
         val liveCallbacks =
             synchronized(onPlaybackProgressChangeListeners) {
                 onPlaybackProgressChangeListeners.removeAll { !it.isAlive }
-                onPlaybackProgressChangeListeners.filter { it.isAlive }.map { it.callback }
+                onPlaybackProgressChangeListeners.map { it.callback }
             }
 
         handler.post {
@@ -1338,7 +1406,7 @@ class TrackPlayerCore private constructor(
                 try {
                     callback(position, duration, isPlaying)
                 } catch (e: Exception) {
-                    println("⚠️ Error in playback progress listener: ${e.message}")
+                    NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Error in playback progress listener: ${e.message}")
                 }
             }
         }
@@ -1371,14 +1439,15 @@ class TrackPlayerCore private constructor(
             // Wait up to 5 seconds for the result
             latch.await(5, TimeUnit.SECONDS)
         } catch (e: InterruptedException) {
-            println("⚠️ TrackPlayerCore: Interrupted while waiting for actual queue")
+            NitroPlayerLogger.log("TrackPlayerCore", "⚠️ TrackPlayerCore: Interrupted while waiting for actual queue")
         }
 
         return result ?: emptyList()
     }
 
     private fun getActualQueueInternal(): List<TrackItem> {
-        val queue = mutableListOf<TrackItem>()
+        val capacity = currentTracks.size + playNextStack.size + upNextQueue.size
+        val queue = ArrayList<TrackItem>(capacity)
 
         if (!::player.isInitialized) return emptyList()
 
@@ -1388,8 +1457,12 @@ class TrackPlayerCore private constructor(
         // Add tracks before current (original playlist)
         // When a temp track is playing, include the original track at currentTrackIndex
         // (it already played before the temp track started)
-        val beforeEnd = if (currentTemporaryType != TemporaryType.NONE)
-            minOf(currentIndex + 1, currentTracks.size) else currentIndex
+        val beforeEnd =
+            if (currentTemporaryType != TemporaryType.NONE) {
+                minOf(currentIndex + 1, currentTracks.size)
+            } else {
+                currentIndex
+            }
         if (beforeEnd > 0) {
             queue.addAll(currentTracks.subList(0, beforeEnd))
         }
@@ -1420,4 +1493,319 @@ class TrackPlayerCore private constructor(
 
         return queue
     }
+
+    // MARK: - Lazy URL Loading Support
+
+    /**
+     * Update entire track objects and rebuild queue if needed
+     * Skips currently playing track to preserve gapless playback
+     */
+    fun updateTracks(tracks: List<TrackItem>) {
+        handler.post {
+            NitroPlayerLogger.log("TrackPlayerCore", "🔄 updateTracks: ${tracks.size} updates")
+
+            // Get current track ID to avoid updating it (preserves gapless playback)
+            val currentTrackId = getCurrentTrack()?.id
+
+            // Filter out current track and validate
+            val safeTracks =
+                tracks.filter { track ->
+                    when {
+                        track.id == currentTrackId -> {
+                            NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Skipping update for currently playing track: ${track.id} (preserves gapless)")
+                            false
+                        }
+
+                        track.url.isEmpty() -> {
+                            NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Skipping track with empty URL: ${track.id}")
+                            false
+                        }
+
+                        else -> {
+                            true
+                        }
+                    }
+                }
+
+            if (safeTracks.isEmpty()) {
+                NitroPlayerLogger.log("TrackPlayerCore", "✅ No valid updates to apply")
+                return@post
+            }
+
+            // Update in PlaylistManager
+            val affectedPlaylists = playlistManager.updateTracks(safeTracks)
+
+            // Rebuild queue if current playlist was affected
+            if (currentPlaylistId != null && affectedPlaylists.containsKey(currentPlaylistId)) {
+                NitroPlayerLogger.log("TrackPlayerCore", "🔄 Rebuilding queue - ${affectedPlaylists[currentPlaylistId]} tracks updated in current playlist")
+
+                // This method preserves current item and gapless buffering
+                rebuildQueueFromCurrentPosition()
+
+                NitroPlayerLogger.log("TrackPlayerCore", "✅ Queue rebuilt, gapless playback preserved")
+            }
+
+            NitroPlayerLogger.log("TrackPlayerCore", "✅ Track updates complete - ${affectedPlaylists.size} playlists affected")
+        }
+    }
+
+    /**
+     * Get tracks by IDs from all playlists
+     */
+    fun getTracksById(trackIds: List<String>): List<TrackItem> {
+        if (android.os.Looper.myLooper() == handler.looper) {
+            return playlistManager.getTracksById(trackIds)
+        }
+
+        val latch = CountDownLatch(1)
+        var result: List<TrackItem>? = null
+
+        handler.post {
+            try {
+                result = playlistManager.getTracksById(trackIds)
+            } finally {
+                latch.countDown()
+            }
+        }
+
+        try {
+            latch.await(5, TimeUnit.SECONDS)
+        } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt()
+        }
+
+        return result ?: emptyList()
+    }
+
+    /**
+     * Get tracks needing URLs from current playlist
+     */
+    fun getTracksNeedingUrls(): List<TrackItem> {
+        if (android.os.Looper.myLooper() == handler.looper) {
+            return getTracksNeedingUrlsInternal()
+        }
+
+        val latch = CountDownLatch(1)
+        var result: List<TrackItem>? = null
+
+        handler.post {
+            try {
+                result = getTracksNeedingUrlsInternal()
+            } finally {
+                latch.countDown()
+            }
+        }
+
+        try {
+            latch.await(5, TimeUnit.SECONDS)
+        } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt()
+        }
+
+        return result ?: emptyList()
+    }
+
+    private fun getTracksNeedingUrlsInternal(): List<TrackItem> {
+        if (currentPlaylistId == null) return emptyList()
+
+        val playlist = playlistManager.getPlaylist(currentPlaylistId!!)
+        return playlist?.tracks?.filter { it.url.isEmpty() } ?: emptyList()
+    }
+
+    /**
+     * Get next N tracks from current position
+     */
+    fun getNextTracks(count: Int): List<TrackItem> {
+        if (android.os.Looper.myLooper() == handler.looper) {
+            return getNextTracksInternal(count)
+        }
+
+        val latch = CountDownLatch(1)
+        var result: List<TrackItem>? = null
+
+        handler.post {
+            try {
+                result = getNextTracksInternal(count)
+            } finally {
+                latch.countDown()
+            }
+        }
+
+        try {
+            latch.await(5, TimeUnit.SECONDS)
+        } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt()
+        }
+
+        return result ?: emptyList()
+    }
+
+    private fun getNextTracksInternal(count: Int): List<TrackItem> {
+        val actualQueue = getActualQueueInternal()
+        if (actualQueue.isEmpty()) return emptyList()
+
+        val currentIndex = actualQueue.indexOfFirst { it.id == getCurrentTrack()?.id }
+        if (currentIndex == -1) return emptyList()
+
+        val startIndex = currentIndex + 1
+        val endIndex = minOf(startIndex + count, actualQueue.size)
+
+        return if (startIndex < actualQueue.size) {
+            actualQueue.subList(startIndex, endIndex)
+        } else {
+            emptyList()
+        }
+    }
+
+    /**
+     * Get current track index in playlist
+     */
+    fun getCurrentTrackIndex(): Int {
+        if (android.os.Looper.myLooper() == handler.looper) {
+            return currentTrackIndex
+        }
+
+        val latch = CountDownLatch(1)
+        var result = -1
+
+        handler.post {
+            try {
+                result = currentTrackIndex
+            } finally {
+                latch.countDown()
+            }
+        }
+
+        try {
+            latch.await(5, TimeUnit.SECONDS)
+        } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt()
+        }
+
+        return result
+    }
+
+    /**
+     * Callback interface for tracks needing update
+     */
+    fun interface OnTracksNeedUpdateListener {
+        fun onTracksNeedUpdate(
+            tracks: List<TrackItem>,
+            lookahead: Int,
+        )
+    }
+
+    // Add to class properties
+    private val onTracksNeedUpdateListeners = mutableListOf<WeakReference<OnTracksNeedUpdateListener>>()
+
+    /**
+     * Register listener for when tracks need update
+     */
+    fun addOnTracksNeedUpdateListener(listener: OnTracksNeedUpdateListener) {
+        handler.post {
+            onTracksNeedUpdateListeners.add(WeakReference(listener))
+        }
+    }
+
+    /**
+     * Remove listener
+     */
+    fun removeOnTracksNeedUpdateListener(listener: OnTracksNeedUpdateListener) {
+        handler.post {
+            onTracksNeedUpdateListeners.removeAll { it.get() == listener || it.get() == null }
+        }
+    }
+
+    /**
+     * Notify listeners that tracks need updating
+     * Called internally when moving to next track and upcoming tracks have empty URLs
+     */
+    private fun notifyTracksNeedUpdate(
+        tracks: List<TrackItem>,
+        lookahead: Int,
+    ) {
+        val liveCallbacks =
+            synchronized(onTracksNeedUpdateListeners) {
+                onTracksNeedUpdateListeners.removeAll { it.get() == null }
+                onTracksNeedUpdateListeners.mapNotNull { it.get() }
+            }
+
+        handler.post {
+            for (callback in liveCallbacks) {
+                try {
+                    callback.onTracksNeedUpdate(tracks, lookahead)
+                } catch (e: Exception) {
+                    NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Error in onTracksNeedUpdate listener: ${e.message}")
+                }
+            }
+        }
+    }
+
+    /**
+     * Check if upcoming tracks need URLs and notify listeners
+     * Call this in onMediaItemTransition or after skipTo operations
+     */
+    private fun checkUpcomingTracksForUrls(lookahead: Int = 5) {
+        val nextTracks = getNextTracksInternal(lookahead)
+        val tracksNeedingUrls = nextTracks.filter { it.url.isEmpty() }
+
+        if (tracksNeedingUrls.isNotEmpty()) {
+            NitroPlayerLogger.log("TrackPlayerCore", "⚠️ ${tracksNeedingUrls.size} upcoming tracks need URLs")
+            notifyTracksNeedUpdate(tracksNeedingUrls, lookahead)
+        }
+    }
+
+    fun setPlayBackSpeed(speed: Double) {
+        if (android.os.Looper.myLooper() == handler.looper) {
+            setPlayBackSpeedInternal(speed)
+            return
+        }
+        val latch = CountDownLatch(1)
+        handler.post {
+            try {
+                setPlayBackSpeedInternal(speed)
+            } finally {
+                latch.countDown()
+            }
+        }
+        try {
+            latch.await(5, TimeUnit.SECONDS)
+        } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt()
+        }
+    }
+
+    private fun setPlayBackSpeedInternal(speed: Double) {
+        if (::player.isInitialized) {
+            player.setPlaybackSpeed(speed.toFloat())
+        }
+    }
+
+    fun getPlayBackSpeed(): Double {
+        if (android.os.Looper.myLooper() == handler.looper) {
+            return getPlayBackSpeedInternal()
+        }
+        val latch = CountDownLatch(1)
+        var result = 1.0
+        handler.post {
+            try {
+                result = getPlayBackSpeedInternal()
+            } finally {
+                latch.countDown()
+            }
+        }
+        try {
+            latch.await(5, TimeUnit.SECONDS)
+        } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt()
+        }
+        return result
+    }
+
+    private fun getPlayBackSpeedInternal(): Double =
+        if (::player.isInitialized) {
+            player.playbackParameters.speed.toDouble()
+        } else {
+            1.0
+        }
 }

@@ -29,6 +29,9 @@ class EqualizerCore {
   // Current gains storage - internal so TapContext can access
   private(set) var currentGains: [Double] = [0, 0, 0, 0, 0]
 
+  // Dirty flag: set when gains change so TapContext only recalculates when needed
+  var gainsDirty: Bool = true
+
   // UserDefaults keys
   private let enabledKey = "eq_enabled"
   private let bandGainsKey = "eq_band_gains"
@@ -81,7 +84,7 @@ class EqualizerCore {
 
   private init() {
     restoreSettings()
-    print("✅ EqualizerCore: Initialized with MTAudioProcessingTap support")
+    NitroPlayerLogger.log("EqualizerCore", "✅ Initialized with MTAudioProcessingTap support")
   }
 
   // MARK: - Audio Mix Creation for AVPlayerItem
@@ -98,19 +101,18 @@ class EqualizerCore {
       let status = asset.statusOfValue(forKey: "tracks", error: &error)
 
       if status == .failed {
-        print(
-          "⚠️ EqualizerCore: Failed to load tracks key: \(error?.localizedDescription ?? "unknown")")
+          NitroPlayerLogger.log("EqualizerCore", "⚠️ Failed to load tracks key: \(error?.localizedDescription ?? "unknown")")
         return
       }
 
       // Proceed only if loaded successfully
       guard status == .loaded else {
-        print("⚠️ EqualizerCore: Tracks not loaded, status: \(status.rawValue)")
+        NitroPlayerLogger.log("EqualizerCore", "⚠️ Tracks not loaded, status: \(status.rawValue)")
         return
       }
 
       guard let audioTrack = asset.tracks(withMediaType: .audio).first else {
-        print("⚠️ EqualizerCore: No audio track found in asset")
+        NitroPlayerLogger.log("EqualizerCore", "⚠️ No audio track found in asset")
         return
       }
 
@@ -137,7 +139,7 @@ class EqualizerCore {
       )
 
       guard createStatus == noErr, let audioTap = tap else {
-        print("❌ EqualizerCore: Failed to create audio processing tap, status: \(createStatus)")
+        NitroPlayerLogger.log("EqualizerCore", "❌ Failed to create audio processing tap, status: \(createStatus)")
         return
       }
 
@@ -150,7 +152,7 @@ class EqualizerCore {
       // Apply to player item on main thread (AVPlayerItem properties should be accessed/modified on main thread or serial queue usually, but audioMix is thread safe - safely done on main to be sure)
       DispatchQueue.main.async {
         playerItem.audioMix = audioMix
-        print("✅ EqualizerCore: Applied audio mix with EQ tap to player item (async)")
+        NitroPlayerLogger.log("EqualizerCore", "✅ Applied audio mix with EQ tap to player item (async)")
       }
     }
   }
@@ -163,7 +165,7 @@ class EqualizerCore {
     notifyEnabledChange(enabled)
     saveEnabled(enabled)
 
-    print("🎚️ EqualizerCore: Equalizer \(enabled ? "enabled" : "disabled")")
+    NitroPlayerLogger.log("EqualizerCore", "🎚️ Equalizer \(enabled ? "enabled" : "disabled")")
     return true
   }
 
@@ -187,6 +189,7 @@ class EqualizerCore {
 
     let clampedGain = max(-12.0, min(12.0, gainDb))
     currentGains[bandIndex] = clampedGain
+    gainsDirty = true
 
     currentPresetName = nil
     notifyBandChange(getBands())
@@ -194,7 +197,7 @@ class EqualizerCore {
     saveBandGains(currentGains)
     saveCurrentPreset(nil)
 
-    print("🎚️ EqualizerCore: Band \(bandIndex) gain set to \(clampedGain) dB")
+    NitroPlayerLogger.log("EqualizerCore", "🎚️ Band \(bandIndex) gain set to \(clampedGain) dB")
     return true
   }
 
@@ -204,11 +207,12 @@ class EqualizerCore {
     for i in 0..<5 {
       currentGains[i] = max(-12.0, min(12.0, gains[i]))
     }
+    gainsDirty = true
 
     notifyBandChange(getBands())
     saveBandGains(currentGains)
 
-    print("🎚️ EqualizerCore: All band gains updated")
+    NitroPlayerLogger.log("EqualizerCore", "🎚️ All band gains updated")
     return true
   }
 
@@ -380,7 +384,7 @@ class EqualizerCore {
     currentPresetName = UserDefaults.standard.string(forKey: currentPresetKey)
     isEqualizerEnabled = enabled
 
-    print("✅ EqualizerCore: Restored settings - enabled: \(enabled), gains: \(currentGains)")
+    NitroPlayerLogger.log("EqualizerCore", "✅ Restored settings - enabled: \(enabled), gains: \(currentGains)")
   }
 
   // MARK: - Callback Management
@@ -505,6 +509,7 @@ private class TapContext {
         sampleRate: Double(sampleRate)
       )
     }
+    eqCore.gainsDirty = false
   }
 
   /// Calculate biquad coefficients for a peaking EQ filter
@@ -556,13 +561,13 @@ private func tapInitCallback(
   let context = TapContext(eqCore: eqCore)
   tapStorageOut.pointee = Unmanaged.passRetained(context).toOpaque()
 
-  print("🎛️ EqualizerCore: Tap initialized")
+  NitroPlayerLogger.log("EqualizerCore", "🎛️ Tap initialized")
 }
 
 private func tapFinalizeCallback(tap: MTAudioProcessingTap) {
   let storage = MTAudioProcessingTapGetStorage(tap)
   Unmanaged<TapContext>.fromOpaque(storage).release()
-  print("🎛️ EqualizerCore: Tap finalized")
+  NitroPlayerLogger.log("EqualizerCore", "🎛️ Tap finalized")
 }
 
 private func tapPrepareCallback(
@@ -578,13 +583,11 @@ private func tapPrepareCallback(
   context.updateCoefficients()
   context.resetFilterStates()
 
-  print(
-    "🎛️ EqualizerCore: Tap prepared - sampleRate: \(context.sampleRate), channels: \(context.channelCount)"
-  )
+    NitroPlayerLogger.log("EqualizerCore", "🎛️ Tap prepared - sampleRate: \(context.sampleRate), channels: \(context.channelCount)")
 }
 
 private func tapUnprepareCallback(tap: MTAudioProcessingTap) {
-  print("🎛️ EqualizerCore: Tap unprepared")
+  NitroPlayerLogger.log("EqualizerCore", "🎛️ Tap unprepared")
 }
 
 private func tapProcessCallback(
@@ -610,7 +613,7 @@ private func tapProcessCallback(
   )
 
   guard status == noErr else {
-    print("❌ EqualizerCore: Failed to get source audio: \(status)")
+    NitroPlayerLogger.log("EqualizerCore", "❌ Failed to get source audio: \(status)")
     return
   }
 
@@ -620,8 +623,10 @@ private func tapProcessCallback(
     return
   }
 
-  // Update coefficients (in case gains changed)
-  context.updateCoefficients()
+  // Update coefficients only when gains have changed
+  if context.eqCore?.gainsDirty == true {
+    context.updateCoefficients()
+  }
 
   // Process each buffer (channel)
   let bufferList = UnsafeMutableAudioBufferListPointer(bufferListInOut)

@@ -81,18 +81,27 @@ export function useDownloadProgress(
     const unsubscribe = downloadCallbackManager.subscribeToProgress(
       (progress) => {
         if (!isMounted.current) return
+
+        const isTerminal =
+          progress.state === 'completed' || progress.state === 'cancelled'
+
+        if (isTerminal) {
+          // Always clean up terminal downloads from the map regardless of activeOnly,
+          // otherwise completed downloads are never removed when activeOnly=true
+          setProgressMap((prev) => {
+            if (!prev.has(progress.trackId)) return prev
+            const next = new Map(prev)
+            next.delete(progress.trackId)
+            return next
+          })
+          return
+        }
+
         if (!shouldTrack(progress)) return
 
         setProgressMap((prev) => {
           const next = new Map(prev)
-          if (
-            progress.state === 'completed' ||
-            progress.state === 'cancelled'
-          ) {
-            next.delete(progress.trackId)
-          } else {
-            next.set(progress.trackId, progress)
-          }
+          next.set(progress.trackId, progress)
           return next
         })
       }

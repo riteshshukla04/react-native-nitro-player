@@ -23,6 +23,7 @@ import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.margelo.nitro.nitroplayer.TrackItem
+import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
 import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
 import com.margelo.nitro.nitroplayer.media.NitroPlayerMediaBrowserService
 import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
@@ -114,7 +115,7 @@ class MediaSessionManager(
                                 mediaItems: MutableList<MediaItem>,
                             ): ListenableFuture<MutableList<MediaItem>> {
                                 // This is called when Android Auto requests to play a track
-                                println("🎵 MediaSessionManager: onAddMediaItems called with ${mediaItems.size} items")
+                                NitroPlayerLogger.log("MediaSessionManager", "🎵 MediaSessionManager: onAddMediaItems called with ${mediaItems.size} items")
 
                                 if (mediaItems.isEmpty()) {
                                     return Futures.immediateFuture(mutableListOf())
@@ -128,7 +129,7 @@ class MediaSessionManager(
                                         requestedMediaItem.requestMetadata.mediaUri?.toString()
                                             ?: requestedMediaItem.mediaId
 
-                                    println("🎵 MediaSessionManager: Processing mediaId: $mediaId")
+                                    NitroPlayerLogger.log("MediaSessionManager", "🎵 MediaSessionManager: Processing mediaId: $mediaId")
 
                                     try {
                                         // Parse mediaId format: "playlistId:trackId"
@@ -137,7 +138,7 @@ class MediaSessionManager(
                                             val playlistId = mediaId.substring(0, colonIndex)
                                             val trackId = mediaId.substring(colonIndex + 1)
 
-                                            println("🎵 MediaSessionManager: Parsed playlistId: $playlistId, trackId: $trackId")
+                                            NitroPlayerLogger.log("MediaSessionManager", "🎵 MediaSessionManager: Parsed playlistId: $playlistId, trackId: $trackId")
 
                                             // Get the playlist and track
                                             val playlist = playlistManager.getPlaylist(playlistId)
@@ -147,27 +148,27 @@ class MediaSessionManager(
                                                     // Create a proper MediaItem with all metadata
                                                     val resolvedMediaItem = createMediaItem(track, mediaId)
                                                     updatedMediaItems.add(resolvedMediaItem)
-                                                    println("✅ MediaSessionManager: Resolved track: ${track.title}")
+                                                    NitroPlayerLogger.log("MediaSessionManager", "✅ MediaSessionManager: Resolved track: ${track.title}")
                                                 } else {
-                                                    println("⚠️ MediaSessionManager: Track $trackId not found in playlist")
+                                                    NitroPlayerLogger.log("MediaSessionManager", "⚠️ MediaSessionManager: Track $trackId not found in playlist")
                                                     updatedMediaItems.add(requestedMediaItem)
                                                 }
                                             } else {
-                                                println("⚠️ MediaSessionManager: Playlist $playlistId not found")
+                                                NitroPlayerLogger.log("MediaSessionManager", "⚠️ MediaSessionManager: Playlist $playlistId not found")
                                                 updatedMediaItems.add(requestedMediaItem)
                                             }
                                         } else {
-                                            println("⚠️ MediaSessionManager: Invalid mediaId format: $mediaId")
+                                            NitroPlayerLogger.log("MediaSessionManager", "⚠️ MediaSessionManager: Invalid mediaId format: $mediaId")
                                             updatedMediaItems.add(requestedMediaItem)
                                         }
                                     } catch (e: Exception) {
-                                        println("❌ MediaSessionManager: Error processing mediaId - ${e.message}")
+                                        NitroPlayerLogger.log("MediaSessionManager", "❌ MediaSessionManager: Error processing mediaId - ${e.message}")
                                         e.printStackTrace()
                                         updatedMediaItems.add(requestedMediaItem)
                                     }
                                 }
 
-                                println("🎵 MediaSessionManager: Returning ${updatedMediaItems.size} resolved media items")
+                                NitroPlayerLogger.log("MediaSessionManager", "🎵 MediaSessionManager: Returning ${updatedMediaItems.size} resolved media items")
                                 return Futures.immediateFuture(updatedMediaItems)
                             }
 
@@ -179,7 +180,7 @@ class MediaSessionManager(
                                 startPositionMs: Long,
                             ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
                                 // This is called when Android Auto wants to set and play media items
-                                println("🎵 MediaSessionManager: onSetMediaItems called with ${mediaItems.size} items, startIndex: $startIndex")
+                                NitroPlayerLogger.log("MediaSessionManager", "🎵 MediaSessionManager: onSetMediaItems called with ${mediaItems.size} items, startIndex: $startIndex")
 
                                 if (mediaItems.isEmpty()) {
                                     return Futures.immediateFuture(
@@ -194,7 +195,7 @@ class MediaSessionManager(
                                 try {
                                     // Get the first item's mediaId to determine the playlist
                                     val firstMediaId = mediaItems[0].mediaId
-                                    println("🎵 MediaSessionManager: First mediaId: $firstMediaId")
+                                    NitroPlayerLogger.log("MediaSessionManager", "🎵 MediaSessionManager: First mediaId: $firstMediaId")
 
                                     // Parse mediaId format: "playlistId:trackId"
                                     if (firstMediaId.contains(':')) {
@@ -202,7 +203,7 @@ class MediaSessionManager(
                                         val playlistId = firstMediaId.substring(0, colonIndex)
                                         val trackId = firstMediaId.substring(colonIndex + 1)
 
-                                        println("🎵 MediaSessionManager: Loading full playlist: $playlistId, starting at track: $trackId")
+                                        NitroPlayerLogger.log("MediaSessionManager", "🎵 MediaSessionManager: Loading full playlist: $playlistId, starting at track: $trackId")
 
                                         // Get the full playlist
                                         val playlist = playlistManager.getPlaylist(playlistId)
@@ -222,7 +223,7 @@ class MediaSessionManager(
                                                             createMediaItem(track, trackMediaId)
                                                         }.toMutableList()
 
-                                                println("✅ MediaSessionManager: Loaded ${playlistMediaItems.size} tracks, starting at index $trackIndex")
+                                                NitroPlayerLogger.log("MediaSessionManager", "✅ MediaSessionManager: Loaded ${playlistMediaItems.size} tracks, starting at index $trackIndex")
 
                                                 // Return the full playlist with the correct start index
                                                 return Futures.immediateFuture(
@@ -233,19 +234,19 @@ class MediaSessionManager(
                                                     ),
                                                 )
                                             } else {
-                                                println("⚠️ MediaSessionManager: Track not found in playlist")
+                                                NitroPlayerLogger.log("MediaSessionManager", "⚠️ MediaSessionManager: Track not found in playlist")
                                             }
                                         } else {
-                                            println("⚠️ MediaSessionManager: Playlist not found")
+                                            NitroPlayerLogger.log("MediaSessionManager", "⚠️ MediaSessionManager: Playlist not found")
                                         }
                                     }
                                 } catch (e: Exception) {
-                                    println("❌ MediaSessionManager: Error in onSetMediaItems - ${e.message}")
+                                    NitroPlayerLogger.log("MediaSessionManager", "❌ MediaSessionManager: Error in onSetMediaItems - ${e.message}")
                                     e.printStackTrace()
                                 }
 
                                 // Fallback: use the provided media items
-                                println("🎵 MediaSessionManager: Using fallback - provided media items")
+                                NitroPlayerLogger.log("MediaSessionManager", "🎵 MediaSessionManager: Using fallback - provided media items")
                                 return Futures.immediateFuture(
                                     MediaSession.MediaItemsWithStartPosition(
                                         mediaItems,
@@ -391,7 +392,7 @@ class MediaSessionManager(
                     .setShowActionsInCompactView(0, 1, 2),
             )
         } catch (e: Exception) {
-            Log.w("MediaSessionManager", "Failed to set media session token: ${e.message}")
+            NitroPlayerLogger.log("MediaSessionManager", "Failed to set media session token: ${e.message}")
         }
 
         // Add action buttons
@@ -500,7 +501,7 @@ class MediaSessionManager(
             try {
                 metadataBuilder.setArtworkUri(Uri.parse(artworkUrl))
             } catch (e: Exception) {
-                println("⚠️ MediaSessionManager: Invalid artwork URI: $artworkUrl")
+                NitroPlayerLogger.log("MediaSessionManager", "⚠️ MediaSessionManager: Invalid artwork URI: $artworkUrl")
             }
         }
 

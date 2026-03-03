@@ -79,6 +79,10 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
     @Keep
     override fun setRepeatMode(mode: RepeatMode): Boolean = core.setRepeatMode(mode)
 
+    @DoNotStrip
+    @Keep
+    override fun getRepeatMode(): RepeatMode = core.getRepeatMode()
+
     override fun onChangeTrack(callback: (track: TrackItem, reason: Reason?) -> Unit) {
         core.addOnChangeTrackListener(callback)
     }
@@ -102,6 +106,7 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
             androidAutoEnabled = config.androidAutoEnabled,
             carPlayEnabled = config.carPlayEnabled,
             showInNotification = config.showInNotification,
+            lookaheadCount = config.lookaheadCount?.toInt(),
         )
     }
 
@@ -123,4 +128,46 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
         Promise.async {
             core.skipToIndex(index.toInt())
         }
+
+    override fun updateTracks(tracks: Array<TrackItem>): Promise<Unit> =
+        Promise.async {
+            core.updateTracks(tracks.toList())
+        }
+
+    override fun getTracksById(trackIds: Array<String>): Promise<Array<TrackItem>> =
+        Promise.async {
+            core.getTracksById(trackIds.toList()).toTypedArray()
+        }
+
+    override fun getTracksNeedingUrls(): Promise<Array<TrackItem>> =
+        Promise.async {
+            core.getTracksNeedingUrls().toTypedArray()
+        }
+
+    override fun getNextTracks(count: Double): Promise<Array<TrackItem>> =
+        Promise.async {
+            core.getNextTracks(count.toInt()).toTypedArray()
+        }
+
+    override fun getCurrentTrackIndex(): Promise<Double> =
+        Promise.async {
+            core.getCurrentTrackIndex().toDouble()
+        }
+
+    override fun setPlaybackSpeed(speed: Double): Promise<Unit> =
+        Promise.async {
+            core.setPlayBackSpeed(speed)
+            Unit
+        }
+
+    override fun getPlaybackSpeed(): Promise<Double> =
+        Promise.async {
+            core.getPlayBackSpeed()
+        }
+
+    override fun onTracksNeedUpdate(callback: (tracks: Array<TrackItem>, lookahead: Double) -> Unit) {
+        core.addOnTracksNeedUpdateListener { tracks, lookahead ->
+            callback(tracks.toTypedArray(), lookahead.toDouble())
+        }
+    }
 }

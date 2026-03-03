@@ -18,8 +18,9 @@ final class DownloadManagerCore: NSObject {
   // MARK: - Constants
 
   private static let backgroundSessionIdentifier = "com.nitroplayer.backgroundDownloads"
-  private static let trackMetadataKey = "NitroPlayerTrackMetadata"
-  private static let playlistAssociationsKey = "NitroPlayerPlaylistAssociations"
+  // Legacy UserDefaults keys (migration only)
+  private static let legacyTrackMetadataKey = "NitroPlayerTrackMetadata"
+  private static let legacyPlaylistAssociationsKey = "NitroPlayerPlaylistAssociations"
 
   // MARK: - Properties
 
@@ -372,12 +373,12 @@ final class DownloadManagerCore: NSObject {
   }
 
   func getLocalPath(trackId: String) -> String? {
-    print("🔍 DownloadManagerCore.getLocalPath() called for trackId: \(trackId)")
+    NitroPlayerLogger.log("DownloadManagerCore", "🔍 getLocalPath() called for trackId: \(trackId)")
     if let downloadedTrack = DownloadDatabase.shared.getDownloadedTrack(trackId: trackId) {
-      print("   ✅ Found downloaded track, localPath: \(downloadedTrack.localPath)")
+      NitroPlayerLogger.log("DownloadManagerCore", "   ✅ Found downloaded track, localPath: \(downloadedTrack.localPath)")
       return downloadedTrack.localPath
     } else {
-      print("   ❌ No downloaded track found for trackId: \(trackId)")
+      NitroPlayerLogger.log("DownloadManagerCore", "   ❌ No downloaded track found for trackId: \(trackId)")
       return nil
     }
   }
@@ -406,9 +407,7 @@ final class DownloadManagerCore: NSObject {
   func syncDownloads() -> Int {
     let removedFromDb = DownloadDatabase.shared.syncDownloads()
     let bytesFreed = DownloadFileManager.shared.cleanupOrphanedFiles()
-    print(
-      "🔄 DownloadManagerCore: syncDownloads completed - removed \(removedFromDb) orphaned records, freed \(bytesFreed) bytes"
-    )
+      NitroPlayerLogger.log("DownloadManagerCore", "🔄 syncDownloads completed - removed \(removedFromDb) orphaned records, freed \(bytesFreed) bytes")
     return removedFromDb
   }
 
@@ -426,27 +425,27 @@ final class DownloadManagerCore: NSObject {
 
   func getEffectiveUrl(track: TrackItem) -> String {
     let preference = getPlaybackSourcePreference()
-    print("🔍 DownloadManagerCore.getEffectiveUrl() for track: \(track.id)")
-    print("   Playback preference: \(preference)")
+    NitroPlayerLogger.log("DownloadManagerCore", "🔍 getEffectiveUrl() for track: \(track.id)")
+    NitroPlayerLogger.log("DownloadManagerCore", "   Playback preference: \(preference)")
 
     switch preference {
     case .network:
-      print("   → Using network URL (preference=network)")
+      NitroPlayerLogger.log("DownloadManagerCore", "   → Using network URL (preference=network)")
       return track.url
     case .download:
       if let localPath = getLocalPath(trackId: track.id) {
-        print("   → Using local path: \(localPath)")
+        NitroPlayerLogger.log("DownloadManagerCore", "   → Using local path: \(localPath)")
         return localPath
       } else {
-        print("   → Local path not found, falling back to network URL")
+        NitroPlayerLogger.log("DownloadManagerCore", "   → Local path not found, falling back to network URL")
         return track.url
       }
     case .auto:
       if let localPath = getLocalPath(trackId: track.id) {
-        print("   → Using local path: \(localPath)")
+        NitroPlayerLogger.log("DownloadManagerCore", "   → Using local path: \(localPath)")
         return localPath
       } else {
-        print("   → Local path not found, using network URL")
+        NitroPlayerLogger.log("DownloadManagerCore", "   → Local path not found, using network URL")
         return track.url
       }
     }
@@ -507,52 +506,91 @@ final class DownloadManagerCore: NSObject {
 
   /// Load persisted track metadata and playlist associations (survives app restart)
   private func loadPersistedMetadata() {
-    print("📦 DownloadManagerCore: Loading persisted metadata...")
+    NitroPlayerLogger.log("DownloadManagerCore", "📦 Loading persisted metadata...")
 
-    // Load track metadata
-    if let data = UserDefaults.standard.data(forKey: Self.trackMetadataKey) {
+    // 1. Try new JSON file (post-migration)
+    if let data = NitroPlayerStorage.read(filename: "download_metadata.json") {
+      do {
+        if let wrapper = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+          if let tracksObj = wrapper["trackMetadata"] as? [String: Any] {
+            let tracksData = try JSONSerialization.data(withJSONObject: tracksObj)
+            let records = try JSONDecoder().decode([String: TrackItemRecord].self, from: tracksData)
+            for (trackId, record) in records {
+              trackMetadata[trackId] = recordToTrackItem(record)
+            }
+            NitroPlayerLogger.log("DownloadManagerCore", "   ✅ Loaded \(trackMetadata.count) track metadata entries from file")
+          }
+          if let assocObj = wrapper["playlistAssociations"] as? [String: String] {
+            playlistAssociations = assocObj
+            NitroPlayerLogger.log("DownloadManagerCore", "   ✅ Loaded \(playlistAssociations.count) playlist associations from file")
+          }
+        }
+      } catch {
+        NitroPlayerLogger.log("DownloadManagerCore", "   ❌ Failed to load metadata from file: \(error)")
+      }
+      return
+    }
+
+    // 2. Migrate from UserDefaults (one-time, existing installs)
+    var didMigrate = false
+
+    if let data = UserDefaults.standard.data(forKey: Self.legacyTrackMetadataKey) {
       do {
         let records = try JSONDecoder().decode([String: TrackItemRecord].self, from: data)
         for (trackId, record) in records {
           trackMetadata[trackId] = recordToTrackItem(record)
         }
-        print("   ✅ Loaded \(trackMetadata.count) track metadata entries")
+        NitroPlayerLogger.log("DownloadManagerCore", "   ✅ Migrated \(trackMetadata.count) track metadata entries from UserDefaults")
+        UserDefaults.standard.removeObject(forKey: Self.legacyTrackMetadataKey)
+        didMigrate = true
       } catch {
-        print("   ❌ Failed to load track metadata: \(error)")
+        NitroPlayerLogger.log("DownloadManagerCore", "   ❌ Failed to migrate track metadata: \(error)")
       }
     } else {
-      print("   ⚠️ No persisted track metadata found")
+      NitroPlayerLogger.log("DownloadManagerCore", "   ⚠️ No persisted track metadata found")
     }
 
-    // Load playlist associations
-    if let data = UserDefaults.standard.data(forKey: Self.playlistAssociationsKey) {
+    if let data = UserDefaults.standard.data(forKey: Self.legacyPlaylistAssociationsKey) {
       do {
         playlistAssociations = try JSONDecoder().decode([String: String].self, from: data)
-        print("   ✅ Loaded \(playlistAssociations.count) playlist associations")
+        NitroPlayerLogger.log("DownloadManagerCore", "   ✅ Migrated \(playlistAssociations.count) playlist associations from UserDefaults")
+        UserDefaults.standard.removeObject(forKey: Self.legacyPlaylistAssociationsKey)
+        didMigrate = true
       } catch {
-        print("   ❌ Failed to load playlist associations: \(error)")
+        NitroPlayerLogger.log("DownloadManagerCore", "   ❌ Failed to migrate playlist associations: \(error)")
       }
     } else {
-      print("   ⚠️ No persisted playlist associations found")
+      NitroPlayerLogger.log("DownloadManagerCore", "   ⚠️ No persisted playlist associations found")
+    }
+
+    if didMigrate {
+      savePersistedMetadata()
     }
   }
 
   /// Persist track metadata and playlist associations to disk
   private func savePersistedMetadata() {
-    // Convert TrackItem to TrackItemRecord for encoding
     var records: [String: TrackItemRecord] = [:]
     for (trackId, track) in trackMetadata {
       records[trackId] = trackItemToRecord(track)
     }
 
     do {
-      let trackData = try JSONEncoder().encode(records)
-      UserDefaults.standard.set(trackData, forKey: Self.trackMetadataKey)
-
+      let tracksData = try JSONEncoder().encode(records)
       let playlistData = try JSONEncoder().encode(playlistAssociations)
-      UserDefaults.standard.set(playlistData, forKey: Self.playlistAssociationsKey)
+
+      guard let tracksJson = try JSONSerialization.jsonObject(with: tracksData) as? [String: Any],
+            let assocJson = try JSONSerialization.jsonObject(with: playlistData) as? [String: Any]
+      else { return }
+
+      let wrapper: [String: Any] = [
+        "trackMetadata": tracksJson,
+        "playlistAssociations": assocJson,
+      ]
+      let data = try JSONSerialization.data(withJSONObject: wrapper, options: [])
+      try NitroPlayerStorage.write(filename: "download_metadata.json", data: data)
     } catch {
-      print("❌ DownloadManagerCore: Failed to save metadata: \(error)")
+      NitroPlayerLogger.log("DownloadManagerCore", "❌ Failed to save metadata: \(error)")
     }
   }
 
@@ -575,6 +613,12 @@ final class DownloadManagerCore: NSObject {
         artworkString = value
       }
     }
+
+    var extraPayloadDict: [String: Any]? = nil
+    if let extraPayload = track.extraPayload {
+      extraPayloadDict = extraPayload.toDictionary()
+    }
+
     return TrackItemRecord(
       id: track.id,
       title: track.title,
@@ -582,12 +626,30 @@ final class DownloadManagerCore: NSObject {
       album: track.album,
       duration: track.duration,
       url: track.url,
-      artwork: artworkString
+      artwork: artworkString,
+      extraPayload: extraPayloadDict
     )
   }
 
   private func recordToTrackItem(_ record: TrackItemRecord) -> TrackItem {
     let artwork: Variant_NullType_String? = record.artwork.map { .second($0) }
+
+    var extraPayload: AnyMap? = nil
+    if let extraPayloadDict = record.extraPayload {
+      extraPayload = AnyMap()
+      for (key, value) in extraPayloadDict {
+        if let stringValue = value as? String {
+          extraPayload?.setString(key: key, value: stringValue)
+        } else if let doubleValue = value as? Double {
+          extraPayload?.setDouble(key: key, value: doubleValue)
+        } else if let intValue = value as? Int {
+          extraPayload?.setDouble(key: key, value: Double(intValue))
+        } else if let boolValue = value as? Bool {
+          extraPayload?.setBoolean(key: key, value: boolValue)
+        }
+      }
+    }
+
     return TrackItem(
       id: record.id,
       title: record.title,
@@ -596,7 +658,7 @@ final class DownloadManagerCore: NSObject {
       duration: record.duration,
       url: record.url,
       artwork: artwork,
-      extraPayload: nil
+      extraPayload: extraPayload
     )
   }
 
@@ -657,41 +719,46 @@ extension DownloadManagerCore: URLSessionDownloadDelegate {
     _ session: URLSession, downloadTask: URLSessionDownloadTask,
     didFinishDownloadingTo location: URL
   ) {
-    print("🎯 DownloadManagerCore: didFinishDownloadingTo called")
+    NitroPlayerLogger.log("DownloadManagerCore", "🎯 didFinishDownloadingTo called")
 
     guard let description = downloadTask.taskDescription else {
-      print("❌ DownloadManagerCore: No task description")
+      NitroPlayerLogger.log("DownloadManagerCore", "❌ No task description")
       return
     }
     let parts = description.split(separator: "|")
     guard parts.count == 2 else {
-      print("❌ DownloadManagerCore: Invalid task description format: \(description)")
+      NitroPlayerLogger.log("DownloadManagerCore", "❌ Invalid task description format: \(description)")
       return
     }
 
     let downloadId = String(parts[0])
     let trackId = String(parts[1])
 
-    print(
-      "🎯 DownloadManagerCore: Processing completion for downloadId=\(downloadId), trackId=\(trackId)"
-    )
+      NitroPlayerLogger.log("DownloadManagerCore", "🎯 Processing completion for downloadId=\(downloadId), trackId=\(trackId)")
 
     // IMPORTANT: Move file SYNCHRONOUSLY - the temp file is deleted after this method returns!
     // Get storage location and original URL from track metadata
     let (storageLocation, originalURL) = queue.sync {
       (self.config.storageLocation ?? .private, self.trackMetadata[trackId]?.url)
     }
+
+    // Get suggested filename and HTTP headers from response
+    let suggestedFilename = downloadTask.response?.suggestedFilename
+    let httpResponse = downloadTask.response as? HTTPURLResponse
+
     let destinationPath = DownloadFileManager.shared.saveDownloadedFile(
       from: location,
       trackId: trackId,
       storageLocation: storageLocation,
-      originalURL: originalURL
+      originalURL: originalURL,
+      suggestedFilename: suggestedFilename,
+      httpResponse: httpResponse
     )
 
     // Now handle the rest asynchronously
     queue.async(flags: .barrier) {
       guard let destinationPath = destinationPath else {
-        print("❌ DownloadManagerCore: Failed to save file for trackId=\(trackId)")
+        NitroPlayerLogger.log("DownloadManagerCore", "❌ Failed to save file for trackId=\(trackId)")
         self.taskMetadata[downloadId]?.state = .failed
         self.taskMetadata[downloadId]?.error = DownloadError(
           code: "FILE_MOVE_FAILED",
@@ -705,11 +772,11 @@ extension DownloadManagerCore: URLSessionDownloadDelegate {
         return
       }
 
-      print("✅ DownloadManagerCore: File saved to \(destinationPath)")
+      NitroPlayerLogger.log("DownloadManagerCore", "✅ File saved to \(destinationPath)")
 
       guard let track = self.trackMetadata[trackId] else {
-        print("❌ DownloadManagerCore: No track metadata for trackId=\(trackId)")
-        print("   Available trackIds: \(Array(self.trackMetadata.keys))")
+        NitroPlayerLogger.log("DownloadManagerCore", "❌ No track metadata for trackId=\(trackId)")
+        NitroPlayerLogger.log("DownloadManagerCore", "   Available trackIds: \(Array(self.trackMetadata.keys))")
 
         // Still mark as completed even if we don't have metadata
         self.taskMetadata[downloadId]?.state = .completed
@@ -740,7 +807,7 @@ extension DownloadManagerCore: URLSessionDownloadDelegate {
       // Save to database
       DownloadDatabase.shared.saveDownloadedTrack(downloadedTrack, playlistId: playlistId)
 
-      print("✅ DownloadManagerCore: Track saved to database")
+      NitroPlayerLogger.log("DownloadManagerCore", "✅ Track saved to database")
 
       // Clean up persisted metadata (no longer needed after completion)
       self.cleanupPersistedMetadata(trackId: trackId, downloadId: downloadId)
@@ -753,7 +820,7 @@ extension DownloadManagerCore: URLSessionDownloadDelegate {
       self.activeTasks.removeValue(forKey: downloadId)
 
       // Notify
-      print("✅ DownloadManagerCore: Notifying completion for trackId=\(trackId)")
+      NitroPlayerLogger.log("DownloadManagerCore", "✅ Notifying completion for trackId=\(trackId)")
       self.notifyStateChange(
         downloadId: downloadId, trackId: trackId, state: .completed, error: nil)
       self.notifyComplete(downloadedTrack)
@@ -920,4 +987,59 @@ private struct TrackItemRecord: Codable {
   let duration: Double
   let url: String
   let artwork: String?
+  let extraPayload: [String: Any]?
+
+  enum CodingKeys: String, CodingKey {
+    case id, title, artist, album, duration, url, artwork, extraPayload
+  }
+
+  // Manual encoding to handle [String: Any]
+  func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(id, forKey: .id)
+    try container.encode(title, forKey: .title)
+    try container.encode(artist, forKey: .artist)
+    try container.encode(album, forKey: .album)
+    try container.encode(duration, forKey: .duration)
+    try container.encode(url, forKey: .url)
+    try container.encodeIfPresent(artwork, forKey: .artwork)
+
+    if let extraPayload = extraPayload {
+      let jsonData = try JSONSerialization.data(withJSONObject: extraPayload)
+      if let jsonString = String(data: jsonData, encoding: .utf8) {
+        try container.encode(jsonString, forKey: .extraPayload)
+      }
+    }
+  }
+
+  // Manual decoding to handle [String: Any]
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    id = try container.decode(String.self, forKey: .id)
+    title = try container.decode(String.self, forKey: .title)
+    artist = try container.decode(String.self, forKey: .artist)
+    album = try container.decode(String.self, forKey: .album)
+    duration = try container.decode(Double.self, forKey: .duration)
+    url = try container.decode(String.self, forKey: .url)
+    artwork = try container.decodeIfPresent(String.self, forKey: .artwork)
+
+    if let jsonString = try? container.decodeIfPresent(String.self, forKey: .extraPayload),
+       let jsonData = jsonString.data(using: .utf8) {
+      extraPayload = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
+    } else {
+      extraPayload = nil
+    }
+  }
+
+  // Initializer for code creation
+  init(id: String, title: String, artist: String, album: String, duration: Double, url: String, artwork: String?, extraPayload: [String: Any]?) {
+    self.id = id
+    self.title = title
+    self.artist = artist
+    self.album = album
+    self.duration = duration
+    self.url = url
+    self.artwork = artwork
+    self.extraPayload = extraPayload
+  }
 }

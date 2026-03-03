@@ -78,35 +78,40 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
     return core.setRepeatMode(mode: mode)
   }
 
+  func getRepeatMode() throws -> RepeatMode {
+    return core.getRepeatMode()
+  }
+
   // MARK: - Configuration
 
   func configure(config: PlayerConfig) throws {
     core.configure(
       androidAutoEnabled: config.androidAutoEnabled,
       carPlayEnabled: config.carPlayEnabled,
-      showInNotification: config.showInNotification
+      showInNotification: config.showInNotification,
+      lookaheadCount: config.lookaheadCount.map { Int($0) }
     )
   }
 
   // MARK: - Event Callbacks
 
   func onChangeTrack(callback: @escaping (TrackItem, Reason?) -> Void) throws {
-    print("🎯 HybridTrackPlayer: onChangeTrack callback registered")
+    NitroPlayerLogger.log("HybridTrackPlayer", "onChangeTrack callback registered")
     core.addOnChangeTrackListener(owner: self, callback)
   }
 
   func onPlaybackStateChange(callback: @escaping (TrackPlayerState, Reason?) -> Void) throws {
-    print("🎯 HybridTrackPlayer: onPlaybackStateChange callback registered")
+    NitroPlayerLogger.log("HybridTrackPlayer", "onPlaybackStateChange callback registered")
     core.addOnPlaybackStateChangeListener(owner: self, callback)
   }
 
   func onSeek(callback: @escaping (Double, Double) -> Void) throws {
-    print("🎯 HybridTrackPlayer: onSeek callback registered")
+    NitroPlayerLogger.log("HybridTrackPlayer", "onSeek callback registered")
     core.addOnSeekListener(owner: self, callback)
   }
 
   func onPlaybackProgressChange(callback: @escaping (Double, Double, Bool?) -> Void) throws {
-    print("🎯 HybridTrackPlayer: onPlaybackProgressChange callback registered")
+    NitroPlayerLogger.log("HybridTrackPlayer", "onPlaybackProgressChange callback registered")
     core.addOnPlaybackProgressChangeListener(owner: self, callback)
   }
 
@@ -134,5 +139,57 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
 
   func setVolume(volume: Double) throws -> Bool {
     return core.setVolume(volume: volume)
+  }
+
+  // MARK: - Lazy URL Loading
+
+  func updateTracks(tracks: [TrackItem]) throws -> Promise<Void> {
+    return Promise.async {
+      self.core.updateTracks(tracks: tracks)
+    }
+  }
+
+  func getTracksById(trackIds: [String]) throws -> Promise<[TrackItem]> {
+    return Promise.async {
+      return self.core.getTracksById(trackIds: trackIds)
+    }
+  }
+
+  func getTracksNeedingUrls() throws -> Promise<[TrackItem]> {
+    return Promise.async {
+      return self.core.getTracksNeedingUrls()
+    }
+  }
+
+  func getNextTracks(count: Double) throws -> Promise<[TrackItem]> {
+    return Promise.async {
+      return self.core.getNextTracks(count: Int(count))
+    }
+  }
+
+  func getCurrentTrackIndex() throws -> Promise<Double> {
+    return Promise.async {
+      return Double(self.core.getCurrentTrackIndex())
+    }
+  }
+
+  func onTracksNeedUpdate(callback: @escaping ([TrackItem], Double) -> Void) throws {
+    core.addOnTracksNeedUpdateListener { tracks, lookahead in
+      callback(tracks, Double(lookahead))
+    }
+  }
+  
+  func setPlaybackSpeed(speed: Double) throws -> Promise<Void> {
+    Promise.async{
+      self.core.setPlaybackSpeed(speed)
+    }
+    
+  }
+  
+  func getPlaybackSpeed() throws -> Promise<Double> {
+    return Promise.async{
+      return self.core.getPlaybackSpeed()
+    }
+    
   }
 }

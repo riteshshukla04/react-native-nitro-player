@@ -28,7 +28,7 @@ export type QueueOperation = 'add' | 'remove' | 'clear' | 'update'
 
 export type TrackPlayerState = 'playing' | 'paused' | 'stopped'
 
-export type Reason = 'user_action' | 'skip' | 'end' | 'error'
+export type Reason = 'user_action' | 'skip' | 'end' | 'error' | 'repeat'
 
 export interface PlayerState {
   currentTrack: TrackItem | null
@@ -44,4 +44,9 @@ export interface PlayerConfig {
   androidAutoEnabled?: boolean
   carPlayEnabled?: boolean
   showInNotification?: boolean
+  /**
+   * Number of upcoming tracks to preload URLs for (default: 5)
+   * Higher values = more proactive loading, but more network requests
+   */
+  lookaheadCount?: number
 }

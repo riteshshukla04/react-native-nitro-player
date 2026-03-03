@@ -208,19 +208,19 @@ final class HybridDownloadManager: HybridDownloadManagerSpec {
   // MARK: - Event Callbacks
 
   func onDownloadProgress(callback: @escaping (DownloadProgress) -> Void) throws {
-    print("🎯 HybridDownloadManager: onDownloadProgress callback registered")
+    NitroPlayerLogger.log("HybridDownloadManager", "onDownloadProgress callback registered")
     core.addProgressCallback(callback)
   }
 
   func onDownloadStateChange(
     callback: @escaping (String, String, DownloadState, DownloadError?) -> Void
   ) throws {
-    print("🎯 HybridDownloadManager: onDownloadStateChange callback registered")
+    NitroPlayerLogger.log("HybridDownloadManager", "onDownloadStateChange callback registered")
     core.addStateChangeCallback(callback)
   }
 
   func onDownloadComplete(callback: @escaping (DownloadedTrack) -> Void) throws {
-    print("🎯 HybridDownloadManager: onDownloadComplete callback registered")
+    NitroPlayerLogger.log("HybridDownloadManager", "onDownloadComplete callback registered")
     core.addCompleteCallback(callback)
   }
 }

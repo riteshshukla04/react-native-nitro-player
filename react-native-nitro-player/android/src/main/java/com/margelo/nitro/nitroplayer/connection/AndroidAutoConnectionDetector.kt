@@ -10,6 +10,7 @@ import android.database.Cursor
 import android.net.Uri
 import android.os.Build
 import android.util.Log
+import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
 
 /**
  * Detects Android Auto connection status using the official Android for Cars API
@@ -51,7 +52,7 @@ class AndroidAutoConnectionDetector(
 
     fun registerCarConnectionReceiver() {
         if (isRegistered) {
-            Log.w(TAG, "Receiver already registered")
+            NitroPlayerLogger.log("AndroidAutoConnection", "Receiver already registered")
             return
         }
 
@@ -66,12 +67,12 @@ class AndroidAutoConnectionDetector(
             }
 
             isRegistered = true
-            Log.i(TAG, "✅ Car connection receiver registered")
+            NitroPlayerLogger.log("AndroidAutoConnection", "✅ Car connection receiver registered")
 
             // Query initial state
             queryForState()
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error registering car connection receiver: ${e.message}")
+            NitroPlayerLogger.log("AndroidAutoConnection", "❌ Error registering car connection receiver: ${e.message}")
             e.printStackTrace()
         }
     }
@@ -84,9 +85,9 @@ class AndroidAutoConnectionDetector(
         try {
             context.unregisterReceiver(carConnectionReceiver)
             isRegistered = false
-            Log.i(TAG, "🛑 Car connection receiver unregistered")
+            NitroPlayerLogger.log("AndroidAutoConnection", "🛑 Car connection receiver unregistered")
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error unregistering car connection receiver: ${e.message}")
+            NitroPlayerLogger.log("AndroidAutoConnection", "❌ Error unregistering car connection receiver: ${e.message}")
             e.printStackTrace()
         }
     }
@@ -103,19 +104,19 @@ class AndroidAutoConnectionDetector(
                 null,
             )
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error querying car connection state: ${e.message}")
+            NitroPlayerLogger.log("AndroidAutoConnection", "❌ Error querying car connection state: ${e.message}")
             e.printStackTrace()
             notifyCarDisconnected()
         }
     }
 
     private fun notifyCarConnected(connectionType: Int) {
-        Log.i(TAG, "🚗 Android Auto CONNECTED (type: $connectionType)")
+        NitroPlayerLogger.log("AndroidAutoConnection", "🚗 Android Auto CONNECTED (type: $connectionType)")
         onConnectionChanged?.invoke(true, connectionType)
     }
 
     private fun notifyCarDisconnected() {
-        Log.i(TAG, "📱 Android Auto DISCONNECTED")
+        NitroPlayerLogger.log("AndroidAutoConnection", "📱 Android Auto DISCONNECTED")
         onConnectionChanged?.invoke(false, CONNECTION_TYPE_NOT_CONNECTED)
     }
 
@@ -124,7 +125,7 @@ class AndroidAutoConnectionDetector(
             context: Context?,
             intent: Intent?,
         ) {
-            Log.i(TAG, "🔔 Car connection broadcast received")
+            NitroPlayerLogger.log("AndroidAutoConnection", "🔔 Car connection broadcast received")
             queryForState()
         }
     }
@@ -138,26 +139,26 @@ class AndroidAutoConnectionDetector(
             response: Cursor?,
         ) {
             if (response == null) {
-                Log.w(TAG, "⚠️ Null response from content provider, treating as disconnected")
+                NitroPlayerLogger.log("AndroidAutoConnection", "⚠️ Null response from content provider, treating as disconnected")
                 notifyCarDisconnected()
                 return
             }
 
             val carConnectionTypeColumn = response.getColumnIndex(CAR_CONNECTION_STATE)
             if (carConnectionTypeColumn < 0) {
-                Log.w(TAG, "⚠️ Connection type column missing, treating as disconnected")
+                NitroPlayerLogger.log("AndroidAutoConnection", "⚠️ Connection type column missing, treating as disconnected")
                 notifyCarDisconnected()
                 return
             }
 
             if (!response.moveToNext()) {
-                Log.w(TAG, "⚠️ Empty response, treating as disconnected")
+                NitroPlayerLogger.log("AndroidAutoConnection", "⚠️ Empty response, treating as disconnected")
                 notifyCarDisconnected()
                 return
             }
 
             val connectionState = response.getInt(carConnectionTypeColumn)
-            Log.i(TAG, "📊 Connection state queried: $connectionState")
+            NitroPlayerLogger.log("AndroidAutoConnection", "📊 Connection state queried: $connectionState")
 
             if (connectionState == CONNECTION_TYPE_NOT_CONNECTED) {
                 notifyCarDisconnected()
