@@ -319,8 +319,9 @@ class TrackPlayerCore: NSObject {
           player.seek(to: .zero)
           player.play()
         } else {
-          // For original tracks, recreate via playFromIndex
-          self.playFromIndex(index: self.currentTrackIndex)
+          // For original tracks, recreate via skipToIndex
+          self.skipToIndex(index: self.currentTrackIndex)
+          player.play()  // Ensure playback starts immediately after seeking to avoid gaps
         }
       }
       return
@@ -338,7 +339,7 @@ class TrackPlayerCore: NSObject {
           upNextQueue.removeAll()
           DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
-            self.playFromIndex(index: 0)
+            self.skipToIndex(index: 0)
           }
           return
         }
@@ -1672,25 +1673,25 @@ class TrackPlayerCore: NSObject {
       upNextQueue.removeAll()
       currentTemporaryType = .none
 
-      return playFromIndexInternalWithResult(index: originalIndex)
+      return skipToIndexInternalWithResult(index: originalIndex)
     }
 
     return false
   }
 
-  private func playFromIndexInternal(index: Int) {
-    _ = playFromIndexInternalWithResult(index: index)
+  private func skipToIndexInternal(index: Int) {
+    _ = skipToIndexInternalWithResult(index: index)
   }
 
-  private func playFromIndexInternalWithResult(index: Int) -> Bool {
+  private func skipToIndexInternalWithResult(index: Int) -> Bool {
     guard index >= 0 && index < self.currentTracks.count else {
       print(
-        "❌ TrackPlayerCore: playFromIndex - invalid index \(index), currentTracks.count = \(self.currentTracks.count)"
+        "❌ TrackPlayerCore: skipToIndex - invalid index \(index), currentTracks.count = \(self.currentTracks.count)"
       )
       return false
     }
 
-    print("\n🎯 TrackPlayerCore: PLAY FROM INDEX \(index)")
+    print("\n🎯 TrackPlayerCore: SKIP TO INDEX \(index)")
     print("   Total tracks in playlist: \(self.currentTracks.count)")
     print("   Current index: \(self.currentTrackIndex), target index: \(index)")
 
@@ -1752,7 +1753,6 @@ class TrackPlayerCore: NSObject {
     // Start preloading upcoming tracks for gapless playback
     self.preloadUpcomingTracks(from: index + 1)
 
-    player.play()
     return true
   }
 
