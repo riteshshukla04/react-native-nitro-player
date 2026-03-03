@@ -4,7 +4,7 @@ import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
 import com.margelo.nitro.NitroModules
 import com.margelo.nitro.core.Promise
-import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
+import com.margelo.nitro.nitroplayer.core.*
 
 @DoNotStrip
 @Keep
