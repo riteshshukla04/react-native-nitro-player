@@ -205,12 +205,14 @@ class DownloadDatabase private constructor(
             downloadedTracks.remove(trackId)
 
             // Remove from all playlist associations
+            val emptyPlaylists = mutableListOf<String>()
             playlistTracks.forEach { (playlistId, trackIds) ->
                 trackIds.remove(trackId)
                 if (trackIds.isEmpty()) {
-                    playlistTracks.remove(playlistId)
+                    emptyPlaylists.add(playlistId)
                 }
             }
+            emptyPlaylists.forEach { playlistTracks.remove(it) }
 
             saveToDisk()
         }

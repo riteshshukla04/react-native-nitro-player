@@ -35,6 +35,7 @@ class DownloadWorker(
         private const val NOTIFICATION_CHANNEL_ID = "nitro_player_downloads"
         private const val NOTIFICATION_ID = 2001
         private const val BUFFER_SIZE = 8192
+        private val CONTENT_DISPOSITION_REGEX = Regex("filename=\"?([^\";]+)\"?")
     }
 
     private val downloadManager = DownloadManagerCore.getInstance(context)
@@ -130,7 +131,7 @@ class DownloadWorker(
                 if (extension.isNullOrEmpty()) {
                     val contentDisposition = connection.getHeaderField("Content-Disposition")
                     if (contentDisposition != null) {
-                        val match = Regex("filename=\"?([^\";]+)\"?").find(contentDisposition)
+                        val match = CONTENT_DISPOSITION_REGEX.find(contentDisposition)
                         if (match != null) {
                             val filename = match.groupValues[1]
                             extension = MimeTypeMap.getFileExtensionFromUrl(filename)

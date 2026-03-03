@@ -22,8 +22,8 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
         playlistManager = core.getPlaylistManager()
     }
 
-    private val playlistsChangeListeners = mutableListOf<() -> Unit>()
-    private val playlistChangeListeners = mutableMapOf<String, () -> Unit>()
+    private val playlistsChangeListeners = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
+    private val playlistChangeListeners = java.util.concurrent.ConcurrentHashMap<String, () -> Unit>()
 
     @DoNotStrip
     @Keep

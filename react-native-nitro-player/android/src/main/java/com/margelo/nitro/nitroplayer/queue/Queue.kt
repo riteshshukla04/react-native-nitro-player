@@ -13,7 +13,7 @@ class Queue {
     /**
      * Get all tracks in the queue
      */
-    fun getTracks(): List<TrackItem> = tracks.toList()
+    fun getTracks(): List<TrackItem> = ArrayList(tracks)
 
     /**
      * Get tracks as an array (for compatibility with existing API)

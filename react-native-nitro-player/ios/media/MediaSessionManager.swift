@@ -21,7 +21,7 @@ class MediaSessionManager {
   // MARK: - Properties
 
   private var trackPlayerCore: TrackPlayerCore?
-  private var artworkCache: [String: UIImage] = [:]
+  private let artworkCache = NSCache<NSString, UIImage>()
 
   private var showInNotification: Bool = true
 
@@ -135,7 +135,7 @@ class MediaSessionManager {
     // Artwork: use cache synchronously when available, otherwise kick off async load
     if let artwork = track.artwork, case .second(let artworkUrl) = artwork {
       lastArtworkUrl = artworkUrl
-      if let cachedImage = artworkCache[artworkUrl] {
+      if let cachedImage = artworkCache.object(forKey: artworkUrl as NSString) {
         nowPlayingInfo[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(
           boundsSize: CGSize(width: Constants.artworkSize, height: Constants.artworkSize),
           requestHandler: { _ in cachedImage }
@@ -285,7 +285,7 @@ class MediaSessionManager {
   }
 
   private func loadArtwork(url: String, completion: @escaping (UIImage?) -> Void) {
-    if let cached = artworkCache[url] {
+    if let cached = artworkCache.object(forKey: url as NSString) {
       completion(cached)
       return
     }
@@ -301,7 +301,7 @@ class MediaSessionManager {
         return
       }
       DispatchQueue.main.async {
-        self?.artworkCache[url] = image
+        self?.artworkCache.setObject(image, forKey: url as NSString)
         completion(image)
       }
     }.resume()
@@ -310,6 +310,6 @@ class MediaSessionManager {
   func release() {
     clearNowPlayingInfo()
     disableAllCommands()
-    artworkCache.removeAll()
+    artworkCache.removeAllObjects()
   }
 }

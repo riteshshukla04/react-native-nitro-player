@@ -58,6 +58,9 @@ final class DownloadManagerCore: NSObject {
   /// Playlist associations (downloadId -> playlistId)
   private var playlistAssociations: [String: String] = [:]
 
+  /// Cached parsed (downloadId, trackId) tuples per task description to avoid repeated string splitting
+  private var parsedDescriptionCache: [String: (downloadId: String, trackId: String)] = [:]
+
   /// Background completion handler from AppDelegate
   var backgroundCompletionHandler: (() -> Void)?
 
@@ -258,10 +261,50 @@ final class DownloadManagerCore: NSObject {
     }
   }
 
+  private func _pauseDownloadUnsafe(downloadId: String) {
+    guard let task = self.activeTasks[downloadId] else { return }
+    task.cancel(byProducingResumeData: { resumeData in
+      self.taskMetadata[downloadId]?.resumeData = resumeData
+    })
+    self.taskMetadata[downloadId]?.state = .paused
+    if let trackId = self.taskMetadata[downloadId]?.trackId {
+      self.notifyStateChange(downloadId: downloadId, trackId: trackId, state: .paused, error: nil)
+    }
+  }
+
+  private func _resumeDownloadUnsafe(downloadId: String) {
+    guard let metadata = self.taskMetadata[downloadId] else { return }
+    var task: URLSessionDownloadTask
+    if let resumeData = metadata.resumeData {
+      task = self.backgroundSession.downloadTask(withResumeData: resumeData)
+    } else if let track = self.trackMetadata[metadata.trackId],
+              let url = URL(string: track.url) {
+      task = self.backgroundSession.downloadTask(with: url)
+    } else { return }
+    task.taskDescription = "\(downloadId)|\(metadata.trackId)"
+    self.activeTasks[downloadId] = task
+    self.taskMetadata[downloadId]?.state = .downloading
+    self.taskMetadata[downloadId]?.resumeData = nil
+    task.resume()
+    self.notifyStateChange(downloadId: downloadId, trackId: metadata.trackId, state: .downloading, error: nil)
+  }
+
+  private func _cancelDownloadUnsafe(downloadId: String) {
+    guard let task = self.activeTasks[downloadId] else { return }
+    task.cancel()
+    if let trackId = self.taskMetadata[downloadId]?.trackId {
+      self.taskMetadata[downloadId]?.state = .cancelled
+      self.notifyStateChange(downloadId: downloadId, trackId: trackId, state: .cancelled, error: nil)
+      self.cleanupPersistedMetadata(trackId: trackId, downloadId: downloadId)
+    }
+    self.activeTasks.removeValue(forKey: downloadId)
+    self.taskMetadata.removeValue(forKey: downloadId)
+  }
+
   func pauseAllDownloads() {
     queue.async(flags: .barrier) {
       for downloadId in self.activeTasks.keys {
-        self.pauseDownload(downloadId: downloadId)
+        self._pauseDownloadUnsafe(downloadId: downloadId)
       }
     }
   }
@@ -270,7 +313,7 @@ final class DownloadManagerCore: NSObject {
     queue.async(flags: .barrier) {
       for downloadId in self.taskMetadata.keys where self.taskMetadata[downloadId]?.state == .paused
       {
-        self.resumeDownload(downloadId: downloadId)
+        self._resumeDownloadUnsafe(downloadId: downloadId)
       }
     }
   }
@@ -278,7 +321,7 @@ final class DownloadManagerCore: NSObject {
   func cancelAllDownloads() {
     queue.async(flags: .barrier) {
       for downloadId in self.activeTasks.keys {
-        self.cancelDownload(downloadId: downloadId)
+        self._cancelDownloadUnsafe(downloadId: downloadId)
       }
     }
   }
@@ -302,15 +345,24 @@ final class DownloadManagerCore: NSObject {
 
   func getQueueStatus() -> DownloadQueueStatus {
     return queue.sync {
-      let metadata = Array(taskMetadata.values)
+      var pendingCount = 0
+      var activeCount = 0
+      var failedCount = 0
+      var totalBytes = 0.0
+      var downloadedBytes = 0.0
 
-      let pendingCount = metadata.filter { $0.state == .pending }.count
-      let activeCount = metadata.filter { $0.state == .downloading }.count
+      for m in taskMetadata.values {
+        switch m.state {
+        case .pending: pendingCount += 1
+        case .downloading: activeCount += 1
+        case .failed: failedCount += 1
+        default: break
+        }
+        totalBytes += m.totalBytes ?? 0
+        downloadedBytes += m.bytesDownloaded
+      }
+
       let completedCount = DownloadDatabase.shared.getAllDownloadedTracks().count
-      let failedCount = metadata.filter { $0.state == .failed }.count
-
-      let totalBytes = metadata.reduce(0.0) { $0 + ($1.totalBytes ?? 0) }
-      let downloadedBytes = metadata.reduce(0.0) { $0 + $1.bytesDownloaded }
 
       return DownloadQueueStatus(
         pendingCount: Double(pendingCount),
@@ -601,6 +653,17 @@ final class DownloadManagerCore: NSObject {
     savePersistedMetadata()
   }
 
+  private func parseTaskDescription(_ description: String) -> (downloadId: String, trackId: String)? {
+    if let cached = parsedDescriptionCache[description] {
+      return cached
+    }
+    let parts = description.split(separator: "|")
+    guard parts.count == 2 else { return nil }
+    let result = (downloadId: String(parts[0]), trackId: String(parts[1]))
+    parsedDescriptionCache[description] = result
+    return result
+  }
+
   // MARK: - TrackItem Serialization
 
   private func trackItemToRecord(_ track: TrackItem) -> TrackItemRecord {
@@ -725,14 +788,13 @@ extension DownloadManagerCore: URLSessionDownloadDelegate {
       NitroPlayerLogger.log("DownloadManagerCore", "❌ No task description")
       return
     }
-    let parts = description.split(separator: "|")
-    guard parts.count == 2 else {
+    guard let parsed = parseTaskDescription(description) else {
       NitroPlayerLogger.log("DownloadManagerCore", "❌ Invalid task description format: \(description)")
       return
     }
 
-    let downloadId = String(parts[0])
-    let trackId = String(parts[1])
+    let downloadId = parsed.downloadId
+    let trackId = parsed.trackId
 
       NitroPlayerLogger.log("DownloadManagerCore", "🎯 Processing completion for downloadId=\(downloadId), trackId=\(trackId)")
 
@@ -834,12 +896,11 @@ extension DownloadManagerCore: URLSessionDownloadDelegate {
     _ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64,
     totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64
   ) {
-    guard let description = downloadTask.taskDescription else { return }
-    let parts = description.split(separator: "|")
-    guard parts.count == 2 else { return }
+    guard let description = downloadTask.taskDescription,
+          let parsed = parseTaskDescription(description) else { return }
 
-    let downloadId = String(parts[0])
-    let trackId = String(parts[1])
+    let downloadId = parsed.downloadId
+    let trackId = parsed.trackId
 
     queue.async(flags: .barrier) {
       self.taskMetadata[downloadId]?.bytesDownloaded = Double(totalBytesWritten)
@@ -862,14 +923,12 @@ extension DownloadManagerCore: URLSessionDownloadDelegate {
 
   func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
     guard let downloadTask = task as? URLSessionDownloadTask,
-      let description = downloadTask.taskDescription
+      let description = downloadTask.taskDescription,
+      let parsed = parseTaskDescription(description)
     else { return }
 
-    let parts = description.split(separator: "|")
-    guard parts.count == 2 else { return }
-
-    let downloadId = String(parts[0])
-    let trackId = String(parts[1])
+    let downloadId = parsed.downloadId
+    let trackId = parsed.trackId
 
     guard let error = error else { return }  // Success case handled in didFinishDownloadingTo
 

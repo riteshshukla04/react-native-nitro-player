@@ -35,10 +35,12 @@ enum NitroPlayerStorage {
   /// Uses `FileManager` APIs — never hardcodes the UUID-based container path
   /// so this resolves correctly regardless of which device or simulator the
   /// app runs on.
-  private static func storageDirectory() -> URL {
+  private static let storageDir: URL = {
     let appSupport = FileManager.default.urls(
       for: .applicationSupportDirectory, in: .userDomainMask
     ).first!
     return appSupport.appendingPathComponent("NitroPlayer", isDirectory: true)
-  }
+  }()
+
+  private static func storageDirectory() -> URL { storageDir }
 }

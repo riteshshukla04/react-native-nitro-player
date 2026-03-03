@@ -112,12 +112,8 @@ class PlaylistManager private constructor(
         description: String? = null,
         artwork: String? = null,
     ): Boolean {
-        val playlist =
-            synchronized(playlists) {
-                playlists[playlistId]
-            } ?: return false
-
         synchronized(playlists) {
+            val playlist = playlists[playlistId] ?: return false
             playlists[playlistId] =
                 playlist.copy(
                     name = name ?: playlist.name,
@@ -161,12 +157,8 @@ class PlaylistManager private constructor(
         track: TrackItem,
         index: Int? = null,
     ): Boolean {
-        val playlist =
-            synchronized(playlists) {
-                playlists[playlistId]
-            } ?: return false
-
         synchronized(playlists) {
+            val playlist = playlists[playlistId] ?: return false
             val tracks = playlist.tracks.toMutableList()
             if (index != null && index >= 0 && index <= tracks.size) {
                 tracks.add(index, track)
@@ -199,12 +191,8 @@ class PlaylistManager private constructor(
         tracks: List<TrackItem>,
         index: Int? = null,
     ): Boolean {
-        val playlist =
-            synchronized(playlists) {
-                playlists[playlistId]
-            } ?: return false
-
         synchronized(playlists) {
+            val playlist = playlists[playlistId] ?: return false
             val currentTracks = playlist.tracks.toMutableList()
             if (index != null && index >= 0 && index <= currentTracks.size) {
                 currentTracks.addAll(index, tracks)
@@ -236,13 +224,9 @@ class PlaylistManager private constructor(
         playlistId: String,
         trackId: String,
     ): Boolean {
-        val playlist =
-            synchronized(playlists) {
-                playlists[playlistId]
-            } ?: return false
-
         val removed =
             synchronized(playlists) {
+                val playlist = playlists[playlistId] ?: return false
                 val tracks = playlist.tracks.toMutableList()
                 val removed = tracks.removeAll { it.id == trackId }
                 if (removed) {
@@ -273,18 +257,13 @@ class PlaylistManager private constructor(
         trackId: String,
         newIndex: Int,
     ): Boolean {
-        val playlist =
-            synchronized(playlists) {
-                playlists[playlistId]
-            } ?: return false
-
-        val tracks = playlist.tracks.toMutableList()
-        val oldIndex = tracks.indexOfFirst { it.id == trackId }
-        if (oldIndex < 0 || newIndex < 0 || newIndex >= tracks.size) {
-            return false
-        }
-
         synchronized(playlists) {
+            val playlist = playlists[playlistId] ?: return false
+            val tracks = playlist.tracks.toMutableList()
+            val oldIndex = tracks.indexOfFirst { it.id == trackId }
+            if (oldIndex < 0 || newIndex < 0 || newIndex >= tracks.size) {
+                return false
+            }
             val track = tracks.removeAt(oldIndex)
             tracks.add(newIndex, track)
             playlists[playlistId] = playlist.copy(tracks = tracks)
