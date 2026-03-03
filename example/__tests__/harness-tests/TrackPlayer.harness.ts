@@ -935,4 +935,292 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             }).not.toThrow();
         });
     });
+
+    // ============================================
+    // LAZY URL LOADING
+    // ============================================
+
+    describe('Lazy URL Loading', () => {
+        // Playlist with a mix of real URLs and intentionally empty URLs (lazy tracks)
+        let lazyPlaylistId: string;
+
+        const createLazyTrack = (id: string, title: string): TrackItem => ({
+            id,
+            title,
+            artist: 'Lazy Artist',
+            album: 'Lazy Album',
+            duration: 180.0,
+            url: '', // empty URL — requires lazy loading
+            artwork: null,
+        });
+
+        const createRealTrack = (id: string, title: string): TrackItem => ({
+            id,
+            title,
+            artist: 'Real Artist',
+            album: 'Real Album',
+            duration: 180.0,
+            url: `https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3`,
+            artwork: null,
+        });
+
+        beforeEach(() => {
+            lazyPlaylistId = PlayerQueue.createPlaylist('Lazy Playlist', 'Lazy URL loading test playlist');
+            createdPlaylistIds.push(lazyPlaylistId);
+        });
+
+        // ————————————————————————————————————————
+        // getCurrentTrackIndex
+        // ————————————————————————————————————————
+
+        describe('getCurrentTrackIndex()', () => {
+            it('returns -1 when nothing is playing', async () => {
+                const index = await TrackPlayer.getCurrentTrackIndex();
+                expect(index).toBe(-1);
+            });
+
+            it('returns 0 when the first track is playing', async () => {
+                PlayerQueue.addTracksToPlaylist(lazyPlaylistId, [
+                    createRealTrack('idx-0', 'Track 0'),
+                    createRealTrack('idx-1', 'Track 1'),
+                    createRealTrack('idx-2', 'Track 2'),
+                ]);
+                PlayerQueue.loadPlaylist(lazyPlaylistId);
+                await TrackPlayer.playSong('idx-0', lazyPlaylistId);
+                await waitForNextTick();
+
+                const index = await TrackPlayer.getCurrentTrackIndex();
+                expect(index).toBe(0);
+            });
+
+            it('returns the correct index for a mid-playlist track', async () => {
+                PlayerQueue.addTracksToPlaylist(lazyPlaylistId, [
+                    createRealTrack('idx-a', 'Track A'),
+                    createRealTrack('idx-b', 'Track B'),
+                    createRealTrack('idx-c', 'Track C'),
+                ]);
+                PlayerQueue.loadPlaylist(lazyPlaylistId);
+                await TrackPlayer.playSong('idx-b', lazyPlaylistId);
+                await waitForNextTick();
+
+                const index = await TrackPlayer.getCurrentTrackIndex();
+                expect(index).toBe(1);
+            });
+        });
+
+        // ————————————————————————————————————————
+        // getTracksNeedingUrls
+        // ————————————————————————————————————————
+
+        describe('getTracksNeedingUrls()', () => {
+            it('returns empty array when all tracks in playlist have URLs', async () => {
+                PlayerQueue.addTracksToPlaylist(lazyPlaylistId, [
+                    createRealTrack('real-1', 'Real 1'),
+                    createRealTrack('real-2', 'Real 2'),
+                ]);
+                PlayerQueue.loadPlaylist(lazyPlaylistId);
+                await TrackPlayer.playSong('real-1', lazyPlaylistId);
+                await waitForNextTick();
+
+                const needing = await TrackPlayer.getTracksNeedingUrls();
+                expect(needing.length).toBe(0);
+            });
+
+            it('returns tracks whose URL is an empty string', async () => {
+                PlayerQueue.addTracksToPlaylist(lazyPlaylistId, [
+                    createRealTrack('has-url', 'Has URL'),
+                    createLazyTrack('needs-url-1', 'Needs URL 1'),
+                    createLazyTrack('needs-url-2', 'Needs URL 2'),
+                ]);
+                PlayerQueue.loadPlaylist(lazyPlaylistId);
+                await TrackPlayer.playSong('has-url', lazyPlaylistId);
+                await waitForNextTick();
+
+                const needing = await TrackPlayer.getTracksNeedingUrls();
+                expect(needing.length).toBe(2);
+                expect(needing.map(t => t.id).sort()).toEqual(['needs-url-1', 'needs-url-2']);
+            });
+
+            it('returns empty array when no playlist is loaded', async () => {
+                const needing = await TrackPlayer.getTracksNeedingUrls();
+                expect(needing.length).toBe(0);
+            });
+        });
+
+        // ————————————————————————————————————————
+        // getNextTracks
+        // ————————————————————————————————————————
+
+        describe('getNextTracks()', () => {
+            it('returns the next N tracks after the current position', async () => {
+                PlayerQueue.addTracksToPlaylist(lazyPlaylistId, [
+                    createRealTrack('seq-0', 'Seq 0'),
+                    createRealTrack('seq-1', 'Seq 1'),
+                    createRealTrack('seq-2', 'Seq 2'),
+                    createRealTrack('seq-3', 'Seq 3'),
+                ]);
+                PlayerQueue.loadPlaylist(lazyPlaylistId);
+                await TrackPlayer.playSong('seq-0', lazyPlaylistId);
+                await waitForNextTick();
+
+                const next = await TrackPlayer.getNextTracks(2);
+                expect(next.length).toBe(2);
+                expect(next[0]?.id).toBe('seq-1');
+                expect(next[1]?.id).toBe('seq-2');
+            });
+
+            it('clamps to the remaining tracks when count exceeds remaining', async () => {
+                PlayerQueue.addTracksToPlaylist(lazyPlaylistId, [
+                    createRealTrack('clamp-0', 'Clamp 0'),
+                    createRealTrack('clamp-1', 'Clamp 1'),
+                ]);
+                PlayerQueue.loadPlaylist(lazyPlaylistId);
+                await TrackPlayer.playSong('clamp-0', lazyPlaylistId);
+                await waitForNextTick();
+
+                const next = await TrackPlayer.getNextTracks(10);
+                expect(next.length).toBe(1);
+                expect(next[0]?.id).toBe('clamp-1');
+            });
+
+            it('returns empty array when playing the last track', async () => {
+                PlayerQueue.addTracksToPlaylist(lazyPlaylistId, [
+                    createRealTrack('last-0', 'Last 0'),
+                    createRealTrack('last-1', 'Last 1'),
+                ]);
+                PlayerQueue.loadPlaylist(lazyPlaylistId);
+                await TrackPlayer.playSong('last-1', lazyPlaylistId);
+                await waitForNextTick();
+
+                const next = await TrackPlayer.getNextTracks(3);
+                expect(next.length).toBe(0);
+            });
+        });
+
+        // ————————————————————————————————————————
+        // updateTracks
+        // ————————————————————————————————————————
+
+        describe('updateTracks()', () => {
+            it('fills in missing URLs for lazy tracks', async () => {
+                PlayerQueue.addTracksToPlaylist(lazyPlaylistId, [
+                    createRealTrack('upd-playing', 'Playing'),
+                    createLazyTrack('upd-lazy-1', 'Lazy 1'),
+                    createLazyTrack('upd-lazy-2', 'Lazy 2'),
+                ]);
+                PlayerQueue.loadPlaylist(lazyPlaylistId);
+                await TrackPlayer.playSong('upd-playing', lazyPlaylistId);
+                await waitForNextTick();
+
+                // Verify lazy tracks need URLs before the update
+                const before = await TrackPlayer.getTracksNeedingUrls();
+                expect(before.length).toBe(2);
+
+                // Provide resolved URLs
+                await TrackPlayer.updateTracks([
+                    { ...createLazyTrack('upd-lazy-1', 'Lazy 1'), url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3' },
+                    { ...createLazyTrack('upd-lazy-2', 'Lazy 2'), url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3' },
+                ]);
+                await waitForNextTick();
+
+                const after = await TrackPlayer.getTracksNeedingUrls();
+                expect(after.length).toBe(0);
+            });
+
+            it('does not update the currently playing track', async () => {
+                PlayerQueue.addTracksToPlaylist(lazyPlaylistId, [
+                    createRealTrack('skip-playing', 'Playing Track'),
+                    createRealTrack('skip-other', 'Other Track'),
+                ]);
+                PlayerQueue.loadPlaylist(lazyPlaylistId);
+                await TrackPlayer.playSong('skip-playing', lazyPlaylistId);
+                await waitForNextTick();
+
+                // Attempt to update the currently playing track's title
+                await TrackPlayer.updateTracks([
+                    { ...createRealTrack('skip-playing', 'UPDATED TITLE'), url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3' },
+                ]);
+                await waitForNextTick();
+
+                // The currently playing track should be unchanged
+                const tracks = await TrackPlayer.getTracksById(['skip-playing']);
+                expect(tracks[0]?.title).toBe('Playing Track');
+            });
+
+            it('skips update entries with empty URLs', async () => {
+                PlayerQueue.addTracksToPlaylist(lazyPlaylistId, [
+                    createRealTrack('valid-url', 'Valid URL Track'),
+                    createRealTrack('other', 'Other'),
+                ]);
+                PlayerQueue.loadPlaylist(lazyPlaylistId);
+                await TrackPlayer.playSong('other', lazyPlaylistId);
+                await waitForNextTick();
+
+                // Try to update with an empty URL — should be ignored
+                await TrackPlayer.updateTracks([
+                    { ...createRealTrack('valid-url', 'SHOULD BE IGNORED'), url: '' },
+                ]);
+                await waitForNextTick();
+
+                const tracks = await TrackPlayer.getTracksById(['valid-url']);
+                expect(tracks[0]?.title).toBe('Valid URL Track');
+            });
+        });
+
+        // ————————————————————————————————————————
+        // onTracksNeedUpdate callback
+        // ————————————————————————————————————————
+
+        describe('onTracksNeedUpdate callback', () => {
+            it('fires with tracks that have empty URLs when the current track changes', async () => {
+                PlayerQueue.addTracksToPlaylist(lazyPlaylistId, [
+                    createRealTrack('cb-first', 'First'),
+                    createLazyTrack('cb-lazy-1', 'Lazy 1'),
+                    createLazyTrack('cb-lazy-2', 'Lazy 2'),
+                ]);
+                PlayerQueue.loadPlaylist(lazyPlaylistId);
+                await TrackPlayer.playSong('cb-first', lazyPlaylistId);
+                await waitForNextTick();
+
+                let receivedTracks: TrackItem[] = [];
+                let callbackFired = false;
+
+                TrackPlayer.onTracksNeedUpdate((tracks, _lookahead) => {
+                    receivedTracks = tracks;
+                    callbackFired = true;
+                });
+
+                // Skip to next track — triggers checkUpcomingTracksForUrls
+                TrackPlayer.skipToNext();
+
+                // Give the native callback time to propagate
+                await new Promise<void>((resolve) => setTimeout(resolve, 500));
+
+                expect(callbackFired).toBe(true);
+                expect(receivedTracks.length).toBeGreaterThan(0);
+                expect(receivedTracks.every(t => t.url === '')).toBe(true);
+            });
+
+            it('does not fire when all upcoming tracks already have URLs', async () => {
+                PlayerQueue.addTracksToPlaylist(lazyPlaylistId, [
+                    createRealTrack('no-cb-0', 'Track 0'),
+                    createRealTrack('no-cb-1', 'Track 1'),
+                    createRealTrack('no-cb-2', 'Track 2'),
+                ]);
+                PlayerQueue.loadPlaylist(lazyPlaylistId);
+                await TrackPlayer.playSong('no-cb-0', lazyPlaylistId);
+                await waitForNextTick();
+
+                let callbackFired = false;
+                TrackPlayer.onTracksNeedUpdate(() => {
+                    callbackFired = true;
+                });
+
+                TrackPlayer.skipToNext();
+                await new Promise<void>(resolve => setTimeout(resolve, 500));
+
+                expect(callbackFired).toBe(false);
+            });
+        });
+    });
 });
