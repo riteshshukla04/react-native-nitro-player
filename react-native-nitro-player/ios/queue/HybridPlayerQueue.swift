@@ -77,6 +77,7 @@ final class HybridPlayerQueue: HybridPlayerQueueSpec {
 
   func onPlaylistsChanged(callback: @escaping ([Playlist], QueueOperation?) -> Void) throws {
     // Store callback in static storage so it persists across HybridPlayerQueue instances
+    HybridPlayerQueue.playlistsChangeCallbacks.removeAll()
     HybridPlayerQueue.playlistsChangeCallbacks.append(callback)
 
     // Register a single listener with PlaylistManager that dispatches to all callbacks
@@ -94,6 +95,7 @@ final class HybridPlayerQueue: HybridPlayerQueueSpec {
 
   func onPlaylistChanged(callback: @escaping (String, Playlist, QueueOperation?) -> Void) throws {
     // Store callback in static storage so it persists across HybridPlayerQueue instances
+    HybridPlayerQueue.playlistChangeCallbacks.removeAll()
     HybridPlayerQueue.playlistChangeCallbacks.append(callback)
 
     // Register listeners for all existing playlists (only once per playlist)

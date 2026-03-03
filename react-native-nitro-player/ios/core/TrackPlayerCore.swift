@@ -236,6 +236,7 @@ class TrackPlayerCore: NSObject {
 
     // Create boundary times at each interval
     var boundaryTimes: [NSValue] = []
+    boundaryTimes.reserveCapacity(Int(duration / interval) + 1)
     var time: Double = 0
     while time <= duration {
       let cmTime = CMTime(seconds: time, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
@@ -433,6 +434,7 @@ class TrackPlayerCore: NSObject {
       return
     }
 
+    #if DEBUG
     NitroPlayerLogger.log("TrackPlayerCore", "\n" + String(repeating: "▶", count: Constants.separatorLineLength))
     NitroPlayerLogger.log("TrackPlayerCore", "🔄 CURRENT ITEM CHANGED")
     NitroPlayerLogger.log("TrackPlayerCore", String(repeating: "▶", count: Constants.separatorLineLength))
@@ -459,6 +461,7 @@ class TrackPlayerCore: NSObject {
     }
 
     NitroPlayerLogger.log("TrackPlayerCore", String(repeating: "▶", count: Constants.separatorLineLength) + "\n")
+    #endif
 
     // Log item status
     NitroPlayerLogger.log("TrackPlayerCore", "📱 Item status: \(currentItem.status.rawValue)")
@@ -520,10 +523,12 @@ class TrackPlayerCore: NSObject {
         }
       } else {
         NitroPlayerLogger.log("TrackPlayerCore", "   ⚠️ Track ID '\(trackId)' NOT FOUND in currentTracks!")
+        #if DEBUG
         NitroPlayerLogger.log("TrackPlayerCore", "   Current tracks:")
         for (idx, track) in currentTracks.enumerated() {
           NitroPlayerLogger.log("TrackPlayerCore", "      [\(idx)] \(track.id) - \(track.title)")
         }
+        #endif
       }
     }
 
@@ -1043,9 +1048,11 @@ class TrackPlayerCore: NSObject {
       existingPlayer.insert(item, after: lastItem)
       lastItem = item
 
+      #if DEBUG
       if let trackId = item.trackId, let track = tracks.first(where: { $0.id == trackId }) {
         NitroPlayerLogger.log("TrackPlayerCore", "  ➕ Added to player queue [\(index + 1)]: \(track.title)")
       }
+      #endif
     }
 
     #if DEBUG
@@ -1844,7 +1851,7 @@ class TrackPlayerCore: NSObject {
     // Add playNext stack (LIFO - most recently added plays first)
     // Skip index 0 if current track is from playNext (it's already playing)
     if currentTemporaryType == .playNext && playNextStack.count > 1 {
-      newQueueTracks.append(contentsOf: Array(playNextStack.dropFirst()))
+      newQueueTracks.append(contentsOf: playNextStack.dropFirst())
     } else if currentTemporaryType != .playNext {
       newQueueTracks.append(contentsOf: playNextStack)
     }
@@ -1852,15 +1859,14 @@ class TrackPlayerCore: NSObject {
     // Add upNext queue (in order, FIFO)
     // Skip index 0 if current track is from upNext (it's already playing)
     if currentTemporaryType == .upNext && upNextQueue.count > 1 {
-      newQueueTracks.append(contentsOf: Array(upNextQueue.dropFirst()))
+      newQueueTracks.append(contentsOf: upNextQueue.dropFirst())
     } else if currentTemporaryType != .upNext {
       newQueueTracks.append(contentsOf: upNextQueue)
     }
 
     // Add remaining original tracks
     if currentTrackIndex + 1 < currentTracks.count {
-      let remainingOriginal = Array(currentTracks[(currentTrackIndex + 1)...])
-      newQueueTracks.append(contentsOf: remainingOriginal)
+      newQueueTracks.append(contentsOf: currentTracks[(currentTrackIndex + 1)...])
     }
 
     // Remove all items from player EXCEPT the currently playing one

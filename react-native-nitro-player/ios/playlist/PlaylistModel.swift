@@ -15,7 +15,7 @@ class PlaylistModel {
   let name: String
   let description: String?
   let artwork: String?
-  var tracks: [TrackItem]
+  let tracks: [TrackItem]
 
   init(
     id: String, name: String, description: String? = nil, artwork: String? = nil,

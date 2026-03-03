@@ -28,6 +28,8 @@ class DownloadManagerCore private constructor(
             instance ?: synchronized(this) {
                 instance ?: DownloadManagerCore(context.applicationContext).also { instance = it }
             }
+
+        private val ACTIVE_STATES = setOf(DownloadState.DOWNLOADING, DownloadState.PENDING, DownloadState.PAUSED)
     }
 
     // Configuration
@@ -221,20 +223,29 @@ class DownloadManagerCore private constructor(
 
     fun getActiveDownloads(): Array<DownloadTask> =
         activeTasks.values
-            .filter { it.state in listOf(DownloadState.DOWNLOADING, DownloadState.PENDING, DownloadState.PAUSED) }
+            .filter { it.state in ACTIVE_STATES }
             .map { it.toDownloadTask() }
             .toTypedArray()
 
     fun getQueueStatus(): DownloadQueueStatus {
-        val metadata = activeTasks.values.toList()
+        var pendingCount = 0
+        var activeCount = 0
+        var failedCount = 0
+        var totalBytes = 0.0
+        var downloadedBytes = 0.0
 
-        val pendingCount = metadata.count { it.state == DownloadState.PENDING }
-        val activeCount = metadata.count { it.state == DownloadState.DOWNLOADING }
+        for (m in activeTasks.values) {
+            when (m.state) {
+                DownloadState.PENDING -> pendingCount++
+                DownloadState.DOWNLOADING -> activeCount++
+                DownloadState.FAILED -> failedCount++
+                else -> {}
+            }
+            totalBytes += m.totalBytes ?: 0.0
+            downloadedBytes += m.bytesDownloaded
+        }
+
         val completedCount = database.getAllDownloadedTracks().size
-        val failedCount = metadata.count { it.state == DownloadState.FAILED }
-
-        val totalBytes = metadata.sumOf { it.totalBytes ?: 0.0 }
-        val downloadedBytes = metadata.sumOf { it.bytesDownloaded }
 
         return DownloadQueueStatus(
             pendingCount = pendingCount.toDouble(),

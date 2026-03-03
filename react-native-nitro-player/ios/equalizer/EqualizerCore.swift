@@ -28,6 +28,8 @@ class EqualizerCore {
 
   // Current gains storage - internal so TapContext can access
   private(set) var currentGains: [Double] = [0, 0, 0, 0, 0]
+  private var cachedBands: [EqualizerBand]?
+  private var cachedCustomPresets: [EqualizerPreset]?
 
   // Dirty flag: set when gains change so TapContext only recalculates when needed
   var gainsDirty: Bool = true
@@ -174,7 +176,8 @@ class EqualizerCore {
   }
 
   func getBands() -> [EqualizerBand] {
-    return (0..<5).map { i in
+    if let cached = cachedBands { return cached }
+    let bands = (0..<5).map { i in
       EqualizerBand(
         index: Double(i),
         centerFrequency: Double(frequencies[i]),
@@ -182,6 +185,8 @@ class EqualizerCore {
         frequencyLabel: frequencyLabels[i]
       )
     }
+    cachedBands = bands
+    return bands
   }
 
   func setBandGain(bandIndex: Int, gainDb: Double) -> Bool {
@@ -189,6 +194,7 @@ class EqualizerCore {
 
     let clampedGain = max(-12.0, min(12.0, gainDb))
     currentGains[bandIndex] = clampedGain
+    cachedBands = nil
     gainsDirty = true
 
     currentPresetName = nil
@@ -207,6 +213,7 @@ class EqualizerCore {
     for i in 0..<5 {
       currentGains[i] = max(-12.0, min(12.0, gains[i]))
     }
+    cachedBands = nil
     gainsDirty = true
 
     notifyBandChange(getBands())
@@ -231,15 +238,18 @@ class EqualizerCore {
   }
 
   func getCustomPresets() -> [EqualizerPreset] {
+    if let cached = cachedCustomPresets { return cached }
     guard let data = UserDefaults.standard.data(forKey: customPresetsKey),
       let presets = try? JSONDecoder().decode([String: [Double]].self, from: data)
     else {
       return []
     }
 
-    return presets.map { name, gains in
+    let result = presets.map { name, gains in
       EqualizerPreset(name: name, gains: gains, type: .custom)
     }
+    cachedCustomPresets = result
+    return result
   }
 
   func applyPreset(_ presetName: String) -> Bool {
@@ -292,6 +302,7 @@ class EqualizerCore {
 
     if let data = try? JSONEncoder().encode(presets) {
       UserDefaults.standard.set(data, forKey: customPresetsKey)
+      cachedCustomPresets = nil
       currentPresetName = name
       notifyPresetChange(name)
       saveCurrentPreset(name)
@@ -321,6 +332,7 @@ class EqualizerCore {
 
     if let data = try? JSONEncoder().encode(presets) {
       UserDefaults.standard.set(data, forKey: customPresetsKey)
+      cachedCustomPresets = nil
 
       if currentPresetName == name {
         currentPresetName = nil

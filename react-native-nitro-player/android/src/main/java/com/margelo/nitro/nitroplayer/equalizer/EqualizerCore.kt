@@ -190,8 +190,7 @@ class EqualizerCore private constructor(
             currentPresetName = null // Custom settings
             notifyBandChange(getBands())
             notifyPresetChange(null)
-            saveBandGains(getAllGains())
-            saveCurrentPreset(null)
+            saveBandGainsAndPreset(getAllGains(), null)
             true
         } catch (e: Exception) {
             false
@@ -387,6 +386,19 @@ class EqualizerCore private constructor(
         } else {
             prefs.edit().remove("eq_current_preset").apply()
         }
+    }
+
+    private fun saveBandGainsAndPreset(gains: List<Double>, presetName: String?) {
+        val json = JSONArray()
+        gains.forEach { json.put(it) }
+        prefs.edit().apply {
+            putString("eq_band_gains", json.toString())
+            if (presetName != null) {
+                putString("eq_current_preset", presetName)
+            } else {
+                remove("eq_current_preset")
+            }
+        }.apply()
     }
 
     private fun restoreSettings() {

@@ -304,8 +304,18 @@ final class DownloadFileManager {
     return bytesFreed
   }
 
+  private static let commonAudioExtensions = ["mp3", "m4a", "aac", "wav", "flac", "ogg", "opus", "mp4"]
+
   func getLocalPath(for trackId: String) -> String? {
-    // Check private directory first
+    // Try common extensions first (fast O(1) path)
+    for ext in Self.commonAudioExtensions {
+      let privatePath = privateDownloadsDirectory.appendingPathComponent("\(trackId).\(ext)").path
+      if fileManager.fileExists(atPath: privatePath) { return privatePath }
+      let publicPath = publicDownloadsDirectory.appendingPathComponent("\(trackId).\(ext)").path
+      if fileManager.fileExists(atPath: publicPath) { return publicPath }
+    }
+
+    // Fallback to directory enumeration for uncommon extensions
     let privateFiles =
       (try? fileManager.contentsOfDirectory(
         at: privateDownloadsDirectory, includingPropertiesForKeys: nil)) ?? []
@@ -315,7 +325,6 @@ final class DownloadFileManager {
       }
     }
 
-    // Check public directory
     let publicFiles =
       (try? fileManager.contentsOfDirectory(
         at: publicDownloadsDirectory, includingPropertiesForKeys: nil)) ?? []

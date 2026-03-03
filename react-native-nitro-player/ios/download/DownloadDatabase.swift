@@ -82,6 +82,12 @@ final class DownloadDatabase {
     }
   }
 
+  private func _isTrackDownloadedUnsafe(trackId: String) -> Bool {
+    guard let record = downloadedTracks[trackId] else { return false }
+    let absolutePath = resolveAbsolutePath(for: record)
+    return FileManager.default.fileExists(atPath: absolutePath)
+  }
+
   func isPlaylistDownloaded(playlistId: String) -> Bool {
     return queue.sync {
       guard let trackIds = playlistTracks[playlistId], !trackIds.isEmpty else { return false }
@@ -93,7 +99,7 @@ final class DownloadDatabase {
 
       // Check if all tracks are downloaded
       for track in playlistModel.tracks {
-        if !isTrackDownloaded(trackId: track.id) {
+        if !_isTrackDownloadedUnsafe(trackId: track.id) {
           return false
         }
       }
@@ -108,7 +114,7 @@ final class DownloadDatabase {
 
       // Check if at least one track is downloaded
       for trackId in trackIds {
-        if isTrackDownloaded(trackId: trackId) {
+        if _isTrackDownloadedUnsafe(trackId: trackId) {
           return true
         }
       }
