@@ -1911,17 +1911,29 @@ class TrackPlayerCore: NSObject {
 
       NitroPlayerLogger.log("TrackPlayerCore", "🔄 updateTracks: \(tracks.count) updates")
 
-      // Get current track ID to avoid updating it (preserves gapless playback)
-      let currentTrackId = self.getCurrentTrack()?.id
+      // Get current track to decide how to handle it
+      let currentTrack = self.getCurrentTrack()
+      let currentTrackId = currentTrack?.id
+      let currentTrackIsEmpty = currentTrack?.url.isEmpty ?? false
+
+      // Find the update for the current track, if any
+      let currentTrackUpdate = currentTrackId != nil ? tracks.first(where: { $0.id == currentTrackId }) : nil
 
       // Filter out current track and validate
       let safeTracks = tracks.filter { track in
         switch true {
-        case track.id == currentTrackId:
+        case track.id == currentTrackId && !currentTrackIsEmpty:
+          // Has a real URL already — skip to preserve gapless playback
           NitroPlayerLogger.log(
             "TrackPlayerCore",
             "⚠️ Skipping update for currently playing track: \(track.id) (preserves gapless)")
           return false
+        case track.id == currentTrackId && currentTrackIsEmpty:
+          // Empty URL — must not be playing, allow the update (only if the new URL is real)
+          NitroPlayerLogger.log(
+            "TrackPlayerCore",
+            "🔄 Updating current track with no URL: \(track.id)")
+          return !track.url.isEmpty
         case track.url.isEmpty:
           NitroPlayerLogger.log(
             "TrackPlayerCore", "⚠️ Skipping track with empty URL: \(track.id)")
@@ -1949,6 +1961,18 @@ class TrackPlayerCore: NSObject {
 
       // Update in PlaylistManager
       let affectedPlaylists = self.playlistManager.updateTracks(tracks: safeTracks)
+
+      // If the current track had no URL and now has one, replace the current AVPlayerItem
+      if let update = currentTrackUpdate, currentTrackIsEmpty, !update.url.isEmpty {
+        NitroPlayerLogger.log(
+          "TrackPlayerCore", "🔄 Replacing current AVPlayerItem for track with resolved URL: \(update.id)")
+        if let newItem = self.createGaplessPlayerItem(for: update, isPreload: false) {
+          self.player?.replaceCurrentItem(with: newItem)
+          if self.player?.rate == 0 {
+            self.player?.play()
+          }
+        }
+      }
 
       // Rebuild queue if current playlist was affected
       if let currentId = self.currentPlaylistId,
@@ -2106,8 +2130,14 @@ class TrackPlayerCore: NSObject {
    * Call this in playerItemDidPlayToEndTime or after skip operations
    */
   private func checkUpcomingTracksForUrls(lookahead: Int = 5) {
-    let nextTracks = getNextTracksInternal(count: lookahead)
-    let tracksNeedingUrls = nextTracks.filter { $0.url.isEmpty }
+    let upcomingTracks = getNextTracksInternal(count: lookahead)
+
+    // Always include the current track if it has no URL — it can't play without one
+    let currentTrack = getCurrentTrack()
+    let currentNeedsUrl = currentTrack.map { $0.url.isEmpty } ?? false
+    let candidateTracks = currentNeedsUrl ? [currentTrack!] + upcomingTracks : upcomingTracks
+
+    let tracksNeedingUrls = candidateTracks.filter { $0.url.isEmpty }
 
     if !tracksNeedingUrls.isEmpty {
       NitroPlayerLogger.log(

@@ -1521,16 +1521,28 @@ class TrackPlayerCore private constructor(
         handler.post {
             NitroPlayerLogger.log("TrackPlayerCore") { "🔄 updateTracks: ${tracks.size} updates" }
 
-            // Get current track ID to avoid updating it (preserves gapless playback)
-            val currentTrackId = getCurrentTrack()?.id
+            // Get current track to decide how to handle it
+            val currentTrack = getCurrentTrack()
+            val currentTrackId = currentTrack?.id
+
+            // Separate the current-track update (if any) from the rest
+            val currentTrackUpdate = if (currentTrackId != null) tracks.find { it.id == currentTrackId } else null
+            val currentTrackIsEmpty = currentTrack?.url.isNullOrEmpty()
 
             // Filter out current track and validate
             val safeTracks =
                 tracks.filter { track ->
                     when {
-                        track.id == currentTrackId -> {
+                        track.id == currentTrackId && !currentTrackIsEmpty -> {
+                            // Has a real URL already — skip to preserve gapless playback
                             NitroPlayerLogger.log("TrackPlayerCore") { "⚠️ Skipping update for currently playing track: ${track.id} (preserves gapless)" }
                             false
+                        }
+
+                        track.id == currentTrackId && currentTrackIsEmpty -> {
+                            // Empty URL — must not be playing, allow the update
+                            NitroPlayerLogger.log("TrackPlayerCore") { "🔄 Updating current track with no URL: ${track.id}" }
+                            track.url.isNotEmpty() // only include if the update actually provides a URL
                         }
 
                         track.url.isEmpty() -> {
@@ -1552,7 +1564,24 @@ class TrackPlayerCore private constructor(
             // Update in PlaylistManager
             val affectedPlaylists = playlistManager.updateTracks(safeTracks)
 
-            // Rebuild queue if current playlist was affected
+            // If the current track was one of the updates (had no URL before), replace its
+            // MediaItem in ExoPlayer directly — rebuildQueueFromCurrentPosition skips index 0.
+            if (currentTrackUpdate != null && currentTrackIsEmpty && currentTrackUpdate.url.isNotEmpty()) {
+                val exoIndex = player.currentMediaItemIndex
+                if (exoIndex >= 0) {
+                    val playlistId = currentPlaylistId ?: ""
+                    val mediaId = if (playlistId.isNotEmpty()) "$playlistId:${currentTrackUpdate.id}" else currentTrackUpdate.id
+                    val newMediaItem = currentTrackUpdate.toMediaItem(mediaId)
+                    NitroPlayerLogger.log("TrackPlayerCore") { "🔄 Replacing MediaItem at index $exoIndex for current track with resolved URL" }
+                    player.replaceMediaItem(exoIndex, newMediaItem)
+                    // If ExoPlayer was in an error/idle state waiting for a URI, re-prepare
+                    if (player.playbackState == Player.STATE_IDLE) {
+                        player.prepare()
+                    }
+                }
+            }
+
+            // Rebuild queue for other updated tracks if current playlist was affected
             if (currentPlaylistId != null && affectedPlaylists.containsKey(currentPlaylistId)) {
                 NitroPlayerLogger.log("TrackPlayerCore") { "🔄 Rebuilding queue - ${affectedPlaylists[currentPlaylistId]} tracks updated in current playlist" }
 
@@ -1713,14 +1742,14 @@ class TrackPlayerCore private constructor(
     }
 
     // Add to class properties
-    private val onTracksNeedUpdateListeners = mutableListOf<WeakReference<OnTracksNeedUpdateListener>>()
+    private val onTracksNeedUpdateListeners = mutableListOf<OnTracksNeedUpdateListener>()
 
     /**
      * Register listener for when tracks need update
      */
     fun addOnTracksNeedUpdateListener(listener: OnTracksNeedUpdateListener) {
         handler.post {
-            onTracksNeedUpdateListeners.add(WeakReference(listener))
+            onTracksNeedUpdateListeners.add(listener)
         }
     }
 
@@ -1729,7 +1758,7 @@ class TrackPlayerCore private constructor(
      */
     fun removeOnTracksNeedUpdateListener(listener: OnTracksNeedUpdateListener) {
         handler.post {
-            onTracksNeedUpdateListeners.removeAll { it.get() == listener || it.get() == null }
+            onTracksNeedUpdateListeners.removeAll { it == listener }
         }
     }
 
@@ -1743,8 +1772,7 @@ class TrackPlayerCore private constructor(
     ) {
         val liveCallbacks =
             synchronized(onTracksNeedUpdateListeners) {
-                onTracksNeedUpdateListeners.removeAll { it.get() == null }
-                onTracksNeedUpdateListeners.mapNotNull { it.get() }
+                onTracksNeedUpdateListeners.toList()
             }
 
         handler.post {
@@ -1763,8 +1791,20 @@ class TrackPlayerCore private constructor(
      * Call this in onMediaItemTransition or after skipTo operations
      */
     private fun checkUpcomingTracksForUrls(lookahead: Int = 5) {
-        val nextTracks = getNextTracksInternal(lookahead)
-        val tracksNeedingUrls = nextTracks.filter { it.url.isEmpty() }
+        val upcomingTracks = if (currentTrackIndex < 0) {
+            // Playback hasn't started yet - check first N tracks from the loaded playlist
+            currentTracks.take(lookahead)
+        } else {
+            // Playback is active - check upcoming tracks
+            getNextTracksInternal(lookahead)
+        }
+
+        // Always include the current track if it has no URL — it can't play without one
+        val currentTrack = getCurrentTrack()
+        val currentNeedsUrl = currentTrack != null && currentTrack.url.isEmpty()
+        val candidateTracks = if (currentNeedsUrl) listOf(currentTrack!!) + upcomingTracks else upcomingTracks
+
+        val tracksNeedingUrls = candidateTracks.filter { it.url.isEmpty() }
 
         if (tracksNeedingUrls.isNotEmpty()) {
             NitroPlayerLogger.log("TrackPlayerCore") { "⚠️ ${tracksNeedingUrls.size} upcoming tracks need URLs" }
