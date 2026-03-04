@@ -15,7 +15,21 @@ TrackPlayer.configure({
   androidAutoEnabled: true,
   carPlayEnabled: false,
   showInNotification: true,
+  lookaheadCount: 3,
 });
+
+TrackPlayer.onTracksNeedUpdate(async (tracks, lookahead) => {
+  console.info(`🔄 onTracksNeedUpdate fired! ${tracks.length} tracks need URLs (lookahead: ${lookahead})`);
+  console.info('Tracks:', tracks.map((t) => ({ id: t.id, title: t.title })));
+  
+  // Update tracks with resolved URLs
+  const updatedTracks = tracks.map((track) => ({
+    ...track,
+    url: `https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3`,
+  }));
+  
+  await TrackPlayer.updateTracks(updatedTracks);
+})
 
 export default  function App() {
   return (

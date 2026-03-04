@@ -14,7 +14,7 @@ import {
   usePlaylist,
 } from 'react-native-nitro-player';
 import type { TrackItem } from 'react-native-nitro-player';
-import { sampleTracks1, sampleTracks2, sampleTracks3 } from '../data/sampleTracks';
+import { lazyLoadedTracks, sampleTracks1, sampleTracks2, sampleTracks3 } from '../data/sampleTracks';
 import { colors, commonStyles, spacing, borderRadius } from '../styles/theme';
 
 export default function PlaylistsScreen() {
@@ -85,6 +85,13 @@ export default function PlaylistsScreen() {
               createPlaylist('Test Tracks', '19 test songs for performance testing', sampleTracks3)
             }>
             <Text style={commonStyles.buttonText}>Create "Test Tracks" (19 songs)</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={commonStyles.button}
+            onPress={() => {
+              createPlaylist('Lazy Loaded Tracks', `${lazyLoadedTracks.length} Test Tracks with empty URLs for lazy loading`, lazyLoadedTracks)
+            }}>
+            <Text style={commonStyles.buttonText}>{`Create "Lazy Loaded Tracks" (${lazyLoadedTracks.length} songs)`}</Text>
           </TouchableOpacity>
         </View>
 

@@ -243,3 +243,33 @@ export const sampleTracks3: TrackItem[] = [
     artwork: 'https://i.ytimg.com/vi/kyp1IufU9iw/sddefault.jpg',
   },
 ];
+
+export const lazyLoadedTracks: TrackItem[] = [
+  {
+    id: 'lazy-1',
+    title: 'Lazy Track 1',
+    artist: 'Lazy Artist',
+    album: 'Lazy Album',
+    duration: 200,
+    url: '',
+    artwork: '',
+  },
+  {
+    id: 'lazy-2',
+    title: 'Lazy Track 2',
+    artist: 'Lazy Artist',
+    album: 'Lazy Album',
+    duration: 210,
+    url: '',
+    artwork: '',
+  },
+  {
+    id: 'lazy-3',
+    title: 'Lazy Track 3',
+    artist: 'Lazy Artist',
+    album: 'Lazy Album',
+    duration: 220,
+    url: '',
+    artwork: '',
+  },
+];
