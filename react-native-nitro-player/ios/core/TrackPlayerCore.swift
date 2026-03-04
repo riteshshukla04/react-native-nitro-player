@@ -1360,11 +1360,11 @@ class TrackPlayerCore: NSObject {
         }
       }
       // Go to current original track position (skip back from temp)
-      self.playFromIndex(index: self.currentTrackIndex)
+      self.rebuildQueueFromPlaylistIndex(index: self.currentTrackIndex)
     } else if self.currentTrackIndex > 0 {
       // Go to previous track in original playlist
       let previousIndex = self.currentTrackIndex - 1
-      self.playFromIndex(index: previousIndex)
+      self.rebuildQueueFromPlaylistIndex(index: previousIndex)
     } else {
       // Already at first track, restart it
       queuePlayer.seek(to: .zero)
@@ -1541,10 +1541,10 @@ class TrackPlayerCore: NSObject {
 
   func playFromIndex(index: Int) {
     if Thread.isMainThread {
-      playFromIndexInternal(index: index)
+      rebuildQueueFromPlaylistIndex(index: index)
     } else {
       DispatchQueue.main.async { [weak self] in
-        self?.playFromIndexInternal(index: index)
+        self?.rebuildQueueFromPlaylistIndex(index: index)
       }
     }
   }
@@ -1588,9 +1588,9 @@ class TrackPlayerCore: NSObject {
     let upNextEnd = upNextStart + effectiveUpNextSize
     let originalRemainingStart = upNextEnd
 
-    // Case 1: Target is before current - use playFromIndex on original
+    // Case 1: Target is before current - rebuild from that playlist index
     if index < currentPos {
-      playFromIndexInternal(index: index)
+      rebuildQueueFromPlaylistIndex(index: index)
       return true
     }
 
@@ -1653,7 +1653,7 @@ class TrackPlayerCore: NSObject {
       upNextQueue.removeAll()
       currentTemporaryType = .none
 
-      let result = playFromIndexInternalWithResult(index: originalIndex)
+      let result = rebuildQueueFromPlaylistIndex(index: originalIndex)
 
       // Check if upcoming tracks need URLs
       checkUpcomingTracksForUrls(lookahead: lookaheadCount)
@@ -1667,19 +1667,22 @@ class TrackPlayerCore: NSObject {
     return false
   }
 
-  private func playFromIndexInternal(index: Int) {
-    _ = playFromIndexInternalWithResult(index: index)
-  }
-
-  private func playFromIndexInternalWithResult(index: Int) -> Bool {
+  /// Clears temporary tracks, rebuilds AVQueuePlayer from `index` in the original playlist,
+  /// and resumes playback only if the player was already playing (preserves paused state).
+  @discardableResult
+  private func rebuildQueueFromPlaylistIndex(index: Int) -> Bool {
     guard index >= 0 && index < self.currentTracks.count else {
-      NitroPlayerLogger.log("TrackPlayerCore", "❌ playFromIndex - invalid index \(index), currentTracks.count = \(self.currentTracks.count)")
+      NitroPlayerLogger.log("TrackPlayerCore", "❌ rebuildQueueFromPlaylistIndex - invalid index \(index), currentTracks.count = \(self.currentTracks.count)")
       return false
     }
 
-    NitroPlayerLogger.log("TrackPlayerCore", "\n🎯 PLAY FROM INDEX \(index)")
+    NitroPlayerLogger.log("TrackPlayerCore", "\n🎯 REBUILD QUEUE FROM PLAYLIST INDEX \(index)")
     NitroPlayerLogger.log("TrackPlayerCore", "   Total tracks in playlist: \(self.currentTracks.count)")
     NitroPlayerLogger.log("TrackPlayerCore", "   Current index: \(self.currentTrackIndex), target index: \(index)")
+
+    // Preserve playback state — only resume if already playing.
+    // This prevents auto-starting when called during queue setup (e.g. loadPlaylist → skipToIndex).
+    let wasPlaying = self.player?.rate ?? 0 > 0
 
     // Clear temporary tracks when jumping to specific index
     self.playNextStack.removeAll()
@@ -1740,7 +1743,12 @@ class TrackPlayerCore: NSObject {
     // Start preloading upcoming tracks for gapless playback
     self.preloadUpcomingTracks(from: index + 1)
 
-    player.play()
+    // Only resume playback if the player was already playing before we rebuilt
+    // the loaded playlist. This prevents auto-starting when called during queue setup
+    // (e.g. loadPlaylist → skipToIndex).
+    if wasPlaying {
+      player.play()
+    }
     return true
   }
 
@@ -1968,13 +1976,10 @@ class TrackPlayerCore: NSObject {
           "TrackPlayerCore", "🔄 Replacing current AVPlayerItem for track with resolved URL: \(update.id)")
         if let newItem = self.createGaplessPlayerItem(for: update, isPreload: false) {
           self.player?.replaceCurrentItem(with: newItem)
-          if self.player?.rate == 0 {
-            self.player?.play()
-          }
         }
       }
 
-      // Rebuild queue if current playlist was affected
+      // Rebuild queue if current playlist was affected  
       if let currentId = self.currentPlaylistId,
         let updateCount = affectedPlaylists[currentId]
       {
