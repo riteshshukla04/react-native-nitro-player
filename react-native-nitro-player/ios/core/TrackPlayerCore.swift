@@ -997,6 +997,25 @@ class TrackPlayerCore: NSObject {
     // Clear old preloaded assets when loading new queue
     preloadedAssets.removeAll()
 
+    // Replace current queue (player should always exist after setupPlayer)
+    guard let existingPlayer = self.player else {
+      NitroPlayerLogger.log("TrackPlayerCore", "❌ No player available")
+      return
+    }
+
+    // Always clear old items so a stale playlist doesn't keep playing.
+    NitroPlayerLogger.log("TrackPlayerCore", "🔄 Removing \(existingPlayer.items().count) old items from player")
+    existingPlayer.removeAllItems()
+
+    // Lazy-load mode: if any track has no URL yet, don't populate AVQueuePlayer items now.
+    // Adding downloaded tracks at incorrect positions would cause the wrong track to play.
+    // updateTracks will rebuild from the correct currentTrackIndex once URLs are resolved.
+    let isLazyLoad = tracks.contains { $0.url.isEmpty }
+    if isLazyLoad {
+      NitroPlayerLogger.log("TrackPlayerCore", "⏳ Lazy-load mode — player cleared, awaiting URL resolution")
+      return
+    }
+
     // Create gapless-optimized AVPlayerItems from tracks
     let items = tracks.enumerated().compactMap { (index, track) -> AVPlayerItem? in
       let isPreload = index < Constants.gaplessPreloadCount
@@ -1010,16 +1029,7 @@ class TrackPlayerCore: NSObject {
       return
     }
 
-    // Replace current queue (player should always exist after setupPlayer)
-    guard let existingPlayer = self.player else {
-      NitroPlayerLogger.log("TrackPlayerCore", "❌ No player available - this should never happen!")
-      return
-    }
-
-    NitroPlayerLogger.log("TrackPlayerCore", "🔄 Updating queue - removing \(existingPlayer.items().count) items, adding \(items.count) new items")
-
-    // Remove all existing items
-    existingPlayer.removeAllItems()
+    NitroPlayerLogger.log("TrackPlayerCore", "🔄 Adding \(items.count) new items to player")
 
     // Add new items IN ORDER
     // IMPORTANT: insert(after: nil) puts item at the start
@@ -1303,6 +1313,18 @@ class TrackPlayerCore: NSObject {
 
   private func skipToNextInternal() {
     guard let queuePlayer = self.player else { return }
+
+    // Lazy-load: AVQueuePlayer is empty because updatePlayerQueue deferred population.
+    // Delegate to playFromIndexInternal which handles both the has-URL (rebuild queue)
+    // and no-URL (defer + emit) cases correctly.
+    if queuePlayer.items().isEmpty && !currentTracks.isEmpty {
+      let nextIndex = currentTrackIndex + 1
+      if nextIndex < currentTracks.count {
+        playFromIndexInternal(index: nextIndex)
+      }
+      checkUpcomingTracksForUrls(lookahead: lookaheadCount)
+      return
+    }
 
     // Remove current temp track from its list before advancing
     if let trackId = queuePlayer.currentItem?.trackId {
@@ -1693,6 +1715,22 @@ class TrackPlayerCore: NSObject {
     // Update currentTrackIndex BEFORE updating queue
     self.currentTrackIndex = index
 
+    // Lazy-load guard: if the target track itself has no URL yet, the queue can't be built.
+    // Emit the track change now (so UI reflects the navigation) and defer queue population
+    // to updateTracks once URL resolution completes.
+    // Only check the target — other unresolved tracks elsewhere in the playlist shouldn't
+    // block a skip to a track that is already playable.
+    let isLazyLoad = fullPlaylist[index].url.isEmpty
+    if isLazyLoad {
+      NitroPlayerLogger.log("TrackPlayerCore", "   ⏳ Lazy-load — deferring AVQueuePlayer setup; emitting track change for index \(index)")
+      self.currentTracks = fullPlaylist
+      if let track = self.currentTracks[safe: index] {
+        notifyTrackChange(track, .skip)
+        self.mediaSessionManager?.onTrackChanged()
+      }
+      return true
+    }
+
     // Recreate the queue starting from the target index
     // This ensures all remaining tracks are in the queue
     let tracksToPlay = Array(fullPlaylist[index...])
@@ -1916,9 +1954,6 @@ class TrackPlayerCore: NSObject {
       let currentTrackId = currentTrack?.id
       let currentTrackIsEmpty = currentTrack?.url.isEmpty ?? false
 
-      // Find the update for the current track, if any
-      let currentTrackUpdate = currentTrackId != nil ? tracks.first(where: { $0.id == currentTrackId }) : nil
-
       // Filter out current track and validate
       let safeTracks = tracks.filter { track in
         switch true {
@@ -1962,18 +1997,6 @@ class TrackPlayerCore: NSObject {
       // Update in PlaylistManager
       let affectedPlaylists = self.playlistManager.updateTracks(tracks: safeTracks)
 
-      // If the current track had no URL and now has one, replace the current AVPlayerItem
-      if let update = currentTrackUpdate, currentTrackIsEmpty, !update.url.isEmpty {
-        NitroPlayerLogger.log(
-          "TrackPlayerCore", "🔄 Replacing current AVPlayerItem for track with resolved URL: \(update.id)")
-        if let newItem = self.createGaplessPlayerItem(for: update, isPreload: false) {
-          self.player?.replaceCurrentItem(with: newItem)
-          if self.player?.rate == 0 {
-            self.player?.play()
-          }
-        }
-      }
-
       // Rebuild queue if current playlist was affected
       if let currentId = self.currentPlaylistId,
         let updateCount = affectedPlaylists[currentId]
@@ -1982,12 +2005,36 @@ class TrackPlayerCore: NSObject {
           "TrackPlayerCore",
           "🔄 Rebuilding queue - \(updateCount) tracks updated in current playlist")
 
-        // This method preserves current item
-        self.rebuildAVQueueFromCurrentPosition()
+        // Sync currentTracks from the freshly-updated PlaylistManager so rebuilds use resolved URLs
+        if let updatedPlaylist = self.playlistManager.getPlaylist(playlistId: currentId) {
+          self.currentTracks = updatedPlaylist.tracks
+          NitroPlayerLogger.log("TrackPlayerCore", "📥 Synced currentTracks from PlaylistManager (\(self.currentTracks.count) tracks)")
+        }
 
-        // Re-preload upcoming tracks for gapless playback
-        // CRITICAL: This restores gapless buffering after queue rebuild
-        self.preloadUpcomingTracks(from: self.currentTrackIndex + 1)
+        if self.player?.currentItem == nil, let player = self.player {
+          // No AVPlayerItem exists yet — lazy-load mode: URLs were empty when the queue first
+          // loaded. Rebuild the full queue from currentTrackIndex now that URLs are resolved.
+          NitroPlayerLogger.log(
+            "TrackPlayerCore",
+            "🔄 No current item — full queue rebuild from currentTrackIndex \(self.currentTrackIndex)")
+          player.removeAllItems()
+          var lastItem: AVPlayerItem? = nil
+          for (offset, track) in self.currentTracks[self.currentTrackIndex...].enumerated() {
+            let isPreload = offset < Constants.gaplessPreloadCount
+            if let newItem = self.createGaplessPlayerItem(for: track, isPreload: isPreload) {
+              player.insert(newItem, after: lastItem)
+              lastItem = newItem
+            }
+          }
+          player.play()
+          self.preloadUpcomingTracks(from: self.currentTrackIndex + 1)
+        } else {
+          // A current AVPlayerItem already exists — preserve it and only rebuild upcoming items.
+          self.rebuildAVQueueFromCurrentPosition()
+          // Re-preload upcoming tracks for gapless playback
+          // CRITICAL: This restores gapless buffering after queue rebuild
+          self.preloadUpcomingTracks(from: self.currentTrackIndex + 1)
+        }
 
         NitroPlayerLogger.log("TrackPlayerCore", "✅ Queue rebuilt, gapless playback preserved")
       }
