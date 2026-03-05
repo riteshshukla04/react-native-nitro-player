@@ -1320,7 +1320,7 @@ class TrackPlayerCore: NSObject {
     if queuePlayer.items().isEmpty && !currentTracks.isEmpty {
       let nextIndex = currentTrackIndex + 1
       if nextIndex < currentTracks.count {
-        playFromIndexInternal(index: nextIndex)
+        _ = skipToIndexInternal(index: nextIndex)
       }
       checkUpcomingTracksForUrls(lookahead: lookaheadCount)
       return
@@ -2006,7 +2006,7 @@ class TrackPlayerCore: NSObject {
       let affectedPlaylists = self.playlistManager.updateTracks(tracks: safeTracks)
 
       // If the current track had no URL and now has one, replace the current AVPlayerItem
-      if let update = currentTrackUpdate, currentTrackIsEmpty, !update.url.isEmpty {
+      if let update = currentTrack, currentTrackIsEmpty, !update.url.isEmpty {
         NitroPlayerLogger.log(
           "TrackPlayerCore", "🔄 Replacing current AVPlayerItem for track with resolved URL: \(update.id)")
         if let newItem = self.createGaplessPlayerItem(for: update, isPreload: false) {
