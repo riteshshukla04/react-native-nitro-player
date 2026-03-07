@@ -91,11 +91,35 @@ class EqualizerCore {
 
   // MARK: - Audio Mix Creation for AVPlayerItem
 
-  /// Applies an AVAudioMix with equalizer processing for the given AVPlayerItem asynchronously
+  /// Applies an AVAudioMix with equalizer processing for the given AVPlayerItem.
+  /// No-ops when the equalizer is disabled so that AVPlayerItems remain tap-free,
+  /// keeping the audio pipeline configuration identical across all queued items
+  /// and allowing AVQueuePlayer to perform seamless gapless transitions.
+  ///
+  /// When the asset's "tracks" key is already loaded (e.g. from preloading),
+  /// the mix is applied **synchronously** so the item enters AVQueuePlayer with
+  /// the correct tap from the start — avoiding a pipeline reconfiguration that
+  /// causes an audible gap at the transition.
   func applyAudioMix(to playerItem: AVPlayerItem) {
+    guard isEqualizerEnabled else {
+      // Ensure no stale tap remains from a previous enable/disable cycle
+      if playerItem.audioMix != nil {
+        playerItem.audioMix = nil
+      }
+      return
+    }
+
     let asset = playerItem.asset
 
-    // Load "tracks" key asynchronously to avoid blocking
+    // Fast path: "tracks" already loaded (from preloadUpcomingTracks) — apply synchronously.
+    var keyError: NSError?
+    if asset.statusOfValue(forKey: "tracks", error: &keyError) == .loaded {
+      buildAndApplyAudioMix(to: playerItem, asset: asset)
+      NitroPlayerLogger.log("EqualizerCore", "✅ Applied audio mix with EQ tap to player item (sync — preloaded)")
+      return
+    }
+
+    // Slow path: load "tracks" key asynchronously to avoid blocking
     asset.loadValuesAsynchronously(forKeys: ["tracks"]) { [weak self] in
       guard let self = self else { return }
 
@@ -113,50 +137,55 @@ class EqualizerCore {
         return
       }
 
-      guard let audioTrack = asset.tracks(withMediaType: .audio).first else {
-        NitroPlayerLogger.log("EqualizerCore", "⚠️ No audio track found in asset")
-        return
-      }
-
-      // Create audio mix input parameters
-      let inputParams = AVMutableAudioMixInputParameters(track: audioTrack)
-
-      // Create the audio processing tap
-      var callbacks = MTAudioProcessingTapCallbacks(
-        version: kMTAudioProcessingTapCallbacksVersion_0,
-        clientInfo: UnsafeMutableRawPointer(Unmanaged.passRetained(self).toOpaque()),
-        init: tapInitCallback,
-        finalize: tapFinalizeCallback,
-        prepare: tapPrepareCallback,
-        unprepare: tapUnprepareCallback,
-        process: tapProcessCallback
-      )
-
-      var tap: MTAudioProcessingTap?
-      let createStatus = MTAudioProcessingTapCreate(
-        kCFAllocatorDefault,
-        &callbacks,
-        kMTAudioProcessingTapCreationFlag_PreEffects,
-        &tap
-      )
-
-      guard createStatus == noErr, let audioTap = tap else {
-        NitroPlayerLogger.log("EqualizerCore", "❌ Failed to create audio processing tap, status: \(createStatus)")
-        return
-      }
-
-      inputParams.audioTapProcessor = audioTap
-
-      // Create audio mix
-      let audioMix = AVMutableAudioMix()
-      audioMix.inputParameters = [inputParams]
-
-      // Apply to player item on main thread (AVPlayerItem properties should be accessed/modified on main thread or serial queue usually, but audioMix is thread safe - safely done on main to be sure)
-      DispatchQueue.main.async {
-        playerItem.audioMix = audioMix
-        NitroPlayerLogger.log("EqualizerCore", "✅ Applied audio mix with EQ tap to player item (async)")
-      }
+      // Apply directly — audioMix is thread-safe and applying on the
+      // loadValues completion queue avoids a main-thread hop that would
+      // delay tap attachment and risk a pipeline mismatch at pre-roll time.
+      self.buildAndApplyAudioMix(to: playerItem, asset: asset)
+      NitroPlayerLogger.log("EqualizerCore", "✅ Applied audio mix with EQ tap to player item (async)")
     }
+  }
+
+  /// Creates an MTAudioProcessingTap-backed AVAudioMix and sets it on the player item.
+  /// Must be called when the asset's "tracks" key is already loaded.
+  private func buildAndApplyAudioMix(to playerItem: AVPlayerItem, asset: AVAsset) {
+    guard let audioTrack = asset.tracks(withMediaType: .audio).first else {
+      NitroPlayerLogger.log("EqualizerCore", "⚠️ No audio track found in asset")
+      return
+    }
+
+    // Create audio mix input parameters
+    let inputParams = AVMutableAudioMixInputParameters(track: audioTrack)
+
+    // Create the audio processing tap
+    var callbacks = MTAudioProcessingTapCallbacks(
+      version: kMTAudioProcessingTapCallbacksVersion_0,
+      clientInfo: UnsafeMutableRawPointer(Unmanaged.passRetained(self).toOpaque()),
+      init: tapInitCallback,
+      finalize: tapFinalizeCallback,
+      prepare: tapPrepareCallback,
+      unprepare: tapUnprepareCallback,
+      process: tapProcessCallback
+    )
+
+    var tap: MTAudioProcessingTap?
+    let createStatus = MTAudioProcessingTapCreate(
+      kCFAllocatorDefault,
+      &callbacks,
+      kMTAudioProcessingTapCreationFlag_PreEffects,
+      &tap
+    )
+
+    guard createStatus == noErr, let audioTap = tap else {
+      NitroPlayerLogger.log("EqualizerCore", "❌ Failed to create audio processing tap, status: \(createStatus)")
+      return
+    }
+
+    inputParams.audioTapProcessor = audioTap
+
+    // Create and apply audio mix
+    let audioMix = AVMutableAudioMix()
+    audioMix.inputParameters = [inputParams]
+    playerItem.audioMix = audioMix
   }
 
   // MARK: - Public Methods
