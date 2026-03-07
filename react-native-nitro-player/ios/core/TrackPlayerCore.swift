@@ -250,26 +250,15 @@ class TrackPlayerCore: NSObject {
       interval = Constants.boundaryIntervalDefault
     }
 
-    // Create boundary times at each interval
-    var boundaryTimes: [NSValue] = []
-    boundaryTimes.reserveCapacity(Int(duration / interval) + 1)
-    var time: Double = 0
-    while time <= duration {
-      let cmTime = CMTime(seconds: time, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
-      boundaryTimes.append(NSValue(time: cmTime))
-      time += interval
+    NitroPlayerLogger.log("TrackPlayerCore", "⏱️ Setting up periodic observer (interval: \(interval)s, duration: \(Int(duration))s)")
+
+    let cmInterval = CMTime(seconds: interval, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
+    boundaryTimeObserver = player.addPeriodicTimeObserver(forInterval: cmInterval, queue: .main) {
+      [weak self] _ in
+      self?.handleBoundaryTimeCrossed()
     }
 
-    NitroPlayerLogger.log("TrackPlayerCore", "⏱️ Setting up \(boundaryTimes.count) boundary observers (interval: \(interval)s, duration: \(Int(duration))s)")
-
-    // Add boundary time observer
-    boundaryTimeObserver = player.addBoundaryTimeObserver(forTimes: boundaryTimes, queue: .main) {
-      [weak self] in
-      guard let self = self else { return }
-      self.handleBoundaryTimeCrossed()
-    }
-
-    NitroPlayerLogger.log("TrackPlayerCore", "⏱️ Boundary time observer setup complete")
+    NitroPlayerLogger.log("TrackPlayerCore", "⏱️ Periodic time observer setup complete")
   }
 
   private func handleBoundaryTimeCrossed() {

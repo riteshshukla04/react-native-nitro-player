@@ -60,6 +60,9 @@ export function usePlaylist(): UsePlaylistResult {
   const [isLoading, setIsLoading] = useState(true)
   const isMounted = useRef(true)
   const hasSubscribed = useRef(false)
+  // Tracks the last fetched playlist ID so track-change events can skip
+  // a full refresh when the playlist itself hasn't changed.
+  const lastPlaylistIdRef = useRef<string | null | undefined>(undefined)
 
   const refreshPlaylists = useCallback(() => {
     if (!isMounted.current) return
@@ -68,6 +71,7 @@ export function usePlaylist(): UsePlaylistResult {
       // Get current playlist ID
       const playlistId = PlayerQueue.getCurrentPlaylistId()
       if (!isMounted.current) return
+      lastPlaylistIdRef.current = playlistId
       setCurrentPlaylistId(playlistId)
 
       // Get current playlist details
@@ -108,6 +112,22 @@ export function usePlaylist(): UsePlaylistResult {
     }
   }, [])
 
+  // Lightweight track-change handler: only does a full refresh when the
+  // active playlist ID has actually changed (e.g. cross-playlist navigation).
+  // Within-playlist track changes — the common case — are skipped with a
+  // single bridge call instead of three.
+  const refreshOnTrackChange = useCallback(() => {
+    if (!isMounted.current) return
+    try {
+      const newPlaylistId = PlayerQueue.getCurrentPlaylistId()
+      if (newPlaylistId === lastPlaylistIdRef.current) return
+      lastPlaylistIdRef.current = newPlaylistId
+      refreshPlaylists()
+    } catch (error) {
+      console.error('[usePlaylist] Error checking playlist ID on track change:', error)
+    }
+  }, [refreshPlaylists])
+
   // Initialize and setup mounted ref
   useEffect(() => {
     isMounted.current = true
@@ -136,19 +156,18 @@ export function usePlaylist(): UsePlaylistResult {
     }
   }, [refreshPlaylists])
 
-  // Also refresh when track changes (as it might indicate playlist loaded)
+  // Refresh on track change only if the active playlist ID changed.
   useEffect(() => {
     const unsubscribe = callbackManager.subscribeToTrackChange(() => {
-      // Refresh to update currentPlaylistId when track changes
       if (isMounted.current) {
-        refreshPlaylists()
+        refreshOnTrackChange()
       }
     })
 
     return () => {
       unsubscribe()
     }
-  }, [refreshPlaylists])
+  }, [refreshOnTrackChange])
 
   return {
     currentPlaylist,

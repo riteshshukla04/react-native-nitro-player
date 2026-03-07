@@ -84,6 +84,7 @@ class TrackPlayerCore private constructor(
 
     @Volatile private var currentRepeatMode: RepeatMode = RepeatMode.OFF
     private var lookaheadCount: Int = 5 // Number of tracks to preload ahead
+    private var playerListener: Player.Listener? = null
 
     // Temporary tracks for addToUpNext and playNext
     private var playNextStack: MutableList<TrackItem> = mutableListOf() // LIFO - last added plays first
@@ -177,8 +178,7 @@ class TrackPlayerCore private constructor(
                         registerCarConnectionReceiver()
                     }
 
-                player.addListener(
-                    object : Player.Listener {
+                val listener = object : Player.Listener {
                         override fun onMediaItemTransition(
                             mediaItem: MediaItem?,
                             reason: Int,
@@ -353,8 +353,9 @@ class TrackPlayerCore private constructor(
                                 }
                             }
                         }
-                    },
-                )
+                }
+                playerListener = listener
+                player.addListener(listener)
 
                 // Start progress updates
                 handler.post(progressUpdateRunnable)
@@ -1266,6 +1267,8 @@ class TrackPlayerCore private constructor(
         handler.post {
             androidAutoConnectionDetector?.unregisterCarConnectionReceiver()
             handler.removeCallbacks(progressUpdateRunnable)
+            playerListener?.let { player.removeListener(it) }
+            playerListener = null
         }
     }
 
