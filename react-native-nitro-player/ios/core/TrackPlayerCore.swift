@@ -130,16 +130,12 @@ class TrackPlayerCore: NSObject {
 
     // MARK: - Gapless Playback Configuration
 
-    // Keep automaticallyWaitsToMinimizeStalling=true at all times.
-    // With true, AVQueuePlayer pre-rolls upcoming items and waits for
-    // sufficient buffer before transitioning — producing gapless playback
-    // when pre-roll has completed (which it should for items that have been
-    // in the queue for any reasonable amount of time).
-    // Setting false causes the player to play immediately from whatever
-    // buffer is available, risking audible silence if pre-roll is incomplete.
+    // Start with stall-waiting enabled so the first track buffers before playing.
+    // Once the first item is ready (readyToPlay), this is flipped to false for
+    // gapless inter-track transitions (see setupCurrentItemObservers).
     player?.automaticallyWaitsToMinimizeStalling = true
 
-    // Let AVQueuePlayer advance to the next item automatically on end.
+    // Set playback rate to 1.0 immediately when ready (reduces gap between tracks)
     player?.actionAtItemEnd = .advance
 
     // Configure for high-quality audio playback with minimal latency
@@ -147,7 +143,7 @@ class TrackPlayerCore: NSObject {
       player?.audiovisualBackgroundPlaybackPolicy = .continuesIfPossible
     }
 
-    NitroPlayerLogger.log("TrackPlayerCore", "🎵 Gapless playback configured — automaticallyWaitsToMinimizeStalling=true")
+    NitroPlayerLogger.log("TrackPlayerCore", "🎵 Gapless playback configured - automaticallyWaitsToMinimizeStalling=true (flipped to false on first readyToPlay)")
 
     // Listen for EQ enabled/disabled changes so we can update ALL items in
     // the queue atomically, keeping the audio pipeline configuration uniform.
@@ -582,6 +578,8 @@ class TrackPlayerCore: NSObject {
       if item.status == .readyToPlay {
         NitroPlayerLogger.log("TrackPlayerCore", "✅ Item ready, setting up boundaries")
         self?.setupBoundaryTimeObserver()
+        // First item is buffered and ready — disable stall waiting for gapless inter-track transitions
+        self?.player?.automaticallyWaitsToMinimizeStalling = false
         // Update now playing info now that duration is available
         self?.mediaSessionManager?.updateNowPlayingInfo()
       } else if item.status == .failed {
@@ -1049,6 +1047,9 @@ class TrackPlayerCore: NSObject {
       boundaryTimeObserver = nil
     }
 
+    // Re-enable stall waiting for the new first track so it buffers before playing.
+    // Will be flipped back to false once the first item reaches readyToPlay.
+    player?.automaticallyWaitsToMinimizeStalling = true
 
     // Clear old preloaded assets when loading new queue
     preloadedAssets.removeAll()
@@ -1814,7 +1815,8 @@ class TrackPlayerCore: NSObject {
       self.boundaryTimeObserver = nil
     }
 
-    // automaticallyWaitsToMinimizeStalling is true (set once in setupPlayer)
+    // Re-enable stall waiting for the new first track so it buffers before playing.
+    // Will be flipped back to false once the first item reaches readyToPlay.
     player.automaticallyWaitsToMinimizeStalling = true
 
     // Clear and rebuild queue
