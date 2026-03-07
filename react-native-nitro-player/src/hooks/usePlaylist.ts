@@ -124,7 +124,10 @@ export function usePlaylist(): UsePlaylistResult {
       lastPlaylistIdRef.current = newPlaylistId
       refreshPlaylists()
     } catch (error) {
-      console.error('[usePlaylist] Error checking playlist ID on track change:', error)
+      console.error(
+        '[usePlaylist] Error checking playlist ID on track change:',
+        error
+      )
     }
   }, [refreshPlaylists])
 
