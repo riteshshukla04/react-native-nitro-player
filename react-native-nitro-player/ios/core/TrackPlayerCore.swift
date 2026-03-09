@@ -48,6 +48,10 @@ class TrackPlayerCore: NSObject {
   private var currentPlaylistId: String?
   private var currentTrackIndex: Int = -1
   private var currentTracks: [TrackItem] = []
+  // Debounce work item — rapid playlist mutations (e.g. N individual removes
+  // during shuffle) are coalesced into a single rebuildAVQueueFromCurrentPosition
+  // call, preventing audio gaps/interruptions on iOS.
+  private var pendingPlaylistUpdateWorkItem: DispatchWorkItem?
   private var isManuallySeeked = false
   private var currentRepeatMode: RepeatMode = .off
   private var lookaheadCount: Int = 5  // Number of tracks to preload ahead
@@ -649,7 +653,13 @@ class TrackPlayerCore: NSObject {
   }
 
   func updatePlaylist(playlistId: String) {
-    DispatchQueue.main.async { [weak self] in
+    guard currentPlaylistId == playlistId else { return }
+
+    // Cancel any pending rebuild so back-to-back calls (e.g. N individual removes
+    // during shuffle) collapse into a single rebuild at the end.
+    pendingPlaylistUpdateWorkItem?.cancel()
+
+    let workItem = DispatchWorkItem { [weak self] in
       guard let self = self else { return }
       guard self.currentPlaylistId == playlistId,
         let playlist = self.playlistManager.getPlaylist(playlistId: playlistId)
@@ -667,6 +677,9 @@ class TrackPlayerCore: NSObject {
       // Rebuild only the items after the currently playing item
       self.rebuildAVQueueFromCurrentPosition()
     }
+
+    pendingPlaylistUpdateWorkItem = workItem
+    DispatchQueue.main.async(execute: workItem)
   }
 
   // MARK: - Public Methods

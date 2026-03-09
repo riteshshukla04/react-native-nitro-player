@@ -41,6 +41,28 @@ class TrackPlayerCore private constructor(
     private val handler = android.os.Handler(android.os.Looper.getMainLooper())
     private lateinit var player: ExoPlayer
     private val playlistManager = PlaylistManager.getInstance(context)
+
+    // Named Runnable so handler.removeCallbacks() can coalesce rapid playlist
+    // mutations (e.g. N individual removes followed by a batch add during shuffle)
+    // into a single player update, preventing audio gaps on Android.
+    private val updateCurrentPlaylistRunnable = Runnable {
+        val playlistId = currentPlaylistId ?: return@Runnable
+        val playlist = playlistManager.getPlaylist(playlistId) ?: return@Runnable
+
+        // Always update the canonical track list first.
+        currentTracks = playlist.tracks
+
+        if (::player.isInitialized && player.currentMediaItem != null && player.currentMediaItemIndex >= 0) {
+            // Something is actively playing — rebuild only the items AFTER the
+            // current position using surgical removeMediaItems/addMediaItems.
+            // This avoids setMediaItems() which replaces the entire ExoPlayer
+            // queue (including the current item) and causes an audible gap.
+            rebuildQueueFromCurrentPosition()
+        } else {
+            // Nothing playing yet — safe to do a full replace.
+            updatePlayerQueue(playlist.tracks)
+        }
+    }
     private val downloadManager = DownloadManagerCore.getInstance(context)
     private val mediaLibraryManager = MediaLibraryManager.getInstance(context)
     private var mediaSessionManager: MediaSessionManager? = null
@@ -434,14 +456,13 @@ class TrackPlayerCore private constructor(
      * Update the player queue when playlist changes
      */
     fun updatePlaylist(playlistId: String) {
-        handler.post {
-            if (currentPlaylistId == playlistId) {
-                val playlist = playlistManager.getPlaylist(playlistId)
-                if (playlist != null) {
-                    updatePlayerQueue(playlist.tracks)
-                }
-            }
-        }
+        // Debounce: rapid back-to-back calls (e.g. removing N tracks then adding
+        // the shuffled replacement) are coalesced into a single setMediaItems call.
+        // removeCallbacks cancels any pending-but-not-yet-executed callback so only
+        // the final playlist state triggers a player rebuild.
+        if (currentPlaylistId != playlistId) return
+        handler.removeCallbacks(updateCurrentPlaylistRunnable)
+        handler.post(updateCurrentPlaylistRunnable)
     }
 
     /**
