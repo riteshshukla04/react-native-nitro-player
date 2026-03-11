@@ -242,12 +242,26 @@ class TrackPlayerCore private constructor(
                                     if (playNextIndex >= 0) {
                                         val track = playNextStack.removeAt(playNextIndex)
                                         NitroPlayerLogger.log("TrackPlayerCore") { "   ✅ Removed from playNext stack: ${track.title}" }
+                                        // Also remove from main playlist to prevent reappearance
+                                        currentPlaylistId?.let { playlistId ->
+                                            playlistManager.removeTrackFromPlaylist(playlistId, track.id)
+                                            currentTracks = currentTracks.filter { it.id != track.id }
+                                            // Rebuild queue to reflect removal
+                                            rebuildQueueFromCurrentPosition()
+                                        }
                                     } else {
                                         // Find and remove from upNext queue
                                         val upNextIndex = upNextQueue.indexOfFirst { it.id == trackId }
                                         if (upNextIndex >= 0) {
                                             val track = upNextQueue.removeAt(upNextIndex)
                                             NitroPlayerLogger.log("TrackPlayerCore") { "   ✅ Removed from upNext queue: ${track.title}" }
+                                            // Also remove from main playlist to prevent reappearance
+                                            currentPlaylistId?.let { playlistId ->
+                                                playlistManager.removeTrackFromPlaylist(playlistId, track.id)
+                                                currentTracks = currentTracks.filter { it.id != track.id }
+                                                // Rebuild queue to reflect removal
+                                                rebuildQueueFromCurrentPosition()
+                                            }
                                         } else {
                                             NitroPlayerLogger.log("TrackPlayerCore") { "   ℹ️  Was an original playlist track" }
                                         }
@@ -1527,9 +1541,20 @@ class TrackPlayerCore private constructor(
             queue.addAll(upNextQueue)
         }
 
-        // Add remaining original tracks
+        // Add remaining original tracks, excluding any that are in temporary queues (to prevent duplicates)
+        val temporaryTrackIds =
+            mutableSetOf<String>()
+                .apply {
+                    addAll(playNextStack.map { it.id })
+                    addAll(upNextQueue.map { it.id })
+                }
+
         if (currentIndex + 1 < currentTracks.size) {
-            queue.addAll(currentTracks.subList(currentIndex + 1, currentTracks.size))
+            val remainingTracks =
+                currentTracks
+                    .subList(currentIndex + 1, currentTracks.size)
+                    .filter { it.id !in temporaryTrackIds }
+            queue.addAll(remainingTracks)
         }
 
         return queue

@@ -322,11 +322,25 @@ class TrackPlayerCore: NSObject {
       if let index = playNextStack.firstIndex(where: { $0.id == trackId }) {
         let track = playNextStack.remove(at: index)
         NitroPlayerLogger.log("TrackPlayerCore", "🏁 Finished playNext track: \(track.title) - removed from stack")
+        // Also remove from main playlist to prevent reappearance
+        if let playlistId = currentPlaylistId {
+          playlistManager.removeTrackFromPlaylist(playlistId: playlistId, trackId: track.id)
+          currentTracks.removeAll(where: { $0.id == track.id })
+          // Rebuild queue to reflect removal
+          rebuildAVQueueFromCurrentPosition()
+        }
       }
       // Check if it was an upNext track
       else if let index = upNextQueue.firstIndex(where: { $0.id == trackId }) {
         let track = upNextQueue.remove(at: index)
         NitroPlayerLogger.log("TrackPlayerCore", "🏁 Finished upNext track: \(track.title) - removed from queue")
+        // Also remove from main playlist to prevent reappearance
+        if let playlistId = currentPlaylistId {
+          playlistManager.removeTrackFromPlaylist(playlistId: playlistId, trackId: track.id)
+          currentTracks.removeAll(where: { $0.id == track.id })
+          // Rebuild queue to reflect removal
+          rebuildAVQueueFromCurrentPosition()
+        }
       }
       // Otherwise it was from original playlist
       else if let track = currentTracks.first(where: { $0.id == trackId }) {
@@ -1211,9 +1225,11 @@ class TrackPlayerCore: NSObject {
       queue.append(contentsOf: upNextQueue)
     }
 
-    // Add remaining original tracks
+    // Add remaining original tracks, filtering out any that are already in temporary queues
     if currentTrackIndex + 1 < currentTracks.count {
-      queue.append(contentsOf: currentTracks[(currentTrackIndex + 1)...])
+      let temporaryTrackIds = Set(playNextStack.map { $0.id } + upNextQueue.map { $0.id })
+      let remainingTracks = currentTracks.suffix(from: currentTrackIndex + 1).filter { !temporaryTrackIds.contains($0.id) }
+      queue.append(contentsOf: remainingTracks)
     }
 
     return queue
@@ -1391,11 +1407,25 @@ class TrackPlayerCore: NSObject {
     if let trackId = queuePlayer.currentItem?.trackId {
       if currentTemporaryType == .playNext {
         if let idx = playNextStack.firstIndex(where: { $0.id == trackId }) {
-          playNextStack.remove(at: idx)
+          let track = playNextStack.remove(at: idx)
+          // Also remove from main playlist to prevent reappearance
+          if let playlistId = currentPlaylistId {
+            playlistManager.removeTrackFromPlaylist(playlistId: playlistId, trackId: track.id)
+            currentTracks.removeAll(where: { $0.id == track.id })
+            // Rebuild queue to reflect removal
+            rebuildAVQueueFromCurrentPosition()
+          }
         }
       } else if currentTemporaryType == .upNext {
         if let idx = upNextQueue.firstIndex(where: { $0.id == trackId }) {
-          upNextQueue.remove(at: idx)
+          let track = upNextQueue.remove(at: idx)
+          // Also remove from main playlist to prevent reappearance
+          if let playlistId = currentPlaylistId {
+            playlistManager.removeTrackFromPlaylist(playlistId: playlistId, trackId: track.id)
+            currentTracks.removeAll(where: { $0.id == track.id })
+            // Rebuild queue to reflect removal
+            rebuildAVQueueFromCurrentPosition()
+          }
         }
       }
     }
@@ -1434,11 +1464,25 @@ class TrackPlayerCore: NSObject {
       if let trackId = queuePlayer.currentItem?.trackId {
         if currentTemporaryType == .playNext {
           if let idx = playNextStack.firstIndex(where: { $0.id == trackId }) {
-            playNextStack.remove(at: idx)
+            let track = playNextStack.remove(at: idx)
+            // Also remove from main playlist to prevent reappearance
+            if let playlistId = currentPlaylistId {
+              playlistManager.removeTrackFromPlaylist(playlistId: playlistId, trackId: track.id)
+              currentTracks.removeAll(where: { $0.id == track.id })
+              // Rebuild queue to reflect removal
+              rebuildAVQueueFromCurrentPosition()
+            }
           }
         } else if currentTemporaryType == .upNext {
           if let idx = upNextQueue.firstIndex(where: { $0.id == trackId }) {
-            upNextQueue.remove(at: idx)
+            let track = upNextQueue.remove(at: idx)
+            // Also remove from main playlist to prevent reappearance
+            if let playlistId = currentPlaylistId {
+              playlistManager.removeTrackFromPlaylist(playlistId: playlistId, trackId: track.id)
+              currentTracks.removeAll(where: { $0.id == track.id })
+              // Rebuild queue to reflect removal
+              rebuildAVQueueFromCurrentPosition()
+            }
           }
         }
       }
