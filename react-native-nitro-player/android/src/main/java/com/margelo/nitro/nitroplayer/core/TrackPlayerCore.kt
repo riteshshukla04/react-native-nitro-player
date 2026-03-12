@@ -1201,6 +1201,20 @@ class TrackPlayerCore private constructor(
         val currentIndex = player.currentMediaItemIndex
         if (currentIndex < 0) return
 
+        // Handle removed-current-track case: if the currently playing media item is no longer
+        // in currentTracks (e.g. the user removed it while it was playing), delegate to
+        // playFromIndexInternal so the player immediately starts the next track.
+        val currentTrackId = player.currentMediaItem?.mediaId?.let { extractTrackId(it) }
+        if (currentTrackId != null && currentTracks.none { it.id == currentTrackId }) {
+            val targetIndex = when {
+                currentTracks.isEmpty() -> return
+                currentTrackIndex < currentTracks.size -> currentTrackIndex
+                else -> currentTracks.size - 1
+            }
+            playFromIndexInternal(targetIndex)
+            return
+        }
+
         val newQueueTracks = ArrayList<TrackItem>(playNextStack.size + upNextQueue.size + currentTracks.size)
 
         // Add playNext stack (LIFO - most recently added plays first)

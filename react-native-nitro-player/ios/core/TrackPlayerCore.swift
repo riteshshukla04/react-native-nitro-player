@@ -1931,6 +1931,21 @@ class TrackPlayerCore: NSObject {
     let currentItem = player.currentItem
     let playingItems = player.items()
 
+    // ---- Handle removed-current-track case ----
+    // If the currently playing AVPlayerItem is no longer in currentTracks (e.g. the user
+    // removed it while it was playing), delegate to rebuildQueueFromPlaylistIndex so the
+    // player immediately starts what is now at currentTrackIndex in the updated list.
+    if let playingTrackId = currentItem?.trackId,
+      !currentTracks.contains(where: { $0.id == playingTrackId }) {
+      let targetIndex = currentTrackIndex < currentTracks.count
+        ? currentTrackIndex
+        : currentTracks.count - 1
+      if targetIndex >= 0 {
+        _ = rebuildQueueFromPlaylistIndex(index: targetIndex)
+      }
+      return
+    }
+
     // ---- Build the desired upcoming track list ----
 
     var newQueueTracks: [TrackItem] = []
