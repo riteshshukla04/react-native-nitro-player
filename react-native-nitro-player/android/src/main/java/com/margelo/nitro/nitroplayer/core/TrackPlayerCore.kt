@@ -1623,6 +1623,15 @@ class TrackPlayerCore private constructor(
             if (currentPlaylistId != null && affectedPlaylists.containsKey(currentPlaylistId)) {
                 NitroPlayerLogger.log("TrackPlayerCore") { "🔄 Rebuilding queue - ${affectedPlaylists[currentPlaylistId]} tracks updated in current playlist" }
 
+                // PlaylistManager.updateTracks() creates a new Playlist via .copy(tracks = newTracks),
+                // so our currentTracks reference still points at the old list with empty URLs.
+                // Refresh it now so rebuildQueueFromCurrentPosition builds MediaItems with the
+                // resolved URLs, allowing ExoPlayer to pre-buffer the next track for gapless playback.
+                val refreshedPlaylist = playlistManager.getPlaylist(currentPlaylistId!!)
+                if (refreshedPlaylist != null) {
+                    currentTracks = refreshedPlaylist.tracks
+                }
+                
                 // This method preserves current item and gapless buffering
                 rebuildQueueFromCurrentPosition()
 
