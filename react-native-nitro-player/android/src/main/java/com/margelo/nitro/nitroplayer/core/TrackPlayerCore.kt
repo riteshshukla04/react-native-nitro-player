@@ -1630,8 +1630,28 @@ class TrackPlayerCore private constructor(
                 val refreshedPlaylist = playlistManager.getPlaylist(currentPlaylistId!!)
                 if (refreshedPlaylist != null) {
                     currentTracks = refreshedPlaylist.tracks
+
+                    // Also reconcile any queued items that still reference old TrackItem instances
+                    // from this playlist, so that gapless pre-buffering uses tracks with resolved URLs.
+                    val updatedTrackById = currentTracks.associateBy { it.id }
+
+                    // Update playNextStack entries to point at the refreshed TrackItem objects.
+                    playNextStack.forEachIndexed { index, track ->
+                        val updated = updatedTrackById[track.id]
+                        if (updated != null && updated !== track) {
+                            playNextStack[index] = updated
+                        }
+                    }
+
+                    // Update upNextQueue entries to point at the refreshed TrackItem objects.
+                    upNextQueue.forEachIndexed { index, track ->
+                        val updated = updatedTrackById[track.id]
+                        if (updated != null && updated !== track) {
+                            upNextQueue[index] = updated
+                        }
+                    }
                 }
-                
+
                 // This method preserves current item and gapless buffering
                 rebuildQueueFromCurrentPosition()
 
