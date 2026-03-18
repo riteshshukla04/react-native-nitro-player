@@ -39,7 +39,7 @@ namespace margelo::nitro::nitroplayer {
    */
   class JVariant_NullType_DownloadedPlaylist: public jni::JavaClass<JVariant_NullType_DownloadedPlaylist> {
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Variant_NullType_DownloadedPlaylist;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Variant_NullType_DownloadedPlaylist;";
 
     static jni::local_ref<JVariant_NullType_DownloadedPlaylist> create_0(jni::alias_ref<JNull> value) {
       static const auto method = javaClassStatic()->getStaticMethod<JVariant_NullType_DownloadedPlaylist(jni::alias_ref<JNull>)>("create");
@@ -64,7 +64,7 @@ namespace margelo::nitro::nitroplayer {
   namespace JVariant_NullType_DownloadedPlaylist_impl {
     class First final: public jni::JavaClass<First, JVariant_NullType_DownloadedPlaylist> {
     public:
-      static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Variant_NullType_DownloadedPlaylist$First;";
+      static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Variant_NullType_DownloadedPlaylist$First;";
     
       [[nodiscard]] jni::local_ref<JNull> getValue() const {
         static const auto field = javaClassStatic()->getField<JNull>("value");
@@ -74,7 +74,7 @@ namespace margelo::nitro::nitroplayer {
     
     class Second final: public jni::JavaClass<Second, JVariant_NullType_DownloadedPlaylist> {
     public:
-      static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Variant_NullType_DownloadedPlaylist$Second;";
+      static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Variant_NullType_DownloadedPlaylist$Second;";
     
       [[nodiscard]] jni::local_ref<JDownloadedPlaylist> getValue() const {
         static const auto field = javaClassStatic()->getField<JDownloadedPlaylist>("value");

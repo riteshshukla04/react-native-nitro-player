@@ -10,29 +10,62 @@
   },
   "autolinking": {
     "PlayerQueue": {
-      "swift": "HybridPlayerQueue",
-      "kotlin": "HybridPlayerQueue"
+      "ios": {
+        "language": "swift",
+        "implementationClassName": "HybridPlayerQueue"
+      },
+      "android": {
+        "language": "kotlin",
+        "implementationClassName": "HybridPlayerQueue"
+      }
     },
     "TrackPlayer": {
-      "swift": "HybridTrackPlayer",
-      "kotlin": "HybridTrackPlayer"
+      "ios": {
+        "language": "swift",
+        "implementationClassName": "HybridTrackPlayer"
+      },
+      "android": {
+        "language": "kotlin",
+        "implementationClassName": "HybridTrackPlayer"
+      }
     },
     "AndroidAutoMediaLibrary": {
-      "kotlin": "HybridAndroidAutoMediaLibrary"
+      "android": {
+        "language": "kotlin",
+        "implementationClassName": "HybridAndroidAutoMediaLibrary"
+      }
     },
     "AudioDevices": {
-      "kotlin": "HybridAudioDevices"
+      "android": {
+        "language": "kotlin",
+        "implementationClassName": "HybridAudioDevices"
+      }
     },
     "AudioRoutePicker": {
-      "swift": "HybridAudioRoutePicker"
+      "ios": {
+        "language": "swift",
+        "implementationClassName": "HybridAudioRoutePicker"
+      }
     },
     "DownloadManager": {
-      "swift": "HybridDownloadManager",
-      "kotlin": "HybridDownloadManager"
+      "ios": {
+        "language": "swift",
+        "implementationClassName": "HybridDownloadManager"
+      },
+      "android": {
+        "language": "kotlin",
+        "implementationClassName": "HybridDownloadManager"
+      }
     },
     "Equalizer": {
-      "swift": "HybridEqualizer",
-      "kotlin": "HybridEqualizer"
+      "ios": {
+        "language": "swift",
+        "implementationClassName": "HybridEqualizer"
+      },
+      "android": {
+        "language": "kotlin",
+        "implementationClassName": "HybridEqualizer"
+      }
     }
   },
   "ignorePaths": ["**/node_modules"]

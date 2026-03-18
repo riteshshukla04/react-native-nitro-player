@@ -38,7 +38,7 @@ namespace margelo::nitro::nitroplayer {
    */
   struct JFunc_void_std__vector_Playlist__std__optional_QueueOperation_: public jni::JavaClass<JFunc_void_std__vector_Playlist__std__optional_QueueOperation_> {
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Func_void_std__vector_Playlist__std__optional_QueueOperation_;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Func_void_std__vector_Playlist__std__optional_QueueOperation_;";
 
   public:
     /**
@@ -92,7 +92,7 @@ namespace margelo::nitro::nitroplayer {
     }
 
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Func_void_std__vector_Playlist__std__optional_QueueOperation__cxx;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Func_void_std__vector_Playlist__std__optional_QueueOperation__cxx;";
     static void registerNatives() {
       registerHybrid({makeNativeMethod("invoke_cxx", JFunc_void_std__vector_Playlist__std__optional_QueueOperation__cxx::invoke_cxx)});
     }

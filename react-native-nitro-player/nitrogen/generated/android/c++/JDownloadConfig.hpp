@@ -28,7 +28,7 @@ namespace margelo::nitro::nitroplayer {
    */
   struct JDownloadConfig final: public jni::JavaClass<JDownloadConfig> {
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/DownloadConfig;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/DownloadConfig;";
 
   public:
     /**

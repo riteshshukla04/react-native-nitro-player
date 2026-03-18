@@ -19,7 +19,7 @@ namespace margelo::nitro::nitroplayer {
    */
   struct JReason final: public jni::JavaClass<JReason> {
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Reason;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Reason;";
 
   public:
     /**

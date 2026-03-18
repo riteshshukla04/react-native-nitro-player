@@ -34,7 +34,7 @@ namespace margelo::nitro::nitroplayer {
    */
   struct JFunc_void_std__vector_TrackItem__double: public jni::JavaClass<JFunc_void_std__vector_TrackItem__double> {
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Func_void_std__vector_TrackItem__double;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Func_void_std__vector_TrackItem__double;";
 
   public:
     /**
@@ -88,7 +88,7 @@ namespace margelo::nitro::nitroplayer {
     }
 
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Func_void_std__vector_TrackItem__double_cxx;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Func_void_std__vector_TrackItem__double_cxx;";
     static void registerNatives() {
       registerHybrid({makeNativeMethod("invoke_cxx", JFunc_void_std__vector_TrackItem__double_cxx::invoke_cxx)});
     }

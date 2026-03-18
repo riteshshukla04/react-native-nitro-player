@@ -19,7 +19,7 @@ namespace margelo::nitro::nitroplayer {
    */
   struct JRepeatMode final: public jni::JavaClass<JRepeatMode> {
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/RepeatMode;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/RepeatMode;";
 
   public:
     /**

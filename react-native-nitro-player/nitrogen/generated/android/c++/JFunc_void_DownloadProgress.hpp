@@ -28,7 +28,7 @@ namespace margelo::nitro::nitroplayer {
    */
   struct JFunc_void_DownloadProgress: public jni::JavaClass<JFunc_void_DownloadProgress> {
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Func_void_DownloadProgress;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Func_void_DownloadProgress;";
 
   public:
     /**
@@ -64,7 +64,7 @@ namespace margelo::nitro::nitroplayer {
     }
 
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Func_void_DownloadProgress_cxx;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Func_void_DownloadProgress_cxx;";
     static void registerNatives() {
       registerHybrid({makeNativeMethod("invoke_cxx", JFunc_void_DownloadProgress_cxx::invoke_cxx)});
     }

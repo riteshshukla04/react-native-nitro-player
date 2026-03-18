@@ -21,7 +21,7 @@ namespace margelo::nitro::nitroplayer {
    */
   struct JEqualizerBand final: public jni::JavaClass<JEqualizerBand> {
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/EqualizerBand;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/EqualizerBand;";
 
   public:
     /**

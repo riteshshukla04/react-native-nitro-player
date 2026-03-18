@@ -32,7 +32,7 @@ namespace margelo::nitro::nitroplayer {
    */
   struct JDownloadedTrack final: public jni::JavaClass<JDownloadedTrack> {
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/DownloadedTrack;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/DownloadedTrack;";
 
   public:
     /**

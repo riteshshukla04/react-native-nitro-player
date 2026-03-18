@@ -28,7 +28,7 @@ namespace margelo::nitro::nitroplayer {
    */
   class JVariant_NullType_DownloadError: public jni::JavaClass<JVariant_NullType_DownloadError> {
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Variant_NullType_DownloadError;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Variant_NullType_DownloadError;";
 
     static jni::local_ref<JVariant_NullType_DownloadError> create_0(jni::alias_ref<JNull> value) {
       static const auto method = javaClassStatic()->getStaticMethod<JVariant_NullType_DownloadError(jni::alias_ref<JNull>)>("create");
@@ -53,7 +53,7 @@ namespace margelo::nitro::nitroplayer {
   namespace JVariant_NullType_DownloadError_impl {
     class First final: public jni::JavaClass<First, JVariant_NullType_DownloadError> {
     public:
-      static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Variant_NullType_DownloadError$First;";
+      static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Variant_NullType_DownloadError$First;";
     
       [[nodiscard]] jni::local_ref<JNull> getValue() const {
         static const auto field = javaClassStatic()->getField<JNull>("value");
@@ -63,7 +63,7 @@ namespace margelo::nitro::nitroplayer {
     
     class Second final: public jni::JavaClass<Second, JVariant_NullType_DownloadError> {
     public:
-      static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Variant_NullType_DownloadError$Second;";
+      static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Variant_NullType_DownloadError$Second;";
     
       [[nodiscard]] jni::local_ref<JDownloadError> getValue() const {
         static const auto field = javaClassStatic()->getField<JDownloadError>("value");

@@ -35,7 +35,7 @@ namespace margelo::nitro::nitroplayer {
    */
   struct JPlayerState final: public jni::JavaClass<JPlayerState> {
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/PlayerState;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/PlayerState;";
 
   public:
     /**

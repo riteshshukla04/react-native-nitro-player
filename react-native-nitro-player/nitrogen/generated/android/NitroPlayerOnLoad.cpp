@@ -44,25 +44,74 @@ int initialize(JavaVM* vm) {
   });
 }
 
+struct JHybridPlayerQueueSpecImpl: public jni::JavaClass<JHybridPlayerQueueSpecImpl, JHybridPlayerQueueSpec::JavaPart> {
+  static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/HybridPlayerQueue;";
+  static std::shared_ptr<JHybridPlayerQueueSpec> create() {
+    static const auto constructorFn = javaClassStatic()->getConstructor<JHybridPlayerQueueSpecImpl::javaobject()>();
+    jni::local_ref<JHybridPlayerQueueSpec::JavaPart> javaPart = javaClassStatic()->newObject(constructorFn);
+    return javaPart->getJHybridPlayerQueueSpec();
+  }
+};
+struct JHybridTrackPlayerSpecImpl: public jni::JavaClass<JHybridTrackPlayerSpecImpl, JHybridTrackPlayerSpec::JavaPart> {
+  static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/HybridTrackPlayer;";
+  static std::shared_ptr<JHybridTrackPlayerSpec> create() {
+    static const auto constructorFn = javaClassStatic()->getConstructor<JHybridTrackPlayerSpecImpl::javaobject()>();
+    jni::local_ref<JHybridTrackPlayerSpec::JavaPart> javaPart = javaClassStatic()->newObject(constructorFn);
+    return javaPart->getJHybridTrackPlayerSpec();
+  }
+};
+struct JHybridAndroidAutoMediaLibrarySpecImpl: public jni::JavaClass<JHybridAndroidAutoMediaLibrarySpecImpl, JHybridAndroidAutoMediaLibrarySpec::JavaPart> {
+  static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/HybridAndroidAutoMediaLibrary;";
+  static std::shared_ptr<JHybridAndroidAutoMediaLibrarySpec> create() {
+    static const auto constructorFn = javaClassStatic()->getConstructor<JHybridAndroidAutoMediaLibrarySpecImpl::javaobject()>();
+    jni::local_ref<JHybridAndroidAutoMediaLibrarySpec::JavaPart> javaPart = javaClassStatic()->newObject(constructorFn);
+    return javaPart->getJHybridAndroidAutoMediaLibrarySpec();
+  }
+};
+struct JHybridAudioDevicesSpecImpl: public jni::JavaClass<JHybridAudioDevicesSpecImpl, JHybridAudioDevicesSpec::JavaPart> {
+  static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/HybridAudioDevices;";
+  static std::shared_ptr<JHybridAudioDevicesSpec> create() {
+    static const auto constructorFn = javaClassStatic()->getConstructor<JHybridAudioDevicesSpecImpl::javaobject()>();
+    jni::local_ref<JHybridAudioDevicesSpec::JavaPart> javaPart = javaClassStatic()->newObject(constructorFn);
+    return javaPart->getJHybridAudioDevicesSpec();
+  }
+};
+struct JHybridDownloadManagerSpecImpl: public jni::JavaClass<JHybridDownloadManagerSpecImpl, JHybridDownloadManagerSpec::JavaPart> {
+  static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/HybridDownloadManager;";
+  static std::shared_ptr<JHybridDownloadManagerSpec> create() {
+    static const auto constructorFn = javaClassStatic()->getConstructor<JHybridDownloadManagerSpecImpl::javaobject()>();
+    jni::local_ref<JHybridDownloadManagerSpec::JavaPart> javaPart = javaClassStatic()->newObject(constructorFn);
+    return javaPart->getJHybridDownloadManagerSpec();
+  }
+};
+struct JHybridEqualizerSpecImpl: public jni::JavaClass<JHybridEqualizerSpecImpl, JHybridEqualizerSpec::JavaPart> {
+  static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/HybridEqualizer;";
+  static std::shared_ptr<JHybridEqualizerSpec> create() {
+    static const auto constructorFn = javaClassStatic()->getConstructor<JHybridEqualizerSpecImpl::javaobject()>();
+    jni::local_ref<JHybridEqualizerSpec::JavaPart> javaPart = javaClassStatic()->newObject(constructorFn);
+    return javaPart->getJHybridEqualizerSpec();
+  }
+};
+
 void registerAllNatives() {
   using namespace margelo::nitro;
   using namespace margelo::nitro::nitroplayer;
 
   // Register native JNI methods
-  margelo::nitro::nitroplayer::JHybridAndroidAutoMediaLibrarySpec::registerNatives();
-  margelo::nitro::nitroplayer::JHybridAudioDevicesSpec::registerNatives();
-  margelo::nitro::nitroplayer::JHybridDownloadManagerSpec::registerNatives();
+  margelo::nitro::nitroplayer::JHybridAndroidAutoMediaLibrarySpec::CxxPart::registerNatives();
+  margelo::nitro::nitroplayer::JHybridAudioDevicesSpec::CxxPart::registerNatives();
+  margelo::nitro::nitroplayer::JHybridDownloadManagerSpec::CxxPart::registerNatives();
   margelo::nitro::nitroplayer::JFunc_void_DownloadProgress_cxx::registerNatives();
   margelo::nitro::nitroplayer::JFunc_void_std__string_std__string_DownloadState_std__optional_DownloadError__cxx::registerNatives();
   margelo::nitro::nitroplayer::JFunc_void_DownloadedTrack_cxx::registerNatives();
-  margelo::nitro::nitroplayer::JHybridEqualizerSpec::registerNatives();
+  margelo::nitro::nitroplayer::JHybridEqualizerSpec::CxxPart::registerNatives();
   margelo::nitro::nitroplayer::JFunc_void_bool_cxx::registerNatives();
   margelo::nitro::nitroplayer::JFunc_void_std__vector_EqualizerBand__cxx::registerNatives();
   margelo::nitro::nitroplayer::JFunc_void_std__optional_std__variant_nitro__NullType__std__string___cxx::registerNatives();
-  margelo::nitro::nitroplayer::JHybridPlayerQueueSpec::registerNatives();
+  margelo::nitro::nitroplayer::JHybridPlayerQueueSpec::CxxPart::registerNatives();
   margelo::nitro::nitroplayer::JFunc_void_std__vector_Playlist__std__optional_QueueOperation__cxx::registerNatives();
   margelo::nitro::nitroplayer::JFunc_void_std__string_Playlist_std__optional_QueueOperation__cxx::registerNatives();
-  margelo::nitro::nitroplayer::JHybridTrackPlayerSpec::registerNatives();
+  margelo::nitro::nitroplayer::JHybridTrackPlayerSpec::CxxPart::registerNatives();
   margelo::nitro::nitroplayer::JFunc_void_TrackItem_std__optional_Reason__cxx::registerNatives();
   margelo::nitro::nitroplayer::JFunc_void_TrackPlayerState_std__optional_Reason__cxx::registerNatives();
   margelo::nitro::nitroplayer::JFunc_void_double_double_cxx::registerNatives();
@@ -73,49 +122,37 @@ void registerAllNatives() {
   HybridObjectRegistry::registerHybridObjectConstructor(
     "PlayerQueue",
     []() -> std::shared_ptr<HybridObject> {
-      static DefaultConstructableObject<JHybridPlayerQueueSpec::javaobject> object("com/margelo/nitro/nitroplayer/HybridPlayerQueue");
-      auto instance = object.create();
-      return instance->cthis()->shared();
+      return JHybridPlayerQueueSpecImpl::create();
     }
   );
   HybridObjectRegistry::registerHybridObjectConstructor(
     "TrackPlayer",
     []() -> std::shared_ptr<HybridObject> {
-      static DefaultConstructableObject<JHybridTrackPlayerSpec::javaobject> object("com/margelo/nitro/nitroplayer/HybridTrackPlayer");
-      auto instance = object.create();
-      return instance->cthis()->shared();
+      return JHybridTrackPlayerSpecImpl::create();
     }
   );
   HybridObjectRegistry::registerHybridObjectConstructor(
     "AndroidAutoMediaLibrary",
     []() -> std::shared_ptr<HybridObject> {
-      static DefaultConstructableObject<JHybridAndroidAutoMediaLibrarySpec::javaobject> object("com/margelo/nitro/nitroplayer/HybridAndroidAutoMediaLibrary");
-      auto instance = object.create();
-      return instance->cthis()->shared();
+      return JHybridAndroidAutoMediaLibrarySpecImpl::create();
     }
   );
   HybridObjectRegistry::registerHybridObjectConstructor(
     "AudioDevices",
     []() -> std::shared_ptr<HybridObject> {
-      static DefaultConstructableObject<JHybridAudioDevicesSpec::javaobject> object("com/margelo/nitro/nitroplayer/HybridAudioDevices");
-      auto instance = object.create();
-      return instance->cthis()->shared();
+      return JHybridAudioDevicesSpecImpl::create();
     }
   );
   HybridObjectRegistry::registerHybridObjectConstructor(
     "DownloadManager",
     []() -> std::shared_ptr<HybridObject> {
-      static DefaultConstructableObject<JHybridDownloadManagerSpec::javaobject> object("com/margelo/nitro/nitroplayer/HybridDownloadManager");
-      auto instance = object.create();
-      return instance->cthis()->shared();
+      return JHybridDownloadManagerSpecImpl::create();
     }
   );
   HybridObjectRegistry::registerHybridObjectConstructor(
     "Equalizer",
     []() -> std::shared_ptr<HybridObject> {
-      static DefaultConstructableObject<JHybridEqualizerSpec::javaobject> object("com/margelo/nitro/nitroplayer/HybridEqualizer");
-      auto instance = object.create();
-      return instance->cthis()->shared();
+      return JHybridEqualizerSpecImpl::create();
     }
   );
 }

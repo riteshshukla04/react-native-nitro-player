@@ -19,7 +19,7 @@ namespace margelo::nitro::nitroplayer {
    */
   struct JCurrentPlayingType final: public jni::JavaClass<JCurrentPlayingType> {
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/CurrentPlayingType;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/CurrentPlayingType;";
 
   public:
     /**

@@ -21,7 +21,7 @@ namespace margelo::nitro::nitroplayer {
    */
   struct JDownloadStorageInfo final: public jni::JavaClass<JDownloadStorageInfo> {
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/DownloadStorageInfo;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/DownloadStorageInfo;";
 
   public:
     /**

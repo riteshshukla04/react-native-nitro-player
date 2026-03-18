@@ -17,37 +17,31 @@ namespace margelo::nitro::nitroplayer { struct TAudioDevice; }
 
 namespace margelo::nitro::nitroplayer {
 
-  jni::local_ref<JHybridAudioDevicesSpec::jhybriddata> JHybridAudioDevicesSpec::initHybrid(jni::alias_ref<jhybridobject> jThis) {
+  std::shared_ptr<JHybridAudioDevicesSpec> JHybridAudioDevicesSpec::JavaPart::getJHybridAudioDevicesSpec() {
+    auto hybridObject = JHybridObject::JavaPart::getJHybridObject();
+    auto castHybridObject = std::dynamic_pointer_cast<JHybridAudioDevicesSpec>(hybridObject);
+    if (castHybridObject == nullptr) [[unlikely]] {
+      throw std::runtime_error("Failed to downcast JHybridObject to JHybridAudioDevicesSpec!");
+    }
+    return castHybridObject;
+  }
+
+  jni::local_ref<JHybridAudioDevicesSpec::CxxPart::jhybriddata> JHybridAudioDevicesSpec::CxxPart::initHybrid(jni::alias_ref<jhybridobject> jThis) {
     return makeCxxInstance(jThis);
   }
 
-  void JHybridAudioDevicesSpec::registerNatives() {
-    registerHybrid({
-      makeNativeMethod("initHybrid", JHybridAudioDevicesSpec::initHybrid),
-    });
-  }
-
-  size_t JHybridAudioDevicesSpec::getExternalMemorySize() noexcept {
-    static const auto method = javaClassStatic()->getMethod<jlong()>("getMemorySize");
-    return method(_javaPart);
-  }
-
-  bool JHybridAudioDevicesSpec::equals(const std::shared_ptr<HybridObject>& other) {
-    if (auto otherCast = std::dynamic_pointer_cast<JHybridAudioDevicesSpec>(other)) {
-      return _javaPart == otherCast->_javaPart;
+  std::shared_ptr<JHybridObject> JHybridAudioDevicesSpec::CxxPart::createHybridObject(const jni::local_ref<JHybridObject::JavaPart>& javaPart) {
+    auto castJavaPart = jni::dynamic_ref_cast<JHybridAudioDevicesSpec::JavaPart>(javaPart);
+    if (castJavaPart == nullptr) [[unlikely]] {
+      throw std::runtime_error("Failed to cast JHybridObject::JavaPart to JHybridAudioDevicesSpec::JavaPart!");
     }
-    return false;
+    return std::make_shared<JHybridAudioDevicesSpec>(castJavaPart);
   }
 
-  void JHybridAudioDevicesSpec::dispose() noexcept {
-    static const auto method = javaClassStatic()->getMethod<void()>("dispose");
-    method(_javaPart);
-  }
-
-  std::string JHybridAudioDevicesSpec::toString() {
-    static const auto method = javaClassStatic()->getMethod<jni::JString()>("toString");
-    auto javaString = method(_javaPart);
-    return javaString->toStdString();
+  void JHybridAudioDevicesSpec::CxxPart::registerNatives() {
+    registerHybrid({
+      makeNativeMethod("initHybrid", JHybridAudioDevicesSpec::CxxPart::initHybrid),
+    });
   }
 
   // Properties
@@ -55,7 +49,7 @@ namespace margelo::nitro::nitroplayer {
 
   // Methods
   std::vector<TAudioDevice> JHybridAudioDevicesSpec::getAudioDevices() {
-    static const auto method = javaClassStatic()->getMethod<jni::local_ref<jni::JArrayClass<JTAudioDevice>>()>("getAudioDevices");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<jni::JArrayClass<JTAudioDevice>>()>("getAudioDevices");
     auto __result = method(_javaPart);
     return [&]() {
       size_t __size = __result->size();
@@ -69,7 +63,7 @@ namespace margelo::nitro::nitroplayer {
     }();
   }
   bool JHybridAudioDevicesSpec::setAudioDevice(double deviceId) {
-    static const auto method = javaClassStatic()->getMethod<jboolean(double /* deviceId */)>("setAudioDevice");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jboolean(double /* deviceId */)>("setAudioDevice");
     auto __result = method(_javaPart, deviceId);
     return static_cast<bool>(__result);
   }

@@ -31,7 +31,7 @@ namespace margelo::nitro::nitroplayer {
    */
   struct JFunc_void_std__string_std__string_DownloadState_std__optional_DownloadError_: public jni::JavaClass<JFunc_void_std__string_std__string_DownloadState_std__optional_DownloadError_> {
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Func_void_std__string_std__string_DownloadState_std__optional_DownloadError_;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Func_void_std__string_std__string_DownloadState_std__optional_DownloadError_;";
 
   public:
     /**
@@ -67,7 +67,7 @@ namespace margelo::nitro::nitroplayer {
     }
 
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Func_void_std__string_std__string_DownloadState_std__optional_DownloadError__cxx;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Func_void_std__string_std__string_DownloadState_std__optional_DownloadError__cxx;";
     static void registerNatives() {
       registerHybrid({makeNativeMethod("invoke_cxx", JFunc_void_std__string_std__string_DownloadState_std__optional_DownloadError__cxx::invoke_cxx)});
     }

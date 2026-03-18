@@ -23,7 +23,7 @@ namespace margelo::nitro::nitroplayer {
    */
   struct JDownloadError final: public jni::JavaClass<JDownloadError> {
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/DownloadError;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/DownloadError;";
 
   public:
     /**

@@ -29,7 +29,7 @@ namespace margelo::nitro::nitroplayer {
    */
   struct JFunc_void_std__optional_std__variant_nitro__NullType__std__string__: public jni::JavaClass<JFunc_void_std__optional_std__variant_nitro__NullType__std__string__> {
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Func_void_std__optional_std__variant_nitro__NullType__std__string__;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Func_void_std__optional_std__variant_nitro__NullType__std__string__;";
 
   public:
     /**
@@ -65,7 +65,7 @@ namespace margelo::nitro::nitroplayer {
     }
 
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Func_void_std__optional_std__variant_nitro__NullType__std__string___cxx;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Func_void_std__optional_std__variant_nitro__NullType__std__string___cxx;";
     static void registerNatives() {
       registerHybrid({makeNativeMethod("invoke_cxx", JFunc_void_std__optional_std__variant_nitro__NullType__std__string___cxx::invoke_cxx)});
     }

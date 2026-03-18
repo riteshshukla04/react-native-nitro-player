@@ -21,7 +21,7 @@ namespace margelo::nitro::nitroplayer {
    */
   struct JGainRange final: public jni::JavaClass<JGainRange> {
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/GainRange;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/GainRange;";
 
   public:
     /**

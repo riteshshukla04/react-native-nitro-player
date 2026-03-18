@@ -19,7 +19,7 @@ namespace margelo::nitro::nitroplayer {
    */
   struct JStorageLocation final: public jni::JavaClass<JStorageLocation> {
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/StorageLocation;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/StorageLocation;";
 
   public:
     /**

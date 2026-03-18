@@ -18,34 +18,33 @@ namespace margelo::nitro::nitroplayer {
 
   using namespace facebook;
 
-  class JHybridTrackPlayerSpec: public jni::HybridClass<JHybridTrackPlayerSpec, JHybridObject>,
-                                public virtual HybridTrackPlayerSpec {
+  class JHybridTrackPlayerSpec: public virtual HybridTrackPlayerSpec, public virtual JHybridObject {
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/HybridTrackPlayerSpec;";
-    static jni::local_ref<jhybriddata> initHybrid(jni::alias_ref<jhybridobject> jThis);
-    static void registerNatives();
+    struct JavaPart: public jni::JavaClass<JavaPart, JHybridObject::JavaPart> {
+      static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/HybridTrackPlayerSpec;";
+      std::shared_ptr<JHybridTrackPlayerSpec> getJHybridTrackPlayerSpec();
+    };
+    struct CxxPart: public jni::HybridClass<CxxPart, JHybridObject::CxxPart> {
+      static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/HybridTrackPlayerSpec$CxxPart;";
+      static jni::local_ref<jhybriddata> initHybrid(jni::alias_ref<jhybridobject> jThis);
+      static void registerNatives();
+      using HybridBase::HybridBase;
+    protected:
+      std::shared_ptr<JHybridObject> createHybridObject(const jni::local_ref<JHybridObject::JavaPart>& javaPart) override;
+    };
 
-  protected:
-    // C++ constructor (called from Java via `initHybrid()`)
-    explicit JHybridTrackPlayerSpec(jni::alias_ref<jhybridobject> jThis) :
+  public:
+    explicit JHybridTrackPlayerSpec(const jni::local_ref<JHybridTrackPlayerSpec::JavaPart>& javaPart):
       HybridObject(HybridTrackPlayerSpec::TAG),
-      HybridBase(jThis),
-      _javaPart(jni::make_global(jThis)) {}
-
-  public:
+      JHybridObject(javaPart),
+      _javaPart(jni::make_global(javaPart)) {}
     ~JHybridTrackPlayerSpec() override {
       // Hermes GC can destroy JS objects on a non-JNI Thread.
       jni::ThreadScope::WithClassLoader([&] { _javaPart.reset(); });
     }
 
   public:
-    size_t getExternalMemorySize() noexcept override;
-    bool equals(const std::shared_ptr<HybridObject>& other) override;
-    void dispose() noexcept override;
-    std::string toString() override;
-
-  public:
-    inline const jni::global_ref<JHybridTrackPlayerSpec::javaobject>& getJavaPart() const noexcept {
+    inline const jni::global_ref<JHybridTrackPlayerSpec::JavaPart>& getJavaPart() const noexcept {
       return _javaPart;
     }
 
@@ -86,9 +85,7 @@ namespace margelo::nitro::nitroplayer {
     std::shared_ptr<Promise<double>> getPlaybackSpeed() override;
 
   private:
-    friend HybridBase;
-    using HybridBase::HybridBase;
-    jni::global_ref<JHybridTrackPlayerSpec::javaobject> _javaPart;
+    jni::global_ref<JHybridTrackPlayerSpec::JavaPart> _javaPart;
   };
 
 } // namespace margelo::nitro::nitroplayer

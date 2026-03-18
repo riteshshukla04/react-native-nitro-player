@@ -21,7 +21,7 @@ namespace margelo::nitro::nitroplayer {
    */
   struct JTAudioDevice final: public jni::JavaClass<JTAudioDevice> {
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/TAudioDevice;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/TAudioDevice;";
 
   public:
     /**

@@ -19,7 +19,7 @@ namespace margelo::nitro::nitroplayer {
    */
   struct JQueueOperation final: public jni::JavaClass<JQueueOperation> {
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/QueueOperation;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/QueueOperation;";
 
   public:
     /**

@@ -18,34 +18,33 @@ namespace margelo::nitro::nitroplayer {
 
   using namespace facebook;
 
-  class JHybridDownloadManagerSpec: public jni::HybridClass<JHybridDownloadManagerSpec, JHybridObject>,
-                                    public virtual HybridDownloadManagerSpec {
+  class JHybridDownloadManagerSpec: public virtual HybridDownloadManagerSpec, public virtual JHybridObject {
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/HybridDownloadManagerSpec;";
-    static jni::local_ref<jhybriddata> initHybrid(jni::alias_ref<jhybridobject> jThis);
-    static void registerNatives();
+    struct JavaPart: public jni::JavaClass<JavaPart, JHybridObject::JavaPart> {
+      static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/HybridDownloadManagerSpec;";
+      std::shared_ptr<JHybridDownloadManagerSpec> getJHybridDownloadManagerSpec();
+    };
+    struct CxxPart: public jni::HybridClass<CxxPart, JHybridObject::CxxPart> {
+      static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/HybridDownloadManagerSpec$CxxPart;";
+      static jni::local_ref<jhybriddata> initHybrid(jni::alias_ref<jhybridobject> jThis);
+      static void registerNatives();
+      using HybridBase::HybridBase;
+    protected:
+      std::shared_ptr<JHybridObject> createHybridObject(const jni::local_ref<JHybridObject::JavaPart>& javaPart) override;
+    };
 
-  protected:
-    // C++ constructor (called from Java via `initHybrid()`)
-    explicit JHybridDownloadManagerSpec(jni::alias_ref<jhybridobject> jThis) :
+  public:
+    explicit JHybridDownloadManagerSpec(const jni::local_ref<JHybridDownloadManagerSpec::JavaPart>& javaPart):
       HybridObject(HybridDownloadManagerSpec::TAG),
-      HybridBase(jThis),
-      _javaPart(jni::make_global(jThis)) {}
-
-  public:
+      JHybridObject(javaPart),
+      _javaPart(jni::make_global(javaPart)) {}
     ~JHybridDownloadManagerSpec() override {
       // Hermes GC can destroy JS objects on a non-JNI Thread.
       jni::ThreadScope::WithClassLoader([&] { _javaPart.reset(); });
     }
 
   public:
-    size_t getExternalMemorySize() noexcept override;
-    bool equals(const std::shared_ptr<HybridObject>& other) override;
-    void dispose() noexcept override;
-    std::string toString() override;
-
-  public:
-    inline const jni::global_ref<JHybridDownloadManagerSpec::javaobject>& getJavaPart() const noexcept {
+    inline const jni::global_ref<JHybridDownloadManagerSpec::JavaPart>& getJavaPart() const noexcept {
       return _javaPart;
     }
 
@@ -92,9 +91,7 @@ namespace margelo::nitro::nitroplayer {
     void onDownloadComplete(const std::function<void(const DownloadedTrack& /* downloadedTrack */)>& callback) override;
 
   private:
-    friend HybridBase;
-    using HybridBase::HybridBase;
-    jni::global_ref<JHybridDownloadManagerSpec::javaobject> _javaPart;
+    jni::global_ref<JHybridDownloadManagerSpec::JavaPart> _javaPart;
   };
 
 } // namespace margelo::nitro::nitroplayer

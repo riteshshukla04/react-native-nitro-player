@@ -19,7 +19,7 @@ namespace margelo::nitro::nitroplayer {
    */
   struct JPresetType final: public jni::JavaClass<JPresetType> {
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/PresetType;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/PresetType;";
 
   public:
     /**

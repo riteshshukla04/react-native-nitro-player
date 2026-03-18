@@ -19,7 +19,7 @@
     "react-native": "0.82.1",
     "react-native-audio-pro": "^10.1.2",
     "react-native-harness": "^1.0.0-alpha.21",
-    "react-native-nitro-modules": "^0.34.1",
+    "react-native-nitro-modules": "^0.35.2",
     "react-native-nitro-player": "../react-native-nitro-player",
     "react-native-safe-area-context": "^5.6.2",
     "react-native-screens": "^4.19.0"

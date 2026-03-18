@@ -37,37 +37,31 @@ namespace margelo::nitro::nitroplayer { enum class QueueOperation; }
 
 namespace margelo::nitro::nitroplayer {
 
-  jni::local_ref<JHybridPlayerQueueSpec::jhybriddata> JHybridPlayerQueueSpec::initHybrid(jni::alias_ref<jhybridobject> jThis) {
+  std::shared_ptr<JHybridPlayerQueueSpec> JHybridPlayerQueueSpec::JavaPart::getJHybridPlayerQueueSpec() {
+    auto hybridObject = JHybridObject::JavaPart::getJHybridObject();
+    auto castHybridObject = std::dynamic_pointer_cast<JHybridPlayerQueueSpec>(hybridObject);
+    if (castHybridObject == nullptr) [[unlikely]] {
+      throw std::runtime_error("Failed to downcast JHybridObject to JHybridPlayerQueueSpec!");
+    }
+    return castHybridObject;
+  }
+
+  jni::local_ref<JHybridPlayerQueueSpec::CxxPart::jhybriddata> JHybridPlayerQueueSpec::CxxPart::initHybrid(jni::alias_ref<jhybridobject> jThis) {
     return makeCxxInstance(jThis);
   }
 
-  void JHybridPlayerQueueSpec::registerNatives() {
-    registerHybrid({
-      makeNativeMethod("initHybrid", JHybridPlayerQueueSpec::initHybrid),
-    });
-  }
-
-  size_t JHybridPlayerQueueSpec::getExternalMemorySize() noexcept {
-    static const auto method = javaClassStatic()->getMethod<jlong()>("getMemorySize");
-    return method(_javaPart);
-  }
-
-  bool JHybridPlayerQueueSpec::equals(const std::shared_ptr<HybridObject>& other) {
-    if (auto otherCast = std::dynamic_pointer_cast<JHybridPlayerQueueSpec>(other)) {
-      return _javaPart == otherCast->_javaPart;
+  std::shared_ptr<JHybridObject> JHybridPlayerQueueSpec::CxxPart::createHybridObject(const jni::local_ref<JHybridObject::JavaPart>& javaPart) {
+    auto castJavaPart = jni::dynamic_ref_cast<JHybridPlayerQueueSpec::JavaPart>(javaPart);
+    if (castJavaPart == nullptr) [[unlikely]] {
+      throw std::runtime_error("Failed to cast JHybridObject::JavaPart to JHybridPlayerQueueSpec::JavaPart!");
     }
-    return false;
+    return std::make_shared<JHybridPlayerQueueSpec>(castJavaPart);
   }
 
-  void JHybridPlayerQueueSpec::dispose() noexcept {
-    static const auto method = javaClassStatic()->getMethod<void()>("dispose");
-    method(_javaPart);
-  }
-
-  std::string JHybridPlayerQueueSpec::toString() {
-    static const auto method = javaClassStatic()->getMethod<jni::JString()>("toString");
-    auto javaString = method(_javaPart);
-    return javaString->toStdString();
+  void JHybridPlayerQueueSpec::CxxPart::registerNatives() {
+    registerHybrid({
+      makeNativeMethod("initHybrid", JHybridPlayerQueueSpec::CxxPart::initHybrid),
+    });
   }
 
   // Properties
@@ -75,25 +69,25 @@ namespace margelo::nitro::nitroplayer {
 
   // Methods
   std::string JHybridPlayerQueueSpec::createPlaylist(const std::string& name, const std::optional<std::string>& description, const std::optional<std::string>& artwork) {
-    static const auto method = javaClassStatic()->getMethod<jni::local_ref<jni::JString>(jni::alias_ref<jni::JString> /* name */, jni::alias_ref<jni::JString> /* description */, jni::alias_ref<jni::JString> /* artwork */)>("createPlaylist");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<jni::JString>(jni::alias_ref<jni::JString> /* name */, jni::alias_ref<jni::JString> /* description */, jni::alias_ref<jni::JString> /* artwork */)>("createPlaylist");
     auto __result = method(_javaPart, jni::make_jstring(name), description.has_value() ? jni::make_jstring(description.value()) : nullptr, artwork.has_value() ? jni::make_jstring(artwork.value()) : nullptr);
     return __result->toStdString();
   }
   void JHybridPlayerQueueSpec::deletePlaylist(const std::string& playlistId) {
-    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* playlistId */)>("deletePlaylist");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* playlistId */)>("deletePlaylist");
     method(_javaPart, jni::make_jstring(playlistId));
   }
   void JHybridPlayerQueueSpec::updatePlaylist(const std::string& playlistId, const std::optional<std::string>& name, const std::optional<std::string>& description, const std::optional<std::string>& artwork) {
-    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* playlistId */, jni::alias_ref<jni::JString> /* name */, jni::alias_ref<jni::JString> /* description */, jni::alias_ref<jni::JString> /* artwork */)>("updatePlaylist");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* playlistId */, jni::alias_ref<jni::JString> /* name */, jni::alias_ref<jni::JString> /* description */, jni::alias_ref<jni::JString> /* artwork */)>("updatePlaylist");
     method(_javaPart, jni::make_jstring(playlistId), name.has_value() ? jni::make_jstring(name.value()) : nullptr, description.has_value() ? jni::make_jstring(description.value()) : nullptr, artwork.has_value() ? jni::make_jstring(artwork.value()) : nullptr);
   }
   std::variant<nitro::NullType, Playlist> JHybridPlayerQueueSpec::getPlaylist(const std::string& playlistId) {
-    static const auto method = javaClassStatic()->getMethod<jni::local_ref<JVariant_NullType_Playlist>(jni::alias_ref<jni::JString> /* playlistId */)>("getPlaylist");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JVariant_NullType_Playlist>(jni::alias_ref<jni::JString> /* playlistId */)>("getPlaylist");
     auto __result = method(_javaPart, jni::make_jstring(playlistId));
     return __result->toCpp();
   }
   std::vector<Playlist> JHybridPlayerQueueSpec::getAllPlaylists() {
-    static const auto method = javaClassStatic()->getMethod<jni::local_ref<jni::JArrayClass<JPlaylist>>()>("getAllPlaylists");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<jni::JArrayClass<JPlaylist>>()>("getAllPlaylists");
     auto __result = method(_javaPart);
     return [&]() {
       size_t __size = __result->size();
@@ -107,11 +101,11 @@ namespace margelo::nitro::nitroplayer {
     }();
   }
   void JHybridPlayerQueueSpec::addTrackToPlaylist(const std::string& playlistId, const TrackItem& track, std::optional<double> index) {
-    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* playlistId */, jni::alias_ref<JTrackItem> /* track */, jni::alias_ref<jni::JDouble> /* index */)>("addTrackToPlaylist");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* playlistId */, jni::alias_ref<JTrackItem> /* track */, jni::alias_ref<jni::JDouble> /* index */)>("addTrackToPlaylist");
     method(_javaPart, jni::make_jstring(playlistId), JTrackItem::fromCpp(track), index.has_value() ? jni::JDouble::valueOf(index.value()) : nullptr);
   }
   void JHybridPlayerQueueSpec::addTracksToPlaylist(const std::string& playlistId, const std::vector<TrackItem>& tracks, std::optional<double> index) {
-    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* playlistId */, jni::alias_ref<jni::JArrayClass<JTrackItem>> /* tracks */, jni::alias_ref<jni::JDouble> /* index */)>("addTracksToPlaylist");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* playlistId */, jni::alias_ref<jni::JArrayClass<JTrackItem>> /* tracks */, jni::alias_ref<jni::JDouble> /* index */)>("addTracksToPlaylist");
     method(_javaPart, jni::make_jstring(playlistId), [&]() {
       size_t __size = tracks.size();
       jni::local_ref<jni::JArrayClass<JTrackItem>> __array = jni::JArrayClass<JTrackItem>::newArray(__size);
@@ -124,28 +118,28 @@ namespace margelo::nitro::nitroplayer {
     }(), index.has_value() ? jni::JDouble::valueOf(index.value()) : nullptr);
   }
   void JHybridPlayerQueueSpec::removeTrackFromPlaylist(const std::string& playlistId, const std::string& trackId) {
-    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* playlistId */, jni::alias_ref<jni::JString> /* trackId */)>("removeTrackFromPlaylist");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* playlistId */, jni::alias_ref<jni::JString> /* trackId */)>("removeTrackFromPlaylist");
     method(_javaPart, jni::make_jstring(playlistId), jni::make_jstring(trackId));
   }
   void JHybridPlayerQueueSpec::reorderTrackInPlaylist(const std::string& playlistId, const std::string& trackId, double newIndex) {
-    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* playlistId */, jni::alias_ref<jni::JString> /* trackId */, double /* newIndex */)>("reorderTrackInPlaylist");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* playlistId */, jni::alias_ref<jni::JString> /* trackId */, double /* newIndex */)>("reorderTrackInPlaylist");
     method(_javaPart, jni::make_jstring(playlistId), jni::make_jstring(trackId), newIndex);
   }
   void JHybridPlayerQueueSpec::loadPlaylist(const std::string& playlistId) {
-    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* playlistId */)>("loadPlaylist");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* playlistId */)>("loadPlaylist");
     method(_javaPart, jni::make_jstring(playlistId));
   }
   std::variant<nitro::NullType, std::string> JHybridPlayerQueueSpec::getCurrentPlaylistId() {
-    static const auto method = javaClassStatic()->getMethod<jni::local_ref<JVariant_NullType_String>()>("getCurrentPlaylistId");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JVariant_NullType_String>()>("getCurrentPlaylistId");
     auto __result = method(_javaPart);
     return __result->toCpp();
   }
   void JHybridPlayerQueueSpec::onPlaylistsChanged(const std::function<void(const std::vector<Playlist>& /* playlists */, std::optional<QueueOperation> /* operation */)>& callback) {
-    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_std__vector_Playlist__std__optional_QueueOperation_::javaobject> /* callback */)>("onPlaylistsChanged_cxx");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_std__vector_Playlist__std__optional_QueueOperation_::javaobject> /* callback */)>("onPlaylistsChanged_cxx");
     method(_javaPart, JFunc_void_std__vector_Playlist__std__optional_QueueOperation__cxx::fromCpp(callback));
   }
   void JHybridPlayerQueueSpec::onPlaylistChanged(const std::function<void(const std::string& /* playlistId */, const Playlist& /* playlist */, std::optional<QueueOperation> /* operation */)>& callback) {
-    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_std__string_Playlist_std__optional_QueueOperation_::javaobject> /* callback */)>("onPlaylistChanged_cxx");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_std__string_Playlist_std__optional_QueueOperation_::javaobject> /* callback */)>("onPlaylistChanged_cxx");
     method(_javaPart, JFunc_void_std__string_Playlist_std__optional_QueueOperation__cxx::fromCpp(callback));
   }
 

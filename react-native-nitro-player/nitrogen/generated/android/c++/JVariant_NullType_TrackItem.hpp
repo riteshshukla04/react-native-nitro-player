@@ -30,7 +30,7 @@ namespace margelo::nitro::nitroplayer {
    */
   class JVariant_NullType_TrackItem: public jni::JavaClass<JVariant_NullType_TrackItem> {
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Variant_NullType_TrackItem;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Variant_NullType_TrackItem;";
 
     static jni::local_ref<JVariant_NullType_TrackItem> create_0(jni::alias_ref<JNull> value) {
       static const auto method = javaClassStatic()->getStaticMethod<JVariant_NullType_TrackItem(jni::alias_ref<JNull>)>("create");
@@ -55,7 +55,7 @@ namespace margelo::nitro::nitroplayer {
   namespace JVariant_NullType_TrackItem_impl {
     class First final: public jni::JavaClass<First, JVariant_NullType_TrackItem> {
     public:
-      static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Variant_NullType_TrackItem$First;";
+      static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Variant_NullType_TrackItem$First;";
     
       [[nodiscard]] jni::local_ref<JNull> getValue() const {
         static const auto field = javaClassStatic()->getField<JNull>("value");
@@ -65,7 +65,7 @@ namespace margelo::nitro::nitroplayer {
     
     class Second final: public jni::JavaClass<Second, JVariant_NullType_TrackItem> {
     public:
-      static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Variant_NullType_TrackItem$Second;";
+      static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Variant_NullType_TrackItem$Second;";
     
       [[nodiscard]] jni::local_ref<JTrackItem> getValue() const {
         static const auto field = javaClassStatic()->getField<JTrackItem>("value");

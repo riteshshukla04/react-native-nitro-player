@@ -24,7 +24,7 @@ namespace margelo::nitro::nitroplayer {
    */
   struct JFunc_void_double_double_std__optional_bool_: public jni::JavaClass<JFunc_void_double_double_std__optional_bool_> {
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Func_void_double_double_std__optional_bool_;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Func_void_double_double_std__optional_bool_;";
 
   public:
     /**
@@ -60,7 +60,7 @@ namespace margelo::nitro::nitroplayer {
     }
 
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Func_void_double_double_std__optional_bool__cxx;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Func_void_double_double_std__optional_bool__cxx;";
     static void registerNatives() {
       registerHybrid({makeNativeMethod("invoke_cxx", JFunc_void_double_double_std__optional_bool__cxx::invoke_cxx)});
     }

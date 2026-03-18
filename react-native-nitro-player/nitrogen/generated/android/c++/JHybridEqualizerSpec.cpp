@@ -43,37 +43,31 @@ namespace margelo::nitro::nitroplayer { struct EqualizerState; }
 
 namespace margelo::nitro::nitroplayer {
 
-  jni::local_ref<JHybridEqualizerSpec::jhybriddata> JHybridEqualizerSpec::initHybrid(jni::alias_ref<jhybridobject> jThis) {
+  std::shared_ptr<JHybridEqualizerSpec> JHybridEqualizerSpec::JavaPart::getJHybridEqualizerSpec() {
+    auto hybridObject = JHybridObject::JavaPart::getJHybridObject();
+    auto castHybridObject = std::dynamic_pointer_cast<JHybridEqualizerSpec>(hybridObject);
+    if (castHybridObject == nullptr) [[unlikely]] {
+      throw std::runtime_error("Failed to downcast JHybridObject to JHybridEqualizerSpec!");
+    }
+    return castHybridObject;
+  }
+
+  jni::local_ref<JHybridEqualizerSpec::CxxPart::jhybriddata> JHybridEqualizerSpec::CxxPart::initHybrid(jni::alias_ref<jhybridobject> jThis) {
     return makeCxxInstance(jThis);
   }
 
-  void JHybridEqualizerSpec::registerNatives() {
-    registerHybrid({
-      makeNativeMethod("initHybrid", JHybridEqualizerSpec::initHybrid),
-    });
-  }
-
-  size_t JHybridEqualizerSpec::getExternalMemorySize() noexcept {
-    static const auto method = javaClassStatic()->getMethod<jlong()>("getMemorySize");
-    return method(_javaPart);
-  }
-
-  bool JHybridEqualizerSpec::equals(const std::shared_ptr<HybridObject>& other) {
-    if (auto otherCast = std::dynamic_pointer_cast<JHybridEqualizerSpec>(other)) {
-      return _javaPart == otherCast->_javaPart;
+  std::shared_ptr<JHybridObject> JHybridEqualizerSpec::CxxPart::createHybridObject(const jni::local_ref<JHybridObject::JavaPart>& javaPart) {
+    auto castJavaPart = jni::dynamic_ref_cast<JHybridEqualizerSpec::JavaPart>(javaPart);
+    if (castJavaPart == nullptr) [[unlikely]] {
+      throw std::runtime_error("Failed to cast JHybridObject::JavaPart to JHybridEqualizerSpec::JavaPart!");
     }
-    return false;
+    return std::make_shared<JHybridEqualizerSpec>(castJavaPart);
   }
 
-  void JHybridEqualizerSpec::dispose() noexcept {
-    static const auto method = javaClassStatic()->getMethod<void()>("dispose");
-    method(_javaPart);
-  }
-
-  std::string JHybridEqualizerSpec::toString() {
-    static const auto method = javaClassStatic()->getMethod<jni::JString()>("toString");
-    auto javaString = method(_javaPart);
-    return javaString->toStdString();
+  void JHybridEqualizerSpec::CxxPart::registerNatives() {
+    registerHybrid({
+      makeNativeMethod("initHybrid", JHybridEqualizerSpec::CxxPart::initHybrid),
+    });
   }
 
   // Properties
@@ -81,17 +75,17 @@ namespace margelo::nitro::nitroplayer {
 
   // Methods
   bool JHybridEqualizerSpec::setEnabled(bool enabled) {
-    static const auto method = javaClassStatic()->getMethod<jboolean(jboolean /* enabled */)>("setEnabled");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jboolean(jboolean /* enabled */)>("setEnabled");
     auto __result = method(_javaPart, enabled);
     return static_cast<bool>(__result);
   }
   bool JHybridEqualizerSpec::isEnabled() {
-    static const auto method = javaClassStatic()->getMethod<jboolean()>("isEnabled");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jboolean()>("isEnabled");
     auto __result = method(_javaPart);
     return static_cast<bool>(__result);
   }
   std::vector<EqualizerBand> JHybridEqualizerSpec::getBands() {
-    static const auto method = javaClassStatic()->getMethod<jni::local_ref<jni::JArrayClass<JEqualizerBand>>()>("getBands");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<jni::JArrayClass<JEqualizerBand>>()>("getBands");
     auto __result = method(_javaPart);
     return [&]() {
       size_t __size = __result->size();
@@ -105,12 +99,12 @@ namespace margelo::nitro::nitroplayer {
     }();
   }
   bool JHybridEqualizerSpec::setBandGain(double bandIndex, double gainDb) {
-    static const auto method = javaClassStatic()->getMethod<jboolean(double /* bandIndex */, double /* gainDb */)>("setBandGain");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jboolean(double /* bandIndex */, double /* gainDb */)>("setBandGain");
     auto __result = method(_javaPart, bandIndex, gainDb);
     return static_cast<bool>(__result);
   }
   bool JHybridEqualizerSpec::setAllBandGains(const std::vector<double>& gains) {
-    static const auto method = javaClassStatic()->getMethod<jboolean(jni::alias_ref<jni::JArrayDouble> /* gains */)>("setAllBandGains");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jboolean(jni::alias_ref<jni::JArrayDouble> /* gains */)>("setAllBandGains");
     auto __result = method(_javaPart, [&]() {
       size_t __size = gains.size();
       jni::local_ref<jni::JArrayDouble> __array = jni::JArrayDouble::newArray(__size);
@@ -120,12 +114,12 @@ namespace margelo::nitro::nitroplayer {
     return static_cast<bool>(__result);
   }
   GainRange JHybridEqualizerSpec::getBandRange() {
-    static const auto method = javaClassStatic()->getMethod<jni::local_ref<JGainRange>()>("getBandRange");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JGainRange>()>("getBandRange");
     auto __result = method(_javaPart);
     return __result->toCpp();
   }
   std::vector<EqualizerPreset> JHybridEqualizerSpec::getPresets() {
-    static const auto method = javaClassStatic()->getMethod<jni::local_ref<jni::JArrayClass<JEqualizerPreset>>()>("getPresets");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<jni::JArrayClass<JEqualizerPreset>>()>("getPresets");
     auto __result = method(_javaPart);
     return [&]() {
       size_t __size = __result->size();
@@ -139,7 +133,7 @@ namespace margelo::nitro::nitroplayer {
     }();
   }
   std::vector<EqualizerPreset> JHybridEqualizerSpec::getBuiltInPresets() {
-    static const auto method = javaClassStatic()->getMethod<jni::local_ref<jni::JArrayClass<JEqualizerPreset>>()>("getBuiltInPresets");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<jni::JArrayClass<JEqualizerPreset>>()>("getBuiltInPresets");
     auto __result = method(_javaPart);
     return [&]() {
       size_t __size = __result->size();
@@ -153,7 +147,7 @@ namespace margelo::nitro::nitroplayer {
     }();
   }
   std::vector<EqualizerPreset> JHybridEqualizerSpec::getCustomPresets() {
-    static const auto method = javaClassStatic()->getMethod<jni::local_ref<jni::JArrayClass<JEqualizerPreset>>()>("getCustomPresets");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<jni::JArrayClass<JEqualizerPreset>>()>("getCustomPresets");
     auto __result = method(_javaPart);
     return [&]() {
       size_t __size = __result->size();
@@ -167,44 +161,44 @@ namespace margelo::nitro::nitroplayer {
     }();
   }
   bool JHybridEqualizerSpec::applyPreset(const std::string& presetName) {
-    static const auto method = javaClassStatic()->getMethod<jboolean(jni::alias_ref<jni::JString> /* presetName */)>("applyPreset");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jboolean(jni::alias_ref<jni::JString> /* presetName */)>("applyPreset");
     auto __result = method(_javaPart, jni::make_jstring(presetName));
     return static_cast<bool>(__result);
   }
   std::variant<nitro::NullType, std::string> JHybridEqualizerSpec::getCurrentPresetName() {
-    static const auto method = javaClassStatic()->getMethod<jni::local_ref<JVariant_NullType_String>()>("getCurrentPresetName");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JVariant_NullType_String>()>("getCurrentPresetName");
     auto __result = method(_javaPart);
     return __result->toCpp();
   }
   bool JHybridEqualizerSpec::saveCustomPreset(const std::string& name) {
-    static const auto method = javaClassStatic()->getMethod<jboolean(jni::alias_ref<jni::JString> /* name */)>("saveCustomPreset");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jboolean(jni::alias_ref<jni::JString> /* name */)>("saveCustomPreset");
     auto __result = method(_javaPart, jni::make_jstring(name));
     return static_cast<bool>(__result);
   }
   bool JHybridEqualizerSpec::deleteCustomPreset(const std::string& name) {
-    static const auto method = javaClassStatic()->getMethod<jboolean(jni::alias_ref<jni::JString> /* name */)>("deleteCustomPreset");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jboolean(jni::alias_ref<jni::JString> /* name */)>("deleteCustomPreset");
     auto __result = method(_javaPart, jni::make_jstring(name));
     return static_cast<bool>(__result);
   }
   EqualizerState JHybridEqualizerSpec::getState() {
-    static const auto method = javaClassStatic()->getMethod<jni::local_ref<JEqualizerState>()>("getState");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JEqualizerState>()>("getState");
     auto __result = method(_javaPart);
     return __result->toCpp();
   }
   void JHybridEqualizerSpec::reset() {
-    static const auto method = javaClassStatic()->getMethod<void()>("reset");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void()>("reset");
     method(_javaPart);
   }
   void JHybridEqualizerSpec::onEnabledChange(const std::function<void(bool /* enabled */)>& callback) {
-    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_bool::javaobject> /* callback */)>("onEnabledChange_cxx");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_bool::javaobject> /* callback */)>("onEnabledChange_cxx");
     method(_javaPart, JFunc_void_bool_cxx::fromCpp(callback));
   }
   void JHybridEqualizerSpec::onBandChange(const std::function<void(const std::vector<EqualizerBand>& /* bands */)>& callback) {
-    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_std__vector_EqualizerBand_::javaobject> /* callback */)>("onBandChange_cxx");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_std__vector_EqualizerBand_::javaobject> /* callback */)>("onBandChange_cxx");
     method(_javaPart, JFunc_void_std__vector_EqualizerBand__cxx::fromCpp(callback));
   }
   void JHybridEqualizerSpec::onPresetChange(const std::function<void(const std::optional<std::variant<nitro::NullType, std::string>>& /* presetName */)>& callback) {
-    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_std__optional_std__variant_nitro__NullType__std__string__::javaobject> /* callback */)>("onPresetChange_cxx");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_std__optional_std__variant_nitro__NullType__std__string__::javaobject> /* callback */)>("onPresetChange_cxx");
     method(_javaPart, JFunc_void_std__optional_std__variant_nitro__NullType__std__string___cxx::fromCpp(callback));
   }
 

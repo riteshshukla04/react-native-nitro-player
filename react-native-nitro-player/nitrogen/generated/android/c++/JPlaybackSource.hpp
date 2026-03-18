@@ -19,7 +19,7 @@ namespace margelo::nitro::nitroplayer {
    */
   struct JPlaybackSource final: public jni::JavaClass<JPlaybackSource> {
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/PlaybackSource;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/PlaybackSource;";
 
   public:
     /**

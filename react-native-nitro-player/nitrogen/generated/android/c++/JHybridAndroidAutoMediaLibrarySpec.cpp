@@ -13,37 +13,31 @@
 
 namespace margelo::nitro::nitroplayer {
 
-  jni::local_ref<JHybridAndroidAutoMediaLibrarySpec::jhybriddata> JHybridAndroidAutoMediaLibrarySpec::initHybrid(jni::alias_ref<jhybridobject> jThis) {
+  std::shared_ptr<JHybridAndroidAutoMediaLibrarySpec> JHybridAndroidAutoMediaLibrarySpec::JavaPart::getJHybridAndroidAutoMediaLibrarySpec() {
+    auto hybridObject = JHybridObject::JavaPart::getJHybridObject();
+    auto castHybridObject = std::dynamic_pointer_cast<JHybridAndroidAutoMediaLibrarySpec>(hybridObject);
+    if (castHybridObject == nullptr) [[unlikely]] {
+      throw std::runtime_error("Failed to downcast JHybridObject to JHybridAndroidAutoMediaLibrarySpec!");
+    }
+    return castHybridObject;
+  }
+
+  jni::local_ref<JHybridAndroidAutoMediaLibrarySpec::CxxPart::jhybriddata> JHybridAndroidAutoMediaLibrarySpec::CxxPart::initHybrid(jni::alias_ref<jhybridobject> jThis) {
     return makeCxxInstance(jThis);
   }
 
-  void JHybridAndroidAutoMediaLibrarySpec::registerNatives() {
-    registerHybrid({
-      makeNativeMethod("initHybrid", JHybridAndroidAutoMediaLibrarySpec::initHybrid),
-    });
-  }
-
-  size_t JHybridAndroidAutoMediaLibrarySpec::getExternalMemorySize() noexcept {
-    static const auto method = javaClassStatic()->getMethod<jlong()>("getMemorySize");
-    return method(_javaPart);
-  }
-
-  bool JHybridAndroidAutoMediaLibrarySpec::equals(const std::shared_ptr<HybridObject>& other) {
-    if (auto otherCast = std::dynamic_pointer_cast<JHybridAndroidAutoMediaLibrarySpec>(other)) {
-      return _javaPart == otherCast->_javaPart;
+  std::shared_ptr<JHybridObject> JHybridAndroidAutoMediaLibrarySpec::CxxPart::createHybridObject(const jni::local_ref<JHybridObject::JavaPart>& javaPart) {
+    auto castJavaPart = jni::dynamic_ref_cast<JHybridAndroidAutoMediaLibrarySpec::JavaPart>(javaPart);
+    if (castJavaPart == nullptr) [[unlikely]] {
+      throw std::runtime_error("Failed to cast JHybridObject::JavaPart to JHybridAndroidAutoMediaLibrarySpec::JavaPart!");
     }
-    return false;
+    return std::make_shared<JHybridAndroidAutoMediaLibrarySpec>(castJavaPart);
   }
 
-  void JHybridAndroidAutoMediaLibrarySpec::dispose() noexcept {
-    static const auto method = javaClassStatic()->getMethod<void()>("dispose");
-    method(_javaPart);
-  }
-
-  std::string JHybridAndroidAutoMediaLibrarySpec::toString() {
-    static const auto method = javaClassStatic()->getMethod<jni::JString()>("toString");
-    auto javaString = method(_javaPart);
-    return javaString->toStdString();
+  void JHybridAndroidAutoMediaLibrarySpec::CxxPart::registerNatives() {
+    registerHybrid({
+      makeNativeMethod("initHybrid", JHybridAndroidAutoMediaLibrarySpec::CxxPart::initHybrid),
+    });
   }
 
   // Properties
@@ -51,11 +45,11 @@ namespace margelo::nitro::nitroplayer {
 
   // Methods
   void JHybridAndroidAutoMediaLibrarySpec::setMediaLibrary(const std::string& libraryJson) {
-    static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* libraryJson */)>("setMediaLibrary");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* libraryJson */)>("setMediaLibrary");
     method(_javaPart, jni::make_jstring(libraryJson));
   }
   void JHybridAndroidAutoMediaLibrarySpec::clearMediaLibrary() {
-    static const auto method = javaClassStatic()->getMethod<void()>("clearMediaLibrary");
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void()>("clearMediaLibrary");
     method(_javaPart);
   }
 

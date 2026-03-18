@@ -27,7 +27,7 @@ namespace margelo::nitro::nitroplayer {
    */
   struct JFunc_void_std__vector_EqualizerBand_: public jni::JavaClass<JFunc_void_std__vector_EqualizerBand_> {
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Func_void_std__vector_EqualizerBand_;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Func_void_std__vector_EqualizerBand_;";
 
   public:
     /**
@@ -81,7 +81,7 @@ namespace margelo::nitro::nitroplayer {
     }
 
   public:
-    static auto constexpr kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Func_void_std__vector_EqualizerBand__cxx;";
+    static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/Func_void_std__vector_EqualizerBand__cxx;";
     static void registerNatives() {
       registerHybrid({makeNativeMethod("invoke_cxx", JFunc_void_std__vector_EqualizerBand__cxx::invoke_cxx)});
     }
