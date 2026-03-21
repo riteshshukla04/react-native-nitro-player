@@ -12,11 +12,11 @@ export interface AndroidAutoMediaLibrary
    *
    * @param libraryJson - JSON string of the MediaLibrary structure
    */
-  setMediaLibrary(libraryJson: string): void
+  setMediaLibrary(libraryJson: string): Promise<void>
 
   /**
    * Clear the Android Auto media library
    * Falls back to showing all playlists
    */
-  clearMediaLibrary(): void
+  clearMediaLibrary(): Promise<void>
 }

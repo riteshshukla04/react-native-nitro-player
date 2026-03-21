@@ -96,35 +96,35 @@ abstract class HybridDownloadManagerSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
-  abstract fun isTrackDownloaded(trackId: String): Boolean
+  abstract fun isTrackDownloaded(trackId: String): Promise<Boolean>
   
   @DoNotStrip
   @Keep
-  abstract fun isPlaylistDownloaded(playlistId: String): Boolean
+  abstract fun isPlaylistDownloaded(playlistId: String): Promise<Boolean>
   
   @DoNotStrip
   @Keep
-  abstract fun isPlaylistPartiallyDownloaded(playlistId: String): Boolean
+  abstract fun isPlaylistPartiallyDownloaded(playlistId: String): Promise<Boolean>
   
   @DoNotStrip
   @Keep
-  abstract fun getDownloadedTrack(trackId: String): Variant_NullType_DownloadedTrack
+  abstract fun getDownloadedTrack(trackId: String): Promise<Variant_NullType_DownloadedTrack>
   
   @DoNotStrip
   @Keep
-  abstract fun getAllDownloadedTracks(): Array<DownloadedTrack>
+  abstract fun getAllDownloadedTracks(): Promise<Array<DownloadedTrack>>
   
   @DoNotStrip
   @Keep
-  abstract fun getDownloadedPlaylist(playlistId: String): Variant_NullType_DownloadedPlaylist
+  abstract fun getDownloadedPlaylist(playlistId: String): Promise<Variant_NullType_DownloadedPlaylist>
   
   @DoNotStrip
   @Keep
-  abstract fun getAllDownloadedPlaylists(): Array<DownloadedPlaylist>
+  abstract fun getAllDownloadedPlaylists(): Promise<Array<DownloadedPlaylist>>
   
   @DoNotStrip
   @Keep
-  abstract fun getLocalPath(trackId: String): Variant_NullType_String
+  abstract fun getLocalPath(trackId: String): Promise<Variant_NullType_String>
   
   @DoNotStrip
   @Keep
@@ -144,7 +144,7 @@ abstract class HybridDownloadManagerSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
-  abstract fun syncDownloads(): Double
+  abstract fun syncDownloads(): Promise<Double>
   
   @DoNotStrip
   @Keep
@@ -156,7 +156,7 @@ abstract class HybridDownloadManagerSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
-  abstract fun getEffectiveUrl(track: TrackItem): String
+  abstract fun getEffectiveUrl(track: TrackItem): Promise<String>
   
   abstract fun onDownloadProgress(callback: (progress: DownloadProgress) -> Unit): Unit
   

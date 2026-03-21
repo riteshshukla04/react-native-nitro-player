@@ -10,6 +10,7 @@ package com.margelo.nitro.nitroplayer
 import androidx.annotation.Keep
 import com.facebook.jni.HybridData
 import com.facebook.proguard.annotations.DoNotStrip
+import com.margelo.nitro.core.Promise
 import com.margelo.nitro.core.HybridObject
 
 /**
@@ -34,7 +35,7 @@ abstract class HybridAudioDevicesSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
-  abstract fun setAudioDevice(deviceId: Double): Boolean
+  abstract fun setAudioDevice(deviceId: Double): Promise<Unit>
 
   // Default implementation of `HybridObject.toString()`
   override fun toString(): String {

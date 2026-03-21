@@ -22,6 +22,7 @@ namespace margelo::nitro::nitroplayer { struct EqualizerPreset; }
 // Forward declaration of `EqualizerState` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct EqualizerState; }
 
+#include <NitroModules/Promise.hpp>
 #include "EqualizerBand.hpp"
 #include <vector>
 #include "GainRange.hpp"
@@ -64,21 +65,21 @@ namespace margelo::nitro::nitroplayer {
 
     public:
       // Methods
-      virtual bool setEnabled(bool enabled) = 0;
+      virtual std::shared_ptr<Promise<void>> setEnabled(bool enabled) = 0;
       virtual bool isEnabled() = 0;
-      virtual std::vector<EqualizerBand> getBands() = 0;
-      virtual bool setBandGain(double bandIndex, double gainDb) = 0;
-      virtual bool setAllBandGains(const std::vector<double>& gains) = 0;
+      virtual std::shared_ptr<Promise<std::vector<EqualizerBand>>> getBands() = 0;
+      virtual std::shared_ptr<Promise<void>> setBandGain(double bandIndex, double gainDb) = 0;
+      virtual std::shared_ptr<Promise<void>> setAllBandGains(const std::vector<double>& gains) = 0;
       virtual GainRange getBandRange() = 0;
       virtual std::vector<EqualizerPreset> getPresets() = 0;
       virtual std::vector<EqualizerPreset> getBuiltInPresets() = 0;
       virtual std::vector<EqualizerPreset> getCustomPresets() = 0;
-      virtual bool applyPreset(const std::string& presetName) = 0;
+      virtual std::shared_ptr<Promise<void>> applyPreset(const std::string& presetName) = 0;
       virtual std::variant<nitro::NullType, std::string> getCurrentPresetName() = 0;
-      virtual bool saveCustomPreset(const std::string& name) = 0;
-      virtual bool deleteCustomPreset(const std::string& name) = 0;
-      virtual EqualizerState getState() = 0;
-      virtual void reset() = 0;
+      virtual std::shared_ptr<Promise<void>> saveCustomPreset(const std::string& name) = 0;
+      virtual std::shared_ptr<Promise<void>> deleteCustomPreset(const std::string& name) = 0;
+      virtual std::shared_ptr<Promise<EqualizerState>> getState() = 0;
+      virtual std::shared_ptr<Promise<void>> reset() = 0;
       virtual void onEnabledChange(const std::function<void(bool /* enabled */)>& callback) = 0;
       virtual void onBandChange(const std::function<void(const std::vector<EqualizerBand>& /* bands */)>& callback) = 0;
       virtual void onPresetChange(const std::function<void(const std::optional<std::variant<nitro::NullType, std::string>>& /* presetName */)>& callback) = 0;

@@ -10,6 +10,7 @@ package com.margelo.nitro.nitroplayer
 import androidx.annotation.Keep
 import com.facebook.jni.HybridData
 import com.facebook.proguard.annotations.DoNotStrip
+import com.margelo.nitro.core.Promise
 import com.margelo.nitro.core.HybridObject
 
 /**
@@ -30,11 +31,11 @@ abstract class HybridAndroidAutoMediaLibrarySpec: HybridObject() {
   // Methods
   @DoNotStrip
   @Keep
-  abstract fun setMediaLibrary(libraryJson: String): Unit
+  abstract fun setMediaLibrary(libraryJson: String): Promise<Unit>
   
   @DoNotStrip
   @Keep
-  abstract fun clearMediaLibrary(): Unit
+  abstract fun clearMediaLibrary(): Promise<Unit>
 
   // Default implementation of `HybridObject.toString()`
   override fun toString(): String {

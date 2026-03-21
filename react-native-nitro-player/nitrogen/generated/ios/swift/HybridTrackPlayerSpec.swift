@@ -13,27 +13,27 @@ public protocol HybridTrackPlayerSpec_protocol: HybridObject {
   
 
   // Methods
-  func play() throws -> Void
-  func pause() throws -> Void
+  func play() throws -> Promise<Void>
+  func pause() throws -> Promise<Void>
   func playSong(songId: String, fromPlaylist: String?) throws -> Promise<Void>
-  func skipToNext() throws -> Void
+  func skipToNext() throws -> Promise<Void>
   func skipToIndex(index: Double) throws -> Promise<Bool>
-  func skipToPrevious() throws -> Void
-  func seek(position: Double) throws -> Void
+  func skipToPrevious() throws -> Promise<Void>
+  func seek(position: Double) throws -> Promise<Void>
   func addToUpNext(trackId: String) throws -> Promise<Void>
   func playNext(trackId: String) throws -> Promise<Void>
   func getActualQueue() throws -> Promise<[TrackItem]>
   func getState() throws -> Promise<PlayerState>
-  func setRepeatMode(mode: RepeatMode) throws -> Bool
+  func setRepeatMode(mode: RepeatMode) throws -> Promise<Void>
   func getRepeatMode() throws -> RepeatMode
-  func configure(config: PlayerConfig) throws -> Void
+  func configure(config: PlayerConfig) throws -> Promise<Void>
   func onChangeTrack(callback: @escaping (_ track: TrackItem, _ reason: Reason?) -> Void) throws -> Void
   func onPlaybackStateChange(callback: @escaping (_ state: TrackPlayerState, _ reason: Reason?) -> Void) throws -> Void
   func onSeek(callback: @escaping (_ position: Double, _ totalDuration: Double) -> Void) throws -> Void
   func onPlaybackProgressChange(callback: @escaping (_ position: Double, _ totalDuration: Double, _ isManuallySeeked: Bool?) -> Void) throws -> Void
   func onAndroidAutoConnectionChange(callback: @escaping (_ connected: Bool) -> Void) throws -> Void
   func isAndroidAutoConnected() throws -> Bool
-  func setVolume(volume: Double) throws -> Bool
+  func setVolume(volume: Double) throws -> Promise<Void>
   func updateTracks(tracks: [TrackItem]) throws -> Promise<Void>
   func getTracksById(trackIds: [String]) throws -> Promise<[TrackItem]>
   func getTracksNeedingUrls() throws -> Promise<[TrackItem]>
@@ -42,6 +42,14 @@ public protocol HybridTrackPlayerSpec_protocol: HybridObject {
   func onTracksNeedUpdate(callback: @escaping (_ tracks: [TrackItem], _ lookahead: Double) -> Void) throws -> Void
   func setPlaybackSpeed(speed: Double) throws -> Promise<Void>
   func getPlaybackSpeed() throws -> Promise<Double>
+  func removeFromPlayNext(trackId: String) throws -> Promise<Bool>
+  func removeFromUpNext(trackId: String) throws -> Promise<Bool>
+  func clearPlayNext() throws -> Promise<Void>
+  func clearUpNext() throws -> Promise<Void>
+  func reorderTemporaryTrack(trackId: String, newIndex: Double) throws -> Promise<Bool>
+  func getPlayNextQueue() throws -> Promise<[TrackItem]>
+  func getUpNextQueue() throws -> Promise<[TrackItem]>
+  func onTemporaryQueueChange(callback: @escaping (_ playNextQueue: [TrackItem], _ upNextQueue: [TrackItem]) -> Void) throws -> Void
 }
 
 public extension HybridTrackPlayerSpec_protocol {

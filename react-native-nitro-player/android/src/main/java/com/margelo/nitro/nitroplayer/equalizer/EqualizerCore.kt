@@ -14,8 +14,7 @@ import com.margelo.nitro.nitroplayer.Variant_NullType_String
 import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
 import org.json.JSONArray
 import org.json.JSONObject
-import java.lang.ref.WeakReference
-import java.util.Collections
+import com.margelo.nitro.nitroplayer.core.ListenerRegistry
 
 class EqualizerCore private constructor(
     private val context: Context,
@@ -35,21 +34,10 @@ class EqualizerCore private constructor(
     private val prefs: SharedPreferences =
         context.getSharedPreferences("equalizer_settings", Context.MODE_PRIVATE)
 
-    // Weak callback wrapper for auto-cleanup
-    private data class WeakCallbackBox<T>(
-        private val ownerRef: WeakReference<Any>,
-        val callback: T,
-    ) {
-        val isAlive: Boolean get() = ownerRef.get() != null
-    }
-
     // Event listeners
-    private val onEnabledChangeListeners =
-        Collections.synchronizedList(mutableListOf<WeakCallbackBox<(Boolean) -> Unit>>())
-    private val onBandChangeListeners =
-        Collections.synchronizedList(mutableListOf<WeakCallbackBox<(Array<EqualizerBand>) -> Unit>>())
-    private val onPresetChangeListeners =
-        Collections.synchronizedList(mutableListOf<WeakCallbackBox<(Variant_NullType_String?) -> Unit>>())
+    private val onEnabledChangeListeners = ListenerRegistry<(Boolean) -> Unit>()
+    private val onBandChangeListeners = ListenerRegistry<(Array<EqualizerBand>) -> Unit>()
+    private val onPresetChangeListeners = ListenerRegistry<(Variant_NullType_String?) -> Unit>()
 
     companion object {
         private const val TAG = "EqualizerCore"
@@ -429,63 +417,28 @@ class EqualizerCore private constructor(
     // === Callback management ===
 
     fun addOnEnabledChangeListener(callback: (Boolean) -> Unit) {
-        val box = WeakCallbackBox(WeakReference(callback as Any), callback)
-        onEnabledChangeListeners.add(box)
+        onEnabledChangeListeners.add(callback)
     }
 
     fun addOnBandChangeListener(callback: (Array<EqualizerBand>) -> Unit) {
-        val box = WeakCallbackBox(WeakReference(callback as Any), callback)
-        synchronized(onBandChangeListeners) {
-            @Suppress("UNCHECKED_CAST")
-            (onBandChangeListeners as MutableList<WeakCallbackBox<(Array<EqualizerBand>) -> Unit>>).add(box)
-        }
+        onBandChangeListeners.add(callback)
     }
 
     fun addOnPresetChangeListener(callback: (Variant_NullType_String?) -> Unit) {
-        val box = WeakCallbackBox(WeakReference(callback as Any), callback)
-        onPresetChangeListeners.add(box)
+        onPresetChangeListeners.add(callback)
     }
 
     private fun notifyEnabledChange(enabled: Boolean) {
-        synchronized(onEnabledChangeListeners) {
-            onEnabledChangeListeners.removeAll { !it.isAlive }
-            onEnabledChangeListeners.forEach { box ->
-                try {
-                    box.callback(enabled)
-                } catch (e: Exception) {
-                    // Ignore callback errors
-                }
-            }
-        }
+        onEnabledChangeListeners.forEach { it(enabled) }
     }
 
     private fun notifyBandChange(bands: Array<EqualizerBand>) {
-        synchronized(onBandChangeListeners) {
-            @Suppress("UNCHECKED_CAST")
-            val listeners = onBandChangeListeners as MutableList<WeakCallbackBox<(Array<EqualizerBand>) -> Unit>>
-            listeners.removeAll { !it.isAlive }
-            listeners.forEach { box ->
-                try {
-                    box.callback(bands)
-                } catch (e: Exception) {
-                    // Ignore callback errors
-                }
-            }
-        }
+        onBandChangeListeners.forEach { it(bands) }
     }
 
     private fun notifyPresetChange(presetName: String?) {
-        synchronized(onPresetChangeListeners) {
-            onPresetChangeListeners.removeAll { !it.isAlive }
-            onPresetChangeListeners.forEach { box ->
-                try {
-                    val variant = presetName?.let { Variant_NullType_String.create(it) }
-                    box.callback(variant)
-                } catch (e: Exception) {
-                    // Ignore callback errors
-                }
-            }
-        }
+        val variant = presetName?.let { Variant_NullType_String.create(it) }
+        onPresetChangeListeners.forEach { it(variant) }
     }
 
     fun release() {

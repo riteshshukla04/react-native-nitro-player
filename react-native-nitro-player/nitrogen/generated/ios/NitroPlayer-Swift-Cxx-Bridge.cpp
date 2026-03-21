@@ -66,10 +66,66 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     };
   }
   
+  // pragma MARK: std::function<void(bool /* result */)>
+  Func_void_bool create_Func_void_bool(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_bool::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](bool result) mutable -> void {
+      swiftClosure.call(result);
+    };
+  }
+  
+  // pragma MARK: std::function<void(const std::variant<nitro::NullType, DownloadedTrack>& /* result */)>
+  Func_void_std__variant_nitro__NullType__DownloadedTrack_ create_Func_void_std__variant_nitro__NullType__DownloadedTrack_(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_std__variant_nitro__NullType__DownloadedTrack_::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const std::variant<nitro::NullType, DownloadedTrack>& result) mutable -> void {
+      swiftClosure.call(result);
+    };
+  }
+  
+  // pragma MARK: std::function<void(const std::vector<DownloadedTrack>& /* result */)>
+  Func_void_std__vector_DownloadedTrack_ create_Func_void_std__vector_DownloadedTrack_(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_std__vector_DownloadedTrack_::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const std::vector<DownloadedTrack>& result) mutable -> void {
+      swiftClosure.call(result);
+    };
+  }
+  
+  // pragma MARK: std::function<void(const std::variant<nitro::NullType, DownloadedPlaylist>& /* result */)>
+  Func_void_std__variant_nitro__NullType__DownloadedPlaylist_ create_Func_void_std__variant_nitro__NullType__DownloadedPlaylist_(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_std__variant_nitro__NullType__DownloadedPlaylist_::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const std::variant<nitro::NullType, DownloadedPlaylist>& result) mutable -> void {
+      swiftClosure.call(result);
+    };
+  }
+  
+  // pragma MARK: std::function<void(const std::vector<DownloadedPlaylist>& /* result */)>
+  Func_void_std__vector_DownloadedPlaylist_ create_Func_void_std__vector_DownloadedPlaylist_(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_std__vector_DownloadedPlaylist_::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const std::vector<DownloadedPlaylist>& result) mutable -> void {
+      swiftClosure.call(result);
+    };
+  }
+  
+  // pragma MARK: std::function<void(const std::variant<nitro::NullType, std::string>& /* result */)>
+  Func_void_std__variant_nitro__NullType__std__string_ create_Func_void_std__variant_nitro__NullType__std__string_(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_std__variant_nitro__NullType__std__string_::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const std::variant<nitro::NullType, std::string>& result) mutable -> void {
+      swiftClosure.call(result);
+    };
+  }
+  
   // pragma MARK: std::function<void(const DownloadStorageInfo& /* result */)>
   Func_void_DownloadStorageInfo create_Func_void_DownloadStorageInfo(void* NON_NULL swiftClosureWrapper) noexcept {
     auto swiftClosure = NitroPlayer::Func_void_DownloadStorageInfo::fromUnsafe(swiftClosureWrapper);
     return [swiftClosure = std::move(swiftClosure)](const DownloadStorageInfo& result) mutable -> void {
+      swiftClosure.call(result);
+    };
+  }
+  
+  // pragma MARK: std::function<void(double /* result */)>
+  Func_void_double create_Func_void_double(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_double::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](double result) mutable -> void {
       swiftClosure.call(result);
     };
   }
@@ -114,19 +170,19 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     return swiftPart.toUnsafe();
   }
   
-  // pragma MARK: std::function<void(bool /* enabled */)>
-  Func_void_bool create_Func_void_bool(void* NON_NULL swiftClosureWrapper) noexcept {
-    auto swiftClosure = NitroPlayer::Func_void_bool::fromUnsafe(swiftClosureWrapper);
-    return [swiftClosure = std::move(swiftClosure)](bool enabled) mutable -> void {
-      swiftClosure.call(enabled);
+  // pragma MARK: std::function<void(const std::vector<EqualizerBand>& /* result */)>
+  Func_void_std__vector_EqualizerBand_ create_Func_void_std__vector_EqualizerBand_(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_std__vector_EqualizerBand_::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const std::vector<EqualizerBand>& result) mutable -> void {
+      swiftClosure.call(result);
     };
   }
   
-  // pragma MARK: std::function<void(const std::vector<EqualizerBand>& /* bands */)>
-  Func_void_std__vector_EqualizerBand_ create_Func_void_std__vector_EqualizerBand_(void* NON_NULL swiftClosureWrapper) noexcept {
-    auto swiftClosure = NitroPlayer::Func_void_std__vector_EqualizerBand_::fromUnsafe(swiftClosureWrapper);
-    return [swiftClosure = std::move(swiftClosure)](const std::vector<EqualizerBand>& bands) mutable -> void {
-      swiftClosure.call(bands);
+  // pragma MARK: std::function<void(const EqualizerState& /* result */)>
+  Func_void_EqualizerState create_Func_void_EqualizerState(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_EqualizerState::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const EqualizerState& result) mutable -> void {
+      swiftClosure.call(result);
     };
   }
   
@@ -234,19 +290,19 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     };
   }
   
-  // pragma MARK: std::function<void(double /* result */)>
-  Func_void_double create_Func_void_double(void* NON_NULL swiftClosureWrapper) noexcept {
-    auto swiftClosure = NitroPlayer::Func_void_double::fromUnsafe(swiftClosureWrapper);
-    return [swiftClosure = std::move(swiftClosure)](double result) mutable -> void {
-      swiftClosure.call(result);
-    };
-  }
-  
   // pragma MARK: std::function<void(const std::vector<TrackItem>& /* tracks */, double /* lookahead */)>
   Func_void_std__vector_TrackItem__double create_Func_void_std__vector_TrackItem__double(void* NON_NULL swiftClosureWrapper) noexcept {
     auto swiftClosure = NitroPlayer::Func_void_std__vector_TrackItem__double::fromUnsafe(swiftClosureWrapper);
     return [swiftClosure = std::move(swiftClosure)](const std::vector<TrackItem>& tracks, double lookahead) mutable -> void {
       swiftClosure.call(tracks, lookahead);
+    };
+  }
+  
+  // pragma MARK: std::function<void(const std::vector<TrackItem>& /* playNextQueue */, const std::vector<TrackItem>& /* upNextQueue */)>
+  Func_void_std__vector_TrackItem__std__vector_TrackItem_ create_Func_void_std__vector_TrackItem__std__vector_TrackItem_(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_std__vector_TrackItem__std__vector_TrackItem_::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const std::vector<TrackItem>& playNextQueue, const std::vector<TrackItem>& upNextQueue) mutable -> void {
+      swiftClosure.call(playNextQueue, upNextQueue);
     };
   }
   

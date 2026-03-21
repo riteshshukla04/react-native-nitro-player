@@ -13,21 +13,21 @@ public protocol HybridEqualizerSpec_protocol: HybridObject {
   
 
   // Methods
-  func setEnabled(enabled: Bool) throws -> Bool
+  func setEnabled(enabled: Bool) throws -> Promise<Void>
   func isEnabled() throws -> Bool
-  func getBands() throws -> [EqualizerBand]
-  func setBandGain(bandIndex: Double, gainDb: Double) throws -> Bool
-  func setAllBandGains(gains: [Double]) throws -> Bool
+  func getBands() throws -> Promise<[EqualizerBand]>
+  func setBandGain(bandIndex: Double, gainDb: Double) throws -> Promise<Void>
+  func setAllBandGains(gains: [Double]) throws -> Promise<Void>
   func getBandRange() throws -> GainRange
   func getPresets() throws -> [EqualizerPreset]
   func getBuiltInPresets() throws -> [EqualizerPreset]
   func getCustomPresets() throws -> [EqualizerPreset]
-  func applyPreset(presetName: String) throws -> Bool
+  func applyPreset(presetName: String) throws -> Promise<Void>
   func getCurrentPresetName() throws -> Variant_NullType_String
-  func saveCustomPreset(name: String) throws -> Bool
-  func deleteCustomPreset(name: String) throws -> Bool
-  func getState() throws -> EqualizerState
-  func reset() throws -> Void
+  func saveCustomPreset(name: String) throws -> Promise<Void>
+  func deleteCustomPreset(name: String) throws -> Promise<Void>
+  func getState() throws -> Promise<EqualizerState>
+  func reset() throws -> Promise<Void>
   func onEnabledChange(callback: @escaping (_ enabled: Bool) -> Void) throws -> Void
   func onBandChange(callback: @escaping (_ bands: [EqualizerBand]) -> Void) throws -> Void
   func onPresetChange(callback: @escaping (_ presetName: Variant_NullType_String?) -> Void) throws -> Void

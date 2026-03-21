@@ -93,17 +93,21 @@ namespace margelo::nitro::nitroplayer {
 
   public:
     // Methods
-    inline void play() override {
+    inline std::shared_ptr<Promise<void>> play() override {
       auto __result = _swiftPart.play();
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
+      auto __value = std::move(__result.value());
+      return __value;
     }
-    inline void pause() override {
+    inline std::shared_ptr<Promise<void>> pause() override {
       auto __result = _swiftPart.pause();
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
+      auto __value = std::move(__result.value());
+      return __value;
     }
     inline std::shared_ptr<Promise<void>> playSong(const std::string& songId, const std::optional<std::string>& fromPlaylist) override {
       auto __result = _swiftPart.playSong(songId, fromPlaylist);
@@ -113,11 +117,13 @@ namespace margelo::nitro::nitroplayer {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline void skipToNext() override {
+    inline std::shared_ptr<Promise<void>> skipToNext() override {
       auto __result = _swiftPart.skipToNext();
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
+      auto __value = std::move(__result.value());
+      return __value;
     }
     inline std::shared_ptr<Promise<bool>> skipToIndex(double index) override {
       auto __result = _swiftPart.skipToIndex(std::forward<decltype(index)>(index));
@@ -127,17 +133,21 @@ namespace margelo::nitro::nitroplayer {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline void skipToPrevious() override {
+    inline std::shared_ptr<Promise<void>> skipToPrevious() override {
       auto __result = _swiftPart.skipToPrevious();
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
+      auto __value = std::move(__result.value());
+      return __value;
     }
-    inline void seek(double position) override {
+    inline std::shared_ptr<Promise<void>> seek(double position) override {
       auto __result = _swiftPart.seek(std::forward<decltype(position)>(position));
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
+      auto __value = std::move(__result.value());
+      return __value;
     }
     inline std::shared_ptr<Promise<void>> addToUpNext(const std::string& trackId) override {
       auto __result = _swiftPart.addToUpNext(trackId);
@@ -171,7 +181,7 @@ namespace margelo::nitro::nitroplayer {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline bool setRepeatMode(RepeatMode mode) override {
+    inline std::shared_ptr<Promise<void>> setRepeatMode(RepeatMode mode) override {
       auto __result = _swiftPart.setRepeatMode(static_cast<int>(mode));
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
@@ -187,11 +197,13 @@ namespace margelo::nitro::nitroplayer {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline void configure(const PlayerConfig& config) override {
+    inline std::shared_ptr<Promise<void>> configure(const PlayerConfig& config) override {
       auto __result = _swiftPart.configure(std::forward<decltype(config)>(config));
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
+      auto __value = std::move(__result.value());
+      return __value;
     }
     inline void onChangeTrack(const std::function<void(const TrackItem& /* track */, std::optional<Reason> /* reason */)>& callback) override {
       auto __result = _swiftPart.onChangeTrack(callback);
@@ -231,7 +243,7 @@ namespace margelo::nitro::nitroplayer {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline bool setVolume(double volume) override {
+    inline std::shared_ptr<Promise<void>> setVolume(double volume) override {
       auto __result = _swiftPart.setVolume(std::forward<decltype(volume)>(volume));
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
@@ -300,6 +312,68 @@ namespace margelo::nitro::nitroplayer {
       }
       auto __value = std::move(__result.value());
       return __value;
+    }
+    inline std::shared_ptr<Promise<bool>> removeFromPlayNext(const std::string& trackId) override {
+      auto __result = _swiftPart.removeFromPlayNext(trackId);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline std::shared_ptr<Promise<bool>> removeFromUpNext(const std::string& trackId) override {
+      auto __result = _swiftPart.removeFromUpNext(trackId);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline std::shared_ptr<Promise<void>> clearPlayNext() override {
+      auto __result = _swiftPart.clearPlayNext();
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline std::shared_ptr<Promise<void>> clearUpNext() override {
+      auto __result = _swiftPart.clearUpNext();
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline std::shared_ptr<Promise<bool>> reorderTemporaryTrack(const std::string& trackId, double newIndex) override {
+      auto __result = _swiftPart.reorderTemporaryTrack(trackId, std::forward<decltype(newIndex)>(newIndex));
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline std::shared_ptr<Promise<std::vector<TrackItem>>> getPlayNextQueue() override {
+      auto __result = _swiftPart.getPlayNextQueue();
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline std::shared_ptr<Promise<std::vector<TrackItem>>> getUpNextQueue() override {
+      auto __result = _swiftPart.getUpNextQueue();
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline void onTemporaryQueueChange(const std::function<void(const std::vector<TrackItem>& /* playNextQueue */, const std::vector<TrackItem>& /* upNextQueue */)>& callback) override {
+      auto __result = _swiftPart.onTemporaryQueueChange(callback);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
     }
 
   private:

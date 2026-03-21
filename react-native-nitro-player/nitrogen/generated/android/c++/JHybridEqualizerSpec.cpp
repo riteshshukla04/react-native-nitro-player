@@ -18,6 +18,9 @@ namespace margelo::nitro::nitroplayer { enum class PresetType; }
 // Forward declaration of `EqualizerState` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct EqualizerState; }
 
+#include <NitroModules/Promise.hpp>
+#include <NitroModules/JPromise.hpp>
+#include <NitroModules/JUnit.hpp>
 #include "EqualizerBand.hpp"
 #include <vector>
 #include "JEqualizerBand.hpp"
@@ -74,44 +77,85 @@ namespace margelo::nitro::nitroplayer {
   
 
   // Methods
-  bool JHybridEqualizerSpec::setEnabled(bool enabled) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jboolean(jboolean /* enabled */)>("setEnabled");
+  std::shared_ptr<Promise<void>> JHybridEqualizerSpec::setEnabled(bool enabled) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jboolean /* enabled */)>("setEnabled");
     auto __result = method(_javaPart, enabled);
-    return static_cast<bool>(__result);
+    return [&]() {
+      auto __promise = Promise<void>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& /* unit */) {
+        __promise->resolve();
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
   }
   bool JHybridEqualizerSpec::isEnabled() {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jboolean()>("isEnabled");
     auto __result = method(_javaPart);
     return static_cast<bool>(__result);
   }
-  std::vector<EqualizerBand> JHybridEqualizerSpec::getBands() {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<jni::JArrayClass<JEqualizerBand>>()>("getBands");
+  std::shared_ptr<Promise<std::vector<EqualizerBand>>> JHybridEqualizerSpec::getBands() {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>()>("getBands");
     auto __result = method(_javaPart);
     return [&]() {
-      size_t __size = __result->size();
-      std::vector<EqualizerBand> __vector;
-      __vector.reserve(__size);
-      for (size_t __i = 0; __i < __size; __i++) {
-        auto __element = __result->getElement(__i);
-        __vector.push_back(__element->toCpp());
-      }
-      return __vector;
+      auto __promise = Promise<std::vector<EqualizerBand>>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {
+        auto __result = jni::static_ref_cast<jni::JArrayClass<JEqualizerBand>>(__boxedResult);
+        __promise->resolve([&]() {
+          size_t __size = __result->size();
+          std::vector<EqualizerBand> __vector;
+          __vector.reserve(__size);
+          for (size_t __i = 0; __i < __size; __i++) {
+            auto __element = __result->getElement(__i);
+            __vector.push_back(__element->toCpp());
+          }
+          return __vector;
+        }());
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
     }();
   }
-  bool JHybridEqualizerSpec::setBandGain(double bandIndex, double gainDb) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jboolean(double /* bandIndex */, double /* gainDb */)>("setBandGain");
+  std::shared_ptr<Promise<void>> JHybridEqualizerSpec::setBandGain(double bandIndex, double gainDb) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(double /* bandIndex */, double /* gainDb */)>("setBandGain");
     auto __result = method(_javaPart, bandIndex, gainDb);
-    return static_cast<bool>(__result);
+    return [&]() {
+      auto __promise = Promise<void>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& /* unit */) {
+        __promise->resolve();
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
   }
-  bool JHybridEqualizerSpec::setAllBandGains(const std::vector<double>& gains) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jboolean(jni::alias_ref<jni::JArrayDouble> /* gains */)>("setAllBandGains");
+  std::shared_ptr<Promise<void>> JHybridEqualizerSpec::setAllBandGains(const std::vector<double>& gains) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JArrayDouble> /* gains */)>("setAllBandGains");
     auto __result = method(_javaPart, [&]() {
       size_t __size = gains.size();
       jni::local_ref<jni::JArrayDouble> __array = jni::JArrayDouble::newArray(__size);
       __array->setRegion(0, __size, gains.data());
       return __array;
     }());
-    return static_cast<bool>(__result);
+    return [&]() {
+      auto __promise = Promise<void>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& /* unit */) {
+        __promise->resolve();
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
   }
   GainRange JHybridEqualizerSpec::getBandRange() {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JGainRange>()>("getBandRange");
@@ -160,34 +204,86 @@ namespace margelo::nitro::nitroplayer {
       return __vector;
     }();
   }
-  bool JHybridEqualizerSpec::applyPreset(const std::string& presetName) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jboolean(jni::alias_ref<jni::JString> /* presetName */)>("applyPreset");
+  std::shared_ptr<Promise<void>> JHybridEqualizerSpec::applyPreset(const std::string& presetName) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* presetName */)>("applyPreset");
     auto __result = method(_javaPart, jni::make_jstring(presetName));
-    return static_cast<bool>(__result);
+    return [&]() {
+      auto __promise = Promise<void>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& /* unit */) {
+        __promise->resolve();
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
   }
   std::variant<nitro::NullType, std::string> JHybridEqualizerSpec::getCurrentPresetName() {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JVariant_NullType_String>()>("getCurrentPresetName");
     auto __result = method(_javaPart);
     return __result->toCpp();
   }
-  bool JHybridEqualizerSpec::saveCustomPreset(const std::string& name) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jboolean(jni::alias_ref<jni::JString> /* name */)>("saveCustomPreset");
+  std::shared_ptr<Promise<void>> JHybridEqualizerSpec::saveCustomPreset(const std::string& name) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* name */)>("saveCustomPreset");
     auto __result = method(_javaPart, jni::make_jstring(name));
-    return static_cast<bool>(__result);
+    return [&]() {
+      auto __promise = Promise<void>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& /* unit */) {
+        __promise->resolve();
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
   }
-  bool JHybridEqualizerSpec::deleteCustomPreset(const std::string& name) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jboolean(jni::alias_ref<jni::JString> /* name */)>("deleteCustomPreset");
+  std::shared_ptr<Promise<void>> JHybridEqualizerSpec::deleteCustomPreset(const std::string& name) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* name */)>("deleteCustomPreset");
     auto __result = method(_javaPart, jni::make_jstring(name));
-    return static_cast<bool>(__result);
+    return [&]() {
+      auto __promise = Promise<void>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& /* unit */) {
+        __promise->resolve();
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
   }
-  EqualizerState JHybridEqualizerSpec::getState() {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JEqualizerState>()>("getState");
+  std::shared_ptr<Promise<EqualizerState>> JHybridEqualizerSpec::getState() {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>()>("getState");
     auto __result = method(_javaPart);
-    return __result->toCpp();
+    return [&]() {
+      auto __promise = Promise<EqualizerState>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {
+        auto __result = jni::static_ref_cast<JEqualizerState>(__boxedResult);
+        __promise->resolve(__result->toCpp());
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
   }
-  void JHybridEqualizerSpec::reset() {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<void()>("reset");
-    method(_javaPart);
+  std::shared_ptr<Promise<void>> JHybridEqualizerSpec::reset() {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>()>("reset");
+    auto __result = method(_javaPart);
+    return [&]() {
+      auto __promise = Promise<void>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& /* unit */) {
+        __promise->resolve();
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
   }
   void JHybridEqualizerSpec::onEnabledChange(const std::function<void(bool /* enabled */)>& callback) {
     static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_bool::javaobject> /* callback */)>("onEnabledChange_cxx");

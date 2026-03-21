@@ -15,6 +15,7 @@
 
 
 
+#include <NitroModules/Promise.hpp>
 #include <string>
 
 namespace margelo::nitro::nitroplayer {
@@ -48,8 +49,8 @@ namespace margelo::nitro::nitroplayer {
 
     public:
       // Methods
-      virtual void setMediaLibrary(const std::string& libraryJson) = 0;
-      virtual void clearMediaLibrary() = 0;
+      virtual std::shared_ptr<Promise<void>> setMediaLibrary(const std::string& libraryJson) = 0;
+      virtual std::shared_ptr<Promise<void>> clearMediaLibrary() = 0;
 
     protected:
       // Hybrid Setup

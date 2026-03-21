@@ -5,13 +5,19 @@ import com.margelo.nitro.core.AnyMap
 import com.margelo.nitro.nitroplayer.QueueOperation
 import com.margelo.nitro.nitroplayer.TrackItem
 import com.margelo.nitro.nitroplayer.Variant_NullType_String
-import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
 import com.margelo.nitro.nitroplayer.media.NitroPlayerMediaBrowserService
 import com.margelo.nitro.nitroplayer.storage.NitroPlayerStorage
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Manages multiple playlists using ExoPlayer's native playlist functionality
@@ -20,17 +26,20 @@ import java.util.concurrent.CopyOnWriteArrayList
 class PlaylistManager private constructor(
     private val context: Context,
 ) {
-    private val playlists: MutableMap<String, Playlist> = mutableMapOf()
+    private val playlists = ConcurrentHashMap<String, Playlist>()
     private val listeners = CopyOnWriteArrayList<(List<Playlist>, QueueOperation?) -> Unit>()
     private val playlistListeners = mutableMapOf<String, CopyOnWriteArrayList<(Playlist, QueueOperation?) -> Unit>>()
     private var currentPlaylistId: String? = null
 
-    private val saveHandler = android.os.Handler(android.os.Looper.getMainLooper())
-    private val saveRunnable = Runnable { saveToFile() }
+    private val saveScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var saveJob: Job? = null
 
     private fun scheduleSave() {
-        saveHandler.removeCallbacks(saveRunnable)
-        saveHandler.postDelayed(saveRunnable, 300)
+        saveJob?.cancel()
+        saveJob = saveScope.launch {
+            delay(300)
+            saveToFile()
+        }
     }
 
     companion object {
@@ -63,9 +72,7 @@ class PlaylistManager private constructor(
         val id = UUID.randomUUID().toString()
         val playlist = Playlist(id, name, description, artwork)
 
-        synchronized(playlists) {
-            playlists[id] = playlist
-        }
+        playlists[id] = playlist
 
         // Only cache for Android Auto if connected
         if (NitroPlayerMediaBrowserService.isAndroidAutoConnected) {
@@ -81,10 +88,7 @@ class PlaylistManager private constructor(
      * Delete a playlist
      */
     fun deletePlaylist(playlistId: String): Boolean {
-        val removed =
-            synchronized(playlists) {
-                playlists.remove(playlistId)
-            }
+        val removed = playlists.remove(playlistId)
 
         if (removed != null) {
             if (currentPlaylistId == playlistId) {
@@ -112,15 +116,13 @@ class PlaylistManager private constructor(
         description: String? = null,
         artwork: String? = null,
     ): Boolean {
-        synchronized(playlists) {
-            val playlist = playlists[playlistId] ?: return false
-            playlists[playlistId] =
-                playlist.copy(
-                    name = name ?: playlist.name,
-                    description = description ?: playlist.description,
-                    artwork = artwork ?: playlist.artwork,
-                )
-        }
+        val playlist = playlists[playlistId] ?: return false
+        playlists[playlistId] =
+            playlist.copy(
+                name = name ?: playlist.name,
+                description = description ?: playlist.description,
+                artwork = artwork ?: playlist.artwork,
+            )
 
         // Only cache for Android Auto if connected
         if (NitroPlayerMediaBrowserService.isAndroidAutoConnected) {
@@ -136,18 +138,12 @@ class PlaylistManager private constructor(
     /**
      * Get a playlist by ID
      */
-    fun getPlaylist(playlistId: String): Playlist? =
-        synchronized(playlists) {
-            playlists[playlistId]
-        }
+    fun getPlaylist(playlistId: String): Playlist? = playlists[playlistId]
 
     /**
      * Get all playlists
      */
-    fun getAllPlaylists(): List<Playlist> =
-        synchronized(playlists) {
-            playlists.values.toList()
-        }
+    fun getAllPlaylists(): List<Playlist> = playlists.values.toList()
 
     /**
      * Add a track to a playlist
@@ -157,16 +153,14 @@ class PlaylistManager private constructor(
         track: TrackItem,
         index: Int? = null,
     ): Boolean {
-        synchronized(playlists) {
-            val playlist = playlists[playlistId] ?: return false
-            val tracks = playlist.tracks.toMutableList()
-            if (index != null && index >= 0 && index <= tracks.size) {
-                tracks.add(index, track)
-            } else {
-                tracks.add(track)
-            }
-            playlists[playlistId] = playlist.copy(tracks = tracks)
+        val playlist = playlists[playlistId] ?: return false
+        val tracks = playlist.tracks.toMutableList()
+        if (index != null && index >= 0 && index <= tracks.size) {
+            tracks.add(index, track)
+        } else {
+            tracks.add(track)
         }
+        playlists[playlistId] = playlist.copy(tracks = tracks)
 
         // Only cache for Android Auto if connected
         if (NitroPlayerMediaBrowserService.isAndroidAutoConnected) {
@@ -174,12 +168,6 @@ class PlaylistManager private constructor(
         }
         notifyPlaylistChanged(playlistId, QueueOperation.ADD)
         NitroPlayerMediaBrowserService.getInstance()?.onPlaylistUpdated(playlistId)
-
-        // Update ExoPlayer if this is the current playlist
-        if (currentPlaylistId == playlistId) {
-            TrackPlayerCore.getInstance(context)?.updatePlaylist(playlistId)
-        }
-
         return true
     }
 
@@ -191,16 +179,14 @@ class PlaylistManager private constructor(
         tracks: List<TrackItem>,
         index: Int? = null,
     ): Boolean {
-        synchronized(playlists) {
-            val playlist = playlists[playlistId] ?: return false
-            val currentTracks = playlist.tracks.toMutableList()
-            if (index != null && index >= 0 && index <= currentTracks.size) {
-                currentTracks.addAll(index, tracks)
-            } else {
-                currentTracks.addAll(tracks)
-            }
-            playlists[playlistId] = playlist.copy(tracks = currentTracks)
+        val playlist = playlists[playlistId] ?: return false
+        val currentTracks = playlist.tracks.toMutableList()
+        if (index != null && index >= 0 && index <= currentTracks.size) {
+            currentTracks.addAll(index, tracks)
+        } else {
+            currentTracks.addAll(tracks)
         }
+        playlists[playlistId] = playlist.copy(tracks = currentTracks)
 
         // Only cache for Android Auto if connected
         if (NitroPlayerMediaBrowserService.isAndroidAutoConnected) {
@@ -208,12 +194,6 @@ class PlaylistManager private constructor(
         }
         notifyPlaylistChanged(playlistId, QueueOperation.ADD)
         NitroPlayerMediaBrowserService.getInstance()?.onPlaylistUpdated(playlistId)
-
-        // Update ExoPlayer if this is the current playlist
-        if (currentPlaylistId == playlistId) {
-            TrackPlayerCore.getInstance(context)?.updatePlaylist(playlistId)
-        }
-
         return true
     }
 
@@ -224,26 +204,17 @@ class PlaylistManager private constructor(
         playlistId: String,
         trackId: String,
     ): Boolean {
-        val removed =
-            synchronized(playlists) {
-                val playlist = playlists[playlistId] ?: return false
-                val tracks = playlist.tracks.toMutableList()
-                val removed = tracks.removeAll { it.id == trackId }
-                if (removed) {
-                    playlists[playlistId] = playlist.copy(tracks = tracks)
-                }
-                removed
-            }
+        val playlist = playlists[playlistId] ?: return false
+        val tracks = playlist.tracks.toMutableList()
+        val removed = tracks.removeAll { it.id == trackId }
+        if (removed) {
+            playlists[playlistId] = playlist.copy(tracks = tracks)
+        }
 
         if (removed) {
             scheduleSave()
             notifyPlaylistChanged(playlistId, QueueOperation.REMOVE)
             NitroPlayerMediaBrowserService.getInstance()?.onPlaylistUpdated(playlistId)
-
-            // Update ExoPlayer if this is the current playlist
-            if (currentPlaylistId == playlistId) {
-                TrackPlayerCore.getInstance(context)?.updatePlaylist(playlistId)
-            }
         }
 
         return removed
@@ -257,27 +228,19 @@ class PlaylistManager private constructor(
         trackId: String,
         newIndex: Int,
     ): Boolean {
-        synchronized(playlists) {
-            val playlist = playlists[playlistId] ?: return false
-            val tracks = playlist.tracks.toMutableList()
-            val oldIndex = tracks.indexOfFirst { it.id == trackId }
-            if (oldIndex < 0 || newIndex < 0 || newIndex >= tracks.size) {
-                return false
-            }
-            val track = tracks.removeAt(oldIndex)
-            tracks.add(newIndex, track)
-            playlists[playlistId] = playlist.copy(tracks = tracks)
+        val playlist = playlists[playlistId] ?: return false
+        val tracks = playlist.tracks.toMutableList()
+        val oldIndex = tracks.indexOfFirst { it.id == trackId }
+        if (oldIndex < 0 || newIndex < 0 || newIndex >= tracks.size) {
+            return false
         }
+        val track = tracks.removeAt(oldIndex)
+        tracks.add(newIndex, track)
+        playlists[playlistId] = playlist.copy(tracks = tracks)
 
         scheduleSave()
         notifyPlaylistChanged(playlistId, QueueOperation.UPDATE)
         NitroPlayerMediaBrowserService.getInstance()?.onPlaylistUpdated(playlistId)
-
-        // Update ExoPlayer if this is the current playlist
-        if (currentPlaylistId == playlistId) {
-            TrackPlayerCore.getInstance(context)?.updatePlaylist(playlistId)
-        }
-
         return true
     }
 
@@ -291,19 +254,17 @@ class PlaylistManager private constructor(
         val tracksMap = tracks.associateBy { it.id }
         val affectedPlaylists = mutableMapOf<String, Int>()
 
-        synchronized(playlists) {
-            playlists.forEach { (playlistId, playlist) ->
-                var updateCount = 0
-                val newTracks =
-                    playlist.tracks
-                        .map { track ->
-                            tracksMap[track.id]?.also { updateCount++ } ?: track
-                        }.toMutableList()
+        playlists.forEach { (playlistId, playlist) ->
+            var updateCount = 0
+            val newTracks =
+                playlist.tracks
+                    .map { track ->
+                        tracksMap[track.id]?.also { updateCount++ } ?: track
+                    }.toMutableList()
 
-                if (updateCount > 0) {
-                    affectedPlaylists[playlistId] = updateCount
-                    playlists[playlistId] = playlist.copy(tracks = newTracks)
-                }
+            if (updateCount > 0) {
+                affectedPlaylists[playlistId] = updateCount
+                playlists[playlistId] = playlist.copy(tracks = newTracks)
             }
         }
 
@@ -327,12 +288,10 @@ class PlaylistManager private constructor(
         val trackIdSet = trackIds.toSet()
         val foundTracks = mutableMapOf<String, TrackItem>()
 
-        synchronized(playlists) {
-            playlists.values.forEach { playlist ->
-                playlist.tracks.forEach { track ->
-                    if (trackIdSet.contains(track.id) && !foundTracks.containsKey(track.id)) {
-                        foundTracks[track.id] = track
-                    }
+        playlists.values.forEach { playlist ->
+            playlist.tracks.forEach { track ->
+                if (trackIdSet.contains(track.id) && !foundTracks.containsKey(track.id)) {
+                    foundTracks[track.id] = track
                 }
             }
         }
@@ -345,14 +304,8 @@ class PlaylistManager private constructor(
      * Load a playlist for playback (sets it as current)
      */
     fun loadPlaylist(playlistId: String): Boolean {
-        val playlist =
-            synchronized(playlists) {
-                playlists[playlistId]
-            } ?: return false
-
+        if (playlists[playlistId] == null) return false
         currentPlaylistId = playlistId
-        TrackPlayerCore.getInstance(context)?.loadPlaylist(playlistId)
-
         return true
     }
 
@@ -364,7 +317,7 @@ class PlaylistManager private constructor(
     /**
      * Get the current playlist
      */
-    fun getCurrentPlaylist(): Playlist? = currentPlaylistId?.let { synchronized(playlists) { playlists[it] } }
+    fun getCurrentPlaylist(): Playlist? = currentPlaylistId?.let { playlists[it] }
 
     /**
      * Add a listener for playlist changes
@@ -387,22 +340,14 @@ class PlaylistManager private constructor(
     }
 
     private fun notifyPlaylistsChanged(operation: QueueOperation?) {
-        val allPlaylists =
-            synchronized(playlists) {
-                playlists.values.toList()
-            }
-        listeners.forEach { it(allPlaylists, operation) }
+        listeners.forEach { it(playlists.values.toList(), operation) }
     }
 
     private fun notifyPlaylistChanged(
         playlistId: String,
         operation: QueueOperation?,
     ) {
-        val playlist =
-            synchronized(playlists) {
-                playlists[playlistId]
-            } ?: return
-
+        val playlist = playlists[playlistId] ?: return
         playlistListeners[playlistId]?.forEach { it(playlist, operation) }
     }
 
@@ -411,37 +356,34 @@ class PlaylistManager private constructor(
     private fun saveToFile() {
         try {
             val jsonArray = JSONArray()
-            synchronized(playlists) {
-                playlists.values.forEach { playlist ->
-                    val jsonObject =
-                        JSONObject().apply {
-                            put("id", playlist.id)
-                            put("name", playlist.name)
-                            put("description", playlist.description ?: "")
-                            put("artwork", playlist.artwork ?: "")
-                            val tracksArray = JSONArray()
-                            playlist.tracks.forEach { track ->
-                                tracksArray.put(
-                                    JSONObject().apply {
-                                        put("id", track.id)
-                                        put("title", track.title)
-                                        put("artist", track.artist)
-                                        put("album", track.album)
-                                        put("duration", track.duration)
-                                        put("url", track.url)
-                                        track.artwork?.let { put("artwork", it) }
-                                        track.extraPayload?.let { payload ->
-                                            val extraPayloadMap = payload.toHashMap()
-                                            val extraPayloadJson = JSONObject(extraPayloadMap)
-                                            put("extraPayload", extraPayloadJson)
-                                        }
-                                    },
-                                )
-                            }
-                            put("tracks", tracksArray)
-                        }
-                    jsonArray.put(jsonObject)
+            playlists.values.forEach { playlist ->
+                val jsonObject = JSONObject().apply {
+                    put("id", playlist.id)
+                    put("name", playlist.name)
+                    put("description", playlist.description ?: "")
+                    put("artwork", playlist.artwork ?: "")
+                    val tracksArray = JSONArray()
+                    playlist.tracks.forEach { track ->
+                        tracksArray.put(
+                            JSONObject().apply {
+                                put("id", track.id)
+                                put("title", track.title)
+                                put("artist", track.artist)
+                                put("album", track.album)
+                                put("duration", track.duration)
+                                put("url", track.url)
+                                track.artwork?.let { put("artwork", it) }
+                                track.extraPayload?.let { payload ->
+                                    val extraPayloadMap = payload.toHashMap()
+                                    val extraPayloadJson = JSONObject(extraPayloadMap)
+                                    put("extraPayload", extraPayloadJson)
+                                }
+                            },
+                        )
+                    }
+                    put("tracks", tracksArray)
                 }
+                jsonArray.put(jsonObject)
             }
 
             val wrapper =
@@ -501,9 +443,8 @@ class PlaylistManager private constructor(
     }
 
     private fun parseAndLoadPlaylists(jsonArray: JSONArray) {
-        synchronized(playlists) {
-            playlists.clear()
-            for (i in 0 until jsonArray.length()) {
+        playlists.clear()
+        for (i in 0 until jsonArray.length()) {
                 val jsonObject = jsonArray.getJSONObject(i)
                 val tracks = mutableListOf<TrackItem>()
                 val tracksArray = jsonObject.getJSONArray("tracks")
@@ -557,7 +498,6 @@ class PlaylistManager private constructor(
                         tracks = tracks,
                     )
                 playlists[playlist.id] = playlist
-            }
         }
     }
 }

@@ -31,11 +31,11 @@ abstract class HybridTrackPlayerSpec: HybridObject() {
   // Methods
   @DoNotStrip
   @Keep
-  abstract fun play(): Unit
+  abstract fun play(): Promise<Unit>
   
   @DoNotStrip
   @Keep
-  abstract fun pause(): Unit
+  abstract fun pause(): Promise<Unit>
   
   @DoNotStrip
   @Keep
@@ -43,7 +43,7 @@ abstract class HybridTrackPlayerSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
-  abstract fun skipToNext(): Unit
+  abstract fun skipToNext(): Promise<Unit>
   
   @DoNotStrip
   @Keep
@@ -51,11 +51,11 @@ abstract class HybridTrackPlayerSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
-  abstract fun skipToPrevious(): Unit
+  abstract fun skipToPrevious(): Promise<Unit>
   
   @DoNotStrip
   @Keep
-  abstract fun seek(position: Double): Unit
+  abstract fun seek(position: Double): Promise<Unit>
   
   @DoNotStrip
   @Keep
@@ -75,7 +75,7 @@ abstract class HybridTrackPlayerSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
-  abstract fun setRepeatMode(mode: RepeatMode): Boolean
+  abstract fun setRepeatMode(mode: RepeatMode): Promise<Unit>
   
   @DoNotStrip
   @Keep
@@ -83,7 +83,7 @@ abstract class HybridTrackPlayerSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
-  abstract fun configure(config: PlayerConfig): Unit
+  abstract fun configure(config: PlayerConfig): Promise<Unit>
   
   abstract fun onChangeTrack(callback: (track: TrackItem, reason: Reason?) -> Unit): Unit
   
@@ -136,7 +136,7 @@ abstract class HybridTrackPlayerSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
-  abstract fun setVolume(volume: Double): Boolean
+  abstract fun setVolume(volume: Double): Promise<Unit>
   
   @DoNotStrip
   @Keep
@@ -174,6 +174,43 @@ abstract class HybridTrackPlayerSpec: HybridObject() {
   @DoNotStrip
   @Keep
   abstract fun getPlaybackSpeed(): Promise<Double>
+  
+  @DoNotStrip
+  @Keep
+  abstract fun removeFromPlayNext(trackId: String): Promise<Boolean>
+  
+  @DoNotStrip
+  @Keep
+  abstract fun removeFromUpNext(trackId: String): Promise<Boolean>
+  
+  @DoNotStrip
+  @Keep
+  abstract fun clearPlayNext(): Promise<Unit>
+  
+  @DoNotStrip
+  @Keep
+  abstract fun clearUpNext(): Promise<Unit>
+  
+  @DoNotStrip
+  @Keep
+  abstract fun reorderTemporaryTrack(trackId: String, newIndex: Double): Promise<Boolean>
+  
+  @DoNotStrip
+  @Keep
+  abstract fun getPlayNextQueue(): Promise<Array<TrackItem>>
+  
+  @DoNotStrip
+  @Keep
+  abstract fun getUpNextQueue(): Promise<Array<TrackItem>>
+  
+  abstract fun onTemporaryQueueChange(callback: (playNextQueue: Array<TrackItem>, upNextQueue: Array<TrackItem>) -> Unit): Unit
+  
+  @DoNotStrip
+  @Keep
+  private fun onTemporaryQueueChange_cxx(callback: Func_void_std__vector_TrackItem__std__vector_TrackItem_): Unit {
+    val __result = onTemporaryQueueChange(callback)
+    return __result
+  }
 
   // Default implementation of `HybridObject.toString()`
   override fun toString(): String {

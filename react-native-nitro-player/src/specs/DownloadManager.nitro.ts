@@ -102,42 +102,42 @@ export interface DownloadManager
   /**
    * Check if a track is downloaded
    */
-  isTrackDownloaded(trackId: string): boolean
+  isTrackDownloaded(trackId: string): Promise<boolean>
 
   /**
    * Check if a playlist is fully downloaded
    */
-  isPlaylistDownloaded(playlistId: string): boolean
+  isPlaylistDownloaded(playlistId: string): Promise<boolean>
 
   /**
    * Check if a playlist is partially downloaded
    */
-  isPlaylistPartiallyDownloaded(playlistId: string): boolean
+  isPlaylistPartiallyDownloaded(playlistId: string): Promise<boolean>
 
   /**
    * Get downloaded track by track ID
    */
-  getDownloadedTrack(trackId: string): DownloadedTrack | null
+  getDownloadedTrack(trackId: string): Promise<DownloadedTrack | null>
 
   /**
    * Get all downloaded tracks
    */
-  getAllDownloadedTracks(): DownloadedTrack[]
+  getAllDownloadedTracks(): Promise<DownloadedTrack[]>
 
   /**
    * Get downloaded playlist by playlist ID
    */
-  getDownloadedPlaylist(playlistId: string): DownloadedPlaylist | null
+  getDownloadedPlaylist(playlistId: string): Promise<DownloadedPlaylist | null>
 
   /**
    * Get all downloaded playlists
    */
-  getAllDownloadedPlaylists(): DownloadedPlaylist[]
+  getAllDownloadedPlaylists(): Promise<DownloadedPlaylist[]>
 
   /**
    * Get local file path for a downloaded track
    */
-  getLocalPath(trackId: string): string | null
+  getLocalPath(trackId: string): Promise<string | null>
 
   /**
    * Delete a downloaded track
@@ -163,7 +163,7 @@ export interface DownloadManager
    * Call this to clean up after manual file deletion
    * @returns number of orphaned records that were cleaned up
    */
-  syncDownloads(): number
+  syncDownloads(): Promise<number>
   /**
    * Set playback source preference
    */
@@ -177,7 +177,7 @@ export interface DownloadManager
   /**
    * Get the effective URL for a track (local or network based on preference)
    */
-  getEffectiveUrl(track: TrackItem): string
+  getEffectiveUrl(track: TrackItem): Promise<string>
 
   /**
    * Called when download progress updates

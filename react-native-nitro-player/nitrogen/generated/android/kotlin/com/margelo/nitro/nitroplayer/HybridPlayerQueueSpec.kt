@@ -10,6 +10,7 @@ package com.margelo.nitro.nitroplayer
 import androidx.annotation.Keep
 import com.facebook.jni.HybridData
 import com.facebook.proguard.annotations.DoNotStrip
+import com.margelo.nitro.core.Promise
 import com.margelo.nitro.core.NullType
 import com.margelo.nitro.core.HybridObject
 
@@ -31,15 +32,15 @@ abstract class HybridPlayerQueueSpec: HybridObject() {
   // Methods
   @DoNotStrip
   @Keep
-  abstract fun createPlaylist(name: String, description: String?, artwork: String?): String
+  abstract fun createPlaylist(name: String, description: String?, artwork: String?): Promise<String>
   
   @DoNotStrip
   @Keep
-  abstract fun deletePlaylist(playlistId: String): Unit
+  abstract fun deletePlaylist(playlistId: String): Promise<Unit>
   
   @DoNotStrip
   @Keep
-  abstract fun updatePlaylist(playlistId: String, name: String?, description: String?, artwork: String?): Unit
+  abstract fun updatePlaylist(playlistId: String, name: String?, description: String?, artwork: String?): Promise<Unit>
   
   @DoNotStrip
   @Keep
@@ -51,23 +52,23 @@ abstract class HybridPlayerQueueSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
-  abstract fun addTrackToPlaylist(playlistId: String, track: TrackItem, index: Double?): Unit
+  abstract fun addTrackToPlaylist(playlistId: String, track: TrackItem, index: Double?): Promise<Unit>
   
   @DoNotStrip
   @Keep
-  abstract fun addTracksToPlaylist(playlistId: String, tracks: Array<TrackItem>, index: Double?): Unit
+  abstract fun addTracksToPlaylist(playlistId: String, tracks: Array<TrackItem>, index: Double?): Promise<Unit>
   
   @DoNotStrip
   @Keep
-  abstract fun removeTrackFromPlaylist(playlistId: String, trackId: String): Unit
+  abstract fun removeTrackFromPlaylist(playlistId: String, trackId: String): Promise<Unit>
   
   @DoNotStrip
   @Keep
-  abstract fun reorderTrackInPlaylist(playlistId: String, trackId: String, newIndex: Double): Unit
+  abstract fun reorderTrackInPlaylist(playlistId: String, trackId: String, newIndex: Double): Promise<Unit>
   
   @DoNotStrip
   @Keep
-  abstract fun loadPlaylist(playlistId: String): Unit
+  abstract fun loadPlaylist(playlistId: String): Promise<Unit>
   
   @DoNotStrip
   @Keep

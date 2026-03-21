@@ -9,6 +9,9 @@
 
 
 
+#include <NitroModules/Promise.hpp>
+#include <NitroModules/JPromise.hpp>
+#include <NitroModules/JUnit.hpp>
 #include <string>
 
 namespace margelo::nitro::nitroplayer {
@@ -44,13 +47,35 @@ namespace margelo::nitro::nitroplayer {
   
 
   // Methods
-  void JHybridAndroidAutoMediaLibrarySpec::setMediaLibrary(const std::string& libraryJson) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* libraryJson */)>("setMediaLibrary");
-    method(_javaPart, jni::make_jstring(libraryJson));
+  std::shared_ptr<Promise<void>> JHybridAndroidAutoMediaLibrarySpec::setMediaLibrary(const std::string& libraryJson) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* libraryJson */)>("setMediaLibrary");
+    auto __result = method(_javaPart, jni::make_jstring(libraryJson));
+    return [&]() {
+      auto __promise = Promise<void>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& /* unit */) {
+        __promise->resolve();
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
   }
-  void JHybridAndroidAutoMediaLibrarySpec::clearMediaLibrary() {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<void()>("clearMediaLibrary");
-    method(_javaPart);
+  std::shared_ptr<Promise<void>> JHybridAndroidAutoMediaLibrarySpec::clearMediaLibrary() {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>()>("clearMediaLibrary");
+    auto __result = method(_javaPart);
+    return [&]() {
+      auto __promise = Promise<void>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& /* unit */) {
+        __promise->resolve();
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
   }
 
 } // namespace margelo::nitro::nitroplayer

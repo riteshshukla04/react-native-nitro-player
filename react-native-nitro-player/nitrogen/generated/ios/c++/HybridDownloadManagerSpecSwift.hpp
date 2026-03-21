@@ -240,7 +240,7 @@ namespace margelo::nitro::nitroplayer {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline bool isTrackDownloaded(const std::string& trackId) override {
+    inline std::shared_ptr<Promise<bool>> isTrackDownloaded(const std::string& trackId) override {
       auto __result = _swiftPart.isTrackDownloaded(trackId);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
@@ -248,7 +248,7 @@ namespace margelo::nitro::nitroplayer {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline bool isPlaylistDownloaded(const std::string& playlistId) override {
+    inline std::shared_ptr<Promise<bool>> isPlaylistDownloaded(const std::string& playlistId) override {
       auto __result = _swiftPart.isPlaylistDownloaded(playlistId);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
@@ -256,7 +256,7 @@ namespace margelo::nitro::nitroplayer {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline bool isPlaylistPartiallyDownloaded(const std::string& playlistId) override {
+    inline std::shared_ptr<Promise<bool>> isPlaylistPartiallyDownloaded(const std::string& playlistId) override {
       auto __result = _swiftPart.isPlaylistPartiallyDownloaded(playlistId);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
@@ -264,7 +264,7 @@ namespace margelo::nitro::nitroplayer {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline std::variant<nitro::NullType, DownloadedTrack> getDownloadedTrack(const std::string& trackId) override {
+    inline std::shared_ptr<Promise<std::variant<nitro::NullType, DownloadedTrack>>> getDownloadedTrack(const std::string& trackId) override {
       auto __result = _swiftPart.getDownloadedTrack(trackId);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
@@ -272,7 +272,7 @@ namespace margelo::nitro::nitroplayer {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline std::vector<DownloadedTrack> getAllDownloadedTracks() override {
+    inline std::shared_ptr<Promise<std::vector<DownloadedTrack>>> getAllDownloadedTracks() override {
       auto __result = _swiftPart.getAllDownloadedTracks();
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
@@ -280,7 +280,7 @@ namespace margelo::nitro::nitroplayer {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline std::variant<nitro::NullType, DownloadedPlaylist> getDownloadedPlaylist(const std::string& playlistId) override {
+    inline std::shared_ptr<Promise<std::variant<nitro::NullType, DownloadedPlaylist>>> getDownloadedPlaylist(const std::string& playlistId) override {
       auto __result = _swiftPart.getDownloadedPlaylist(playlistId);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
@@ -288,7 +288,7 @@ namespace margelo::nitro::nitroplayer {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline std::vector<DownloadedPlaylist> getAllDownloadedPlaylists() override {
+    inline std::shared_ptr<Promise<std::vector<DownloadedPlaylist>>> getAllDownloadedPlaylists() override {
       auto __result = _swiftPart.getAllDownloadedPlaylists();
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
@@ -296,7 +296,7 @@ namespace margelo::nitro::nitroplayer {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline std::variant<nitro::NullType, std::string> getLocalPath(const std::string& trackId) override {
+    inline std::shared_ptr<Promise<std::variant<nitro::NullType, std::string>>> getLocalPath(const std::string& trackId) override {
       auto __result = _swiftPart.getLocalPath(trackId);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
@@ -336,7 +336,7 @@ namespace margelo::nitro::nitroplayer {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline double syncDownloads() override {
+    inline std::shared_ptr<Promise<double>> syncDownloads() override {
       auto __result = _swiftPart.syncDownloads();
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
@@ -358,7 +358,7 @@ namespace margelo::nitro::nitroplayer {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline std::string getEffectiveUrl(const TrackItem& track) override {
+    inline std::shared_ptr<Promise<std::string>> getEffectiveUrl(const TrackItem& track) override {
       auto __result = _swiftPart.getEffectiveUrl(std::forward<decltype(track)>(track));
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());

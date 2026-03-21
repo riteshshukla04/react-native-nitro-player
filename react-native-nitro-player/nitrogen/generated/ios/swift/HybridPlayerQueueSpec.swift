@@ -13,16 +13,16 @@ public protocol HybridPlayerQueueSpec_protocol: HybridObject {
   
 
   // Methods
-  func createPlaylist(name: String, description: String?, artwork: String?) throws -> String
-  func deletePlaylist(playlistId: String) throws -> Void
-  func updatePlaylist(playlistId: String, name: String?, description: String?, artwork: String?) throws -> Void
+  func createPlaylist(name: String, description: String?, artwork: String?) throws -> Promise<String>
+  func deletePlaylist(playlistId: String) throws -> Promise<Void>
+  func updatePlaylist(playlistId: String, name: String?, description: String?, artwork: String?) throws -> Promise<Void>
   func getPlaylist(playlistId: String) throws -> Variant_NullType_Playlist
   func getAllPlaylists() throws -> [Playlist]
-  func addTrackToPlaylist(playlistId: String, track: TrackItem, index: Double?) throws -> Void
-  func addTracksToPlaylist(playlistId: String, tracks: [TrackItem], index: Double?) throws -> Void
-  func removeTrackFromPlaylist(playlistId: String, trackId: String) throws -> Void
-  func reorderTrackInPlaylist(playlistId: String, trackId: String, newIndex: Double) throws -> Void
-  func loadPlaylist(playlistId: String) throws -> Void
+  func addTrackToPlaylist(playlistId: String, track: TrackItem, index: Double?) throws -> Promise<Void>
+  func addTracksToPlaylist(playlistId: String, tracks: [TrackItem], index: Double?) throws -> Promise<Void>
+  func removeTrackFromPlaylist(playlistId: String, trackId: String) throws -> Promise<Void>
+  func reorderTrackInPlaylist(playlistId: String, trackId: String, newIndex: Double) throws -> Promise<Void>
+  func loadPlaylist(playlistId: String) throws -> Promise<Void>
   func getCurrentPlaylistId() throws -> Variant_NullType_String
   func onPlaylistsChanged(callback: @escaping (_ playlists: [Playlist], _ operation: QueueOperation?) -> Void) throws -> Void
   func onPlaylistChanged(callback: @escaping (_ playlistId: String, _ playlist: Playlist, _ operation: QueueOperation?) -> Void) throws -> Void

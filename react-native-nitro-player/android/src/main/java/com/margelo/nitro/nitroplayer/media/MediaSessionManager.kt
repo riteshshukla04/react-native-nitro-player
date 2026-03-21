@@ -26,6 +26,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.margelo.nitro.nitroplayer.TrackItem
 import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
 import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
+import com.margelo.nitro.nitroplayer.core.loadPlaylist
 import com.margelo.nitro.nitroplayer.media.NitroPlayerMediaBrowserService
 import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
 import kotlinx.coroutines.CoroutineScope
@@ -216,7 +217,7 @@ class MediaSessionManager(
 
                                             if (trackIndex >= 0) {
                                                 // Load the entire playlist into TrackPlayerCore
-                                                trackPlayerCore?.loadPlaylist(playlistId)
+                                                trackPlayerCore?.let { core -> scope.launch { core.loadPlaylist(playlistId) } }
 
                                                 // Create MediaItems for the entire playlist
                                                 val playlistMediaItems =

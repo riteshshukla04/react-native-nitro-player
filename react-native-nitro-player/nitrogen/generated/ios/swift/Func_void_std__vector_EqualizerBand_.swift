@@ -8,21 +8,21 @@
 import NitroModules
 
 /**
- * Wraps a Swift `(_ bands: [EqualizerBand]) -> Void` as a class.
+ * Wraps a Swift `(_ value: [EqualizerBand]) -> Void` as a class.
  * This class can be used from C++, e.g. to wrap the Swift closure as a `std::function`.
  */
 public final class Func_void_std__vector_EqualizerBand_ {
   public typealias bridge = margelo.nitro.nitroplayer.bridge.swift
 
-  private let closure: (_ bands: [EqualizerBand]) -> Void
+  private let closure: (_ value: [EqualizerBand]) -> Void
 
-  public init(_ closure: @escaping (_ bands: [EqualizerBand]) -> Void) {
+  public init(_ closure: @escaping (_ value: [EqualizerBand]) -> Void) {
     self.closure = closure
   }
 
   @inline(__always)
-  public func call(bands: bridge.std__vector_EqualizerBand_) -> Void {
-    self.closure(bands.map({ __item in __item }))
+  public func call(value: bridge.std__vector_EqualizerBand_) -> Void {
+    self.closure(value.map({ __item in __item }))
   }
 
   /**

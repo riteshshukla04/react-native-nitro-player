@@ -10,6 +10,7 @@ package com.margelo.nitro.nitroplayer
 import androidx.annotation.Keep
 import com.facebook.jni.HybridData
 import com.facebook.proguard.annotations.DoNotStrip
+import com.margelo.nitro.core.Promise
 import com.margelo.nitro.core.NullType
 import com.margelo.nitro.core.HybridObject
 
@@ -31,7 +32,7 @@ abstract class HybridEqualizerSpec: HybridObject() {
   // Methods
   @DoNotStrip
   @Keep
-  abstract fun setEnabled(enabled: Boolean): Boolean
+  abstract fun setEnabled(enabled: Boolean): Promise<Unit>
   
   @DoNotStrip
   @Keep
@@ -39,15 +40,15 @@ abstract class HybridEqualizerSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
-  abstract fun getBands(): Array<EqualizerBand>
+  abstract fun getBands(): Promise<Array<EqualizerBand>>
   
   @DoNotStrip
   @Keep
-  abstract fun setBandGain(bandIndex: Double, gainDb: Double): Boolean
+  abstract fun setBandGain(bandIndex: Double, gainDb: Double): Promise<Unit>
   
   @DoNotStrip
   @Keep
-  abstract fun setAllBandGains(gains: DoubleArray): Boolean
+  abstract fun setAllBandGains(gains: DoubleArray): Promise<Unit>
   
   @DoNotStrip
   @Keep
@@ -67,7 +68,7 @@ abstract class HybridEqualizerSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
-  abstract fun applyPreset(presetName: String): Boolean
+  abstract fun applyPreset(presetName: String): Promise<Unit>
   
   @DoNotStrip
   @Keep
@@ -75,19 +76,19 @@ abstract class HybridEqualizerSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
-  abstract fun saveCustomPreset(name: String): Boolean
+  abstract fun saveCustomPreset(name: String): Promise<Unit>
   
   @DoNotStrip
   @Keep
-  abstract fun deleteCustomPreset(name: String): Boolean
+  abstract fun deleteCustomPreset(name: String): Promise<Unit>
   
   @DoNotStrip
   @Keep
-  abstract fun getState(): EqualizerState
+  abstract fun getState(): Promise<EqualizerState>
   
   @DoNotStrip
   @Keep
-  abstract fun reset(): Unit
+  abstract fun reset(): Promise<Unit>
   
   abstract fun onEnabledChange(callback: (enabled: Boolean) -> Unit): Unit
   
