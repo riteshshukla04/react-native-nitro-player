@@ -26,17 +26,17 @@ export default function PlaylistsScreen() {
     isLoading,
   } = usePlaylist();
 
-  const createPlaylist = useCallback((
+  const createPlaylist = useCallback(async (
     name: string,
     description: string,
     tracks: TrackItem[],
   ) => {
-    const playlistId = PlayerQueue.createPlaylist(
+    const playlistId = await PlayerQueue.createPlaylist(
       name,
       description,
       tracks[0]?.artwork || undefined,
     );
-    PlayerQueue.addTracksToPlaylist(playlistId, tracks);
+    await PlayerQueue.addTracksToPlaylist(playlistId, tracks);
     refreshPlaylists();
   }, [refreshPlaylists]);
 

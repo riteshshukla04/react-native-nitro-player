@@ -145,5 +145,5 @@ internal fun TrackPlayerCore.emitStateChange(reason: Reason? = null) {
     }
     val actualReason = reason ?: if (exo.playbackState == Player.STATE_ENDED) Reason.END else null
     notifyPlaybackStateChange(state, actualReason)
-    mediaSessionManager?.onPlaybackStateChanged()
+    mediaSessionManager?.onPlaybackStateChanged(state == TrackPlayerState.PLAYING)
 }
