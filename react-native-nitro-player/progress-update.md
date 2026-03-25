@@ -1,6 +1,6 @@
-# NitroPlayer v2 — Android Progress Update
+# NitroPlayer v2 — Progress Update
 
-## Status: Android complete ✓ | iOS + TS hooks pending
+## Status: Android complete ✓ | iOS complete ✓ | TS hooks pending
 
 ---
 
@@ -106,19 +106,55 @@ All 6 bridge files updated:
 
 ---
 
-## What Remains
+## Completed Steps (iOS — Steps 12–18)
 
-### iOS (Steps 12–16)
-- Mirror the same architectural changes in `ios/core/TrackPlayerCore.swift`
-- Move AVQueuePlayer to a dedicated serial `DispatchQueue`
-- Replace callback arrays with `ListenerStore` (Swift equivalent)
-- Add temp queue APIs to Swift side
-- Update all iOS Hybrid bridge files
+### Step 12 — `ListenerRegistry.swift`
+**New file:** `ios/core/ListenerRegistry.swift`
+- Swift mirror of `ListenerRegistry.kt`: `DispatchQueue.sync` snapshot + stable `Int64` IDs
+- `add(callback) -> Int64`, `remove(id:) -> Bool`, `clear()`, `forEach`, `isEmpty`
+
+### Steps 13–16 — TrackPlayerCore Refactor
+Monolithic `TrackPlayerCore.swift` (~2435 lines) split into 9 focused files:
+
+| File | Contents |
+|------|----------|
+| `ios/core/TrackPlayerCore.swift` | Class declaration + stored properties + `playerQueue` + `withPlayerQueue` + 6 `ListenerRegistry` instances + public `addOnXxx`/`removeOnXxx` |
+| `ios/core/TrackPlayerNotify.swift` | All `notifyXxx` — captures state on playerQueue, dispatches pre-computed values to main for MediaSessionManager |
+| `ios/core/TrackPlayerListener.swift` | KVO handlers, `playerItemDidPlayToEndTime`, `setupPlayerObservers`, periodic time observer (delivers on `playerQueue`) |
+| `ios/core/TrackPlayerPlayback.swift` | `play`, `pause`, `seek`, `skipToNext`, `skipToPrevious`, `playSong`, `setRepeatMode`, `setVolume`, `configure`, `setPlaybackSpeed`, `getPlaybackSpeed` |
+| `ios/core/TrackPlayerQueue.swift` | `getState`, `getActualQueue`, `skipToIndex`, `getCurrentTrackIndex`, `getCurrentTrack`, internal helpers |
+| `ios/core/TrackPlayerQueueBuild.swift` | `rebuildQueueFromPlaylistIndex`, `rebuildAVQueueFromCurrentPosition`, `createGaplessPlayerItem`, gapless preload |
+| `ios/core/TrackPlayerTempQueue.swift` | `loadPlaylist`, `updatePlaylist`, `playNext`, `addToUpNext`, `removeFromPlayNext`, `removeFromUpNext`, `clearPlayNext`, `clearUpNext`, `reorderTemporaryTrack`, `getPlayNextQueue`, `getUpNextQueue` |
+| `ios/core/TrackPlayerUrlLoader.swift` | `updateTracks`, `getTracksById`, `getTracksNeedingUrls`, `getNextTracks`, `checkUpcomingTracksForUrls` |
+
+Threading changes:
+- All `DispatchQueue.main.sync` replaced with `playerQueue.async` + `withPlayerQueueNoThrow`/`withPlayerQueue`
+- KVO handlers dispatch to `playerQueue`
+- Periodic time observer delivers on `playerQueue` (not main)
+- `notifyXxx` called directly on `playerQueue` (no re-dispatch)
+- `DispatchQueue.main.async` ONLY for `MPNowPlayingInfoCenter` (MediaSessionManager)
+
+### Steps 17–18 — Bridge + Supporting Files (iOS)
+
+| File | Changes |
+|------|---------|
+| `ios/HybridTrackPlayer.swift` | All commands → `Promise<Void>`, listener IDs in `listenerIds`, `deinit` cleanup, 7 new temp queue methods |
+| `ios/queue/HybridPlayerQueue.swift` | All mutations → `Promise<String/Void>`, per-instance listener removers, `deinit` cleanup |
+| `ios/HybridEqualizer.swift` | All mutations → `Promise<T>`, listener IDs, `deinit` cleanup |
+| `ios/HybridDownloadManager.swift` | 10 query methods → `Promise<T>` |
+| `ios/equalizer/EqualizerCore.swift` | `ListenerRegistry<T>` replacing `WeakCallbackBox` + `listenersQueue`, stable ID add/remove |
+| `ios/playlist/PlaylistManager.swift` | Removed `DispatchQueue.main.async` from notify methods — Nitro handles JS thread hop |
+| `ios/media/MediaSessionManager.swift` | Cached `track/state/queue` set via `updateFromPlayerQueue` (called from main.async); no direct `core.getState()` calls; command center handlers use `Task { await core.xxx() }` |
+
+---
+
+## What Remains
 
 ### TypeScript Hooks (Steps 17–19)
 - Update `useActualQueue`, `useTrackPlayer`, etc. to handle `Promise`-based APIs
 - Add `useTemporaryQueue` hook
 - Update any hooks that assumed sync returns
+- End-to-end testing on both platforms
 
 ---
 

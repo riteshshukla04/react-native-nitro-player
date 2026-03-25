@@ -268,9 +268,6 @@ class PlaylistManager {
 
     currentPlaylistId = playlistId
 
-    // Update TrackPlayerCore
-    TrackPlayerCore.shared.loadPlaylist(playlistId: playlistId)
-
     return true
   }
 
@@ -399,9 +396,7 @@ class PlaylistManager {
     let (allPlaylists, currentListeners) = queue.sync {
       (Array(playlists.values), listeners)
     }
-    DispatchQueue.main.async {
-      currentListeners.forEach { $0.1(allPlaylists, operation) }
-    }
+    currentListeners.forEach { $0.1(allPlaylists, operation) }
   }
 
   private func notifyPlaylistChanged(_ playlistId: String, _ operation: QueueOperation?) {
@@ -413,9 +408,7 @@ class PlaylistManager {
 
     guard let (playlist, currentListeners) = result else { return }
 
-    DispatchQueue.main.async {
-      currentListeners.forEach { $0.1(playlist, operation) }
-    }
+    currentListeners.forEach { $0.1(playlist, operation) }
   }
 
   private func scheduleSave() {

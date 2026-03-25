@@ -20,13 +20,18 @@ class MediaSessionManager {
 
   // MARK: - Properties
 
-  private var trackPlayerCore: TrackPlayerCore?
+  private weak var trackPlayerCore: TrackPlayerCore?
   private let artworkCache = NSCache<NSString, UIImage>()
 
   private var showInNotification: Bool = true
 
   // Tracks the artwork URL currently shown so we can discard stale async loads
   private var lastArtworkUrl: String?
+
+  // Cached values received from playerQueue — main-thread-only reads (no sync needed)
+  private var cachedTrack: TrackItem?
+  private var cachedState: PlayerState?
+  private var cachedQueue: [TrackItem] = []
 
   init() {
     setupRemoteCommandCenter()
@@ -47,26 +52,26 @@ class MediaSessionManager {
     refresh()
   }
 
-  // MARK: - Single refresh entry point
+  // MARK: - Entry point from playerQueue (called via DispatchQueue.main.async)
   //
-  // All public callbacks route here. Always dispatches to main thread so
-  // MPNowPlayingInfoCenter and MPRemoteCommandCenter are only touched from main.
+  // Receives pre-computed values captured on playerQueue — no player access here.
+
+  func updateFromPlayerQueue(track: TrackItem, state: PlayerState, queue: [TrackItem]) {
+    cachedTrack = track
+    cachedState = state
+    cachedQueue = queue
+    refreshInternal()
+  }
+
+  // MARK: - Refresh using cached values (main thread only)
 
   func refresh() {
     if Thread.isMainThread {
       refreshInternal()
     } else {
-      DispatchQueue.main.async { [weak self] in
-        self?.refreshInternal()
-      }
+      DispatchQueue.main.async { [weak self] in self?.refreshInternal() }
     }
   }
-
-  // Convenience aliases used by TrackPlayerCore call sites
-  func updateNowPlayingInfo() { refresh() }
-  func onTrackChanged() { refresh() }
-  func onPlaybackStateChanged() { refresh() }
-  func onQueueChanged() { refresh() }
 
   // MARK: - Core internal update (main thread only)
 
@@ -77,21 +82,13 @@ class MediaSessionManager {
       return
     }
 
-    guard let core = trackPlayerCore,
-      let track = core.getCurrentTrack()
-    else {
+    guard let track = cachedTrack, let state = cachedState else {
       clearNowPlayingInfo()
       disableAllCommands()
       return
     }
 
-    // Fetch snapshot once — both calls are cheap on main thread (no sync overhead)
-    let state = core.getState()
-    let queue = core.getActualQueue()
-
-    // Find the actual position of the current track inside the actual queue.
-    // state.currentIndex is the original-playlist index which is wrong when a
-    // temp (playNext / upNext) track is playing.
+    let queue = cachedQueue
     let positionInQueue = queue.firstIndex(where: { $0.id == track.id }) ?? -1
 
     updateNowPlayingInfoInternal(track: track, state: state, queue: queue, positionInQueue: positionInQueue)
@@ -145,7 +142,6 @@ class MediaSessionManager {
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
         loadArtwork(url: artworkUrl) { [weak self] image in
           guard let self = self, let image = image else { return }
-          // Discard if track changed while loading
           guard self.lastArtworkUrl == artworkUrl else { return }
           var updated = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
           updated[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(
@@ -168,8 +164,6 @@ class MediaSessionManager {
   private func setupRemoteCommandCenter() {
     let commandCenter = MPRemoteCommandCenter.shared()
 
-    // Clear any previously registered targets before adding fresh ones.
-    // Prevents duplicate handlers if this were ever called more than once.
     commandCenter.playCommand.removeTarget(nil)
     commandCenter.pauseCommand.removeTarget(nil)
     commandCenter.togglePlayPauseCommand.removeTarget(nil)
@@ -183,7 +177,7 @@ class MediaSessionManager {
     commandCenter.playCommand.isEnabled = true
     commandCenter.playCommand.addTarget { [weak self] _ in
       guard let core = self?.trackPlayerCore else { return .commandFailed }
-      core.play()
+      Task { await core.play() }
       return .success
     }
 
@@ -191,7 +185,7 @@ class MediaSessionManager {
     commandCenter.pauseCommand.isEnabled = true
     commandCenter.pauseCommand.addTarget { [weak self] _ in
       guard let core = self?.trackPlayerCore else { return .commandFailed }
-      core.pause()
+      Task { await core.pause() }
       return .success
     }
 
@@ -199,51 +193,45 @@ class MediaSessionManager {
     commandCenter.togglePlayPauseCommand.isEnabled = true
     commandCenter.togglePlayPauseCommand.addTarget { [weak self] _ in
       guard let core = self?.trackPlayerCore else { return .commandFailed }
-      if core.getState().currentState == .playing {
-        core.pause()
-      } else {
-        core.play()
-      }
+      let isPlaying = self?.cachedState?.currentState == .playing
+      Task { if isPlaying { await core.pause() } else { await core.play() } }
       return .success
     }
 
-    // Next track — isEnabled managed dynamically in updateCommandCenterState
+    // Next track
     commandCenter.nextTrackCommand.isEnabled = false
     commandCenter.nextTrackCommand.addTarget { [weak self] _ in
       guard let core = self?.trackPlayerCore else { return .commandFailed }
-      core.skipToNext()
+      Task { await core.skipToNext() }
       return .success
     }
 
-    // Previous track — isEnabled managed dynamically in updateCommandCenterState
+    // Previous track
     commandCenter.previousTrackCommand.isEnabled = false
     commandCenter.previousTrackCommand.addTarget { [weak self] _ in
       guard let core = self?.trackPlayerCore else { return .commandFailed }
-      core.skipToPrevious()
+      Task { await core.skipToPrevious() }
       return .success
     }
 
-    // Disable skip-forward/backward — these replace the scrubber with non-interactive buttons
     commandCenter.seekForwardCommand.isEnabled = false
     commandCenter.seekBackwardCommand.isEnabled = false
 
-    // Scrubber — isEnabled managed dynamically based on known duration
+    // Scrubber
     commandCenter.changePlaybackPositionCommand.isEnabled = false
     commandCenter.changePlaybackPositionCommand.addTarget { [weak self] event in
-      guard let self = self,
-        let core = self.trackPlayerCore,
+      guard let core = self?.trackPlayerCore,
         let positionEvent = event as? MPChangePlaybackPositionCommandEvent
       else {
         return .commandFailed
       }
-      // Optimistically freeze the scrubber at the tapped position while the async
-      // seek is in flight — updateNowPlayingInfo in the seek completion restores it.
+      // Optimistically freeze the scrubber at the tapped position
       if var info = MPNowPlayingInfoCenter.default().nowPlayingInfo {
         info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = positionEvent.positionTime
         info[MPNowPlayingInfoPropertyPlaybackRate] = 0.0
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
       }
-      core.seek(position: positionEvent.positionTime)
+      Task { await core.seek(position: positionEvent.positionTime) }
       return .success
     }
   }
@@ -260,13 +248,8 @@ class MediaSessionManager {
     let playerDuration = state.totalDuration
     let hasDuration = playerDuration > 0 && !playerDuration.isNaN && !playerDuration.isInfinite
 
-    // Next: only enabled when there is a track after the current one
     commandCenter.nextTrackCommand.isEnabled = hasCurrentTrack && isNotLast
-
-    // Previous: always enabled when something is playing — either restarts current or goes back
     commandCenter.previousTrackCommand.isEnabled = hasCurrentTrack
-
-    // Scrubber: only enabled when we have a known, finite duration
     commandCenter.changePlaybackPositionCommand.isEnabled = hasCurrentTrack && hasDuration
   }
 

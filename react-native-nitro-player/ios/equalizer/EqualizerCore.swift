@@ -40,27 +40,10 @@ class EqualizerCore {
   private let currentPresetKey = "eq_current_preset"
   private let customPresetsKey = "eq_custom_presets"
 
-  // MARK: - Weak Callback Wrapper
-
-  private class WeakCallbackBox<T> {
-    private(set) weak var owner: AnyObject?
-    let callback: T
-
-    init(owner: AnyObject, callback: T) {
-      self.owner = owner
-      self.callback = callback
-    }
-
-    var isAlive: Bool { owner != nil }
-  }
-
-  // Event callbacks
-  private var onEnabledChangeListeners: [WeakCallbackBox<(Bool) -> Void>] = []
-  private var onBandChangeListeners: [WeakCallbackBox<([EqualizerBand]) -> Void>] = []
-  private var onPresetChangeListeners: [WeakCallbackBox<(Variant_NullType_String?) -> Void>] = []
-
-  private let listenersQueue = DispatchQueue(
-    label: "com.equalizer.listeners", attributes: .concurrent)
+  // Event listeners (v2 — ListenerRegistry with stable IDs)
+  private let onEnabledChangeListeners = ListenerRegistry<(Bool) -> Void>()
+  private let onBandChangeListeners = ListenerRegistry<([EqualizerBand]) -> Void>()
+  private let onPresetChangeListeners = ListenerRegistry<(Variant_NullType_String?) -> Void>()
 
   // MARK: - Built-in Presets
 
@@ -428,88 +411,40 @@ class EqualizerCore {
     NitroPlayerLogger.log("EqualizerCore", "✅ Restored settings - enabled: \(enabled), gains: \(currentGains)")
   }
 
-  // MARK: - Callback Management
+  // MARK: - Listener Management (v2 — stable IDs)
 
-  func addOnEnabledChangeListener(owner: AnyObject, _ callback: @escaping (Bool) -> Void) {
-    listenersQueue.async(flags: .barrier) { [weak self] in
-      let box = WeakCallbackBox(owner: owner, callback: callback)
-      self?.onEnabledChangeListeners.append(box)
-    }
+  @discardableResult func addOnEnabledChangeListener(_ callback: @escaping (Bool) -> Void) -> Int64 {
+    onEnabledChangeListeners.add(callback)
+  }
+  @discardableResult func removeOnEnabledChangeListener(id: Int64) -> Bool {
+    onEnabledChangeListeners.remove(id: id)
   }
 
-  func addOnBandChangeListener(owner: AnyObject, _ callback: @escaping ([EqualizerBand]) -> Void) {
-    listenersQueue.async(flags: .barrier) { [weak self] in
-      let box = WeakCallbackBox(owner: owner, callback: callback)
-      self?.onBandChangeListeners.append(box)
-    }
+  @discardableResult func addOnBandChangeListener(_ callback: @escaping ([EqualizerBand]) -> Void) -> Int64 {
+    onBandChangeListeners.add(callback)
+  }
+  @discardableResult func removeOnBandChangeListener(id: Int64) -> Bool {
+    onBandChangeListeners.remove(id: id)
   }
 
-  func addOnPresetChangeListener(
-    owner: AnyObject, _ callback: @escaping (Variant_NullType_String?) -> Void
-  ) {
-    listenersQueue.async(flags: .barrier) { [weak self] in
-      let box = WeakCallbackBox(owner: owner, callback: callback)
-      self?.onPresetChangeListeners.append(box)
-    }
+  @discardableResult func addOnPresetChangeListener(_ callback: @escaping (Variant_NullType_String?) -> Void) -> Int64 {
+    onPresetChangeListeners.add(callback)
+  }
+  @discardableResult func removeOnPresetChangeListener(id: Int64) -> Bool {
+    onPresetChangeListeners.remove(id: id)
   }
 
   private func notifyEnabledChange(_ enabled: Bool) {
-    listenersQueue.async(flags: .barrier) { [weak self] in
-      guard let self = self else { return }
-      self.onEnabledChangeListeners.removeAll { !$0.isAlive }
-
-      let callbacks = self.onEnabledChangeListeners.compactMap {
-        $0.isAlive ? $0.callback : nil
-      }
-
-      if !callbacks.isEmpty {
-        DispatchQueue.main.async {
-          for callback in callbacks {
-            callback(enabled)
-          }
-        }
-      }
-    }
+    onEnabledChangeListeners.forEach { $0(enabled) }
   }
 
   private func notifyBandChange(_ bands: [EqualizerBand]) {
-    listenersQueue.async(flags: .barrier) { [weak self] in
-      guard let self = self else { return }
-      self.onBandChangeListeners.removeAll { !$0.isAlive }
-
-      let callbacks = self.onBandChangeListeners.compactMap {
-        $0.isAlive ? $0.callback : nil
-      }
-
-      if !callbacks.isEmpty {
-        DispatchQueue.main.async {
-          for callback in callbacks {
-            callback(bands)
-          }
-        }
-      }
-    }
+    onBandChangeListeners.forEach { $0(bands) }
   }
 
   private func notifyPresetChange(_ presetName: String?) {
-    listenersQueue.async(flags: .barrier) { [weak self] in
-      guard let self = self else { return }
-      self.onPresetChangeListeners.removeAll { !$0.isAlive }
-
-      let callbacks = self.onPresetChangeListeners.compactMap {
-        $0.isAlive ? $0.callback : nil
-      }
-
-      if !callbacks.isEmpty {
-        let variant: Variant_NullType_String? = presetName.map { .second($0) }
-
-        DispatchQueue.main.async {
-          for callback in callbacks {
-            callback(variant)
-          }
-        }
-      }
-    }
+    let variant: Variant_NullType_String? = presetName.map { .second($0) }
+    onPresetChangeListeners.forEach { $0(variant) }
   }
 }
 

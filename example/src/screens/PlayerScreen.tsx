@@ -33,6 +33,7 @@ export default function PlayerScreen() {
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
   const fetchPlaybackSpeed = async () => {
     const current = await TrackPlayer.getPlaybackSpeed();
+    console.log('current', current);
     setPlaybackSpeed(current);
   };
 
