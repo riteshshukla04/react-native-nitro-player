@@ -96,12 +96,3 @@ internal fun TrackPlayerCore.checkUpcomingTracksForUrls(lookahead: Int = 5) {
     if (needUrls.isNotEmpty()) notifyTracksNeedUpdate(needUrls, lookahead)
 }
 
-// ── Playback speed ────────────────────────────────────────────────────────
-
-suspend fun TrackPlayerCore.setPlayBackSpeed(speed: Double) = withPlayerContext {
-    if (isExoInitialized) exo.setPlaybackSpeed(speed.toFloat())
-}
-
-suspend fun TrackPlayerCore.getPlayBackSpeed(): Double = withPlayerContext {
-    if (isExoInitialized) exo.getPlaybackSpeed().toDouble() else 1.0
-}

@@ -16,6 +16,7 @@ import com.margelo.nitro.nitroplayer.media.NitroPlayerMediaBrowserService
 
 suspend fun TrackPlayerCore.play() = withPlayerContext { exo.play() }
 
+
 suspend fun TrackPlayerCore.pause() = withPlayerContext { exo.pause() }
 
 suspend fun TrackPlayerCore.seek(position: Double) = withPlayerContext {
@@ -74,7 +75,7 @@ suspend fun TrackPlayerCore.setRepeatMode(mode: RepeatMode) = withPlayerContext 
 fun TrackPlayerCore.getRepeatMode(): RepeatMode = currentRepeatMode
 
 suspend fun TrackPlayerCore.setVolume(volume: Double) = withPlayerContext {
-    val clamped = volume.coerceIn(0.0, 100.0)
+    val clamped = volume.coerceIn(0.0, 100.0) 
     exo.setVolume((clamped / 100.0).toFloat())
 }
 
@@ -146,4 +147,16 @@ internal fun TrackPlayerCore.emitStateChange(reason: Reason? = null) {
     val actualReason = reason ?: if (exo.playbackState == Player.STATE_ENDED) Reason.END else null
     notifyPlaybackStateChange(state, actualReason)
     mediaSessionManager?.onPlaybackStateChanged(state == TrackPlayerState.PLAYING)
+}
+
+
+// ── Playback speed ────────────────────────────────────────────────────────
+
+suspend fun TrackPlayerCore.setPlayBackSpeed(speed: Double) = withPlayerContext {
+    if (speed <= 0.0) throw IllegalArgumentException("Speed must be greater than 0")
+    if (isExoInitialized) exo.setPlaybackSpeed(speed.toFloat())
+}
+
+suspend fun TrackPlayerCore.getPlayBackSpeed(): Double = withPlayerContext {
+    if (isExoInitialized) exo.getPlaybackSpeed().toDouble() else 1.0
 }
