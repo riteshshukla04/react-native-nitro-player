@@ -11,6 +11,13 @@ tags: [android, ios]
 
 The library provides a set of React hooks to reactively track player state.
 
+## Async native APIs vs hooks
+
+- Calling **`TrackPlayer`**, **`PlayerQueue`**, **`Equalizer`**, or async **`DownloadManager`** methods from your components should use `await` in `async` handlers (or `void` / `.catch()` when intentional fire-and-forget).
+- Hooks expose **React state** and **wrappers**: for example, **`useEqualizer`**’s `setEnabled`, `setBandGain`, `setAllBandGains`, and `reset` return **`Promise<boolean>`** or **`Promise<void>`** because they forward to the native equalizer—`await` them if you need to sequence work or handle errors.
+- **`useDownloadedTracks`** exposes **`isTrackDownloaded`**, **`getDownloadedTrack`**, and similar helpers as **synchronous** lookups against the **last refreshed** in-memory lists. After `refresh()`, data is reloaded asynchronously; for a one-off authoritative check on disk, use **`DownloadManager.isTrackDownloaded`** (async) instead.
+- **`useActualQueue`**’s `refreshQueue` triggers an async native `getActualQueue()` internally; after **`TrackPlayer.playNext`** / **`addToUpNext`**, call **`refreshQueue()`** so the UI reflects the new order (see the hook’s JSDoc).
+
 ## `useOnChangeTrack`
 
 Returns the current track and the reason why it changed.
@@ -95,7 +102,14 @@ const { allPlaylists, allTracks, currentPlaylist } = usePlaylist()
 Controls the 5-band equalizer.
 
 ```typescript
-const { isEnabled, bands, setBandGain, setEnabled } = useEqualizer()
+const { isEnabled, bands, setBandGain, setEnabled, setAllBandGains, reset } =
+  useEqualizer()
+
+// These mirror native Equalizer APIs and return Promises
+await setEnabled(true)
+await setBandGain(0, 3)
+await setAllBandGains([0, 1, 2, 1, 0])
+await reset()
 ```
 
 ## `useDownloadProgress`

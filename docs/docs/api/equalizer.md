@@ -10,14 +10,17 @@ tags: [android, ios]
 
 The `Equalizer` object provides access to the 5-band internal equalizer.
 
+**Commands** that change audio processing (`setEnabled`, band gains, presets, `reset`) return **Promises**. **`isEnabled`**, **`getBandRange`**, and preset **read** APIs are synchronous.
+
 ## Methods
 
 ### `setEnabled(enabled)`
 Enables or disables the equalizer.
 - **enabled**: `boolean`
+- **Returns:** `Promise<void>`
 
 ```typescript
-Equalizer.setEnabled(true)
+await Equalizer.setEnabled(true)
 ```
 
 ### `isEnabled()`
@@ -30,27 +33,29 @@ const isEnabled = Equalizer.isEnabled()
 
 ### `getBands()`
 Returns the current gain settings for all 5 bands.
-- **Returns**: [`EqualizerBand[]`](#equalizerband)
+- **Returns**: `Promise<`[`EqualizerBand[]`](#equalizerband)`>`
 
 ```typescript
-const bands = Equalizer.getBands()
+const bands = await Equalizer.getBands()
 ```
 
 ### `setBandGain(index, gainDb)`
 Sets the gain for a specific band (range: -12dB to +12dB).
 - **index**: `number`
 - **gainDb**: `number`
+- **Returns:** `Promise<void>`
 
 ```typescript
-Equalizer.setBandGain(0, 5.0) // Boost bass by 5dB
+await Equalizer.setBandGain(0, 5.0) // Boost bass by 5dB
 ```
 
 ### `setAllBandGains(gains)`
 Sets all band gains at once.
 - **gains**: `number[]`
+- **Returns:** `Promise<void>`
 
 ```typescript
-Equalizer.setAllBandGains([0, 2, 4, 2, 0])
+await Equalizer.setAllBandGains([0, 2, 4, 2, 0])
 ```
 
 ### `getBandRange()`
@@ -89,9 +94,10 @@ const custom = Equalizer.getCustomPresets()
 ### `applyPreset(presetName)`
 Applies a preset by name.
 - **presetName**: `string`
+- **Returns:** `Promise<void>`
 
 ```typescript
-Equalizer.applyPreset('Bass Boost')
+await Equalizer.applyPreset('Bass Boost')
 ```
 
 ### `getCurrentPresetName()`
@@ -105,32 +111,35 @@ const preset = Equalizer.getCurrentPresetName()
 ### `saveCustomPreset(name)`
 Saves current settings as a custom preset.
 - **name**: `string`
+- **Returns:** `Promise<void>`
 
 ```typescript
-Equalizer.saveCustomPreset('My Custom EQ')
+await Equalizer.saveCustomPreset('My Custom EQ')
 ```
 
 ### `deleteCustomPreset(name)`
 Deletes a custom preset.
 - **name**: `string`
+- **Returns:** `Promise<void>`
 
 ```typescript
-Equalizer.deleteCustomPreset('My Custom EQ')
+await Equalizer.deleteCustomPreset('My Custom EQ')
 ```
 
 ### `getState()`
 Gets the complete equalizer state (enabled, bands, current preset).
-- **Returns**: [`EqualizerState`](#equalizerstate)
+- **Returns**: `Promise<`[`EqualizerState`](#equalizerstate)`>`
 
 ```typescript
-const state = Equalizer.getState()
+const state = await Equalizer.getState()
 ```
 
 ### `reset()`
 Resets the equalizer to flat response (all bands 0dB).
+- **Returns:** `Promise<void>`
 
 ```typescript
-Equalizer.reset()
+await Equalizer.reset()
 ```
 
 ## Types

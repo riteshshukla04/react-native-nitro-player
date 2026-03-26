@@ -42,41 +42,46 @@ npm install react-native-nitro-modules
 
 ### TrackPlayer Methods
 
+Command-style methods return **`Promise<void>`** (or another **`Promise`**) and **reject** on failure; **`getRepeatMode()`** and **`isAndroidAutoConnected()`** are synchronous reads.
+
 | Name                        | Platform | Description                                                         |
 | --------------------------- | -------- | ------------------------------------------------------------------- |
-| `play()`                    | Both     | Resumes playback.                                                   |
-| `pause()`                   | Both     | Pauses playback.                                                    |
+| `play()`                    | Both     | **Async**. Resumes playback.                                        |
+| `pause()`                   | Both     | **Async**. Pauses playback.                                         |
 | `playSong(id, playlistId?)` | Both     | **Async**. Plays a specific song, optionally from a playlist.       |
-| `skipToNext()`              | Both     | Skips to the next track in the queue.                               |
-| `skipToPrevious()`          | Both     | Skips to the previous track.                                        |
-| `seek(position)`            | Both     | Seeks to a specific time position in seconds.                       |
+| `skipToNext()`              | Both     | **Async**. Skips to the next track in the queue.                    |
+| `skipToPrevious()`          | Both     | **Async**. Skips to the previous track.                             |
+| `seek(position)`            | Both     | **Async**. Seeks to a specific time position in seconds.           |
 | `setPlaybackSpeed(speed)`   | Both     | **Async**. Sets playback speed (e.g. 0.5x, 1x, 1.5x, 2x).           |
 | `getPlaybackSpeed()`        | Both     | **Async**. Gets the current playback speed.                         |
-| `setVolume(0-100)`          | Both     | Sets playback volume (0-100).                                       |
-| `setRepeatMode(mode)`       | Both     | Sets repeat mode (`off`, `track`, `Playlist`).                      |
+| `setVolume(0-100)`          | Both     | **Async**. Sets playback volume (0-100).                            |
+| `setRepeatMode(mode)`       | Both     | **Async**. Sets repeat mode (`off`, `track`, `Playlist`).           |
+| `getRepeatMode()`           | Both     | **Sync**. Current repeat mode.                                      |
 | `addToUpNext(id)`           | Both     | **Async**. Adds a track to the "up next" queue (FIFO).              |
 | `playNext(id)`              | Both     | **Async**. Adds a track to the "play next" stack (LIFO).            |
-| `getActualQueue()`          | Both     | **Async**. Gets the full playback queue including temporary tracks. |
-| `getState()`                | Both     | **Async**. Gets the current player state immediately.               |
-| `skipToIndex(index)`        | Both     | **Async**. Skips to a specific index in the actual queue.           |
-| `configure(config)`         | Both     | Configures player settings (Android Auto, etc.).                    |
-| `isAndroidAutoConnected()`  | Both     | Checks if Android Auto is currently connected.                      |
+| `getActualQueue()`          | Both     | **Async**. Full playback queue including temporary tracks.          |
+| `getState()`                | Both     | **Async**. Snapshot of player state.                                |
+| `skipToIndex(index)`        | Both     | **Async**. Skips to an index in the actual queue (`Promise<boolean>`). |
+| `configure(config)`         | Both     | **Async**. Player settings (Android Auto, CarPlay, notification).   |
+| `isAndroidAutoConnected()`  | Both     | **Sync**. Android Auto connection.                                  |
 
 ### PlayerQueue Methods
 
+Mutations return **`Promise<void>`** (or **`Promise<string>`** for `createPlaylist`). **`getPlaylist`** / **`getAllPlaylists`** / **`getCurrentPlaylistId`** are synchronous reads.
+
 | Name                                    | Platform | Description                                             |
 | --------------------------------------- | -------- | ------------------------------------------------------- |
-| `createPlaylist(name, ...)`             | Both     | Creates a new playlist. Returns ID.                     |
-| `deletePlaylist(id)`                    | Both     | Deletes a playlist by ID.                               |
-| `updatePlaylist(id, ...)`               | Both     | Updates playlist metadata (name, description, artwork). |
+| `createPlaylist(name, ...)`             | Both     | **Async**. Creates a playlist; resolves to playlist ID. |
+| `deletePlaylist(id)`                    | Both     | **Async**. Deletes a playlist by ID.                    |
+| `updatePlaylist(id, ...)`               | Both     | **Async**. Updates metadata (name, description, artwork). |
 | `getPlaylist(id)`                       | Both     | Gets a specific playlist object.                        |
 | `getAllPlaylists()`                     | Both     | Gets all available playlists.                           |
-| `loadPlaylist(id)`                      | Both     | Loads a playlist for playback.                          |
+| `loadPlaylist(id)`                      | Both     | **Async**. Loads a playlist for playback.               |
 | `getCurrentPlaylistId()`                | Both     | Gets the ID of the currently playing playlist.          |
-| `addTrackToPlaylist(pid, track)`        | Both     | Adds a track to a playlist.                             |
-| `addTracksToPlaylist(pid, tracks)`      | Both     | Adds multiple tracks to a playlist.                     |
-| `removeTrackFromPlaylist(pid, tid)`     | Both     | Removes a track from a playlist.                        |
-| `reorderTrackInPlaylist(pid, tid, idx)` | Both     | Moves a track to a new position in the playlist.        |
+| `addTrackToPlaylist(pid, track)`        | Both     | **Async**. Adds a track to a playlist.                  |
+| `addTracksToPlaylist(pid, tracks)`      | Both     | **Async**. Adds multiple tracks to a playlist.         |
+| `removeTrackFromPlaylist(pid, tid)`     | Both     | **Async**. Removes a track from a playlist.             |
+| `reorderTrackInPlaylist(pid, tid, idx)` | Both     | **Async**. Moves a track to a new position.             |
 
 ### Platform-Specific APIs
 
@@ -98,16 +103,20 @@ npm install react-native-nitro-modules
 | `pauseDownload(downloadId)`            | Both     | **Async**. Pauses an active download.                         |
 | `resumeDownload(downloadId)`           | Both     | **Async**. Resumes a paused download.                         |
 | `cancelDownload(downloadId)`           | Both     | **Async**. Cancels a download.                                |
-| `isTrackDownloaded(trackId)`           | Both     | Checks if a track is downloaded.                              |
-| `getAllDownloadedTracks()`             | Both     | Gets all downloaded tracks.                                   |
+| `isTrackDownloaded(trackId)`           | Both     | **Async**. Checks on-disk download state.                     |
+| `getAllDownloadedTracks()`             | Both     | **Async**. Lists persisted downloaded tracks.                 |
+| `getEffectiveUrl(track)`               | Both     | **Async**. Local or remote URL from preference + downloads. |
+| `syncDownloads()`                      | Both     | **Async**. Reconcile DB with files; returns cleanup count.    |
 | `deleteDownloadedTrack(trackId)`       | Both     | **Async**. Deletes a downloaded track.                        |
 | `getStorageInfo()`                     | Both     | **Async**. Gets download storage usage information.           |
 | `setPlaybackSourcePreference(pref)`    | Both     | Sets playback source: `'auto'`, `'download'`, or `'network'`. |
 
 > [!NOTE]
-> See [DOWNLOADS.md](./DOWNLOADS.md) for complete downloads API documentation.
+> See [DOWNLOADS.md](../DOWNLOADS.md) for complete downloads API documentation.
 
 ## Quick Start
+
+`TrackPlayer` / `PlayerQueue` commands return **Promises**. The snippets use `await`—run them inside an `async` function, or use `.then()` / `void` / `.catch()` as appropriate.
 
 ### 1. Configure the Player
 
@@ -116,7 +125,7 @@ Configure the player before using it in your app:
 ```typescript
 import { TrackPlayer } from 'react-native-nitro-player'
 
-TrackPlayer.configure({
+await TrackPlayer.configure({
   androidAutoEnabled: true,
   carPlayEnabled: false,
   showInNotification: true,
@@ -147,15 +156,13 @@ const tracks: TrackItem[] = [
   },
 ]
 
-// Create a playlist
-const playlistId = PlayerQueue.createPlaylist(
+const playlistId = await PlayerQueue.createPlaylist(
   'My Playlist',
   'Playlist description',
   'https://example.com/playlist-artwork.jpg'
 )
 
-// Add tracks to the playlist
-PlayerQueue.addTracksToPlaylist(playlistId, tracks)
+await PlayerQueue.addTracksToPlaylist(playlistId, tracks)
 ```
 
 ### 3. Play Music
@@ -163,28 +170,23 @@ PlayerQueue.addTracksToPlaylist(playlistId, tracks)
 ```typescript
 import { TrackPlayer, PlayerQueue } from 'react-native-nitro-player'
 
-// Load and play a playlist
-PlayerQueue.loadPlaylist(playlistId)
+await PlayerQueue.loadPlaylist(playlistId)
 
-// Or play a specific song
 await TrackPlayer.playSong('song-id', playlistId)
 
-// Basic controls
-TrackPlayer.play()
-TrackPlayer.pause()
-TrackPlayer.skipToNext()
-TrackPlayer.skipToPrevious()
-TrackPlayer.seek(30) // Seek to 30 seconds
+await TrackPlayer.play()
+await TrackPlayer.pause()
+await TrackPlayer.skipToNext()
+await TrackPlayer.skipToPrevious()
+await TrackPlayer.seek(30)
 
-// Set repeat mode
-TrackPlayer.setRepeatMode('off') // No repeat
-TrackPlayer.setRepeatMode('Playlist') // Repeat entire playlist
-TrackPlayer.setRepeatMode('track') // Repeat current track
+await TrackPlayer.setRepeatMode('off')
+await TrackPlayer.setRepeatMode('Playlist')
+await TrackPlayer.setRepeatMode('track')
 
-// Set volume (0-100)
-TrackPlayer.setVolume(50) // Set volume to 50%
-TrackPlayer.setVolume(0) // Mute
-TrackPlayer.setVolume(100) // Maximum volume
+await TrackPlayer.setVolume(50)
+await TrackPlayer.setVolume(0)
+await TrackPlayer.setVolume(100)
 
 // Add temporary tracks to queue
 await TrackPlayer.addToUpNext('song-id') // Add to up-next queue (FIFO)
@@ -215,7 +217,7 @@ DownloadManager.setPlaybackSourcePreference('auto')
 ```
 
 > [!NOTE]
-> See [DOWNLOADS.md](./DOWNLOADS.md) for complete offline downloads documentation.
+> See [DOWNLOADS.md](../DOWNLOADS.md) for complete offline downloads documentation.
 
 ## Temporary Queue Management
 
@@ -280,8 +282,7 @@ The actual playback order is:
 Temporary tracks are automatically cleared when:
 
 - `await TrackPlayer.playSong()` is called
-- `PlayerQueue.loadPlaylist()` is called
-- `TrackPlayer.playFromIndex()` is called
+- `await PlayerQueue.loadPlaylist()` is called
 
 ### `skipToIndex(index: number): Promise<boolean>`
 
