@@ -1,5 +1,4 @@
 const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
-const { withRnHarness } = require('react-native-harness/metro');
 
 const path = require('path');
 
@@ -15,4 +14,4 @@ const config = {
 
 const mergedConfig = mergeConfig(getDefaultConfig(__dirname), config);
 
-module.exports = withRnHarness(mergedConfig);
+module.exports = mergedConfig

@@ -873,20 +873,18 @@ describe('TrackPlayer - Comprehensive Tests', () => {
     // // ============================================
 
     describe('Edge Cases', () => {
-        it('should handle playNext with non-existent track ID', async () => {
+        it('should reject playNext with non-existent track ID', async () => {
             await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
 
-            // This should not crash
-            await expect(TrackPlayer.playNext('non-existent-id')).resolves.toBeUndefined();
+            await expect(TrackPlayer.playNext('non-existent-id')).rejects.toThrow();
         });
 
-        it('should handle addToUpNext with non-existent track ID', async () => {
+        it('should reject addToUpNext with non-existent track ID', async () => {
             await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
 
-            // This should not crash
-            await expect(TrackPlayer.addToUpNext('non-existent-id')).resolves.toBeUndefined();
+            await expect(TrackPlayer.addToUpNext('non-existent-id')).rejects.toThrow();
         });
 
         it('should handle seek beyond track duration', async () => {
