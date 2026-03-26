@@ -30,7 +30,7 @@ export default function MoreScreen() {
 
   const handleVolumeChange = (newVolume: number) => {
     setVolume(newVolume);
-    TrackPlayer.setVolume(newVolume);
+    void TrackPlayer.setVolume(newVolume);
   };
 
   return (

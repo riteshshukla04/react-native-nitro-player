@@ -43,21 +43,25 @@ export function useDownloadedTracks(): UseDownloadedTracksResult {
   const refresh = useCallback(() => {
     if (!isMounted.current) return
 
-    try {
-      const tracks = DownloadManager.getAllDownloadedTracks()
-      const playlists = DownloadManager.getAllDownloadedPlaylists()
+    const run = async () => {
+      try {
+        const tracks = await DownloadManager.getAllDownloadedTracks()
+        const playlists = await DownloadManager.getAllDownloadedPlaylists()
 
-      if (isMounted.current) {
-        setDownloadedTracks(tracks)
-        setDownloadedPlaylists(playlists)
-        setIsLoading(false)
-      }
-    } catch (error) {
-      console.error('[useDownloadedTracks] Error refreshing:', error)
-      if (isMounted.current) {
-        setIsLoading(false)
+        if (isMounted.current) {
+          setDownloadedTracks(tracks)
+          setDownloadedPlaylists(playlists)
+          setIsLoading(false)
+        }
+      } catch (error) {
+        console.error('[useDownloadedTracks] Error refreshing:', error)
+        if (isMounted.current) {
+          setIsLoading(false)
+        }
       }
     }
+
+    void run()
   }, [])
 
   useEffect(() => {

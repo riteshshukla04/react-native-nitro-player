@@ -41,14 +41,13 @@ export default function PlaylistsScreen() {
   }, [refreshPlaylists]);
 
   const loadPlaylist = useCallback((playlistId: string) => {
-    PlayerQueue.loadPlaylist(playlistId);
-    // Refresh to update currentPlaylistId after loading
-    setTimeout(refreshPlaylists, 100);
+    void PlayerQueue.loadPlaylist(playlistId).then(() => {
+      setTimeout(refreshPlaylists, 100);
+    });
   }, [refreshPlaylists]);
 
   const deletePlaylist = useCallback((playlistId: string) => {
-    PlayerQueue.deletePlaylist(playlistId);
-    refreshPlaylists();
+    void PlayerQueue.deletePlaylist(playlistId).then(() => refreshPlaylists());
   }, [refreshPlaylists]);
 
   return (

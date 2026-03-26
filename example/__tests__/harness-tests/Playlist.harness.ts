@@ -25,16 +25,16 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
   let createdPlaylistIds: string[] = [];
 
   // Clear all existing playlists before running tests
-  beforeAll(() => {
+  beforeAll(async () => {
     console.log('Clearing all existing playlists before tests...');
     const existingPlaylists = PlayerQueue.getAllPlaylists();
-    existingPlaylists.forEach((playlist) => {
+    for (const playlist of existingPlaylists) {
       try {
-        PlayerQueue.deletePlaylist(playlist.id);
+        await PlayerQueue.deletePlaylist(playlist.id);
       } catch (e) {
         console.warn('Error deleting existing playlist:', e);
       }
-    });
+    }
   });
 
   beforeEach(() => {
@@ -42,17 +42,16 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
     createdPlaylistIds = [];
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     console.log('Cleaning up test...');
 
-    // Clean up all created playlists
-    createdPlaylistIds.forEach(id => {
+    for (const id of createdPlaylistIds) {
       try {
-        PlayerQueue.deletePlaylist(id);
+        await PlayerQueue.deletePlaylist(id);
       } catch (e) {
         console.warn('Error deleting playlist:', e);
       }
-    });
+    }
     createdPlaylistIds = [];
   });
 
@@ -61,15 +60,15 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
   // ============================================
 
   describe('Playlist Creation', () => {
-    it('should create playlist with all fields', () => {
-      const playlistId = PlayerQueue.createPlaylist(
+    it('should create playlist with all fields', async () => {
+      const playlistId = await PlayerQueue.createPlaylist(
         'My Playlist',
         'Playlist description',
         'https://example.com/playlist-artwork.jpg'
       );
       createdPlaylistIds.push(playlistId);
 
-      PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
+      await PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
 
       const actualPlaylist = [{
         artwork: 'https://example.com/playlist-artwork.jpg',
@@ -82,8 +81,8 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
       expect(PlayerQueue.getAllPlaylists()).toStrictEqual(actualPlaylist);
     });
 
-    it('should create playlist with minimal fields', () => {
-      const playlistId = PlayerQueue.createPlaylist('Minimal Playlist');
+    it('should create playlist with minimal fields', async () => {
+      const playlistId = await PlayerQueue.createPlaylist('Minimal Playlist');
       createdPlaylistIds.push(playlistId);
 
       const playlist = PlayerQueue.getPlaylist(playlistId);
@@ -95,16 +94,16 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
       expect(playlist?.tracks).toStrictEqual([]);
     });
 
-    it('should create multiple playlists independently', () => {
-      const playlist1Id = PlayerQueue.createPlaylist('Playlist 1', 'First playlist');
-      const playlist2Id = PlayerQueue.createPlaylist('Playlist 2', 'Second playlist');
-      const playlist3Id = PlayerQueue.createPlaylist('Playlist 3', 'Third playlist');
+    it('should create multiple playlists independently', async () => {
+      const playlist1Id = await PlayerQueue.createPlaylist('Playlist 1', 'First playlist');
+      const playlist2Id = await PlayerQueue.createPlaylist('Playlist 2', 'Second playlist');
+      const playlist3Id = await PlayerQueue.createPlaylist('Playlist 3', 'Third playlist');
 
       createdPlaylistIds.push(playlist1Id, playlist2Id, playlist3Id);
 
-      PlayerQueue.addTracksToPlaylist(playlist1Id, [sampleTracks1[0]]);
-      PlayerQueue.addTracksToPlaylist(playlist2Id, [sampleTracks1[1]]);
-      PlayerQueue.addTracksToPlaylist(playlist3Id, [sampleTracks1[2]]);
+      await PlayerQueue.addTracksToPlaylist(playlist1Id, [sampleTracks1[0]]);
+      await PlayerQueue.addTracksToPlaylist(playlist2Id, [sampleTracks1[1]]);
+      await PlayerQueue.addTracksToPlaylist(playlist3Id, [sampleTracks1[2]]);
 
       const allPlaylists = PlayerQueue.getAllPlaylists();
 
@@ -116,11 +115,11 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
   });
 
   describe('Playlist Retrieval', () => {
-    it('should get playlist by id', () => {
-      const playlistId = PlayerQueue.createPlaylist('Test Playlist', 'Test description');
+    it('should get playlist by id', async () => {
+      const playlistId = await PlayerQueue.createPlaylist('Test Playlist', 'Test description');
       createdPlaylistIds.push(playlistId);
 
-      PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
+      await PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
 
       const playlist = PlayerQueue.getPlaylist(playlistId);
 
@@ -131,14 +130,14 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
       expect(playlist?.tracks).toStrictEqual(sampleTracks1);
     });
 
-    it('should return null for non-existent playlist', () => {
+    it('should return null for non-existent playlist', async () => {
       const playlist = PlayerQueue.getPlaylist('non-existent-id');
       expect(playlist).toBeNull();
     });
 
-    it('should get all playlists', () => {
-      const id1 = PlayerQueue.createPlaylist('Playlist A');
-      const id2 = PlayerQueue.createPlaylist('Playlist B');
+    it('should get all playlists', async () => {
+      const id1 = await PlayerQueue.createPlaylist('Playlist A');
+      const id2 = await PlayerQueue.createPlaylist('Playlist B');
       createdPlaylistIds.push(id1, id2);
 
       const allPlaylists = PlayerQueue.getAllPlaylists();
@@ -150,43 +149,43 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
   });
 
   describe('Playlist Update', () => {
-    it('should update playlist name', () => {
-      const playlistId = PlayerQueue.createPlaylist('Original Name', 'Description');
+    it('should update playlist name', async () => {
+      const playlistId = await PlayerQueue.createPlaylist('Original Name', 'Description');
       createdPlaylistIds.push(playlistId);
 
-      PlayerQueue.updatePlaylist(playlistId, 'Updated Name');
+      await PlayerQueue.updatePlaylist(playlistId, 'Updated Name');
 
       const playlist = PlayerQueue.getPlaylist(playlistId);
       expect(playlist?.name).toBe('Updated Name');
       expect(playlist?.description).toBe('Description');
     });
 
-    it('should update playlist description', () => {
-      const playlistId = PlayerQueue.createPlaylist('Name', 'Original Description');
+    it('should update playlist description', async () => {
+      const playlistId = await PlayerQueue.createPlaylist('Name', 'Original Description');
       createdPlaylistIds.push(playlistId);
 
-      PlayerQueue.updatePlaylist(playlistId, undefined, 'Updated Description');
+      await PlayerQueue.updatePlaylist(playlistId, undefined, 'Updated Description');
 
       const playlist = PlayerQueue.getPlaylist(playlistId);
       expect(playlist?.name).toBe('Name');
       expect(playlist?.description).toBe('Updated Description');
     });
 
-    it('should update playlist artwork', () => {
-      const playlistId = PlayerQueue.createPlaylist('Name', 'Description', 'original.jpg');
+    it('should update playlist artwork', async () => {
+      const playlistId = await PlayerQueue.createPlaylist('Name', 'Description', 'original.jpg');
       createdPlaylistIds.push(playlistId);
 
-      PlayerQueue.updatePlaylist(playlistId, undefined, undefined, 'updated.jpg');
+      await PlayerQueue.updatePlaylist(playlistId, undefined, undefined, 'updated.jpg');
 
       const playlist = PlayerQueue.getPlaylist(playlistId);
       expect(playlist?.artwork).toBe('updated.jpg');
     });
 
-    it('should update all playlist fields at once', () => {
-      const playlistId = PlayerQueue.createPlaylist('Old Name', 'Old Desc', 'old.jpg');
+    it('should update all playlist fields at once', async () => {
+      const playlistId = await PlayerQueue.createPlaylist('Old Name', 'Old Desc', 'old.jpg');
       createdPlaylistIds.push(playlistId);
 
-      PlayerQueue.updatePlaylist(playlistId, 'New Name', 'New Desc', 'new.jpg');
+      await PlayerQueue.updatePlaylist(playlistId, 'New Name', 'New Desc', 'new.jpg');
 
       const playlist = PlayerQueue.getPlaylist(playlistId);
       expect(playlist?.name).toBe('New Name');
@@ -196,22 +195,22 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
   });
 
   describe('Playlist Deletion', () => {
-    it('should delete playlist', () => {
-      const playlistId = PlayerQueue.createPlaylist('To Delete');
-      PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
+    it('should delete playlist', async () => {
+      const playlistId = await PlayerQueue.createPlaylist('To Delete');
+      await PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
 
-      PlayerQueue.deletePlaylist(playlistId);
+      await PlayerQueue.deletePlaylist(playlistId);
 
       const playlist = PlayerQueue.getPlaylist(playlistId);
       expect(playlist).toBeNull();
     });
 
-    it('should remove deleted playlist from all playlists', () => {
-      const id1 = PlayerQueue.createPlaylist('Keep This');
-      const id2 = PlayerQueue.createPlaylist('Delete This');
+    it('should remove deleted playlist from all playlists', async () => {
+      const id1 = await PlayerQueue.createPlaylist('Keep This');
+      const id2 = await PlayerQueue.createPlaylist('Delete This');
       createdPlaylistIds.push(id1); // Only track the one we keep
 
-      PlayerQueue.deletePlaylist(id2);
+      await PlayerQueue.deletePlaylist(id2);
 
       const allPlaylists = PlayerQueue.getAllPlaylists();
       expect(allPlaylists.length).toBe(1);
@@ -224,34 +223,34 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
   // ============================================
 
   describe('Adding Tracks', () => {
-    it('should add single track to playlist', () => {
-      const playlistId = PlayerQueue.createPlaylist('Single Track Test');
+    it('should add single track to playlist', async () => {
+      const playlistId = await PlayerQueue.createPlaylist('Single Track Test');
       createdPlaylistIds.push(playlistId);
 
-      PlayerQueue.addTrackToPlaylist(playlistId, sampleTracks1[0]);
+      await PlayerQueue.addTrackToPlaylist(playlistId, sampleTracks1[0]);
 
       const playlist = PlayerQueue.getPlaylist(playlistId);
       expect(playlist?.tracks.length).toBe(1);
       expect(playlist?.tracks[0]).toStrictEqual(sampleTracks1[0]);
     });
 
-    it('should add multiple tracks to playlist', () => {
-      const playlistId = PlayerQueue.createPlaylist('Multiple Tracks Test');
+    it('should add multiple tracks to playlist', async () => {
+      const playlistId = await PlayerQueue.createPlaylist('Multiple Tracks Test');
       createdPlaylistIds.push(playlistId);
 
-      PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
+      await PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
 
       const playlist = PlayerQueue.getPlaylist(playlistId);
       expect(playlist?.tracks.length).toBe(sampleTracks1.length);
       expect(playlist?.tracks).toStrictEqual(sampleTracks1);
     });
 
-    it('should add track at specific index', () => {
-      const playlistId = PlayerQueue.createPlaylist('Index Test');
+    it('should add track at specific index', async () => {
+      const playlistId = await PlayerQueue.createPlaylist('Index Test');
       createdPlaylistIds.push(playlistId);
 
-      PlayerQueue.addTracksToPlaylist(playlistId, [sampleTracks1[0], sampleTracks1[2]]);
-      PlayerQueue.addTrackToPlaylist(playlistId, sampleTracks1[1], 1);
+      await PlayerQueue.addTracksToPlaylist(playlistId, [sampleTracks1[0], sampleTracks1[2]]);
+      await PlayerQueue.addTrackToPlaylist(playlistId, sampleTracks1[1], 1);
 
       const playlist = PlayerQueue.getPlaylist(playlistId);
       expect(playlist?.tracks.length).toBe(3);
@@ -260,13 +259,13 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
       expect(playlist?.tracks[2].id).toBe('3');
     });
 
-    it('should add tracks at specific index', () => {
-      const playlistId = PlayerQueue.createPlaylist('Batch Index Test');
+    it('should add tracks at specific index', async () => {
+      const playlistId = await PlayerQueue.createPlaylist('Batch Index Test');
       createdPlaylistIds.push(playlistId);
 
-      PlayerQueue.addTrackToPlaylist(playlistId, sampleTracks1[0]);
-      PlayerQueue.addTrackToPlaylist(playlistId, sampleTracks1[2]);
-      PlayerQueue.addTracksToPlaylist(playlistId, [sampleTracks2[0], sampleTracks2[1]], 1);
+      await PlayerQueue.addTrackToPlaylist(playlistId, sampleTracks1[0]);
+      await PlayerQueue.addTrackToPlaylist(playlistId, sampleTracks1[2]);
+      await PlayerQueue.addTracksToPlaylist(playlistId, [sampleTracks2[0], sampleTracks2[1]], 1);
 
       const playlist = PlayerQueue.getPlaylist(playlistId);
       expect(playlist?.tracks.length).toBe(4);
@@ -276,12 +275,12 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
       expect(playlist?.tracks[3].id).toBe('3');
     });
 
-    it('should handle adding duplicate tracks', () => {
-      const playlistId = PlayerQueue.createPlaylist('Duplicate Test');
+    it('should handle adding duplicate tracks', async () => {
+      const playlistId = await PlayerQueue.createPlaylist('Duplicate Test');
       createdPlaylistIds.push(playlistId);
 
-      PlayerQueue.addTrackToPlaylist(playlistId, sampleTracks1[0]);
-      PlayerQueue.addTrackToPlaylist(playlistId, sampleTracks1[0]);
+      await PlayerQueue.addTrackToPlaylist(playlistId, sampleTracks1[0]);
+      await PlayerQueue.addTrackToPlaylist(playlistId, sampleTracks1[0]);
 
       const playlist = PlayerQueue.getPlaylist(playlistId);
       expect(playlist?.tracks.length).toBe(2);
@@ -291,41 +290,41 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
   });
 
   describe('Removing Tracks', () => {
-    it('should remove track from playlist', () => {
-      const playlistId = PlayerQueue.createPlaylist('Remove Test');
+    it('should remove track from playlist', async () => {
+      const playlistId = await PlayerQueue.createPlaylist('Remove Test');
       createdPlaylistIds.push(playlistId);
 
-      PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
-      PlayerQueue.removeTrackFromPlaylist(playlistId, '2');
+      await PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
+      await PlayerQueue.removeTrackFromPlaylist(playlistId, '2');
 
       const playlist = PlayerQueue.getPlaylist(playlistId);
       expect(playlist?.tracks.length).toBe(2);
       expect(playlist?.tracks.map(t => t.id)).toStrictEqual(['1', '3']);
     });
 
-    it('should remove all instances of duplicate tracks', () => {
-      const playlistId = PlayerQueue.createPlaylist('Remove Duplicates Test');
+    it('should remove all instances of duplicate tracks', async () => {
+      const playlistId = await PlayerQueue.createPlaylist('Remove Duplicates Test');
       createdPlaylistIds.push(playlistId);
 
-      PlayerQueue.addTrackToPlaylist(playlistId, sampleTracks1[0]);
-      PlayerQueue.addTrackToPlaylist(playlistId, sampleTracks1[1]);
-      PlayerQueue.addTrackToPlaylist(playlistId, sampleTracks1[0]);
+      await PlayerQueue.addTrackToPlaylist(playlistId, sampleTracks1[0]);
+      await PlayerQueue.addTrackToPlaylist(playlistId, sampleTracks1[1]);
+      await PlayerQueue.addTrackToPlaylist(playlistId, sampleTracks1[0]);
 
-      PlayerQueue.removeTrackFromPlaylist(playlistId, '1');
+      await PlayerQueue.removeTrackFromPlaylist(playlistId, '1');
 
       const playlist = PlayerQueue.getPlaylist(playlistId);
       expect(playlist?.tracks.length).toBe(1);
       expect(playlist?.tracks[0].id).toBe('2');
     });
 
-    it('should handle removing non-existent track', () => {
-      const playlistId = PlayerQueue.createPlaylist('Remove Non-existent Test');
+    it('should handle removing non-existent track', async () => {
+      const playlistId = await PlayerQueue.createPlaylist('Remove Non-existent Test');
       createdPlaylistIds.push(playlistId);
 
-      PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
+      await PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
 
       // This should not throw an error
-      PlayerQueue.removeTrackFromPlaylist(playlistId, 'non-existent-id');
+      await PlayerQueue.removeTrackFromPlaylist(playlistId, 'non-existent-id');
 
       const playlist = PlayerQueue.getPlaylist(playlistId);
       expect(playlist?.tracks.length).toBe(3);
@@ -333,41 +332,41 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
   });
 
   describe('Reordering Tracks', () => {
-    it('should reorder track to beginning', () => {
-      const playlistId = PlayerQueue.createPlaylist('Reorder Test');
+    it('should reorder track to beginning', async () => {
+      const playlistId = await PlayerQueue.createPlaylist('Reorder Test');
       createdPlaylistIds.push(playlistId);
 
-      PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
-      PlayerQueue.reorderTrackInPlaylist(playlistId, '3', 0);
+      await PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
+      await PlayerQueue.reorderTrackInPlaylist(playlistId, '3', 0);
 
       const playlist = PlayerQueue.getPlaylist(playlistId);
       expect(playlist?.tracks.map(t => t.id)).toStrictEqual(['3', '1', '2']);
     });
 
-    it('should reorder track to end', () => {
-      const playlistId = PlayerQueue.createPlaylist('Reorder End Test');
+    it('should reorder track to end', async () => {
+      const playlistId = await PlayerQueue.createPlaylist('Reorder End Test');
       createdPlaylistIds.push(playlistId);
 
-      PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
-      PlayerQueue.reorderTrackInPlaylist(playlistId, '1', 2);
+      await PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
+      await PlayerQueue.reorderTrackInPlaylist(playlistId, '1', 2);
 
       const playlist = PlayerQueue.getPlaylist(playlistId);
       expect(playlist?.tracks.map(t => t.id)).toStrictEqual(['2', '3', '1']);
     });
 
-    it('should reorder track to middle', () => {
-      const playlistId = PlayerQueue.createPlaylist('Reorder Middle Test');
+    it('should reorder track to middle', async () => {
+      const playlistId = await PlayerQueue.createPlaylist('Reorder Middle Test');
       createdPlaylistIds.push(playlistId);
 
-      PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
-      PlayerQueue.reorderTrackInPlaylist(playlistId, '1', 1);
+      await PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
+      await PlayerQueue.reorderTrackInPlaylist(playlistId, '1', 1);
 
       const playlist = PlayerQueue.getPlaylist(playlistId);
       expect(playlist?.tracks.map(t => t.id)).toStrictEqual(['2', '1', '3']);
     });
 
-    it('should handle complex reordering sequence', () => {
-      const playlistId = PlayerQueue.createPlaylist('Complex Reorder Test');
+    it('should handle complex reordering sequence', async () => {
+      const playlistId = await PlayerQueue.createPlaylist('Complex Reorder Test');
       createdPlaylistIds.push(playlistId);
 
       const tracks = [
@@ -378,20 +377,20 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
         createTestTrack('E', 'Track E'),
       ];
 
-      PlayerQueue.addTracksToPlaylist(playlistId, tracks);
+      await PlayerQueue.addTracksToPlaylist(playlistId, tracks);
 
       // Move E to position 1
-      PlayerQueue.reorderTrackInPlaylist(playlistId, 'E', 1);
+      await PlayerQueue.reorderTrackInPlaylist(playlistId, 'E', 1);
       let playlist = PlayerQueue.getPlaylist(playlistId);
       expect(playlist?.tracks.map(t => t.id)).toStrictEqual(['A', 'E', 'B', 'C', 'D']);
 
       // Move A to position 3
-      PlayerQueue.reorderTrackInPlaylist(playlistId, 'A', 3);
+      await PlayerQueue.reorderTrackInPlaylist(playlistId, 'A', 3);
       playlist = PlayerQueue.getPlaylist(playlistId);
       expect(playlist?.tracks.map(t => t.id)).toStrictEqual(['E', 'B', 'C', 'A', 'D']);
 
       // Move D to position 0
-      PlayerQueue.reorderTrackInPlaylist(playlistId, 'D', 0);
+      await PlayerQueue.reorderTrackInPlaylist(playlistId, 'D', 0);
       playlist = PlayerQueue.getPlaylist(playlistId);
       expect(playlist?.tracks.map(t => t.id)).toStrictEqual(['D', 'E', 'B', 'C', 'A']);
     });
@@ -402,29 +401,29 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
   // ============================================
 
   describe('Playlist Loading', () => {
-    it('should load playlist', () => {
-      const playlistId = PlayerQueue.createPlaylist('Load Test');
+    it('should load playlist', async () => {
+      const playlistId = await PlayerQueue.createPlaylist('Load Test');
       createdPlaylistIds.push(playlistId);
 
-      PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
-      PlayerQueue.loadPlaylist(playlistId);
+      await PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
+      await PlayerQueue.loadPlaylist(playlistId);
 
       const currentPlaylistId = PlayerQueue.getCurrentPlaylistId();
       expect(currentPlaylistId).toBe(playlistId);
     });
 
-    it('should switch between playlists', () => {
-      const playlist1Id = PlayerQueue.createPlaylist('Playlist 1');
-      const playlist2Id = PlayerQueue.createPlaylist('Playlist 2');
+    it('should switch between playlists', async () => {
+      const playlist1Id = await PlayerQueue.createPlaylist('Playlist 1');
+      const playlist2Id = await PlayerQueue.createPlaylist('Playlist 2');
       createdPlaylistIds.push(playlist1Id, playlist2Id);
 
-      PlayerQueue.addTracksToPlaylist(playlist1Id, sampleTracks1);
-      PlayerQueue.addTracksToPlaylist(playlist2Id, sampleTracks2);
+      await PlayerQueue.addTracksToPlaylist(playlist1Id, sampleTracks1);
+      await PlayerQueue.addTracksToPlaylist(playlist2Id, sampleTracks2);
 
-      PlayerQueue.loadPlaylist(playlist1Id);
+      await PlayerQueue.loadPlaylist(playlist1Id);
       expect(PlayerQueue.getCurrentPlaylistId()).toBe(playlist1Id);
 
-      PlayerQueue.loadPlaylist(playlist2Id);
+      await PlayerQueue.loadPlaylist(playlist2Id);
       expect(PlayerQueue.getCurrentPlaylistId()).toBe(playlist2Id);
     });
   });
@@ -434,20 +433,20 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
   // ============================================
 
   describe('Edge Cases', () => {
-    it('should handle empty playlist operations', () => {
-      const playlistId = PlayerQueue.createPlaylist('Empty Playlist');
+    it('should handle empty playlist operations', async () => {
+      const playlistId = await PlayerQueue.createPlaylist('Empty Playlist');
       createdPlaylistIds.push(playlistId);
 
       const playlist = PlayerQueue.getPlaylist(playlistId);
       expect(playlist?.tracks).toStrictEqual([]);
 
       // Try to remove from empty playlist
-      PlayerQueue.removeTrackFromPlaylist(playlistId, 'non-existent');
+      await PlayerQueue.removeTrackFromPlaylist(playlistId, 'non-existent');
       expect(playlist?.tracks).toStrictEqual([]);
     });
 
-    it('should handle large playlist with many tracks', () => {
-      const playlistId = PlayerQueue.createPlaylist('Large Playlist');
+    it('should handle large playlist with many tracks', async () => {
+      const playlistId = await PlayerQueue.createPlaylist('Large Playlist');
       createdPlaylistIds.push(playlistId);
 
       const manyTracks: TrackItem[] = [];
@@ -455,30 +454,30 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
         manyTracks.push(createTestTrack(`track-${i}`, `Track ${i}`));
       }
 
-      PlayerQueue.addTracksToPlaylist(playlistId, manyTracks);
+      await PlayerQueue.addTracksToPlaylist(playlistId, manyTracks);
 
       const playlist = PlayerQueue.getPlaylist(playlistId);
       expect(playlist?.tracks.length).toBe(100);
     });
 
-    it('should maintain playlist integrity after multiple operations', () => {
-      const playlistId = PlayerQueue.createPlaylist('Integrity Test');
+    it('should maintain playlist integrity after multiple operations', async () => {
+      const playlistId = await PlayerQueue.createPlaylist('Integrity Test');
       createdPlaylistIds.push(playlistId);
 
       // Add tracks
-      PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
+      await PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
 
       // Update playlist
-      PlayerQueue.updatePlaylist(playlistId, 'Updated Name', 'Updated Description');
+      await PlayerQueue.updatePlaylist(playlistId, 'Updated Name', 'Updated Description');
 
       // Add more tracks
-      PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks2);
+      await PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks2);
 
       // Remove a track
-      PlayerQueue.removeTrackFromPlaylist(playlistId, '2');
+      await PlayerQueue.removeTrackFromPlaylist(playlistId, '2');
 
       // Reorder tracks
-      PlayerQueue.reorderTrackInPlaylist(playlistId, '4', 0);
+      await PlayerQueue.reorderTrackInPlaylist(playlistId, '4', 0);
 
       const playlist = PlayerQueue.getPlaylist(playlistId);
 
@@ -488,28 +487,28 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
       expect(playlist?.tracks[0].id).toBe('4');
     });
 
-    it('should handle rapid successive operations', () => {
-      const playlistId = PlayerQueue.createPlaylist('Rapid Operations Test');
+    it('should handle rapid successive operations', async () => {
+      const playlistId = await PlayerQueue.createPlaylist('Rapid Operations Test');
       createdPlaylistIds.push(playlistId);
 
       // Perform multiple operations in quick succession
-      PlayerQueue.addTrackToPlaylist(playlistId, sampleTracks1[0]);
-      PlayerQueue.addTrackToPlaylist(playlistId, sampleTracks1[1]);
-      PlayerQueue.addTrackToPlaylist(playlistId, sampleTracks1[2]);
-      PlayerQueue.removeTrackFromPlaylist(playlistId, '2');
-      PlayerQueue.addTrackToPlaylist(playlistId, sampleTracks2[0]);
-      PlayerQueue.reorderTrackInPlaylist(playlistId, '4', 0);
+      await PlayerQueue.addTrackToPlaylist(playlistId, sampleTracks1[0]);
+      await PlayerQueue.addTrackToPlaylist(playlistId, sampleTracks1[1]);
+      await PlayerQueue.addTrackToPlaylist(playlistId, sampleTracks1[2]);
+      await PlayerQueue.removeTrackFromPlaylist(playlistId, '2');
+      await PlayerQueue.addTrackToPlaylist(playlistId, sampleTracks2[0]);
+      await PlayerQueue.reorderTrackInPlaylist(playlistId, '4', 0);
 
       const playlist = PlayerQueue.getPlaylist(playlistId);
       expect(playlist?.tracks.length).toBe(3);
       expect(playlist?.tracks[0].id).toBe('4');
     });
 
-    it('should handle special characters in playlist metadata', () => {
+    it('should handle special characters in playlist metadata', async () => {
       const specialName = "Test's \"Playlist\" with <special> & chars!";
       const specialDesc = "Description with émojis 🎵🎶 and symbols @#$%";
 
-      const playlistId = PlayerQueue.createPlaylist(specialName, specialDesc);
+      const playlistId = await PlayerQueue.createPlaylist(specialName, specialDesc);
       createdPlaylistIds.push(playlistId);
 
       const playlist = PlayerQueue.getPlaylist(playlistId);
@@ -517,8 +516,8 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
       expect(playlist?.description).toBe(specialDesc);
     });
 
-    it('should handle playlist with tracks having null/undefined optional fields', () => {
-      const playlistId = PlayerQueue.createPlaylist('Null Fields Test');
+    it('should handle playlist with tracks having null/undefined optional fields', async () => {
+      const playlistId = await PlayerQueue.createPlaylist('Null Fields Test');
       createdPlaylistIds.push(playlistId);
 
       const trackWithNulls: TrackItem = {
@@ -531,7 +530,7 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
         artwork: null,
       };
 
-      PlayerQueue.addTrackToPlaylist(playlistId, trackWithNulls);
+      await PlayerQueue.addTrackToPlaylist(playlistId, trackWithNulls);
 
       const playlist = PlayerQueue.getPlaylist(playlistId);
       expect(playlist?.tracks[0].artwork).toBeNull();
@@ -539,25 +538,25 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
   });
 
   describe('Complex Integration Scenarios', () => {
-    it('should handle creating, modifying, and deleting multiple playlists', () => {
+    it('should handle creating, modifying, and deleting multiple playlists', async () => {
       // Create multiple playlists
       const ids = [
-        PlayerQueue.createPlaylist('Rock Classics'),
-        PlayerQueue.createPlaylist('Jazz Standards'),
-        PlayerQueue.createPlaylist('Electronic Beats'),
+        await PlayerQueue.createPlaylist('Rock Classics'),
+        await PlayerQueue.createPlaylist('Jazz Standards'),
+        await PlayerQueue.createPlaylist('Electronic Beats'),
       ];
       createdPlaylistIds.push(...ids);
 
       // Add different tracks to each
-      PlayerQueue.addTracksToPlaylist(ids[0], [sampleTracks1[0]]);
-      PlayerQueue.addTracksToPlaylist(ids[1], [sampleTracks1[1]]);
-      PlayerQueue.addTracksToPlaylist(ids[2], [sampleTracks1[2]]);
+      await PlayerQueue.addTracksToPlaylist(ids[0], [sampleTracks1[0]]);
+      await PlayerQueue.addTracksToPlaylist(ids[1], [sampleTracks1[1]]);
+      await PlayerQueue.addTracksToPlaylist(ids[2], [sampleTracks1[2]]);
 
       // Update one
-      PlayerQueue.updatePlaylist(ids[1], 'Modern Jazz');
+      await PlayerQueue.updatePlaylist(ids[1], 'Modern Jazz');
 
       // Delete one
-      PlayerQueue.deletePlaylist(ids[2]);
+      await PlayerQueue.deletePlaylist(ids[2]);
       createdPlaylistIds = createdPlaylistIds.filter(id => id !== ids[2]);
 
       const allPlaylists = PlayerQueue.getAllPlaylists();
@@ -566,17 +565,17 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
       expect(allPlaylists.find(p => p.name === 'Electronic Beats')).toBeUndefined();
     });
 
-    it('should handle moving tracks between playlists', () => {
-      const playlist1Id = PlayerQueue.createPlaylist('Source Playlist');
-      const playlist2Id = PlayerQueue.createPlaylist('Destination Playlist');
+    it('should handle moving tracks between playlists', async () => {
+      const playlist1Id = await PlayerQueue.createPlaylist('Source Playlist');
+      const playlist2Id = await PlayerQueue.createPlaylist('Destination Playlist');
       createdPlaylistIds.push(playlist1Id, playlist2Id);
 
-      PlayerQueue.addTracksToPlaylist(playlist1Id, sampleTracks1);
+      await PlayerQueue.addTracksToPlaylist(playlist1Id, sampleTracks1);
 
       // "Move" a track by adding to second playlist and removing from first
       const trackToMove = sampleTracks1[1];
-      PlayerQueue.addTrackToPlaylist(playlist2Id, trackToMove);
-      PlayerQueue.removeTrackFromPlaylist(playlist1Id, trackToMove.id);
+      await PlayerQueue.addTrackToPlaylist(playlist2Id, trackToMove);
+      await PlayerQueue.removeTrackFromPlaylist(playlist1Id, trackToMove.id);
 
       const playlist1 = PlayerQueue.getPlaylist(playlist1Id);
       const playlist2 = PlayerQueue.getPlaylist(playlist2Id);
@@ -586,14 +585,14 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
       expect(playlist2?.tracks[0].id).toBe(trackToMove.id);
     });
 
-    it('should handle playlist with mixed track sources', () => {
-      const playlistId = PlayerQueue.createPlaylist('Mixed Sources');
+    it('should handle playlist with mixed track sources', async () => {
+      const playlistId = await PlayerQueue.createPlaylist('Mixed Sources');
       createdPlaylistIds.push(playlistId);
 
       // Add tracks from different sample sets
-      PlayerQueue.addTracksToPlaylist(playlistId, [sampleTracks1[0], sampleTracks1[1]]);
-      PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks2);
-      PlayerQueue.addTrackToPlaylist(playlistId, createTestTrack('custom', 'Custom Track'));
+      await PlayerQueue.addTracksToPlaylist(playlistId, [sampleTracks1[0], sampleTracks1[1]]);
+      await PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks2);
+      await PlayerQueue.addTrackToPlaylist(playlistId, createTestTrack('custom', 'Custom Track'));
 
       const playlist = PlayerQueue.getPlaylist(playlistId);
       expect(playlist?.tracks.length).toBe(5);
@@ -620,7 +619,7 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
         operations.push(operation);
       });
 
-      const playlistId = PlayerQueue.createPlaylist('Callback Test', 'Test Description');
+      const playlistId = await PlayerQueue.createPlaylist('Callback Test', 'Test Description');
       createdPlaylistIds.push(playlistId);
 
       // Wait for callback to trigger
@@ -632,7 +631,7 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
     });
 
     it('should trigger onPlaylistsChanged when playlist is deleted', async () => {
-      const playlistId = PlayerQueue.createPlaylist('Delete Callback Test');
+      const playlistId = await PlayerQueue.createPlaylist('Delete Callback Test');
       createdPlaylistIds.push(playlistId);
 
       const operations: (string | undefined)[] = [];
@@ -646,7 +645,7 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
       });
 
       await waitForNextTick();
-      PlayerQueue.deletePlaylist(playlistId);
+      await PlayerQueue.deletePlaylist(playlistId);
       createdPlaylistIds = createdPlaylistIds.filter(id => id !== playlistId);
 
       await waitForNextTick();
@@ -656,7 +655,7 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
     });
 
     it('should trigger onPlaylistsChanged when playlist is updated', async () => {
-      const playlistId = PlayerQueue.createPlaylist('Update Callback Test', 'Original');
+      const playlistId = await PlayerQueue.createPlaylist('Update Callback Test', 'Original');
       createdPlaylistIds.push(playlistId);
 
       const operations: (string | undefined)[] = [];
@@ -670,7 +669,7 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
       });
 
       await waitForNextTick();
-      PlayerQueue.updatePlaylist(playlistId, 'Updated Name', 'Updated Description');
+      await PlayerQueue.updatePlaylist(playlistId, 'Updated Name', 'Updated Description');
 
       await waitForNextTick();
 
@@ -681,7 +680,7 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
     });
 
     it('should trigger onPlaylistChanged when tracks are added', async () => {
-      const playlistId = PlayerQueue.createPlaylist('Track Add Callback Test');
+      const playlistId = await PlayerQueue.createPlaylist('Track Add Callback Test');
       createdPlaylistIds.push(playlistId);
 
       const changedPlaylistIds: string[] = [];
@@ -695,7 +694,7 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
       });
 
       await waitForNextTick();
-      PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
+      await PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
 
       await waitForNextTick();
 
@@ -706,10 +705,10 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
     });
 
     it('should trigger onPlaylistChanged when track is removed', async () => {
-      const playlistId = PlayerQueue.createPlaylist('Track Remove Callback Test');
+      const playlistId = await PlayerQueue.createPlaylist('Track Remove Callback Test');
       createdPlaylistIds.push(playlistId);
 
-      PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
+      await PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
 
       const changedPlaylistIds: string[] = [];
       const operations: (string | undefined)[] = [];
@@ -722,7 +721,7 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
       });
 
       await waitForNextTick();
-      PlayerQueue.removeTrackFromPlaylist(playlistId, '2');
+      await PlayerQueue.removeTrackFromPlaylist(playlistId, '2');
 
       await waitForNextTick();
 
@@ -731,10 +730,10 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
     });
 
     it('should trigger onPlaylistChanged when tracks are reordered', async () => {
-      const playlistId = PlayerQueue.createPlaylist('Reorder Callback Test');
+      const playlistId = await PlayerQueue.createPlaylist('Reorder Callback Test');
       createdPlaylistIds.push(playlistId);
 
-      PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
+      await PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
 
       const changedPlaylistIds: string[] = [];
       const operations: (string | undefined)[] = [];
@@ -747,7 +746,7 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
       });
 
       await waitForNextTick();
-      PlayerQueue.reorderTrackInPlaylist(playlistId, '3', 0);
+      await PlayerQueue.reorderTrackInPlaylist(playlistId, '3', 0);
 
       await waitForNextTick();
 
@@ -770,7 +769,7 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
       // Wait for listeners to be registered
       await waitForNextTick();
 
-      const playlistId = PlayerQueue.createPlaylist('Multi Listener Test');
+      const playlistId = await PlayerQueue.createPlaylist('Multi Listener Test');
       createdPlaylistIds.push(playlistId);
 
       // Wait for callbacks to trigger
@@ -783,7 +782,7 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
     });
 
     it('should handle multiple onPlaylistChanged listeners', async () => {
-      const playlistId = PlayerQueue.createPlaylist('Multi Playlist Listener Test');
+      const playlistId = await PlayerQueue.createPlaylist('Multi Playlist Listener Test');
       createdPlaylistIds.push(playlistId);
 
       const listener1Ids: string[] = [];
@@ -798,7 +797,7 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
       });
 
       await waitForNextTick();
-      PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
+      await PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
 
       await waitForNextTick();
 
@@ -807,7 +806,7 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
     });
 
     it('should trigger callbacks for multiple operations in sequence', async () => {
-      const playlistId = PlayerQueue.createPlaylist('Sequential Operations Test');
+      const playlistId = await PlayerQueue.createPlaylist('Sequential Operations Test');
       createdPlaylistIds.push(playlistId);
 
       const operations: (string | undefined)[] = [];
@@ -821,16 +820,16 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
       await waitForNextTick();
 
       // Perform multiple operations
-      PlayerQueue.addTracksToPlaylist(playlistId, [sampleTracks1[0]]);
+      await PlayerQueue.addTracksToPlaylist(playlistId, [sampleTracks1[0]]);
       await waitForNextTick();
 
-      PlayerQueue.addTrackToPlaylist(playlistId, sampleTracks1[1]);
+      await PlayerQueue.addTrackToPlaylist(playlistId, sampleTracks1[1]);
       await waitForNextTick();
 
-      PlayerQueue.removeTrackFromPlaylist(playlistId, '1');
+      await PlayerQueue.removeTrackFromPlaylist(playlistId, '1');
       await waitForNextTick();
 
-      PlayerQueue.updatePlaylist(playlistId, 'Updated Name');
+      await PlayerQueue.updatePlaylist(playlistId, 'Updated Name');
       await waitForNextTick();
 
       // Should have triggered for add, add, remove, update
@@ -840,8 +839,8 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
     });
 
     it('should handle callbacks with complex playlist modifications', async () => {
-      const playlist1Id = PlayerQueue.createPlaylist('Complex Test 1');
-      const playlist2Id = PlayerQueue.createPlaylist('Complex Test 2');
+      const playlist1Id = await PlayerQueue.createPlaylist('Complex Test 1');
+      const playlist2Id = await PlayerQueue.createPlaylist('Complex Test 2');
       createdPlaylistIds.push(playlist1Id, playlist2Id);
 
       const allChanges: Array<{ id: string; operation?: string }> = [];
@@ -853,14 +852,14 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
       await waitForNextTick();
 
       // Modify both playlists
-      PlayerQueue.addTracksToPlaylist(playlist1Id, sampleTracks1);
-      PlayerQueue.addTracksToPlaylist(playlist2Id, sampleTracks2);
+      await PlayerQueue.addTracksToPlaylist(playlist1Id, sampleTracks1);
+      await PlayerQueue.addTracksToPlaylist(playlist2Id, sampleTracks2);
       await waitForNextTick();
 
-      PlayerQueue.updatePlaylist(playlist1Id, 'Updated Playlist 1');
+      await PlayerQueue.updatePlaylist(playlist1Id, 'Updated Playlist 1');
       await waitForNextTick();
 
-      PlayerQueue.removeTrackFromPlaylist(playlist2Id, '4');
+      await PlayerQueue.removeTrackFromPlaylist(playlist2Id, '4');
       await waitForNextTick();
 
       // Should have changes for both playlists
@@ -870,9 +869,9 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
     });
 
     it('should handle callbacks when playlist is loaded', async () => {
-      const playlistId = PlayerQueue.createPlaylist('Load Callback Test');
+      const playlistId = await PlayerQueue.createPlaylist('Load Callback Test');
       createdPlaylistIds.push(playlistId);
-      PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
+      await PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
 
       const changedIds: string[] = [];
 
@@ -881,7 +880,7 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
       });
 
       await waitForNextTick();
-      PlayerQueue.loadPlaylist(playlistId);
+      await PlayerQueue.loadPlaylist(playlistId);
 
       await waitForNextTick();
 
