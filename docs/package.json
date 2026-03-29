@@ -21,8 +21,8 @@
     "@mdx-js/react": "^3.0.0",
     "clsx": "^2.0.0",
     "prism-react-renderer": "^2.3.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
     "wrangler": "^4.66.0"
   },
   "devDependencies": {
@@ -44,6 +44,6 @@
     ]
   },
   "engines": {
-    "node": ">=20.0"
+    "node": ">= 22.11.0"
   }
 }
