@@ -22,7 +22,7 @@ export interface Equalizer
   /** Set gain for a specific band index (-12 to +12 dB) */
   setBandGain(bandIndex: number, gainDb: number): Promise<void>
 
-  /** Set gains for all bands at once (array of 5 values) */
+  /** Set gains for all bands at once (array of 10 values) */
   setAllBandGains(gains: number[]): Promise<void>
 
   /** Get the valid gain range for bands */

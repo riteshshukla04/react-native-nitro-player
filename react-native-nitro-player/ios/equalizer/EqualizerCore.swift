@@ -22,12 +22,12 @@ class EqualizerCore {
   private(set) var isEqualizerEnabled: Bool = false
   private var currentPresetName: String?
 
-  // Standard 5-band frequencies: 60Hz, 230Hz, 910Hz, 3.6kHz, 14kHz
-  let frequencies: [Float] = [60, 230, 910, 3600, 14000]
-  private let frequencyLabels = ["60 Hz", "230 Hz", "910 Hz", "3.6 kHz", "14 kHz"]
+  // Standard 10-band frequencies: 31Hz, 63Hz, 125Hz, 250Hz, 500Hz, 1kHz, 2kHz, 4kHz, 8kHz, 16kHz
+  let frequencies: [Float] = [31, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]
+  private let frequencyLabels = ["31 Hz", "63 Hz", "125 Hz", "250 Hz", "500 Hz", "1 kHz", "2 kHz", "4 kHz", "8 kHz", "16 kHz"]
 
   // Current gains storage - internal so TapContext can access
-  private(set) var currentGains: [Double] = [0, 0, 0, 0, 0]
+  private(set) var currentGains: [Double] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
   private var cachedBands: [EqualizerBand]?
   private var cachedCustomPresets: [EqualizerPreset]?
 
@@ -48,21 +48,25 @@ class EqualizerCore {
   // MARK: - Built-in Presets
 
   private static let builtInPresets: [String: [Double]] = [
-    "Flat": [0, 0, 0, 0, 0],
-    "Bass Boost": [6, 4, 0, 0, 0],
-    "Bass Reducer": [-6, -4, 0, 0, 0],
-    "Treble Boost": [0, 0, 0, 4, 6],
-    "Treble Reducer": [0, 0, 0, -4, -6],
-    "Vocal Boost": [-2, 0, 4, 2, 0],
-    "Rock": [5, 3, -1, 3, 5],
-    "Pop": [-1, 2, 4, 2, -1],
-    "Jazz": [3, 1, -2, 2, 4],
-    "Classical": [4, 2, -1, 2, 3],
-    "Hip Hop": [6, 4, 0, 1, 3],
-    "Electronic": [5, 3, 0, 2, 5],
-    "Acoustic": [4, 2, 1, 3, 3],
-    "R&B": [3, 6, 2, -1, 2],
-    "Loudness": [6, 3, -1, 3, 6],
+    "Flat":               [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    "Rock":               [4.8, 2.88, -3.36, -4.8, -1.92, 2.4, 5.28, 6.72, 6.72, 6.72],
+    "Pop":                [0.96, 2.88, 4.32, 4.8, 3.36, 0.0, -1.44, -1.44, 0.96, 0.96],
+    "Classical":          [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -4.32, -4.32, -4.32, -5.76],
+    "Dance":              [5.76, 4.32, 1.44, 0.0, 0.0, -3.36, -4.32, -4.32, 0.0, 0.0],
+    "Techno":             [4.8, 3.36, 0.0, -3.36, -2.88, 0.0, 4.8, 5.76, 5.76, 5.28],
+    "Club":               [0.0, 0.0, 4.8, 3.36, 3.36, 3.36, 1.92, 0.0, 0.0, 0.0],
+    "Live":               [-2.88, 0.0, 2.4, 3.36, 3.36, 3.36, 2.4, 1.44, 1.44, 1.44],
+    "Reggae":             [0.0, 0.0, 0.0, -3.36, 0.0, 3.84, 3.84, 0.0, 0.0, 0.0],
+    "Full Bass":          [4.8, 5.76, 5.76, 3.36, 0.96, -2.4, -4.8, -6.24, -6.72, -6.72],
+    "Full Treble":        [-5.76, -5.76, -5.76, -2.4, 1.44, 6.72, 9.6, 9.6, 9.6, 10.08],
+    "Full Bass & Treble": [4.32, 3.36, 0.0, -4.32, -2.88, 0.96, 4.8, 6.72, 7.2, 7.2],
+    "Large Hall":         [6.24, 6.24, 3.36, 3.36, 0.0, -2.88, -2.88, -2.88, 0.0, 0.0],
+    "Party":              [4.32, 4.32, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4.32, 4.32],
+    "Ska":                [-1.44, -2.88, -2.4, 0.0, 2.4, 3.36, 5.28, 5.76, 6.72, 5.76],
+    "Soft":               [2.88, 0.96, 0.0, -1.44, 0.0, 2.4, 4.8, 5.76, 6.72, 7.2],
+    "Soft Rock":          [2.4, 2.4, 1.44, 0.0, -2.4, -3.36, -1.92, 0.0, 1.44, 5.28],
+    "Headphones":         [2.88, 6.72, 3.36, -1.92, -1.44, 0.96, 2.88, 5.76, 7.68, 8.64],
+    "Laptop Speakers":    [2.88, 6.72, 3.36, -1.92, -1.44, 0.96, 2.88, 5.76, 7.68, 8.64],
   ]
 
   // MARK: - Initialization
@@ -189,7 +193,7 @@ class EqualizerCore {
 
   func getBands() -> [EqualizerBand] {
     if let cached = cachedBands { return cached }
-    let bands = (0..<5).map { i in
+    let bands = (0..<10).map { i in
       EqualizerBand(
         index: Double(i),
         centerFrequency: Double(frequencies[i]),
@@ -202,7 +206,7 @@ class EqualizerCore {
   }
 
   func setBandGain(bandIndex: Int, gainDb: Double) -> Bool {
-    guard bandIndex >= 0 && bandIndex < 5 else { return false }
+    guard bandIndex >= 0 && bandIndex < 10 else { return false }
 
     let clampedGain = max(-12.0, min(12.0, gainDb))
     currentGains[bandIndex] = clampedGain
@@ -220,9 +224,9 @@ class EqualizerCore {
   }
 
   func setAllBandGains(_ gains: [Double]) -> Bool {
-    guard gains.count == 5 else { return false }
+    guard gains.count == 10 else { return false }
 
-    for i in 0..<5 {
+    for i in 0..<10 {
       currentGains[i] = max(-12.0, min(12.0, gains[i]))
     }
     cachedBands = nil
@@ -373,7 +377,7 @@ class EqualizerCore {
   }
 
   func reset() {
-    _ = setAllBandGains([0, 0, 0, 0, 0])
+    _ = setAllBandGains([0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
     currentPresetName = "Flat"
     notifyPresetChange("Flat")
     saveCurrentPreset("Flat")
@@ -400,10 +404,11 @@ class EqualizerCore {
 
     if let data = UserDefaults.standard.data(forKey: bandGainsKey),
       let gains = try? JSONDecoder().decode([Double].self, from: data),
-      gains.count == 5
+      gains.count == 10
     {
       currentGains = gains
     }
+    // else: migration from 5-band or fresh install — start at flat (currentGains already zeroed)
 
     currentPresetName = UserDefaults.standard.string(forKey: currentPresetKey)
     isEqualizerEnabled = enabled
@@ -456,28 +461,28 @@ private class TapContext {
   var sampleRate: Float = 44100.0
   var channelCount: Int = 2
 
-  // Biquad filter states for 5 bands
+  // Biquad filter states for 10 bands
   // Each band needs 4 delay elements per channel (x[n-1], x[n-2], y[n-1], y[n-2])
   var filterStates: [[Float]] = []
 
-  // Biquad coefficients for 5 bands
+  // Biquad coefficients for 10 bands
   // Each band: [b0, b1, b2, a1, a2] (normalized, a0 = 1)
   var filterCoeffs: [[Double]] = []
 
   init(eqCore: EqualizerCore) {
     self.eqCore = eqCore
-    // Initialize 5 bands with flat coefficients
-    for _ in 0..<5 {
+    // Initialize 10 bands with flat coefficients
+    for _ in 0..<10 {
       filterCoeffs.append([1.0, 0.0, 0.0, 0.0, 0.0])  // Flat/bypass
     }
   }
 
   func updateCoefficients() {
     guard let eqCore = eqCore else { return }
-    let frequencies: [Float] = [60, 230, 910, 3600, 14000]
+    let frequencies: [Float] = [31, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]
     let gains = eqCore.currentGains
 
-    for i in 0..<5 {
+    for i in 0..<10 {
       filterCoeffs[i] = calculatePeakingEQCoefficients(
         frequency: Double(frequencies[i]),
         gain: gains[i],
@@ -517,7 +522,7 @@ private class TapContext {
 
   func resetFilterStates() {
     filterStates = []
-    for _ in 0..<5 {
+    for _ in 0..<10 {
       // 4 delay elements per channel (2 for input history, 2 for output history)
       filterStates.append(Array(repeating: Float(0.0), count: channelCount * 4))
     }
@@ -613,8 +618,8 @@ private func tapProcessCallback(
     let frameCount = Int(numberFramesOut.pointee)
     let samples = data.assumingMemoryBound(to: Float.self)
 
-    // Apply all 5 EQ bands in series
-    for bandIndex in 0..<5 {
+    // Apply all 10 EQ bands in series
+    for bandIndex in 0..<10 {
       let coeffs: [Double] = context.filterCoeffs[bandIndex]
 
       // Skip if essentially flat

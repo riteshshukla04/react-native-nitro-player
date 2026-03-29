@@ -2,8 +2,10 @@ package com.margelo.nitro.nitroplayer.equalizer
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.media.audiofx.DynamicsProcessing
 import android.media.audiofx.Equalizer
-import android.util.Log
+import android.os.Build
+import androidx.annotation.RequiresApi
 import com.margelo.nitro.core.NullType
 import com.margelo.nitro.nitroplayer.EqualizerBand
 import com.margelo.nitro.nitroplayer.EqualizerPreset
@@ -20,16 +22,19 @@ class EqualizerCore private constructor(
     private val context: Context,
 ) {
     private var equalizer: Equalizer? = null
+    private var dynamicsProcessing: DynamicsProcessing? = null
+    private var usingDynamicsProcessing: Boolean = false
     private var audioSessionId: Int = 0
     private var isUsingFallbackSession: Boolean = false // Track if using fallback session 0
     private var isEqualizerEnabled: Boolean = false
     private var currentPresetName: String? = null
 
-    // Standard 5-band frequencies: 60Hz, 230Hz, 910Hz, 3.6kHz, 14kHz
-    private val targetFrequencies = intArrayOf(60000, 230000, 910000, 3600000, 14000000) // milliHz
-    private val frequencyLabels = arrayOf("60 Hz", "230 Hz", "910 Hz", "3.6 kHz", "14 kHz")
-    private val frequencies = intArrayOf(60, 230, 910, 3600, 14000)
-    private var bandMapping = IntArray(5) // Maps our 5 bands to actual EQ bands
+    // Standard 10-band frequencies: 31Hz, 63Hz, 125Hz, 250Hz, 500Hz, 1kHz, 2kHz, 4kHz, 8kHz, 16kHz
+    private val targetFrequencies = intArrayOf(31000, 63000, 125000, 250000, 500000, 1000000, 2000000, 4000000, 8000000, 16000000) // milliHz
+    private val frequencyLabels = arrayOf("31 Hz", "63 Hz", "125 Hz", "250 Hz", "500 Hz", "1 kHz", "2 kHz", "4 kHz", "8 kHz", "16 kHz")
+    private val frequencies = intArrayOf(31, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000)
+    private var bandMapping = IntArray(10) // Maps our 10 bands to actual EQ bands (fallback only)
+    private val currentGainsArray = DoubleArray(10) { 0.0 } // Local gain cache (both DP and fallback paths)
 
     private val prefs: SharedPreferences =
         context.getSharedPreferences("equalizer_settings", Context.MODE_PRIVATE)
@@ -50,24 +55,28 @@ class EqualizerCore private constructor(
                 INSTANCE ?: EqualizerCore(context).also { INSTANCE = it }
             }
 
-        // Built-in presets: name -> [60Hz, 230Hz, 910Hz, 3.6kHz, 14kHz] in dB
+        // Built-in presets: name -> [31Hz, 63Hz, 125Hz, 250Hz, 500Hz, 1kHz, 2kHz, 4kHz, 8kHz, 16kHz] in dB
         private val BUILT_IN_PRESETS =
             mapOf(
-                "Flat" to doubleArrayOf(0.0, 0.0, 0.0, 0.0, 0.0),
-                "Bass Boost" to doubleArrayOf(6.0, 4.0, 0.0, 0.0, 0.0),
-                "Bass Reducer" to doubleArrayOf(-6.0, -4.0, 0.0, 0.0, 0.0),
-                "Treble Boost" to doubleArrayOf(0.0, 0.0, 0.0, 4.0, 6.0),
-                "Treble Reducer" to doubleArrayOf(0.0, 0.0, 0.0, -4.0, -6.0),
-                "Vocal Boost" to doubleArrayOf(-2.0, 0.0, 4.0, 2.0, 0.0),
-                "Rock" to doubleArrayOf(5.0, 3.0, -1.0, 3.0, 5.0),
-                "Pop" to doubleArrayOf(-1.0, 2.0, 4.0, 2.0, -1.0),
-                "Jazz" to doubleArrayOf(3.0, 1.0, -2.0, 2.0, 4.0),
-                "Classical" to doubleArrayOf(4.0, 2.0, -1.0, 2.0, 3.0),
-                "Hip Hop" to doubleArrayOf(6.0, 4.0, 0.0, 1.0, 3.0),
-                "Electronic" to doubleArrayOf(5.0, 3.0, 0.0, 2.0, 5.0),
-                "Acoustic" to doubleArrayOf(4.0, 2.0, 1.0, 3.0, 3.0),
-                "R&B" to doubleArrayOf(3.0, 6.0, 2.0, -1.0, 2.0),
-                "Loudness" to doubleArrayOf(6.0, 3.0, -1.0, 3.0, 6.0),
+                "Flat" to doubleArrayOf(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+                "Rock" to doubleArrayOf(4.8, 2.88, -3.36, -4.8, -1.92, 2.4, 5.28, 6.72, 6.72, 6.72),
+                "Pop" to doubleArrayOf(0.96, 2.88, 4.32, 4.8, 3.36, 0.0, -1.44, -1.44, 0.96, 0.96),
+                "Classical" to doubleArrayOf(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -4.32, -4.32, -4.32, -5.76),
+                "Dance" to doubleArrayOf(5.76, 4.32, 1.44, 0.0, 0.0, -3.36, -4.32, -4.32, 0.0, 0.0),
+                "Techno" to doubleArrayOf(4.8, 3.36, 0.0, -3.36, -2.88, 0.0, 4.8, 5.76, 5.76, 5.28),
+                "Club" to doubleArrayOf(0.0, 0.0, 4.8, 3.36, 3.36, 3.36, 1.92, 0.0, 0.0, 0.0),
+                "Live" to doubleArrayOf(-2.88, 0.0, 2.4, 3.36, 3.36, 3.36, 2.4, 1.44, 1.44, 1.44),
+                "Reggae" to doubleArrayOf(0.0, 0.0, 0.0, -3.36, 0.0, 3.84, 3.84, 0.0, 0.0, 0.0),
+                "Full Bass" to doubleArrayOf(4.8, 5.76, 5.76, 3.36, 0.96, -2.4, -4.8, -6.24, -6.72, -6.72),
+                "Full Treble" to doubleArrayOf(-5.76, -5.76, -5.76, -2.4, 1.44, 6.72, 9.6, 9.6, 9.6, 10.08),
+                "Full Bass & Treble" to doubleArrayOf(4.32, 3.36, 0.0, -4.32, -2.88, 0.96, 4.8, 6.72, 7.2, 7.2),
+                "Large Hall" to doubleArrayOf(6.24, 6.24, 3.36, 3.36, 0.0, -2.88, -2.88, -2.88, 0.0, 0.0),
+                "Party" to doubleArrayOf(4.32, 4.32, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4.32, 4.32),
+                "Ska" to doubleArrayOf(-1.44, -2.88, -2.4, 0.0, 2.4, 3.36, 5.28, 5.76, 6.72, 5.76),
+                "Soft" to doubleArrayOf(2.88, 0.96, 0.0, -1.44, 0.0, 2.4, 4.8, 5.76, 6.72, 7.2),
+                "Soft Rock" to doubleArrayOf(2.4, 2.4, 1.44, 0.0, -2.4, -3.36, -1.92, 0.0, 1.44, 5.28),
+                "Headphones" to doubleArrayOf(2.88, 6.72, 3.36, -1.92, -1.44, 0.96, 2.88, 5.76, 7.68, 8.64),
+                "Laptop Speakers" to doubleArrayOf(2.88, 6.72, 3.36, -1.92, -1.44, 0.96, 2.88, 5.76, 7.68, 8.64),
             )
     }
 
@@ -80,15 +89,38 @@ class EqualizerCore private constructor(
         this.isUsingFallbackSession = (audioSessionId == 0)
 
         try {
-            equalizer?.release()
-            equalizer =
-                Equalizer(0, audioSessionId).apply {
+            releaseAudioEffects()
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                initDynamicsProcessing(audioSessionId)
+                usingDynamicsProcessing = true
+            } else {
+                equalizer = Equalizer(0, audioSessionId).apply {
                     enabled = false
                 }
-            setupBandMapping()
+                usingDynamicsProcessing = false
+                setupBandMapping()
+            }
             restoreSettings()
         } catch (e: Exception) {
             NitroPlayerLogger.log("EqualizerCore", "Failed to initialize equalizer: ${e.message}")
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.P)
+    private fun initDynamicsProcessing(sessionId: Int) {
+        val config = DynamicsProcessing.Config.Builder(
+            DynamicsProcessing.VARIANT_FAVOR_FREQUENCY_RESOLUTION,
+            1,       // channelCount (stereo handled internally)
+            true, 10, // Pre-EQ enabled, 10 bands
+            false, 0, // MBC disabled
+            false, 0, // Post-EQ disabled
+            false     // Limiter disabled
+        ).build()
+        dynamicsProcessing = DynamicsProcessing(0, sessionId, config).apply { enabled = false }
+        for (i in 0 until 10) {
+            val band = DynamicsProcessing.EqBand(true, frequencies[i].toFloat(), 0f)
+            dynamicsProcessing!!.setPreEqBandAllChannelsTo(i, band)
         }
     }
 
@@ -97,7 +129,7 @@ class EqualizerCore private constructor(
      * This allows the equalizer to work even before TrackPlayer is used
      */
     fun ensureInitialized() {
-        if (equalizer == null) {
+        if (equalizer == null && dynamicsProcessing == null) {
             initialize(0)
         }
     }
@@ -124,10 +156,12 @@ class EqualizerCore private constructor(
     }
 
     fun setEnabled(enabled: Boolean): Boolean {
-        val eq = equalizer ?: return false
-
         return try {
-            eq.enabled = enabled
+            if (usingDynamicsProcessing && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                dynamicsProcessing?.enabled = enabled
+            } else {
+                equalizer?.enabled = enabled
+            }
             isEqualizerEnabled = enabled
             notifyEnabledChange(enabled)
             saveEnabled(enabled)
@@ -141,19 +175,9 @@ class EqualizerCore private constructor(
     fun isEnabled(): Boolean = isEqualizerEnabled
 
     fun getBands(): Array<EqualizerBand> {
-        val eq = equalizer ?: return emptyArray()
-
-        return (0 until 5)
+        return (0 until 10)
             .map { i ->
-                val actualBand = bandMapping[i].toShort()
-                val gainMb =
-                    try {
-                        eq.getBandLevel(actualBand)
-                    } catch (e: Exception) {
-                        0.toShort()
-                    }
-                val gainDb = gainMb / 100.0 // convert millibels to dB
-
+                val gainDb = getCurrentBandGain(i)
                 EqualizerBand(
                     index = i.toDouble(),
                     centerFrequency = frequencies[i].toDouble(),
@@ -163,19 +187,26 @@ class EqualizerCore private constructor(
             }.toTypedArray()
     }
 
+    private fun getCurrentBandGain(bandIndex: Int): Double = currentGainsArray[bandIndex]
+
     fun setBandGain(
         bandIndex: Int,
         gainDb: Double,
     ): Boolean {
-        if (bandIndex !in 0..4) return false
+        if (bandIndex !in 0..9) return false
 
-        val eq = equalizer ?: return false
         val clampedGain = gainDb.coerceIn(-12.0, 12.0)
-        val gainMb = (clampedGain * 100).toInt().toShort() // convert dB to millibels
 
         return try {
-            eq.setBandLevel(bandMapping[bandIndex].toShort(), gainMb)
-            currentPresetName = null // Custom settings
+            currentGainsArray[bandIndex] = clampedGain
+            if (usingDynamicsProcessing && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                setDPBandGain(bandIndex, clampedGain.toFloat())
+            } else {
+                val eq = equalizer ?: return false
+                val gainMb = (clampedGain * 100).toInt().toShort()
+                eq.setBandLevel(bandMapping[bandIndex].toShort(), gainMb)
+            }
+            currentPresetName = null
             notifyBandChange(getBands())
             notifyPresetChange(null)
             saveBandGainsAndPreset(getAllGains(), null)
@@ -185,16 +216,30 @@ class EqualizerCore private constructor(
         }
     }
 
-    fun setAllBandGains(gains: DoubleArray): Boolean {
-        if (gains.size != 5) return false
+    @RequiresApi(Build.VERSION_CODES.P)
+    private fun setDPBandGain(bandIndex: Int, gainDb: Float) {
+        val band = DynamicsProcessing.EqBand(true, frequencies[bandIndex].toFloat(), gainDb)
+        dynamicsProcessing?.setPreEqBandAllChannelsTo(bandIndex, band)
+    }
 
-        val eq = equalizer ?: return false
+    fun setAllBandGains(gains: DoubleArray): Boolean {
+        if (gains.size != 10) return false
 
         return try {
-            gains.forEachIndexed { i, gain ->
-                val clampedGain = gain.coerceIn(-12.0, 12.0)
-                val gainMb = (clampedGain * 100).toInt().toShort()
-                eq.setBandLevel(bandMapping[i].toShort(), gainMb)
+            if (usingDynamicsProcessing && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                gains.forEachIndexed { i, gain ->
+                    val clampedGain = gain.coerceIn(-12.0, 12.0)
+                    currentGainsArray[i] = clampedGain
+                    setDPBandGain(i, clampedGain.toFloat())
+                }
+            } else {
+                val eq = equalizer ?: return false
+                gains.forEachIndexed { i, gain ->
+                    val clampedGain = gain.coerceIn(-12.0, 12.0)
+                    currentGainsArray[i] = clampedGain
+                    val gainMb = (clampedGain * 100).toInt().toShort()
+                    eq.setBandLevel(bandMapping[i].toShort(), gainMb)
+                }
             }
             notifyBandChange(getBands())
             saveBandGains(gains.toList())
@@ -205,26 +250,23 @@ class EqualizerCore private constructor(
     }
 
     private fun getAllGains(): List<Double> {
-        val eq = equalizer ?: return listOf(0.0, 0.0, 0.0, 0.0, 0.0)
-        return (0 until 5).map { i ->
-            try {
-                eq.getBandLevel(bandMapping[i].toShort()) / 100.0
-            } catch (e: Exception) {
-                0.0
-            }
-        }
+        return (0 until 10).map { i -> getCurrentBandGain(i) }
     }
 
     fun getBandRange(): GainRange {
-        val eq = equalizer
-        return if (eq != null) {
-            val range = eq.bandLevelRange
-            GainRange(
-                min = (range[0] / 100.0).coerceAtLeast(-12.0),
-                max = (range[1] / 100.0).coerceAtMost(12.0),
-            )
-        } else {
+        return if (usingDynamicsProcessing) {
             GainRange(min = -12.0, max = 12.0)
+        } else {
+            val eq = equalizer
+            if (eq != null) {
+                val range = eq.bandLevelRange
+                GainRange(
+                    min = (range[0] / 100.0).coerceAtLeast(-12.0),
+                    max = (range[1] / 100.0).coerceAtMost(12.0),
+                )
+            } else {
+                GainRange(min = -12.0, max = 12.0)
+            }
         }
     }
 
@@ -253,7 +295,7 @@ class EqualizerCore private constructor(
                 .asSequence()
                 .map { name ->
                     val gainsArray = json.getJSONArray(name)
-                    val gains = DoubleArray(5) { gainsArray.getDouble(it) }
+                    val gains = DoubleArray(gainsArray.length()) { gainsArray.getDouble(it) }
                     EqualizerPreset(
                         name = name,
                         gains = gains,
@@ -288,7 +330,7 @@ class EqualizerCore private constructor(
             val json = JSONObject(customPresetsJson)
             if (json.has(name)) {
                 val gainsArray = json.getJSONArray(name)
-                DoubleArray(5) { gainsArray.getDouble(it) }
+                DoubleArray(gainsArray.length()) { gainsArray.getDouble(it) }
             } else {
                 null
             }
@@ -350,7 +392,7 @@ class EqualizerCore private constructor(
         )
 
     fun reset() {
-        setAllBandGains(doubleArrayOf(0.0, 0.0, 0.0, 0.0, 0.0))
+        setAllBandGains(DoubleArray(10) { 0.0 })
         currentPresetName = "Flat"
         notifyPresetChange("Flat")
         saveCurrentPreset("Flat")
@@ -397,8 +439,12 @@ class EqualizerCore private constructor(
         if (gainsJson != null) {
             try {
                 val arr = JSONArray(gainsJson)
-                val gains = DoubleArray(5) { arr.getDouble(it) }
-                setAllBandGains(gains)
+                // Migration: if saved array length != 10, skip (5-band data incompatible)
+                if (arr.length() == 10) {
+                    val gains = DoubleArray(10) { arr.getDouble(it) }
+                    setAllBandGains(gains)
+                }
+                // else: start at flat (migration from 5-band)
             } catch (e: Exception) {
                 // Ignore
             }
@@ -408,7 +454,11 @@ class EqualizerCore private constructor(
         isEqualizerEnabled = enabled
 
         try {
-            equalizer?.enabled = enabled
+            if (usingDynamicsProcessing && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                dynamicsProcessing?.enabled = enabled
+            } else {
+                equalizer?.enabled = enabled
+            }
         } catch (e: Exception) {
             // Ignore
         }
@@ -441,12 +491,24 @@ class EqualizerCore private constructor(
         onPresetChangeListeners.forEach { it(variant) }
     }
 
-    fun release() {
+    private fun releaseAudioEffects() {
         try {
             equalizer?.release()
             equalizer = null
         } catch (e: Exception) {
             // Ignore
         }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            try {
+                dynamicsProcessing?.release()
+                dynamicsProcessing = null
+            } catch (e: Exception) {
+                // Ignore
+            }
+        }
+    }
+
+    fun release() {
+        releaseAudioEffects()
     }
 }

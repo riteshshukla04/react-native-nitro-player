@@ -2,7 +2,7 @@
  * Represents a single equalizer frequency band
  */
 export interface EqualizerBand {
-  /** Band index (0-4) */
+  /** Band index (0-9) */
   index: number
   /** Center frequency in Hz */
   centerFrequency: number
@@ -23,7 +23,7 @@ export type PresetType = 'built-in' | 'custom'
 export interface EqualizerPreset {
   /** Unique preset name */
   name: string
-  /** Array of 5 gain values in dB for each band */
+  /** Array of 10 gain values in dB for each band */
   gains: number[]
   /** Whether this is a built-in or custom preset */
   type: PresetType
@@ -56,17 +56,21 @@ export interface GainRange {
  */
 export type BuiltInPresetName =
   | 'Flat'
-  | 'Bass Boost'
-  | 'Bass Reducer'
-  | 'Treble Boost'
-  | 'Treble Reducer'
-  | 'Vocal Boost'
   | 'Rock'
   | 'Pop'
-  | 'Jazz'
   | 'Classical'
-  | 'Hip Hop'
-  | 'Electronic'
-  | 'Acoustic'
-  | 'R&B'
-  | 'Loudness'
+  | 'Dance'
+  | 'Techno'
+  | 'Club'
+  | 'Live'
+  | 'Reggae'
+  | 'Full Bass'
+  | 'Full Treble'
+  | 'Full Bass & Treble'
+  | 'Large Hall'
+  | 'Party'
+  | 'Ska'
+  | 'Soft'
+  | 'Soft Rock'
+  | 'Headphones'
+  | 'Laptop Speakers'

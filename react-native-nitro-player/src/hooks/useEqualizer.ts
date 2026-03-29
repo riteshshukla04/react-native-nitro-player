@@ -25,11 +25,16 @@ export interface UseEqualizerResult {
 }
 
 const DEFAULT_BANDS: EqualizerBand[] = [
-  { index: 0, centerFrequency: 60, gainDb: 0, frequencyLabel: '60 Hz' },
-  { index: 1, centerFrequency: 230, gainDb: 0, frequencyLabel: '230 Hz' },
-  { index: 2, centerFrequency: 910, gainDb: 0, frequencyLabel: '910 Hz' },
-  { index: 3, centerFrequency: 3600, gainDb: 0, frequencyLabel: '3.6 kHz' },
-  { index: 4, centerFrequency: 14000, gainDb: 0, frequencyLabel: '14 kHz' },
+  { index: 0, centerFrequency: 31, gainDb: 0, frequencyLabel: '31 Hz' },
+  { index: 1, centerFrequency: 63, gainDb: 0, frequencyLabel: '63 Hz' },
+  { index: 2, centerFrequency: 125, gainDb: 0, frequencyLabel: '125 Hz' },
+  { index: 3, centerFrequency: 250, gainDb: 0, frequencyLabel: '250 Hz' },
+  { index: 4, centerFrequency: 500, gainDb: 0, frequencyLabel: '500 Hz' },
+  { index: 5, centerFrequency: 1000, gainDb: 0, frequencyLabel: '1 kHz' },
+  { index: 6, centerFrequency: 2000, gainDb: 0, frequencyLabel: '2 kHz' },
+  { index: 7, centerFrequency: 4000, gainDb: 0, frequencyLabel: '4 kHz' },
+  { index: 8, centerFrequency: 8000, gainDb: 0, frequencyLabel: '8 kHz' },
+  { index: 9, centerFrequency: 16000, gainDb: 0, frequencyLabel: '16 kHz' },
 ]
 
 export function useEqualizer(): UseEqualizerResult {
