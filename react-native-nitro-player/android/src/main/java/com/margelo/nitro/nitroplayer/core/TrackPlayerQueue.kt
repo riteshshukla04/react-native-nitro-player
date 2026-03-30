@@ -80,16 +80,26 @@ internal fun TrackPlayerCore.getActualQueueInternal(): List<TrackItem> {
     // Current track
     getCurrentTrack()?.let { queue.add(it) }
 
-    // playNext — skip index 0 if it is the current item
-    if (currentTemporaryType == TrackPlayerCore.TemporaryType.PLAY_NEXT && playNextStack.size > 1) {
-        queue.addAll(playNextStack.subList(1, playNextStack.size))
+    val currentId = exo.currentMediaItem?.mediaId?.let { extractTrackId(it) }
+
+    // playNext — skip the currently playing track by ID (not position)
+    if (currentTemporaryType == TrackPlayerCore.TemporaryType.PLAY_NEXT && currentId != null) {
+        var skipped = false
+        for (track in playNextStack) {
+            if (!skipped && track.id == currentId) { skipped = true; continue }
+            queue.add(track)
+        }
     } else if (currentTemporaryType != TrackPlayerCore.TemporaryType.PLAY_NEXT) {
         queue.addAll(playNextStack)
     }
 
-    // upNext — skip index 0 if it is the current item
-    if (currentTemporaryType == TrackPlayerCore.TemporaryType.UP_NEXT && upNextQueue.size > 1) {
-        queue.addAll(upNextQueue.subList(1, upNextQueue.size))
+    // upNext — skip the currently playing track by ID (not position)
+    if (currentTemporaryType == TrackPlayerCore.TemporaryType.UP_NEXT && currentId != null) {
+        var skipped = false
+        for (track in upNextQueue) {
+            if (!skipped && track.id == currentId) { skipped = true; continue }
+            queue.add(track)
+        }
     } else if (currentTemporaryType != TrackPlayerCore.TemporaryType.UP_NEXT) {
         queue.addAll(upNextQueue)
     }
@@ -124,17 +134,21 @@ private fun TrackPlayerCore.skipToIndexInternal(index: Int): Boolean {
     if (index == currentPos) { exo.seekTo(0); return true }
 
     if (index in playNextStart until playNextEnd) {
-        val listIndex = (index - playNextStart) + if (currentTemporaryType == TrackPlayerCore.TemporaryType.PLAY_NEXT) 1 else 0
-        if (listIndex > 0) playNextStack.subList(0, listIndex).clear()
+        val targetTrack = actualQueue[index]
+        // Remove all playNext tracks before the target (by ID lookup, not position)
+        val targetIdx = playNextStack.indexOfFirst { it.id == targetTrack.id }
+        if (targetIdx > 0) playNextStack.subList(0, targetIdx).clear()
         rebuildQueueFromCurrentPosition()
         exo.seekToNext()
         return true
     }
 
     if (index in upNextStart until upNextEnd) {
-        val listIndex = (index - upNextStart) + if (currentTemporaryType == TrackPlayerCore.TemporaryType.UP_NEXT) 1 else 0
+        val targetTrack = actualQueue[index]
         playNextStack.clear()
-        if (listIndex > 0) upNextQueue.subList(0, listIndex).clear()
+        // Remove all upNext tracks before the target (by ID lookup, not position)
+        val targetIdx = upNextQueue.indexOfFirst { it.id == targetTrack.id }
+        if (targetIdx > 0) upNextQueue.subList(0, targetIdx).clear()
         rebuildQueueFromCurrentPosition()
         exo.seekToNext()
         return true

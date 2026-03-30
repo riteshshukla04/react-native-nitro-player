@@ -233,15 +233,26 @@ extension TrackPlayerCore {
 
     // Build the desired upcoming track list
     var newQueueTracks: [TrackItem] = []
+    let currentId = currentItem?.trackId
 
-    if currentTemporaryType == .playNext && playNextStack.count > 1 {
-      newQueueTracks.append(contentsOf: playNextStack.dropFirst())
+    // PlayNext stack: skip the currently playing track by ID (not position)
+    if currentTemporaryType == .playNext, let currentId = currentId {
+      var skipped = false
+      for track in playNextStack {
+        if !skipped && track.id == currentId { skipped = true; continue }
+        newQueueTracks.append(track)
+      }
     } else if currentTemporaryType != .playNext {
       newQueueTracks.append(contentsOf: playNextStack)
     }
 
-    if currentTemporaryType == .upNext && upNextQueue.count > 1 {
-      newQueueTracks.append(contentsOf: upNextQueue.dropFirst())
+    // UpNext queue: skip the currently playing track by ID (not position)
+    if currentTemporaryType == .upNext, let currentId = currentId {
+      var skipped = false
+      for track in upNextQueue {
+        if !skipped && track.id == currentId { skipped = true; continue }
+        newQueueTracks.append(track)
+      }
     } else if currentTemporaryType != .upNext {
       newQueueTracks.append(contentsOf: upNextQueue)
     }

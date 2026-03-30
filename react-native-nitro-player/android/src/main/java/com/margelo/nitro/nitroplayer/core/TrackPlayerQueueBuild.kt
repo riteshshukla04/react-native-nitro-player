@@ -51,17 +51,26 @@ internal fun TrackPlayerCore.rebuildQueueFromCurrentPosition() {
     }
 
     val newQueueTracks = ArrayList<TrackItem>(playNextStack.size + upNextQueue.size + currentTracks.size)
+    val currentId = exo.currentMediaItem?.mediaId?.let { extractTrackId(it) }
 
-    // playNext stack — skip index 0 if it is the currently playing item
-    if (currentTemporaryType == TrackPlayerCore.TemporaryType.PLAY_NEXT && playNextStack.size > 1) {
-        newQueueTracks.addAll(playNextStack.subList(1, playNextStack.size))
+    // playNext stack — skip the currently playing track by ID (not position)
+    if (currentTemporaryType == TrackPlayerCore.TemporaryType.PLAY_NEXT && currentId != null) {
+        var skipped = false
+        for (track in playNextStack) {
+            if (!skipped && track.id == currentId) { skipped = true; continue }
+            newQueueTracks.add(track)
+        }
     } else if (currentTemporaryType != TrackPlayerCore.TemporaryType.PLAY_NEXT) {
         newQueueTracks.addAll(playNextStack)
     }
 
-    // upNext queue — skip index 0 if it is the currently playing item
-    if (currentTemporaryType == TrackPlayerCore.TemporaryType.UP_NEXT && upNextQueue.size > 1) {
-        newQueueTracks.addAll(upNextQueue.subList(1, upNextQueue.size))
+    // upNext queue — skip the currently playing track by ID (not position)
+    if (currentTemporaryType == TrackPlayerCore.TemporaryType.UP_NEXT && currentId != null) {
+        var skipped = false
+        for (track in upNextQueue) {
+            if (!skipped && track.id == currentId) { skipped = true; continue }
+            newQueueTracks.add(track)
+        }
     } else if (currentTemporaryType != TrackPlayerCore.TemporaryType.UP_NEXT) {
         newQueueTracks.addAll(upNextQueue)
     }
