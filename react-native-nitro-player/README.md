@@ -112,7 +112,7 @@ Mutations return **`Promise<void>`** (or **`Promise<string>`** for `createPlayli
 | `setPlaybackSourcePreference(pref)`    | Both     | Sets playback source: `'auto'`, `'download'`, or `'network'`. |
 
 > [!NOTE]
-> See [DOWNLOADS.md](../DOWNLOADS.md) for complete downloads API documentation.
+> See [DOWNLOADS.md](./DOWNLOADS.md) for complete downloads API documentation.
 
 ## Quick Start
 
@@ -217,7 +217,7 @@ DownloadManager.setPlaybackSourcePreference('auto')
 ```
 
 > [!NOTE]
-> See [DOWNLOADS.md](../DOWNLOADS.md) for complete offline downloads documentation.
+> See [DOWNLOADS.md](./DOWNLOADS.md) for complete offline downloads documentation.
 
 ## Temporary Queue Management
 
