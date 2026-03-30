@@ -86,16 +86,25 @@ extension TrackPlayerCore {
     // Add current track (temp or original)
     if let current = getCurrentTrack() { queue.append(current) }
 
-    // Add playNext stack — skip index 0 if current is from playNext (already added as current)
-    if currentTemporaryType == .playNext && playNextStack.count > 1 {
-      queue.append(contentsOf: playNextStack.dropFirst())
+    // Add playNext stack — skip the currently playing track by ID (already added as current)
+    let currentId = player?.currentItem?.trackId
+    if currentTemporaryType == .playNext, let currentId = currentId {
+      var skipped = false
+      for track in playNextStack {
+        if !skipped && track.id == currentId { skipped = true; continue }
+        queue.append(track)
+      }
     } else if currentTemporaryType != .playNext {
       queue.append(contentsOf: playNextStack)
     }
 
-    // Add upNext queue — skip index 0 if current is from upNext (already added as current)
-    if currentTemporaryType == .upNext && upNextQueue.count > 1 {
-      queue.append(contentsOf: upNextQueue.dropFirst())
+    // Add upNext queue — skip the currently playing track by ID (already added as current)
+    if currentTemporaryType == .upNext, let currentId = currentId {
+      var skipped = false
+      for track in upNextQueue {
+        if !skipped && track.id == currentId { skipped = true; continue }
+        queue.append(track)
+      }
     } else if currentTemporaryType != .upNext {
       queue.append(contentsOf: upNextQueue)
     }
@@ -153,12 +162,13 @@ extension TrackPlayerCore {
 
     // Case 3: Target is in playNext section
     if index >= playNextStart && index < playNextEnd {
-      let playNextIndex = index - playNextStart
-      // Offset by 1 if current is from playNext (index 0 is already playing)
-      let actualListIndex = currentTemporaryType == .playNext
-        ? playNextIndex + 1 : playNextIndex
-
-      if actualListIndex > 0 { playNextStack.removeFirst(actualListIndex) }
+      let targetTrack = actualQueue[index]
+      // Remove all playNext tracks before the target (by ID lookup, not position)
+      if let targetIdx = playNextStack.firstIndex(where: { $0.id == targetTrack.id }), targetIdx > 0 {
+        // Remove tracks before target, but keep the currently playing track
+        // (rebuildAVQueueFromCurrentPosition will skip it by ID)
+        playNextStack.removeSubrange(0..<targetIdx)
+      }
       rebuildAVQueueFromCurrentPosition()
       player?.advanceToNextItem()
       return true
@@ -166,13 +176,12 @@ extension TrackPlayerCore {
 
     // Case 4: Target is in upNext section
     if index >= upNextStart && index < upNextEnd {
-      let upNextIndex = index - upNextStart
-      // Offset by 1 if current is from upNext (index 0 is already playing)
-      let actualListIndex = currentTemporaryType == .upNext
-        ? upNextIndex + 1 : upNextIndex
-
+      let targetTrack = actualQueue[index]
       playNextStack.removeAll()
-      if actualListIndex > 0 { upNextQueue.removeFirst(actualListIndex) }
+      // Remove all upNext tracks before the target (by ID lookup, not position)
+      if let targetIdx = upNextQueue.firstIndex(where: { $0.id == targetTrack.id }), targetIdx > 0 {
+        upNextQueue.removeSubrange(0..<targetIdx)
+      }
       rebuildAVQueueFromCurrentPosition()
       player?.advanceToNextItem()
       return true
