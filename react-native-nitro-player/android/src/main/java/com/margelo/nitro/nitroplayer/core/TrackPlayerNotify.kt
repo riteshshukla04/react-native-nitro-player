@@ -9,15 +9,24 @@ import com.margelo.nitro.nitroplayer.TrackPlayerState
  * All methods must be called from the player thread (already serialised).
  */
 
-internal fun TrackPlayerCore.notifyTrackChange(track: TrackItem, reason: Reason?) {
+internal fun TrackPlayerCore.notifyTrackChange(
+    track: TrackItem,
+    reason: Reason?,
+) {
     onChangeTrackListeners.forEach { it(track, reason) }
 }
 
-internal fun TrackPlayerCore.notifyPlaybackStateChange(state: TrackPlayerState, reason: Reason?) {
+internal fun TrackPlayerCore.notifyPlaybackStateChange(
+    state: TrackPlayerState,
+    reason: Reason?,
+) {
     onPlaybackStateChangeListeners.forEach { it(state, reason) }
 }
 
-internal fun TrackPlayerCore.notifySeek(position: Double, duration: Double) {
+internal fun TrackPlayerCore.notifySeek(
+    position: Double,
+    duration: Double,
+) {
     onSeekListeners.forEach { it(position, duration) }
 }
 
@@ -29,7 +38,10 @@ internal fun TrackPlayerCore.notifyPlaybackProgress(
     onProgressListeners.forEach { it(position, duration, isManuallySeeked) }
 }
 
-internal fun TrackPlayerCore.notifyTracksNeedUpdate(tracks: List<TrackItem>, lookahead: Int) {
+internal fun TrackPlayerCore.notifyTracksNeedUpdate(
+    tracks: List<TrackItem>,
+    lookahead: Int,
+) {
     onTracksNeedUpdateListeners.forEach { it(tracks, lookahead) }
 }
 

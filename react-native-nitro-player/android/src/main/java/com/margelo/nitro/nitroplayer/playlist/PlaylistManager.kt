@@ -7,17 +7,17 @@ import com.margelo.nitro.nitroplayer.TrackItem
 import com.margelo.nitro.nitroplayer.Variant_NullType_String
 import com.margelo.nitro.nitroplayer.media.NitroPlayerMediaBrowserService
 import com.margelo.nitro.nitroplayer.storage.NitroPlayerStorage
-import org.json.JSONArray
-import org.json.JSONObject
-import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.json.JSONArray
+import org.json.JSONObject
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * Manages multiple playlists using ExoPlayer's native playlist functionality
@@ -36,10 +36,11 @@ class PlaylistManager private constructor(
 
     private fun scheduleSave() {
         saveJob?.cancel()
-        saveJob = saveScope.launch {
-            delay(300)
-            saveToFile()
-        }
+        saveJob =
+            saveScope.launch {
+                delay(300)
+                saveToFile()
+            }
     }
 
     companion object {
@@ -357,32 +358,33 @@ class PlaylistManager private constructor(
         try {
             val jsonArray = JSONArray()
             playlists.values.forEach { playlist ->
-                val jsonObject = JSONObject().apply {
-                    put("id", playlist.id)
-                    put("name", playlist.name)
-                    put("description", playlist.description ?: "")
-                    put("artwork", playlist.artwork ?: "")
-                    val tracksArray = JSONArray()
-                    playlist.tracks.forEach { track ->
-                        tracksArray.put(
-                            JSONObject().apply {
-                                put("id", track.id)
-                                put("title", track.title)
-                                put("artist", track.artist)
-                                put("album", track.album)
-                                put("duration", track.duration)
-                                put("url", track.url)
-                                track.artwork?.let { put("artwork", it) }
-                                track.extraPayload?.let { payload ->
-                                    val extraPayloadMap = payload.toHashMap()
-                                    val extraPayloadJson = JSONObject(extraPayloadMap)
-                                    put("extraPayload", extraPayloadJson)
-                                }
-                            },
-                        )
+                val jsonObject =
+                    JSONObject().apply {
+                        put("id", playlist.id)
+                        put("name", playlist.name)
+                        put("description", playlist.description ?: "")
+                        put("artwork", playlist.artwork ?: "")
+                        val tracksArray = JSONArray()
+                        playlist.tracks.forEach { track ->
+                            tracksArray.put(
+                                JSONObject().apply {
+                                    put("id", track.id)
+                                    put("title", track.title)
+                                    put("artist", track.artist)
+                                    put("album", track.album)
+                                    put("duration", track.duration)
+                                    put("url", track.url)
+                                    track.artwork?.let { put("artwork", it) }
+                                    track.extraPayload?.let { payload ->
+                                        val extraPayloadMap = payload.toHashMap()
+                                        val extraPayloadJson = JSONObject(extraPayloadMap)
+                                        put("extraPayload", extraPayloadJson)
+                                    }
+                                },
+                            )
+                        }
+                        put("tracks", tracksArray)
                     }
-                    put("tracks", tracksArray)
-                }
                 jsonArray.put(jsonObject)
             }
 
@@ -445,59 +447,59 @@ class PlaylistManager private constructor(
     private fun parseAndLoadPlaylists(jsonArray: JSONArray) {
         playlists.clear()
         for (i in 0 until jsonArray.length()) {
-                val jsonObject = jsonArray.getJSONObject(i)
-                val tracks = mutableListOf<TrackItem>()
-                val tracksArray = jsonObject.getJSONArray("tracks")
-                for (j in 0 until tracksArray.length()) {
-                    val trackObj = tracksArray.getJSONObject(j)
-                    val artworkStr = trackObj.optString("artwork")
-                    val artwork: Variant_NullType_String? =
-                        if (!artworkStr.isNullOrEmpty()) {
-                            Variant_NullType_String.create(artworkStr)
-                        } else {
-                            null
-                        }
-                    val extraPayload: AnyMap? =
-                        if (trackObj.has("extraPayload")) {
-                            val extraPayloadJson = trackObj.getJSONObject("extraPayload")
-                            val map = AnyMap()
-                            val keyIterator = extraPayloadJson.keys()
-                            while (keyIterator.hasNext()) {
-                                val key = keyIterator.next()
-                                when (val value = extraPayloadJson.get(key)) {
-                                    is String -> map.setString(key, value)
-                                    is Number -> map.setDouble(key, value.toDouble())
-                                    is Boolean -> map.setBoolean(key, value)
-                                }
+            val jsonObject = jsonArray.getJSONObject(i)
+            val tracks = mutableListOf<TrackItem>()
+            val tracksArray = jsonObject.getJSONArray("tracks")
+            for (j in 0 until tracksArray.length()) {
+                val trackObj = tracksArray.getJSONObject(j)
+                val artworkStr = trackObj.optString("artwork")
+                val artwork: Variant_NullType_String? =
+                    if (!artworkStr.isNullOrEmpty()) {
+                        Variant_NullType_String.create(artworkStr)
+                    } else {
+                        null
+                    }
+                val extraPayload: AnyMap? =
+                    if (trackObj.has("extraPayload")) {
+                        val extraPayloadJson = trackObj.getJSONObject("extraPayload")
+                        val map = AnyMap()
+                        val keyIterator = extraPayloadJson.keys()
+                        while (keyIterator.hasNext()) {
+                            val key = keyIterator.next()
+                            when (val value = extraPayloadJson.get(key)) {
+                                is String -> map.setString(key, value)
+                                is Number -> map.setDouble(key, value.toDouble())
+                                is Boolean -> map.setBoolean(key, value)
                             }
-                            map
-                        } else {
-                            null
                         }
-                    tracks.add(
-                        TrackItem(
-                            id = trackObj.getString("id"),
-                            title = trackObj.getString("title"),
-                            artist = trackObj.getString("artist"),
-                            album = trackObj.getString("album"),
-                            duration = trackObj.getDouble("duration"),
-                            url = trackObj.getString("url"),
-                            artwork = artwork,
-                            extraPayload = extraPayload,
-                        ),
-                    )
-                }
-                val descriptionStr = jsonObject.optString("description")
-                val artworkStr = jsonObject.optString("artwork")
-                val playlist =
-                    Playlist(
-                        id = jsonObject.getString("id"),
-                        name = jsonObject.getString("name"),
-                        description = if (!descriptionStr.isNullOrEmpty()) descriptionStr else null,
-                        artwork = if (!artworkStr.isNullOrEmpty()) artworkStr else null,
-                        tracks = tracks,
-                    )
-                playlists[playlist.id] = playlist
+                        map
+                    } else {
+                        null
+                    }
+                tracks.add(
+                    TrackItem(
+                        id = trackObj.getString("id"),
+                        title = trackObj.getString("title"),
+                        artist = trackObj.getString("artist"),
+                        album = trackObj.getString("album"),
+                        duration = trackObj.getDouble("duration"),
+                        url = trackObj.getString("url"),
+                        artwork = artwork,
+                        extraPayload = extraPayload,
+                    ),
+                )
+            }
+            val descriptionStr = jsonObject.optString("description")
+            val artworkStr = jsonObject.optString("artwork")
+            val playlist =
+                Playlist(
+                    id = jsonObject.getString("id"),
+                    name = jsonObject.getString("name"),
+                    description = if (!descriptionStr.isNullOrEmpty()) descriptionStr else null,
+                    artwork = if (!artworkStr.isNullOrEmpty()) artworkStr else null,
+                    tracks = tracks,
+                )
+            playlists[playlist.id] = playlist
         }
     }
 }

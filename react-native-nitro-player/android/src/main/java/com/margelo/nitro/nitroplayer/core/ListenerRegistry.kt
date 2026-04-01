@@ -8,7 +8,10 @@ import java.util.concurrent.atomic.AtomicLong
  * Uses CopyOnWriteArrayList for lock-free iteration and AtomicLong for ID generation.
  */
 class ListenerRegistry<T> {
-    private data class Entry<T>(val id: Long, val callback: T)
+    private data class Entry<T>(
+        val id: Long,
+        val callback: T,
+    )
 
     private val entries = CopyOnWriteArrayList<Entry<T>>()
     private val nextId = AtomicLong(0)

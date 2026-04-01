@@ -14,14 +14,13 @@ class HybridAndroidAutoMediaLibrary : HybridAndroidAutoMediaLibrarySpec() {
     private val core: TrackPlayerCore
 
     init {
-        val context = NitroModules.applicationContext
-            ?: throw IllegalStateException("React Context is not initialized")
+        val context =
+            NitroModules.applicationContext
+                ?: throw IllegalStateException("React Context is not initialized")
         core = TrackPlayerCore.getInstance(context)
     }
 
-    override fun setMediaLibrary(libraryJson: String): Promise<Unit> =
-        Promise.async { core.setAndroidAutoMediaLibrary(libraryJson) }
+    override fun setMediaLibrary(libraryJson: String): Promise<Unit> = Promise.async { core.setAndroidAutoMediaLibrary(libraryJson) }
 
-    override fun clearMediaLibrary(): Promise<Unit> =
-        Promise.async { core.clearAndroidAutoMediaLibrary() }
+    override fun clearMediaLibrary(): Promise<Unit> = Promise.async { core.clearAndroidAutoMediaLibrary() }
 }

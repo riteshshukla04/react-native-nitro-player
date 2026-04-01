@@ -6,8 +6,10 @@ import type {
   GainRange,
 } from '../types/EqualizerTypes'
 
-export interface Equalizer
-  extends HybridObject<{ android: 'kotlin'; ios: 'swift' }> {
+export interface Equalizer extends HybridObject<{
+  android: 'kotlin'
+  ios: 'swift'
+}> {
   // === Enable/Disable ===
   /** Enable or disable the equalizer */
   setEnabled(enabled: boolean): Promise<void>

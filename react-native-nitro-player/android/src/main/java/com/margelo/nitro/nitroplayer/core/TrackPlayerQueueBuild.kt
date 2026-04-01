@@ -22,10 +22,11 @@ internal fun TrackPlayerCore.rebuildQueueAndPlayFromIndex(index: Int) {
     if (index < 0 || index >= currentTracks.size) return
 
     val playlistId = currentPlaylistId ?: ""
-    val mediaItems = currentTracks.subList(index, currentTracks.size).map { track ->
-        val mediaId = if (playlistId.isNotEmpty()) "$playlistId:${track.id}" else track.id
-        makeMediaItem(track, mediaId)
-    }
+    val mediaItems =
+        currentTracks.subList(index, currentTracks.size).map { track ->
+            val mediaId = if (playlistId.isNotEmpty()) "$playlistId:${track.id}" else track.id
+            makeMediaItem(track, mediaId)
+        }
 
     currentTrackIndex = index
     exo.clearMediaItems()
@@ -57,7 +58,10 @@ internal fun TrackPlayerCore.rebuildQueueFromCurrentPosition() {
     if (currentTemporaryType == TrackPlayerCore.TemporaryType.PLAY_NEXT && currentId != null) {
         var skipped = false
         for (track in playNextStack) {
-            if (!skipped && track.id == currentId) { skipped = true; continue }
+            if (!skipped && track.id == currentId) {
+                skipped = true
+                continue
+            }
             newQueueTracks.add(track)
         }
     } else if (currentTemporaryType != TrackPlayerCore.TemporaryType.PLAY_NEXT) {
@@ -68,7 +72,10 @@ internal fun TrackPlayerCore.rebuildQueueFromCurrentPosition() {
     if (currentTemporaryType == TrackPlayerCore.TemporaryType.UP_NEXT && currentId != null) {
         var skipped = false
         for (track in upNextQueue) {
-            if (!skipped && track.id == currentId) { skipped = true; continue }
+            if (!skipped && track.id == currentId) {
+                skipped = true
+                continue
+            }
             newQueueTracks.add(track)
         }
     } else if (currentTemporaryType != TrackPlayerCore.TemporaryType.UP_NEXT) {
@@ -81,10 +88,11 @@ internal fun TrackPlayerCore.rebuildQueueFromCurrentPosition() {
     }
 
     val playlistId = currentPlaylistId ?: ""
-    val newMediaItems = newQueueTracks.map { track ->
-        val mediaId = if (playlistId.isNotEmpty()) "$playlistId:${track.id}" else track.id
-        makeMediaItem(track, mediaId)
-    }
+    val newMediaItems =
+        newQueueTracks.map { track ->
+            val mediaId = if (playlistId.isNotEmpty()) "$playlistId:${track.id}" else track.id
+            makeMediaItem(track, mediaId)
+        }
 
     if (exo.mediaItemCount > currentIndex + 1) {
         exo.removeMediaItems(currentIndex + 1, exo.mediaItemCount)
@@ -97,10 +105,11 @@ internal fun TrackPlayerCore.rebuildQueueFromCurrentPosition() {
 internal fun TrackPlayerCore.updatePlayerQueue(tracks: List<TrackItem>) {
     currentTracks = tracks
     val playlistId = currentPlaylistId ?: ""
-    val mediaItems = tracks.map { track ->
-        val mediaId = if (playlistId.isNotEmpty()) "$playlistId:${track.id}" else track.id
-        makeMediaItem(track, mediaId)
-    }
+    val mediaItems =
+        tracks.map { track ->
+            val mediaId = if (playlistId.isNotEmpty()) "$playlistId:${track.id}" else track.id
+            makeMediaItem(track, mediaId)
+        }
     exo.setMediaItems(mediaItems, false)
     if (exo.playbackState == Player.STATE_IDLE && mediaItems.isNotEmpty()) {
         exo.prepare()
@@ -109,19 +118,28 @@ internal fun TrackPlayerCore.updatePlayerQueue(tracks: List<TrackItem>) {
 
 // ── MediaItem construction (member extension to access downloadManager) ────
 
-internal fun TrackPlayerCore.makeMediaItem(track: TrackItem, customMediaId: String? = null): MediaItem {
-    val metaBuilder = MediaMetadata.Builder()
-        .setTitle(track.title)
-        .setArtist(track.artist)
-        .setAlbumTitle(track.album)
+internal fun TrackPlayerCore.makeMediaItem(
+    track: TrackItem,
+    customMediaId: String? = null,
+): MediaItem {
+    val metaBuilder =
+        MediaMetadata
+            .Builder()
+            .setTitle(track.title)
+            .setArtist(track.artist)
+            .setAlbumTitle(track.album)
 
     track.artwork?.asSecondOrNull()?.let { artworkUrl ->
-        try { metaBuilder.setArtworkUri(Uri.parse(artworkUrl)) } catch (_: Exception) {}
+        try {
+            metaBuilder.setArtworkUri(Uri.parse(artworkUrl))
+        } catch (_: Exception) {
+        }
     }
 
     val effectiveUrl = downloadManager.getEffectiveUrl(track)
 
-    return MediaItem.Builder()
+    return MediaItem
+        .Builder()
         .setMediaId(customMediaId ?: track.id)
         .setUri(effectiveUrl)
         .setMediaMetadata(metaBuilder.build())
@@ -166,5 +184,4 @@ internal fun TrackPlayerCore.determineCurrentTemporaryType(): TrackPlayerCore.Te
     return TrackPlayerCore.TemporaryType.NONE
 }
 
-internal fun TrackPlayerCore.extractTrackId(mediaId: String): String =
-    if (mediaId.contains(':')) mediaId.substring(mediaId.indexOf(':') + 1) else mediaId
+internal fun TrackPlayerCore.extractTrackId(mediaId: String): String = if (mediaId.contains(':')) mediaId.substring(mediaId.indexOf(':') + 1) else mediaId

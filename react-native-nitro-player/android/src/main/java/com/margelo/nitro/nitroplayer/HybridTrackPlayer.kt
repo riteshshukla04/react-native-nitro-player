@@ -46,22 +46,33 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
     private val listenerIds = mutableListOf<Pair<String, Long>>()
 
     init {
-        val context = NitroModules.applicationContext
-            ?: throw IllegalStateException("React Context is not initialized")
+        val context =
+            NitroModules.applicationContext
+                ?: throw IllegalStateException("React Context is not initialized")
         core = TrackPlayerCore.getInstance(context)
     }
 
     // ── Playback ─────────────────────────────────────────────────────────────
 
     override fun play(): Promise<Unit> = Promise.async { core.play() }
+
     override fun pause(): Promise<Unit> = Promise.async { core.pause() }
+
     override fun seek(position: Double): Promise<Unit> = Promise.async { core.seek(position) }
+
     override fun skipToNext(): Promise<Unit> = Promise.async { core.skipToNext() }
+
     override fun skipToPrevious(): Promise<Unit> = Promise.async { core.skipToPrevious() }
-    override fun playSong(songId: String, fromPlaylist: String?): Promise<Unit> = Promise.async { core.playSong(songId, fromPlaylist) }
+
+    override fun playSong(
+        songId: String,
+        fromPlaylist: String?,
+    ): Promise<Unit> = Promise.async { core.playSong(songId, fromPlaylist) }
+
     override fun skipToIndex(index: Double): Promise<Boolean> = Promise.async { core.skipToIndex(index.toInt()) }
 
     override fun setRepeatMode(mode: RepeatMode): Promise<Unit> = Promise.async { core.setRepeatMode(mode) }
+
     override fun getRepeatMode(): RepeatMode = core.getRepeatMode()
 
     override fun setVolume(volume: Double): Promise<Unit> = Promise.async { core.setVolume(volume) }
@@ -71,10 +82,15 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
     // ── Queue / state reads ───────────────────────────────────────────────────
 
     override fun getActualQueue(): Promise<Array<TrackItem>> = Promise.async { core.getActualQueue().toTypedArray() }
+
     override fun getState(): Promise<PlayerState> = Promise.async { core.getState() }
+
     override fun getTracksById(trackIds: Array<String>): Promise<Array<TrackItem>> = Promise.async { core.getTracksById(trackIds.toList()).toTypedArray() }
+
     override fun getTracksNeedingUrls(): Promise<Array<TrackItem>> = Promise.async { core.getTracksNeedingUrls().toTypedArray() }
+
     override fun getNextTracks(count: Double): Promise<Array<TrackItem>> = Promise.async { core.getNextTracks(count.toInt()).toTypedArray() }
+
     override fun getCurrentTrackIndex(): Promise<Double> = Promise.async { core.getCurrentTrackIndex().toDouble() }
 
     // ── URL updates ───────────────────────────────────────────────────────────
@@ -84,18 +100,30 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
     // ── Temporary queue ───────────────────────────────────────────────────────
 
     override fun addToUpNext(trackId: String): Promise<Unit> = Promise.async { core.addToUpNext(trackId) }
+
     override fun playNext(trackId: String): Promise<Unit> = Promise.async { core.playNext(trackId) }
+
     override fun removeFromPlayNext(trackId: String): Promise<Boolean> = Promise.async { core.removeFromPlayNext(trackId) }
+
     override fun removeFromUpNext(trackId: String): Promise<Boolean> = Promise.async { core.removeFromUpNext(trackId) }
+
     override fun clearPlayNext(): Promise<Unit> = Promise.async { core.clearPlayNext() }
+
     override fun clearUpNext(): Promise<Unit> = Promise.async { core.clearUpNext() }
-    override fun reorderTemporaryTrack(trackId: String, newIndex: Double): Promise<Boolean> = Promise.async { core.reorderTemporaryTrack(trackId, newIndex.toInt()) }
+
+    override fun reorderTemporaryTrack(
+        trackId: String,
+        newIndex: Double,
+    ): Promise<Boolean> = Promise.async { core.reorderTemporaryTrack(trackId, newIndex.toInt()) }
+
     override fun getPlayNextQueue(): Promise<Array<TrackItem>> = Promise.async { core.getPlayNextQueue().toTypedArray() }
+
     override fun getUpNextQueue(): Promise<Array<TrackItem>> = Promise.async { core.getUpNextQueue().toTypedArray() }
 
     // ── Playback speed ────────────────────────────────────────────────────────
 
     override fun setPlaybackSpeed(speed: Double): Promise<Unit> = Promise.async { core.setPlayBackSpeed(speed) }
+
     override fun getPlaybackSpeed(): Promise<Double> = Promise.async { core.getPlayBackSpeed() }
 
     // ── Android Auto ──────────────────────────────────────────────────────────
@@ -130,16 +158,18 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
     }
 
     override fun onTracksNeedUpdate(callback: (tracks: Array<TrackItem>, lookahead: Double) -> Unit) {
-        val id = core.addOnTracksNeedUpdateListener { tracks, lookahead ->
-            callback(tracks.toTypedArray(), lookahead.toDouble())
-        }
+        val id =
+            core.addOnTracksNeedUpdateListener { tracks, lookahead ->
+                callback(tracks.toTypedArray(), lookahead.toDouble())
+            }
         listenerIds += "onTracksNeedUpdate" to id
     }
 
     override fun onTemporaryQueueChange(callback: (playNextQueue: Array<TrackItem>, upNextQueue: Array<TrackItem>) -> Unit) {
-        val id = core.addOnTemporaryQueueChangeListener { pn, un ->
-            callback(pn.toTypedArray(), un.toTypedArray())
-        }
+        val id =
+            core.addOnTemporaryQueueChangeListener { pn, un ->
+                callback(pn.toTypedArray(), un.toTypedArray())
+            }
         listenerIds += "onTemporaryQueueChange" to id
     }
 

@@ -13,10 +13,10 @@ import com.margelo.nitro.nitroplayer.EqualizerState
 import com.margelo.nitro.nitroplayer.GainRange
 import com.margelo.nitro.nitroplayer.PresetType
 import com.margelo.nitro.nitroplayer.Variant_NullType_String
+import com.margelo.nitro.nitroplayer.core.ListenerRegistry
 import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
 import org.json.JSONArray
 import org.json.JSONObject
-import com.margelo.nitro.nitroplayer.core.ListenerRegistry
 
 class EqualizerCore private constructor(
     private val context: Context,
@@ -95,9 +95,10 @@ class EqualizerCore private constructor(
                 initDynamicsProcessing(audioSessionId)
                 usingDynamicsProcessing = true
             } else {
-                equalizer = Equalizer(0, audioSessionId).apply {
-                    enabled = false
-                }
+                equalizer =
+                    Equalizer(0, audioSessionId).apply {
+                        enabled = false
+                    }
                 usingDynamicsProcessing = false
                 setupBandMapping()
             }
@@ -109,14 +110,19 @@ class EqualizerCore private constructor(
 
     @RequiresApi(Build.VERSION_CODES.P)
     private fun initDynamicsProcessing(sessionId: Int) {
-        val config = DynamicsProcessing.Config.Builder(
-            DynamicsProcessing.VARIANT_FAVOR_FREQUENCY_RESOLUTION,
-            1,       // channelCount (stereo handled internally)
-            true, 10, // Pre-EQ enabled, 10 bands
-            false, 0, // MBC disabled
-            false, 0, // Post-EQ disabled
-            false     // Limiter disabled
-        ).build()
+        val config =
+            DynamicsProcessing.Config
+                .Builder(
+                    DynamicsProcessing.VARIANT_FAVOR_FREQUENCY_RESOLUTION,
+                    1, // channelCount (stereo handled internally)
+                    true,
+                    10, // Pre-EQ enabled, 10 bands
+                    false,
+                    0, // MBC disabled
+                    false,
+                    0, // Post-EQ disabled
+                    false, // Limiter disabled
+                ).build()
         dynamicsProcessing = DynamicsProcessing(0, sessionId, config).apply { enabled = false }
         for (i in 0 until 10) {
             val band = DynamicsProcessing.EqBand(true, frequencies[i].toFloat(), 0f)
@@ -155,8 +161,8 @@ class EqualizerCore private constructor(
         }
     }
 
-    fun setEnabled(enabled: Boolean): Boolean {
-        return try {
+    fun setEnabled(enabled: Boolean): Boolean =
+        try {
             if (usingDynamicsProcessing && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 dynamicsProcessing?.enabled = enabled
             } else {
@@ -170,12 +176,11 @@ class EqualizerCore private constructor(
             NitroPlayerLogger.log("EqualizerCore", "Failed to set enabled: ${e.message}")
             false
         }
-    }
 
     fun isEnabled(): Boolean = isEqualizerEnabled
 
-    fun getBands(): Array<EqualizerBand> {
-        return (0 until 10)
+    fun getBands(): Array<EqualizerBand> =
+        (0 until 10)
             .map { i ->
                 val gainDb = getCurrentBandGain(i)
                 EqualizerBand(
@@ -185,7 +190,6 @@ class EqualizerCore private constructor(
                     frequencyLabel = frequencyLabels[i],
                 )
             }.toTypedArray()
-    }
 
     private fun getCurrentBandGain(bandIndex: Int): Double = currentGainsArray[bandIndex]
 
@@ -217,7 +221,10 @@ class EqualizerCore private constructor(
     }
 
     @RequiresApi(Build.VERSION_CODES.P)
-    private fun setDPBandGain(bandIndex: Int, gainDb: Float) {
+    private fun setDPBandGain(
+        bandIndex: Int,
+        gainDb: Float,
+    ) {
         val band = DynamicsProcessing.EqBand(true, frequencies[bandIndex].toFloat(), gainDb)
         dynamicsProcessing?.setPreEqBandAllChannelsTo(bandIndex, band)
     }
@@ -249,12 +256,10 @@ class EqualizerCore private constructor(
         }
     }
 
-    private fun getAllGains(): List<Double> {
-        return (0 until 10).map { i -> getCurrentBandGain(i) }
-    }
+    private fun getAllGains(): List<Double> = (0 until 10).map { i -> getCurrentBandGain(i) }
 
-    fun getBandRange(): GainRange {
-        return if (usingDynamicsProcessing) {
+    fun getBandRange(): GainRange =
+        if (usingDynamicsProcessing) {
             GainRange(min = -12.0, max = 12.0)
         } else {
             val eq = equalizer
@@ -268,7 +273,6 @@ class EqualizerCore private constructor(
                 GainRange(min = -12.0, max = 12.0)
             }
         }
-    }
 
     fun getPresets(): Array<EqualizerPreset> {
         val builtIn = getBuiltInPresets()
@@ -418,17 +422,22 @@ class EqualizerCore private constructor(
         }
     }
 
-    private fun saveBandGainsAndPreset(gains: List<Double>, presetName: String?) {
+    private fun saveBandGainsAndPreset(
+        gains: List<Double>,
+        presetName: String?,
+    ) {
         val json = JSONArray()
         gains.forEach { json.put(it) }
-        prefs.edit().apply {
-            putString("eq_band_gains", json.toString())
-            if (presetName != null) {
-                putString("eq_current_preset", presetName)
-            } else {
-                remove("eq_current_preset")
-            }
-        }.apply()
+        prefs
+            .edit()
+            .apply {
+                putString("eq_band_gains", json.toString())
+                if (presetName != null) {
+                    putString("eq_current_preset", presetName)
+                } else {
+                    remove("eq_current_preset")
+                }
+            }.apply()
     }
 
     private fun restoreSettings() {

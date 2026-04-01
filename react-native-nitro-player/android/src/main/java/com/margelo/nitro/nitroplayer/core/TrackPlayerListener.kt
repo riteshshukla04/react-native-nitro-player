@@ -17,15 +17,19 @@ import com.margelo.nitro.nitroplayer.media.NitroPlayerMediaBrowserService
 internal class TrackPlayerEventListener(
     private val core: TrackPlayerCore,
 ) : Player.Listener {
-
-    override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+    override fun onMediaItemTransition(
+        mediaItem: MediaItem?,
+        reason: Int,
+    ) {
         with(core) {
             // TRACK repeat: REPEAT_MODE_ONE fires this every loop — not a real track change
             if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT) return
 
             // Remove the track that just finished/was skipped from temp lists
-            if ((reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO ||
-                        reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK) &&
+            if ((
+                    reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO ||
+                        reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK
+                ) &&
                 previousMediaItem != null
             ) {
                 previousMediaItem?.mediaId?.let { mediaId ->
@@ -54,12 +58,13 @@ internal class TrackPlayerEventListener(
             }
 
             val track = getCurrentTrack() ?: return
-            val r = when (reason) {
-                Player.MEDIA_ITEM_TRANSITION_REASON_AUTO -> Reason.END
-                Player.MEDIA_ITEM_TRANSITION_REASON_SEEK -> Reason.USER_ACTION
-                Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED -> Reason.USER_ACTION
-                else -> null
-            }
+            val r =
+                when (reason) {
+                    Player.MEDIA_ITEM_TRANSITION_REASON_AUTO -> Reason.END
+                    Player.MEDIA_ITEM_TRANSITION_REASON_SEEK -> Reason.USER_ACTION
+                    Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED -> Reason.USER_ACTION
+                    else -> null
+                }
             notifyTrackChange(track, r)
             mediaSessionManager?.onTrackChanged(track)
             checkUpcomingTracksForUrls(lookaheadCount)
@@ -67,13 +72,19 @@ internal class TrackPlayerEventListener(
         }
     }
 
-    override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
+    override fun onTimelineChanged(
+        timeline: androidx.media3.common.Timeline,
+        reason: Int,
+    ) {
         if (reason == Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED) {
             NitroPlayerMediaBrowserService.getInstance()?.onPlaylistsUpdated()
         }
     }
 
-    override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+    override fun onPlayWhenReadyChanged(
+        playWhenReady: Boolean,
+        reason: Int,
+    ) {
         val r = if (reason == Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST) Reason.USER_ACTION else null
         core.emitStateChange(r)
     }

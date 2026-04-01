@@ -51,11 +51,17 @@ class MediaSessionManager(
         private set
     private var notificationManager: NotificationManager? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
     @Volatile private var currentTrack: TrackItem? = null
+
     @Volatile private var isPlaying: Boolean = false
-    private val artworkCache = object : LruCache<String, Bitmap>(20) {
-        override fun sizeOf(key: String, value: Bitmap): Int = 1
-    }
+    private val artworkCache =
+        object : LruCache<String, Bitmap>(20) {
+            override fun sizeOf(
+                key: String,
+                value: Bitmap,
+            ): Int = 1
+        }
 
     private var androidAutoEnabled: Boolean = false
     private var carPlayEnabled: Boolean = false

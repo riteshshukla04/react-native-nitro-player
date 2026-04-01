@@ -13,8 +13,10 @@ import type {
   PlaybackSource,
 } from '../types/DownloadTypes'
 
-export interface DownloadManager
-  extends HybridObject<{ android: 'kotlin'; ios: 'swift' }> {
+export interface DownloadManager extends HybridObject<{
+  android: 'kotlin'
+  ios: 'swift'
+}> {
   /**
    * Configure the download manager
    */

@@ -10,9 +10,10 @@ import com.margelo.nitro.nitroplayer.media.NitroPlayerMediaBrowserService
 internal fun TrackPlayerCore.initExoAndMedia() {
     exo = ExoPlayerCore(context, playerThread)
 
-    mediaSessionManager = MediaSessionManager(context, exo.player, playlistManager).apply {
-        setTrackPlayerCore(this@initExoAndMedia)
-    }
+    mediaSessionManager =
+        MediaSessionManager(context, exo.player, playlistManager).apply {
+            setTrackPlayerCore(this@initExoAndMedia)
+        }
 
     // Give MediaBrowserService access to this core and media session
     NitroPlayerMediaBrowserService.trackPlayerCore = this

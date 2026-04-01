@@ -22,8 +22,9 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-class TrackPlayerCore private constructor(internal val context: Context) {
-
+class TrackPlayerCore private constructor(
+    internal val context: Context,
+) {
     // ── Thread infrastructure ──────────────────────────────────────────────
     /** Main-looper handler — only for Android Auto connection callbacks */
     internal val handler = Handler(Looper.getMainLooper())
@@ -33,6 +34,7 @@ class TrackPlayerCore private constructor(internal val context: Context) {
 
     // ── ExoPlayer wrapper (created on player thread inside initExoAndMedia) ──
     internal lateinit var exo: ExoPlayerCore
+
     /** Safe initialized check — backing field can only be read from the declaring class. */
     internal val isExoInitialized: Boolean get() = ::exo.isInitialized
 
@@ -45,9 +47,11 @@ class TrackPlayerCore private constructor(internal val context: Context) {
     // ── Playback state ─────────────────────────────────────────────────────
     @Volatile internal var currentPlaylistId: String? = null
     internal var isManuallySeeked = false
+
     @Volatile internal var isAndroidAutoConnectedField: Boolean = false
     internal var androidAutoConnectionDetector: AndroidAutoConnectionDetector? = null
     internal var previousMediaItem: androidx.media3.common.MediaItem? = null
+
     @Volatile internal var currentRepeatMode: RepeatMode = RepeatMode.OFF
     internal var lookaheadCount: Int = 5
     internal var playerListener: androidx.media3.common.Player.Listener? = null
@@ -78,33 +82,35 @@ class TrackPlayerCore private constructor(internal val context: Context) {
         ListenerRegistry<(Boolean) -> Unit>()
 
     // ── Progress & playlist-update runnables ───────────────────────────────
-    internal val progressUpdateRunnable = object : Runnable {
-        override fun run() {
-            if (::exo.isInitialized &&
-                exo.playbackState != androidx.media3.common.Player.STATE_IDLE
-            ) {
-                val pos = exo.currentPosition / 1000.0
-                val dur = if (exo.duration > 0) exo.duration / 1000.0 else 0.0
-                notifyPlaybackProgress(pos, dur, if (isManuallySeeked) true else null)
-                isManuallySeeked = false
+    internal val progressUpdateRunnable =
+        object : Runnable {
+            override fun run() {
+                if (::exo.isInitialized &&
+                    exo.playbackState != androidx.media3.common.Player.STATE_IDLE
+                ) {
+                    val pos = exo.currentPosition / 1000.0
+                    val dur = if (exo.duration > 0) exo.duration / 1000.0 else 0.0
+                    notifyPlaybackProgress(pos, dur, if (isManuallySeeked) true else null)
+                    isManuallySeeked = false
+                }
+                playerHandler.postDelayed(this, 250)
             }
-            playerHandler.postDelayed(this, 250)
         }
-    }
 
-    internal val updateCurrentPlaylistRunnable = Runnable {
-        val id = currentPlaylistId ?: return@Runnable
-        val playlist = playlistManager.getPlaylist(id) ?: return@Runnable
-        currentTracks = playlist.tracks
-        if (::exo.isInitialized &&
-            exo.currentMediaItem != null &&
-            exo.currentMediaItemIndex >= 0
-        ) {
-            rebuildQueueFromCurrentPosition()
-        } else {
-            updatePlayerQueue(playlist.tracks)
+    internal val updateCurrentPlaylistRunnable =
+        Runnable {
+            val id = currentPlaylistId ?: return@Runnable
+            val playlist = playlistManager.getPlaylist(id) ?: return@Runnable
+            currentTracks = playlist.tracks
+            if (::exo.isInitialized &&
+                exo.currentMediaItem != null &&
+                exo.currentMediaItemIndex >= 0
+            ) {
+                rebuildQueueFromCurrentPosition()
+            } else {
+                updatePlayerQueue(playlist.tracks)
+            }
         }
-    }
 
     // ── Singleton ──────────────────────────────────────────────────────────
     companion object {
@@ -130,10 +136,14 @@ class TrackPlayerCore private constructor(internal val context: Context) {
     internal suspend fun <T> withPlayerContext(block: () -> T): T {
         if (Looper.myLooper() == playerThread.looper) return block()
         return suspendCancellableCoroutine { cont ->
-            val r = Runnable {
-                try { cont.resume(block()) }
-                catch (e: Exception) { cont.resumeWithException(e) }
-            }
+            val r =
+                Runnable {
+                    try {
+                        cont.resume(block())
+                    } catch (e: Exception) {
+                        cont.resumeWithException(e)
+                    }
+                }
             playerHandler.post(r)
             cont.invokeOnCancellation { playerHandler.removeCallbacks(r) }
         }
@@ -157,45 +167,40 @@ class TrackPlayerCore private constructor(internal val context: Context) {
     // ── Simple read-only accessors ─────────────────────────────────────────
 
     fun isAndroidAutoConnected(): Boolean = isAndroidAutoConnectedField
+
     fun getCurrentPlaylistId(): String? = currentPlaylistId
+
     fun getPlaylistManager(): PlaylistManager = playlistManager
-    fun getAllPlaylists(): List<com.margelo.nitro.nitroplayer.playlist.Playlist> =
-        playlistManager.getAllPlaylists()
+
+    fun getAllPlaylists(): List<com.margelo.nitro.nitroplayer.playlist.Playlist> = playlistManager.getAllPlaylists()
 
     // ── Listener add/remove (returns stable ID for cleanup) ───────────────
 
-    fun addOnChangeTrackListener(cb: (TrackItem, Reason?) -> Unit): Long =
-        onChangeTrackListeners.add(cb)
-    fun removeOnChangeTrackListener(id: Long): Boolean =
-        onChangeTrackListeners.remove(id)
+    fun addOnChangeTrackListener(cb: (TrackItem, Reason?) -> Unit): Long = onChangeTrackListeners.add(cb)
 
-    fun addOnPlaybackStateChangeListener(cb: (TrackPlayerState, Reason?) -> Unit): Long =
-        onPlaybackStateChangeListeners.add(cb)
-    fun removeOnPlaybackStateChangeListener(id: Long): Boolean =
-        onPlaybackStateChangeListeners.remove(id)
+    fun removeOnChangeTrackListener(id: Long): Boolean = onChangeTrackListeners.remove(id)
 
-    fun addOnSeekListener(cb: (Double, Double) -> Unit): Long =
-        onSeekListeners.add(cb)
-    fun removeOnSeekListener(id: Long): Boolean =
-        onSeekListeners.remove(id)
+    fun addOnPlaybackStateChangeListener(cb: (TrackPlayerState, Reason?) -> Unit): Long = onPlaybackStateChangeListeners.add(cb)
 
-    fun addOnPlaybackProgressChangeListener(cb: (Double, Double, Boolean?) -> Unit): Long =
-        onProgressListeners.add(cb)
-    fun removeOnPlaybackProgressChangeListener(id: Long): Boolean =
-        onProgressListeners.remove(id)
+    fun removeOnPlaybackStateChangeListener(id: Long): Boolean = onPlaybackStateChangeListeners.remove(id)
 
-    fun addOnTracksNeedUpdateListener(cb: (List<TrackItem>, Int) -> Unit): Long =
-        onTracksNeedUpdateListeners.add(cb)
-    fun removeOnTracksNeedUpdateListener(id: Long): Boolean =
-        onTracksNeedUpdateListeners.remove(id)
+    fun addOnSeekListener(cb: (Double, Double) -> Unit): Long = onSeekListeners.add(cb)
 
-    fun addOnTemporaryQueueChangeListener(cb: (List<TrackItem>, List<TrackItem>) -> Unit): Long =
-        onTemporaryQueueChangeListeners.add(cb)
-    fun removeOnTemporaryQueueChangeListener(id: Long): Boolean =
-        onTemporaryQueueChangeListeners.remove(id)
+    fun removeOnSeekListener(id: Long): Boolean = onSeekListeners.remove(id)
 
-    fun addOnAndroidAutoConnectionListener(cb: (Boolean) -> Unit): Long =
-        onAndroidAutoConnectionListeners.add(cb)
-    fun removeOnAndroidAutoConnectionListener(id: Long): Boolean =
-        onAndroidAutoConnectionListeners.remove(id)
+    fun addOnPlaybackProgressChangeListener(cb: (Double, Double, Boolean?) -> Unit): Long = onProgressListeners.add(cb)
+
+    fun removeOnPlaybackProgressChangeListener(id: Long): Boolean = onProgressListeners.remove(id)
+
+    fun addOnTracksNeedUpdateListener(cb: (List<TrackItem>, Int) -> Unit): Long = onTracksNeedUpdateListeners.add(cb)
+
+    fun removeOnTracksNeedUpdateListener(id: Long): Boolean = onTracksNeedUpdateListeners.remove(id)
+
+    fun addOnTemporaryQueueChangeListener(cb: (List<TrackItem>, List<TrackItem>) -> Unit): Long = onTemporaryQueueChangeListeners.add(cb)
+
+    fun removeOnTemporaryQueueChangeListener(id: Long): Boolean = onTemporaryQueueChangeListeners.remove(id)
+
+    fun addOnAndroidAutoConnectionListener(cb: (Boolean) -> Unit): Long = onAndroidAutoConnectionListeners.add(cb)
+
+    fun removeOnAndroidAutoConnectionListener(id: Long): Boolean = onAndroidAutoConnectionListeners.remove(id)
 }

@@ -35,18 +35,24 @@ internal fun TrackPlayerCore.getStateInternal(): PlayerState {
     val currentTrack: Variant_NullType_TrackItem? = track?.let { Variant_NullType_TrackItem.create(it) }
     val position = exo.currentPosition / 1000.0
     val duration = if (exo.duration > 0) exo.duration / 1000.0 else 0.0
-    val state = when (exo.playbackState) {
-        Player.STATE_IDLE -> TrackPlayerState.STOPPED
-        Player.STATE_BUFFERING -> if (exo.playWhenReady) TrackPlayerState.PLAYING else TrackPlayerState.PAUSED
-        Player.STATE_READY -> if (exo.isPlaying) TrackPlayerState.PLAYING else TrackPlayerState.PAUSED
-        Player.STATE_ENDED -> TrackPlayerState.STOPPED
-        else -> TrackPlayerState.STOPPED
-    }
-    val playingType = if (track == null) CurrentPlayingType.NOT_PLAYING else when (currentTemporaryType) {
-        TrackPlayerCore.TemporaryType.NONE -> CurrentPlayingType.PLAYLIST
-        TrackPlayerCore.TemporaryType.PLAY_NEXT -> CurrentPlayingType.PLAY_NEXT
-        TrackPlayerCore.TemporaryType.UP_NEXT -> CurrentPlayingType.UP_NEXT
-    }
+    val state =
+        when (exo.playbackState) {
+            Player.STATE_IDLE -> TrackPlayerState.STOPPED
+            Player.STATE_BUFFERING -> if (exo.playWhenReady) TrackPlayerState.PLAYING else TrackPlayerState.PAUSED
+            Player.STATE_READY -> if (exo.isPlaying) TrackPlayerState.PLAYING else TrackPlayerState.PAUSED
+            Player.STATE_ENDED -> TrackPlayerState.STOPPED
+            else -> TrackPlayerState.STOPPED
+        }
+    val playingType =
+        if (track == null) {
+            CurrentPlayingType.NOT_PLAYING
+        } else {
+            when (currentTemporaryType) {
+                TrackPlayerCore.TemporaryType.NONE -> CurrentPlayingType.PLAYLIST
+                TrackPlayerCore.TemporaryType.PLAY_NEXT -> CurrentPlayingType.PLAY_NEXT
+                TrackPlayerCore.TemporaryType.UP_NEXT -> CurrentPlayingType.UP_NEXT
+            }
+        }
     return PlayerState(
         currentTrack = currentTrack,
         currentPosition = position,
@@ -70,11 +76,12 @@ internal fun TrackPlayerCore.getActualQueueInternal(): List<TrackItem> {
     val queue = ArrayList<TrackItem>(currentTracks.size + playNextStack.size + upNextQueue.size)
 
     // Tracks before current (include currentTrackIndex when a temp track is playing)
-    val beforeEnd = if (currentTemporaryType != TrackPlayerCore.TemporaryType.NONE) {
-        minOf(currentIndex + 1, currentTracks.size)
-    } else {
-        currentIndex
-    }
+    val beforeEnd =
+        if (currentTemporaryType != TrackPlayerCore.TemporaryType.NONE) {
+            minOf(currentIndex + 1, currentTracks.size)
+        } else {
+            currentIndex
+        }
     if (beforeEnd > 0) queue.addAll(currentTracks.subList(0, beforeEnd))
 
     // Current track
@@ -86,7 +93,10 @@ internal fun TrackPlayerCore.getActualQueueInternal(): List<TrackItem> {
     if (currentTemporaryType == TrackPlayerCore.TemporaryType.PLAY_NEXT && currentId != null) {
         var skipped = false
         for (track in playNextStack) {
-            if (!skipped && track.id == currentId) { skipped = true; continue }
+            if (!skipped && track.id == currentId) {
+                skipped = true
+                continue
+            }
             queue.add(track)
         }
     } else if (currentTemporaryType != TrackPlayerCore.TemporaryType.PLAY_NEXT) {
@@ -97,7 +107,10 @@ internal fun TrackPlayerCore.getActualQueueInternal(): List<TrackItem> {
     if (currentTemporaryType == TrackPlayerCore.TemporaryType.UP_NEXT && currentId != null) {
         var skipped = false
         for (track in upNextQueue) {
-            if (!skipped && track.id == currentId) { skipped = true; continue }
+            if (!skipped && track.id == currentId) {
+                skipped = true
+                continue
+            }
             queue.add(track)
         }
     } else if (currentTemporaryType != TrackPlayerCore.TemporaryType.UP_NEXT) {
@@ -130,8 +143,14 @@ private fun TrackPlayerCore.skipToIndexInternal(index: Int): Boolean {
     val upNextEnd = upNextStart + effectiveUpNextSize
     val originalRemainingStart = upNextEnd
 
-    if (index < currentPos) { playFromIndexInternal(index); return true }
-    if (index == currentPos) { exo.seekTo(0); return true }
+    if (index < currentPos) {
+        playFromIndexInternal(index)
+        return true
+    }
+    if (index == currentPos) {
+        exo.seekTo(0)
+        return true
+    }
 
     if (index in playNextStart until playNextEnd) {
         val targetTrack = actualQueue[index]
@@ -158,7 +177,8 @@ private fun TrackPlayerCore.skipToIndexInternal(index: Int): Boolean {
         val targetTrack = actualQueue[index]
         val originalIndex = currentTracks.indexOfFirst { it.id == targetTrack.id }
         if (originalIndex == -1) return false
-        playNextStack.clear(); upNextQueue.clear()
+        playNextStack.clear()
+        upNextQueue.clear()
         currentTemporaryType = TrackPlayerCore.TemporaryType.NONE
         rebuildQueueAndPlayFromIndex(originalIndex)
         checkUpcomingTracksForUrls(lookaheadCount)

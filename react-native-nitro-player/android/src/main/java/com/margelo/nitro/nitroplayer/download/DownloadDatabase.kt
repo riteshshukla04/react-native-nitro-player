@@ -7,13 +7,13 @@ import com.margelo.nitro.nitroplayer.*
 import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
 import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
 import com.margelo.nitro.nitroplayer.storage.NitroPlayerStorage
-import org.json.JSONArray
-import org.json.JSONObject
-import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.File
 
 /**
  * Manages persistence of downloaded track metadata using file storage
