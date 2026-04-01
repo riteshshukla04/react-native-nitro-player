@@ -54,16 +54,16 @@ namespace margelo::nitro::nitroplayer {
 
   public:
     // Methods
-    std::string createPlaylist(const std::string& name, const std::optional<std::string>& description, const std::optional<std::string>& artwork) override;
-    void deletePlaylist(const std::string& playlistId) override;
-    void updatePlaylist(const std::string& playlistId, const std::optional<std::string>& name, const std::optional<std::string>& description, const std::optional<std::string>& artwork) override;
+    std::shared_ptr<Promise<std::string>> createPlaylist(const std::string& name, const std::optional<std::string>& description, const std::optional<std::string>& artwork) override;
+    std::shared_ptr<Promise<void>> deletePlaylist(const std::string& playlistId) override;
+    std::shared_ptr<Promise<void>> updatePlaylist(const std::string& playlistId, const std::optional<std::string>& name, const std::optional<std::string>& description, const std::optional<std::string>& artwork) override;
     std::variant<nitro::NullType, Playlist> getPlaylist(const std::string& playlistId) override;
     std::vector<Playlist> getAllPlaylists() override;
-    void addTrackToPlaylist(const std::string& playlistId, const TrackItem& track, std::optional<double> index) override;
-    void addTracksToPlaylist(const std::string& playlistId, const std::vector<TrackItem>& tracks, std::optional<double> index) override;
-    void removeTrackFromPlaylist(const std::string& playlistId, const std::string& trackId) override;
-    void reorderTrackInPlaylist(const std::string& playlistId, const std::string& trackId, double newIndex) override;
-    void loadPlaylist(const std::string& playlistId) override;
+    std::shared_ptr<Promise<void>> addTrackToPlaylist(const std::string& playlistId, const TrackItem& track, std::optional<double> index) override;
+    std::shared_ptr<Promise<void>> addTracksToPlaylist(const std::string& playlistId, const std::vector<TrackItem>& tracks, std::optional<double> index) override;
+    std::shared_ptr<Promise<void>> removeTrackFromPlaylist(const std::string& playlistId, const std::string& trackId) override;
+    std::shared_ptr<Promise<void>> reorderTrackInPlaylist(const std::string& playlistId, const std::string& trackId, double newIndex) override;
+    std::shared_ptr<Promise<void>> loadPlaylist(const std::string& playlistId) override;
     std::variant<nitro::NullType, std::string> getCurrentPlaylistId() override;
     void onPlaylistsChanged(const std::function<void(const std::vector<Playlist>& /* playlists */, std::optional<QueueOperation> /* operation */)>& callback) override;
     void onPlaylistChanged(const std::function<void(const std::string& /* playlistId */, const Playlist& /* playlist */, std::optional<QueueOperation> /* operation */)>& callback) override;

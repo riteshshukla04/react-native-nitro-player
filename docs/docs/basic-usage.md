@@ -8,6 +8,8 @@ tags: [android, ios]
 
 This guide will help you get started with **React Native Nitro Player** by creating a simple playlist and playing music.
 
+> **Async APIs:** Calls that change playback or mutate playlists return Promises. The examples below use `await` inside `async` functions—mirror that in your app, or use `void` / `.catch()` where fire-and-forget is appropriate.
+
 ## 1. Import Definitions
 
 Import the necessary modules and types from the library.
@@ -93,20 +95,19 @@ Now, let's create a playlist using `Sample Tracks Collection 1` and start playba
 ```typescript
 async function setupPlayer() {
   // 1. Create a new playlist
-  const playlistId = PlayerQueue.createPlaylist(
-    'Chill Vibes', 
-    'Relaxing Lofi Beats', 
+  const playlistId = await PlayerQueue.createPlaylist(
+    'Chill Vibes',
+    'Relaxing Lofi Beats',
     sampleTracks1[0].artwork
   );
 
   // 2. Add tracks to the playlist
-  PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
+  await PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
 
   // 3. Load the playlist into the player
-  PlayerQueue.loadPlaylist(playlistId);
+  await PlayerQueue.loadPlaylist(playlistId);
 
   // 4. Start playback
-  // You can play the first song specifically, or just call play() if loaded
   await TrackPlayer.playSong(sampleTracks1[0].id);
 }
 ```
@@ -118,15 +119,14 @@ If you want to play a song from `Sample Tracks Collection 2` immediately:
 ```typescript
 async function playNatureSound() {
   const track = sampleTracks2[0];
-  
-  // Directly play the song (it will be added to the queue automatically)
-  // Note: For best practice, adding to a playlist is recommended.
-  
-  // Alternatively, create a quick playlist and play
-  const naturePlaylistId = PlayerQueue.createPlaylist('Nature', 'Nature Sounds');
-  PlayerQueue.addTracksToPlaylist(naturePlaylistId, sampleTracks2);
-  PlayerQueue.loadPlaylist(naturePlaylistId);
-  
+
+  const naturePlaylistId = await PlayerQueue.createPlaylist(
+    'Nature',
+    'Nature Sounds'
+  );
+  await PlayerQueue.addTracksToPlaylist(naturePlaylistId, sampleTracks2);
+  await PlayerQueue.loadPlaylist(naturePlaylistId);
+
   await TrackPlayer.playSong(track.id);
 }
 ```
@@ -136,15 +136,9 @@ async function playNatureSound() {
 Once playback has started, you can control it using `TrackPlayer`.
 
 ```typescript
-// Pause
-TrackPlayer.pause();
-
-// Resume
-TrackPlayer.play();
-
-// Skip to next track
-TrackPlayer.skipToNext();
-
-// Seek to 30 seconds
-TrackPlayer.seek(30);
+// Pause / resume / skip / seek are async — use await (or void in fire-and-forget)
+await TrackPlayer.pause();
+await TrackPlayer.play();
+await TrackPlayer.skipToNext();
+await TrackPlayer.seek(30);
 ```

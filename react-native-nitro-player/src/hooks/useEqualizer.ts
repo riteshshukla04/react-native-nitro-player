@@ -11,13 +11,13 @@ export interface UseEqualizerResult {
   /** Currently applied preset name */
   currentPreset: string | null
   /** Toggle equalizer on/off */
-  setEnabled: (enabled: boolean) => boolean
+  setEnabled: (enabled: boolean) => Promise<boolean>
   /** Set gain for a specific band */
-  setBandGain: (bandIndex: number, gainDb: number) => boolean
+  setBandGain: (bandIndex: number, gainDb: number) => Promise<boolean>
   /** Set all band gains at once */
-  setAllBandGains: (gains: number[]) => boolean
+  setAllBandGains: (gains: number[]) => Promise<boolean>
   /** Reset to flat response */
-  reset: () => void
+  reset: () => Promise<void>
   /** Whether equalizer is loading */
   isLoading: boolean
   /** Gain range (min/max in dB) */
@@ -25,11 +25,16 @@ export interface UseEqualizerResult {
 }
 
 const DEFAULT_BANDS: EqualizerBand[] = [
-  { index: 0, centerFrequency: 60, gainDb: 0, frequencyLabel: '60 Hz' },
-  { index: 1, centerFrequency: 230, gainDb: 0, frequencyLabel: '230 Hz' },
-  { index: 2, centerFrequency: 910, gainDb: 0, frequencyLabel: '910 Hz' },
-  { index: 3, centerFrequency: 3600, gainDb: 0, frequencyLabel: '3.6 kHz' },
-  { index: 4, centerFrequency: 14000, gainDb: 0, frequencyLabel: '14 kHz' },
+  { index: 0, centerFrequency: 31, gainDb: 0, frequencyLabel: '31 Hz' },
+  { index: 1, centerFrequency: 63, gainDb: 0, frequencyLabel: '63 Hz' },
+  { index: 2, centerFrequency: 125, gainDb: 0, frequencyLabel: '125 Hz' },
+  { index: 3, centerFrequency: 250, gainDb: 0, frequencyLabel: '250 Hz' },
+  { index: 4, centerFrequency: 500, gainDb: 0, frequencyLabel: '500 Hz' },
+  { index: 5, centerFrequency: 1000, gainDb: 0, frequencyLabel: '1 kHz' },
+  { index: 6, centerFrequency: 2000, gainDb: 0, frequencyLabel: '2 kHz' },
+  { index: 7, centerFrequency: 4000, gainDb: 0, frequencyLabel: '4 kHz' },
+  { index: 8, centerFrequency: 8000, gainDb: 0, frequencyLabel: '8 kHz' },
+  { index: 9, centerFrequency: 16000, gainDb: 0, frequencyLabel: '16 kHz' },
 ]
 
 export function useEqualizer(): UseEqualizerResult {
@@ -46,7 +51,7 @@ export function useEqualizer(): UseEqualizerResult {
 
     const loadState = async () => {
       try {
-        const state = Equalizer.getState()
+        const state = await Equalizer.getState()
         if (isMounted.current) {
           setIsEnabledState(state.enabled)
           setBands(state.bands)
@@ -111,9 +116,10 @@ export function useEqualizer(): UseEqualizerResult {
     return unsubscribe
   }, [])
 
-  const setEnabled = useCallback((enabled: boolean): boolean => {
+  const setEnabled = useCallback(async (enabled: boolean): Promise<boolean> => {
     try {
-      return Equalizer.setEnabled(enabled)
+      await Equalizer.setEnabled(enabled)
+      return true
     } catch (error) {
       console.error('[useEqualizer] Error setting enabled:', error)
       return false
@@ -121,13 +127,13 @@ export function useEqualizer(): UseEqualizerResult {
   }, [])
 
   const setBandGain = useCallback(
-    (bandIndex: number, gainDb: number): boolean => {
-      // Optimistic update
+    async (bandIndex: number, gainDb: number): Promise<boolean> => {
       setBands((prevBands) =>
         prevBands.map((b) => (b.index === bandIndex ? { ...b, gainDb } : b))
       )
       try {
-        return Equalizer.setBandGain(bandIndex, gainDb)
+        await Equalizer.setBandGain(bandIndex, gainDb)
+        return true
       } catch (error) {
         console.error('[useEqualizer] Error setting band gain:', error)
         return false
@@ -136,24 +142,26 @@ export function useEqualizer(): UseEqualizerResult {
     []
   )
 
-  const setAllBandGains = useCallback((gains: number[]): boolean => {
-    // Optimistic update
-    setBands((prevBands) =>
-      prevBands.map((b, i) => ({ ...b, gainDb: gains[i] ?? b.gainDb }))
-    )
-    try {
-      return Equalizer.setAllBandGains(gains)
-    } catch (error) {
-      console.error('[useEqualizer] Error setting all band gains:', error)
-      return false
-    }
-  }, [])
+  const setAllBandGains = useCallback(
+    async (gains: number[]): Promise<boolean> => {
+      setBands((prevBands) =>
+        prevBands.map((b, i) => ({ ...b, gainDb: gains[i] ?? b.gainDb }))
+      )
+      try {
+        await Equalizer.setAllBandGains(gains)
+        return true
+      } catch (error) {
+        console.error('[useEqualizer] Error setting all band gains:', error)
+        return false
+      }
+    },
+    []
+  )
 
-  const reset = useCallback(() => {
-    // Optimistic update
+  const reset = useCallback(async () => {
     setBands((prevBands) => prevBands.map((b) => ({ ...b, gainDb: 0 })))
     try {
-      Equalizer.reset()
+      await Equalizer.reset()
     } catch (error) {
       console.error('[useEqualizer] Error resetting equalizer:', error)
     }

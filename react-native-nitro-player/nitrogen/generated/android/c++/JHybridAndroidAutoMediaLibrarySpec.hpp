@@ -54,8 +54,8 @@ namespace margelo::nitro::nitroplayer {
 
   public:
     // Methods
-    void setMediaLibrary(const std::string& libraryJson) override;
-    void clearMediaLibrary() override;
+    std::shared_ptr<Promise<void>> setMediaLibrary(const std::string& libraryJson) override;
+    std::shared_ptr<Promise<void>> clearMediaLibrary() override;
 
   private:
     jni::global_ref<JHybridAndroidAutoMediaLibrarySpec::JavaPart> _javaPart;

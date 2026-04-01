@@ -236,9 +236,18 @@ class DownloadManagerCore private constructor(
 
         for (m in activeTasks.values) {
             when (m.state) {
-                DownloadState.PENDING -> pendingCount++
-                DownloadState.DOWNLOADING -> activeCount++
-                DownloadState.FAILED -> failedCount++
+                DownloadState.PENDING -> {
+                    pendingCount++
+                }
+
+                DownloadState.DOWNLOADING -> {
+                    activeCount++
+                }
+
+                DownloadState.FAILED -> {
+                    failedCount++
+                }
+
                 else -> {}
             }
             totalBytes += m.totalBytes ?: 0.0

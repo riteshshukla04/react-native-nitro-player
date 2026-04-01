@@ -15,6 +15,9 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
 
   private let core: TrackPlayerCore
 
+  /// Stable listener IDs for cleanup on deinit
+  private var listenerIds: [(String, Int64)] = []
+
   // MARK: - Initialization
 
   override init() {
@@ -22,174 +25,196 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
     super.init()
   }
 
-  // MARK: - Playback Control
+  // MARK: - Playback Control (async Promise<Void>)
 
-  func play() throws {
-    core.play()
+  func play() throws -> Promise<Void> {
+    Promise.async { await self.core.play() }
   }
 
-  func pause() throws {
-    core.pause()
+  func pause() throws -> Promise<Void> {
+    Promise.async { await self.core.pause() }
+  }
+
+  func seek(position: Double) throws -> Promise<Void> {
+    Promise.async { await self.core.seek(position: position) }
+  }
+
+  func skipToNext() throws -> Promise<Void> {
+    Promise.async { await self.core.skipToNext() }
+  }
+
+  func skipToPrevious() throws -> Promise<Void> {
+    Promise.async { await self.core.skipToPrevious() }
   }
 
   func playSong(songId: String, fromPlaylist: String?) throws -> Promise<Void> {
-    return Promise.async {
-      self.core.playSong(songId: songId, fromPlaylist: fromPlaylist)
-    }
-  }
-
-  func skipToNext() throws {
-    core.skipToNext()
-  }
-
-  func skipToPrevious() throws {
-    core.skipToPrevious()
-  }
-
-  func seek(position: Double) throws {
-    core.seek(position: position)
-  }
-
-  func addToUpNext(trackId: String) throws -> Promise<Void> {
-    return Promise.async {
-      self.core.addToUpNext(trackId: trackId)
-    }
-  }
-
-  func playNext(trackId: String) throws -> Promise<Void> {
-    return Promise.async {
-      self.core.playNext(trackId: trackId)
-    }
-  }
-
-  func getActualQueue() throws -> Promise<[TrackItem]> {
-    return Promise.async {
-      return self.core.getActualQueue()
-    }
-  }
-
-  func getState() throws -> Promise<PlayerState> {
-    return Promise.async {
-      return self.core.getState()
-    }
-  }
-
-  func setRepeatMode(mode: RepeatMode) throws -> Bool {
-    return core.setRepeatMode(mode: mode)
-  }
-
-  func getRepeatMode() throws -> RepeatMode {
-    return core.getRepeatMode()
-  }
-
-  // MARK: - Configuration
-
-  func configure(config: PlayerConfig) throws {
-    core.configure(
-      androidAutoEnabled: config.androidAutoEnabled,
-      carPlayEnabled: config.carPlayEnabled,
-      showInNotification: config.showInNotification,
-      lookaheadCount: config.lookaheadCount.map { Int($0) }
-    )
-  }
-
-  // MARK: - Event Callbacks
-
-  func onChangeTrack(callback: @escaping (TrackItem, Reason?) -> Void) throws {
-    NitroPlayerLogger.log("HybridTrackPlayer", "onChangeTrack callback registered")
-    core.addOnChangeTrackListener(owner: self, callback)
-  }
-
-  func onPlaybackStateChange(callback: @escaping (TrackPlayerState, Reason?) -> Void) throws {
-    NitroPlayerLogger.log("HybridTrackPlayer", "onPlaybackStateChange callback registered")
-    core.addOnPlaybackStateChangeListener(owner: self, callback)
-  }
-
-  func onSeek(callback: @escaping (Double, Double) -> Void) throws {
-    NitroPlayerLogger.log("HybridTrackPlayer", "onSeek callback registered")
-    core.addOnSeekListener(owner: self, callback)
-  }
-
-  func onPlaybackProgressChange(callback: @escaping (Double, Double, Bool?) -> Void) throws {
-    NitroPlayerLogger.log("HybridTrackPlayer", "onPlaybackProgressChange callback registered")
-    core.addOnPlaybackProgressChangeListener(owner: self, callback)
-  }
-
-  // MARK: - Android Auto (iOS No-op)
-
-  /// iOS doesn't support Android Auto, so this is a no-op
-  /// - Parameter callback: Callback that will never be invoked
-  func onAndroidAutoConnectionChange(callback: @escaping (Bool) -> Void) throws {
-    // iOS doesn't have Android Auto, so this is a no-op
-  }
-
-  /// iOS doesn't support Android Auto, always returns false
-  /// - Returns: Always returns false on iOS
-  func isAndroidAutoConnected() throws -> Bool {
-    return false
+    Promise.async { await self.core.playSong(songId: songId, fromPlaylist: fromPlaylist) }
   }
 
   func skipToIndex(index: Double) throws -> Promise<Bool> {
-    return Promise.async {
-      return self.core.skipToIndex(index: Int(index))
+    Promise.async { await self.core.skipToIndex(index: Int(index)) }
+  }
+
+  // MARK: - Repeat / Volume / Config
+
+  func setRepeatMode(mode: RepeatMode) throws -> Promise<Void> {
+    Promise.async { await self.core.setRepeatMode(mode: mode) }
+  }
+
+  func getRepeatMode() throws -> RepeatMode {
+    core.getRepeatMode()
+  }
+
+  func setVolume(volume: Double) throws -> Promise<Void> {
+    Promise.async { await self.core.setVolume(volume: volume) }
+  }
+
+  func configure(config: PlayerConfig) throws -> Promise<Void> {
+    Promise.async {
+      await self.core.configure(
+        androidAutoEnabled: config.androidAutoEnabled,
+        carPlayEnabled: config.carPlayEnabled,
+        showInNotification: config.showInNotification,
+        lookaheadCount: config.lookaheadCount.map { Int($0) }
+      )
     }
   }
 
-  // MARK: - Volume Control
+  // MARK: - Queue / State reads
 
-  func setVolume(volume: Double) throws -> Bool {
-    return core.setVolume(volume: volume)
+  func getActualQueue() throws -> Promise<[TrackItem]> {
+    Promise.async { await self.core.getActualQueue() }
   }
 
-  // MARK: - Lazy URL Loading
-
-  func updateTracks(tracks: [TrackItem]) throws -> Promise<Void> {
-    return Promise.async {
-      self.core.updateTracks(tracks: tracks)
-    }
-  }
-
-  func getTracksById(trackIds: [String]) throws -> Promise<[TrackItem]> {
-    return Promise.async {
-      return self.core.getTracksById(trackIds: trackIds)
-    }
-  }
-
-  func getTracksNeedingUrls() throws -> Promise<[TrackItem]> {
-    return Promise.async {
-      return self.core.getTracksNeedingUrls()
-    }
-  }
-
-  func getNextTracks(count: Double) throws -> Promise<[TrackItem]> {
-    return Promise.async {
-      return self.core.getNextTracks(count: Int(count))
-    }
+  func getState() throws -> Promise<PlayerState> {
+    Promise.async { await self.core.getState() }
   }
 
   func getCurrentTrackIndex() throws -> Promise<Double> {
-    return Promise.async {
-      return Double(self.core.getCurrentTrackIndex())
-    }
+    Promise.async { Double(await self.core.getCurrentTrackIndex()) }
   }
 
-  func onTracksNeedUpdate(callback: @escaping ([TrackItem], Double) -> Void) throws {
-    core.addOnTracksNeedUpdateListener { tracks, lookahead in
+  // MARK: - URL updates / lazy loading
+
+  func updateTracks(tracks: [TrackItem]) throws -> Promise<Void> {
+    Promise.async { await self.core.updateTracks(tracks: tracks) }
+  }
+
+  func getTracksById(trackIds: [String]) throws -> Promise<[TrackItem]> {
+    Promise.async { await self.core.getTracksById(trackIds: trackIds) }
+  }
+
+  func getTracksNeedingUrls() throws -> Promise<[TrackItem]> {
+    Promise.async { await self.core.getTracksNeedingUrls() }
+  }
+
+  func getNextTracks(count: Double) throws -> Promise<[TrackItem]> {
+    Promise.async { await self.core.getNextTracks(count: Int(count)) }
+  }
+
+  // MARK: - Playback speed
+
+  func setPlaybackSpeed(speed: Double) throws -> Promise<Void> {
+    Promise.async { await self.core.setPlaybackSpeed(speed) }
+  }
+
+  func getPlaybackSpeed() throws -> Promise<Double> {
+    Promise.async { await self.core.getPlaybackSpeed() }
+  }
+
+  // MARK: - Temporary queue v2
+
+  func addToUpNext(trackId: String) throws -> Promise<Void> {
+    Promise.async { try await self.core.addToUpNext(trackId: trackId) }
+  }
+
+  func playNext(trackId: String) throws -> Promise<Void> {
+    Promise.async { try await self.core.playNext(trackId: trackId) }
+  }
+
+  func removeFromPlayNext(trackId: String) throws -> Promise<Bool> {
+    Promise.async { await self.core.removeFromPlayNext(trackId: trackId) }
+  }
+
+  func removeFromUpNext(trackId: String) throws -> Promise<Bool> {
+    Promise.async { await self.core.removeFromUpNext(trackId: trackId) }
+  }
+
+  func clearPlayNext() throws -> Promise<Void> {
+    Promise.async { await self.core.clearPlayNext() }
+  }
+
+  func clearUpNext() throws -> Promise<Void> {
+    Promise.async { await self.core.clearUpNext() }
+  }
+
+  func reorderTemporaryTrack(trackId: String, newIndex: Double) throws -> Promise<Bool> {
+    Promise.async { await self.core.reorderTemporaryTrack(trackId: trackId, newIndex: Int(newIndex)) }
+  }
+
+  func getPlayNextQueue() throws -> Promise<[TrackItem]> {
+    Promise.async { await self.core.getPlayNextQueue() }
+  }
+
+  func getUpNextQueue() throws -> Promise<[TrackItem]> {
+    Promise.async { await self.core.getUpNextQueue() }
+  }
+
+  // MARK: - Android Auto (iOS no-op)
+
+  func onAndroidAutoConnectionChange(callback: @escaping (Bool) -> Void) throws {
+    // No-op on iOS
+  }
+
+  func isAndroidAutoConnected() throws -> Bool { false }
+
+  // MARK: - Event listeners (v2 — store IDs for cleanup)
+
+  func onChangeTrack(callback: @escaping (_ track: TrackItem, _ reason: Reason?) -> Void) throws {
+    let id = core.addOnChangeTrackListener(callback)
+    listenerIds.append(("onChangeTrack", id))
+  }
+
+  func onPlaybackStateChange(callback: @escaping (_ state: TrackPlayerState, _ reason: Reason?) -> Void) throws {
+    let id = core.addOnPlaybackStateChangeListener(callback)
+    listenerIds.append(("onPlaybackStateChange", id))
+  }
+
+  func onSeek(callback: @escaping (_ position: Double, _ totalDuration: Double) -> Void) throws {
+    let id = core.addOnSeekListener(callback)
+    listenerIds.append(("onSeek", id))
+  }
+
+  func onPlaybackProgressChange(callback: @escaping (_ position: Double, _ totalDuration: Double, _ isManuallySeeked: Bool?) -> Void) throws {
+    let id = core.addOnProgressListener(callback)
+    listenerIds.append(("onPlaybackProgressChange", id))
+  }
+
+  func onTracksNeedUpdate(callback: @escaping (_ tracks: [TrackItem], _ lookahead: Double) -> Void) throws {
+    let id = core.addOnTracksNeedUpdateListener { tracks, lookahead in
       callback(tracks, Double(lookahead))
     }
+    listenerIds.append(("onTracksNeedUpdate", id))
   }
-  
-  func setPlaybackSpeed(speed: Double) throws -> Promise<Void> {
-    Promise.async{
-      self.core.setPlaybackSpeed(speed)
-    }
-    
+
+  func onTemporaryQueueChange(callback: @escaping (_ playNextQueue: [TrackItem], _ upNextQueue: [TrackItem]) -> Void) throws {
+    let id = core.addOnTemporaryQueueChangeListener(callback)
+    listenerIds.append(("onTemporaryQueueChange", id))
   }
-  
-  func getPlaybackSpeed() throws -> Promise<Double> {
-    return Promise.async{
-      return self.core.getPlaybackSpeed()
+
+  // MARK: - Cleanup
+
+  deinit {
+    for (type, id) in listenerIds {
+      switch type {
+      case "onChangeTrack":           _ = core.removeOnChangeTrackListener(id: id)
+      case "onPlaybackStateChange":   _ = core.removeOnPlaybackStateChangeListener(id: id)
+      case "onSeek":                  _ = core.removeOnSeekListener(id: id)
+      case "onPlaybackProgressChange":_ = core.removeOnProgressListener(id: id)
+      case "onTracksNeedUpdate":      _ = core.removeOnTracksNeedUpdateListener(id: id)
+      case "onTemporaryQueueChange":  _ = core.removeOnTemporaryQueueChangeListener(id: id)
+      default: break
+      }
     }
-    
   }
 }

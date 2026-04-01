@@ -10,6 +10,15 @@ tags: [android, ios]
 
 The `DownloadManager` handles offline playback and file management. React Native Nitro Player supports downloading tracks and playlists for offline playback, enabling users to save music locally and play it without an internet connection.
 
+## Sync vs asynchronous APIs
+
+As outlined in the repository’s `new-version plan.md`, the API is split as follows:
+
+- **Synchronous (in-memory):** `configure`, `getConfig`, `getDownloadTask`, `getActiveDownloads`, `getQueueStatus`, `isDownloading`, `getDownloadState`, `setPlaybackSourcePreference`, `getPlaybackSourcePreference`, and the `onDownload*` listeners.
+- **Asynchronous:** all download lifecycle methods (`downloadTrack`, `pauseDownload`, …), **disk-backed** queries (`isTrackDownloaded`, `getLocalPath`, `getEffectiveUrl`, `getAllDownloadedTracks`, …), deletes, `getStorageInfo`, and `syncDownloads`.
+
+Always `await` async methods; use `try/catch` if you need to handle I/O failures.
+
 ## Prerequisites
 
 ### Android
@@ -181,7 +190,9 @@ Cancels all active downloads.
 await DownloadManager.cancelAllDownloads()
 ```
 
-### Status & Queries
+### Status & queries (in-memory)
+
+These read the active download queue state held in memory (no file-system round trip).
 
 #### `getQueueStatus()`
 Gets the overall status of the download queue.
@@ -227,85 +238,89 @@ Gets the precise download state for a track.
 const state = DownloadManager.getDownloadState('track-id')
 ```
 
+### Downloaded content (async / disk)
+
+These may touch the database or filesystem. Use `await`.
+
 #### `isTrackDownloaded(trackId)`
-Checks if a track is fully downloaded.
+Checks if a track is fully downloaded on disk.
 - **trackId**: `string`
-- **Returns**: `boolean`
+- **Returns**: `Promise<boolean>`
 
 ```typescript
-const isDownloaded = DownloadManager.isTrackDownloaded('track-id')
+const isDownloaded = await DownloadManager.isTrackDownloaded('track-id')
 ```
 
 #### `isPlaylistDownloaded(playlistId)`
 Checks if an entire playlist is fully downloaded.
 - **playlistId**: `string`
-- **Returns**: `boolean`
+- **Returns**: `Promise<boolean>`
 
 ```typescript
-const isComplete = DownloadManager.isPlaylistDownloaded('playlist-id')
+const isComplete = await DownloadManager.isPlaylistDownloaded('playlist-id')
 ```
 
 #### `isPlaylistPartiallyDownloaded(playlistId)`
 Checks if a playlist has at least one downloaded track.
 - **playlistId**: `string`
-- **Returns**: `boolean`
+- **Returns**: `Promise<boolean>`
 
 ```typescript
-const isPartial = DownloadManager.isPlaylistPartiallyDownloaded('playlist-id')
+const isPartial = await DownloadManager.isPlaylistPartiallyDownloaded('playlist-id')
 ```
 
-### Downloaded Content
+### Persisted downloads
 
 #### `getAllDownloadedTracks()`
 Returns a list of all downloaded tracks.
-- **Returns**: [`DownloadedTrack[]`](#downloadedtrack)
+- **Returns**: `Promise<`[`DownloadedTrack[]`](#downloadedtrack)`>`
 
 ```typescript
-const tracks = DownloadManager.getAllDownloadedTracks()
+const tracks = await DownloadManager.getAllDownloadedTracks()
 ```
 
 #### `getDownloadedTrack(trackId)`
 Gets a specific downloaded track object.
 - **trackId**: `string`
-- **Returns**: [`DownloadedTrack`](#downloadedtrack) | `null`
+- **Returns**: `Promise<DownloadedTrack | null>` (see [`DownloadedTrack`](#downloadedtrack))
 
 ```typescript
-const track = DownloadManager.getDownloadedTrack('track-id')
+const track = await DownloadManager.getDownloadedTrack('track-id')
 ```
 
 #### `getAllDownloadedPlaylists()`
 Returns a list of all downloaded playlists.
-- **Returns**: [`DownloadedPlaylist[]`](#downloadedplaylist)
+- **Returns**: `Promise<`[`DownloadedPlaylist[]`](#downloadedplaylist)`>`
 
 ```typescript
-const playlists = DownloadManager.getAllDownloadedPlaylists()
+const playlists = await DownloadManager.getAllDownloadedPlaylists()
 ```
 
 #### `getDownloadedPlaylist(playlistId)`
 Gets a specific downloaded playlist object.
 - **playlistId**: `string`
-- **Returns**: [`DownloadedPlaylist`](#downloadedplaylist) | `null`
+- **Returns**: `Promise<DownloadedPlaylist | null>` (see [`DownloadedPlaylist`](#downloadedplaylist))
 
 ```typescript
-const playlist = DownloadManager.getDownloadedPlaylist('playlist-id')
+const playlist = await DownloadManager.getDownloadedPlaylist('playlist-id')
 ```
 
 #### `getLocalPath(trackId)`
 Gets the local file path for a downloaded track.
 - **trackId**: `string`
-- **Returns**: `string` | `null`
+- **Returns**: `Promise<string | null>`
 
 ```typescript
-const path = DownloadManager.getLocalPath('track-id')
+const path = await DownloadManager.getLocalPath('track-id')
 ```
 
 #### `getEffectiveUrl(track)`
-Gets the effective URL for a track (local if downloaded, remote otherwise).
+Gets the effective URL for a track (local if downloaded, remote otherwise), honoring `PlaybackSource` preference.
 - **track**: [`TrackItem`](./player-queue#trackitem)
-- **Returns**: `string`
+- **Returns**: `Promise<string>`
 
 ```typescript
-const url = DownloadManager.getEffectiveUrl(track)
+const url = await DownloadManager.getEffectiveUrl(track)
 ```
 
 ### Storage Management
@@ -317,6 +332,15 @@ Gets storage usage information.
 ```typescript
 const info = await DownloadManager.getStorageInfo()
 // { used: 1024, total: 50000, free: 48976 }
+```
+
+#### `syncDownloads()`
+Validates persisted download records against the filesystem and removes orphans. Returns the number of cleaned records.
+
+- **Returns**: `Promise<number>`
+
+```typescript
+const removed = await DownloadManager.syncDownloads()
 ```
 
 #### `deleteDownloadedTrack(trackId)`

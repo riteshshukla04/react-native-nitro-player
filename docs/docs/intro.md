@@ -18,6 +18,23 @@ tags: [android, ios]
 - 📱 **Background Playback**: Seamless playback when the app is in the background.
 - 🎚️ **Lock Screen Controls**: Native lock screen and notification controls.
 
+## Async command APIs
+
+**Playback and queue mutations** on `TrackPlayer` and `PlayerQueue` return **Promises**. They resolve after native work completes and **reject** when the operation fails (for example invalid track id, bad state). Prefer `await` inside `async` functions, and use `try/catch` or `.catch()` when you need to handle errors:
+
+```ts
+await TrackPlayer.play()
+await PlayerQueue.loadPlaylist(playlistId)
+```
+
+In event handlers or `useEffect` where you cannot `await`, it is fine to **fire-and-forget** with `void` (and optional `.catch()` for logging):
+
+```ts
+void TrackPlayer.configure({ showInNotification: true })
+```
+
+**DownloadManager** splits APIs by cost: active-task queries (`getActiveDownloads`, `isDownloading`, …) stay **synchronous** on in-memory state; **downloaded-file** checks and `getEffectiveUrl` use **async** I/O. See the [DownloadManager](./api/download-manager) page for the full list.
+
 ## Architecture
 
 React Native Nitro Player uses the latest React Native technologies:

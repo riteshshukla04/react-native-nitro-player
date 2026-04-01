@@ -18,6 +18,7 @@ namespace margelo::nitro::nitroplayer { struct TAudioDevice; }
 
 #include "TAudioDevice.hpp"
 #include <vector>
+#include <NitroModules/Promise.hpp>
 
 namespace margelo::nitro::nitroplayer {
 
@@ -51,7 +52,7 @@ namespace margelo::nitro::nitroplayer {
     public:
       // Methods
       virtual std::vector<TAudioDevice> getAudioDevices() = 0;
-      virtual bool setAudioDevice(double deviceId) = 0;
+      virtual std::shared_ptr<Promise<void>> setAudioDevice(double deviceId) = 0;
 
     protected:
       // Hybrid Setup

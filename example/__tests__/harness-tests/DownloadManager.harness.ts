@@ -8,8 +8,9 @@ import {
 import {
   DownloadManager,
   PlayerQueue,
+  TrackItem,
+  DownloadConfig,
 } from 'react-native-nitro-player';
-import type { TrackItem, DownloadConfig } from 'react-native-nitro-player';
 
 // Helper to create test tracks with actual downloadable URLs
 const createTestTrack = (id: string, title: string): TrackItem => ({
@@ -52,11 +53,11 @@ describe('DownloadManager - Comprehensive Tests', () => {
     ];
 
     // Create a test playlist
-    testPlaylistId = PlayerQueue.createPlaylist(
+    testPlaylistId = await PlayerQueue.createPlaylist(
       'Download Test Playlist',
       'Playlist for download tests'
     );
-    PlayerQueue.addTracksToPlaylist(testPlaylistId, testTracks);
+    await PlayerQueue.addTracksToPlaylist(testPlaylistId, testTracks);
 
     // Clean up any previous downloads
     try {
@@ -85,7 +86,7 @@ describe('DownloadManager - Comprehensive Tests', () => {
 
     // Delete test playlist
     try {
-      PlayerQueue.deletePlaylist(testPlaylistId);
+      await PlayerQueue.deletePlaylist(testPlaylistId);
     } catch (e) {
       console.warn('Error deleting test playlist:', e);
     }
@@ -304,43 +305,43 @@ describe('DownloadManager - Comprehensive Tests', () => {
   // ============================================
 
   describe('Downloaded Content Queries', () => {
-    it('should check if track is downloaded', () => {
-      const isDownloaded = DownloadManager.isTrackDownloaded('non-existent-track');
+    it('should check if track is downloaded', async () => {
+      const isDownloaded = await DownloadManager.isTrackDownloaded('non-existent-track');
       expect(isDownloaded).toBe(false);
     });
 
-    it('should check if playlist is downloaded', () => {
-      const isDownloaded = DownloadManager.isPlaylistDownloaded('non-existent-playlist');
+    it('should check if playlist is downloaded', async () => {
+      const isDownloaded = await DownloadManager.isPlaylistDownloaded('non-existent-playlist');
       expect(isDownloaded).toBe(false);
     });
 
-    it('should check if playlist is partially downloaded', () => {
-      const isPartial = DownloadManager.isPlaylistPartiallyDownloaded('non-existent-playlist');
+    it('should check if playlist is partially downloaded', async () => {
+      const isPartial = await DownloadManager.isPlaylistPartiallyDownloaded('non-existent-playlist');
       expect(isPartial).toBe(false);
     });
 
-    it('should get downloaded track (returns null for non-existent)', () => {
-      const track = DownloadManager.getDownloadedTrack('non-existent-track');
+    it('should get downloaded track (returns null for non-existent)', async () => {
+      const track = await DownloadManager.getDownloadedTrack('non-existent-track');
       expect(track).toBeNull();
     });
 
-    it('should get all downloaded tracks', () => {
-      const tracks = DownloadManager.getAllDownloadedTracks();
+    it('should get all downloaded tracks', async () => {
+      const tracks = await DownloadManager.getAllDownloadedTracks();
       expect(Array.isArray(tracks)).toBe(true);
     });
 
-    it('should get downloaded playlist (returns null for non-existent)', () => {
-      const playlist = DownloadManager.getDownloadedPlaylist('non-existent-playlist');
+    it('should get downloaded playlist (returns null for non-existent)', async () => {
+      const playlist = await DownloadManager.getDownloadedPlaylist('non-existent-playlist');
       expect(playlist).toBeNull();
     });
 
-    it('should get all downloaded playlists', () => {
-      const playlists = DownloadManager.getAllDownloadedPlaylists();
+    it('should get all downloaded playlists', async () => {
+      const playlists = await DownloadManager.getAllDownloadedPlaylists();
       expect(Array.isArray(playlists)).toBe(true);
     });
 
-    it('should get local path (returns null for non-downloaded)', () => {
-      const path = DownloadManager.getLocalPath('non-existent-track');
+    it('should get local path (returns null for non-downloaded)', async () => {
+      const path = await DownloadManager.getLocalPath('non-existent-track');
       expect(path).toBeNull();
     });
 
@@ -408,7 +409,7 @@ describe('DownloadManager - Comprehensive Tests', () => {
       }
 
       // Retrieve the downloaded track
-      const downloadedTrack = DownloadManager.getDownloadedTrack(trackWithPayload.id);
+      const downloadedTrack = await DownloadManager.getDownloadedTrack(trackWithPayload.id);
       expect(downloadedTrack).not.toBeNull();
 
       // Verify extraPayload was persisted correctly
@@ -420,7 +421,7 @@ describe('DownloadManager - Comprehensive Tests', () => {
       expect(downloadedTrack!.originalTrack.extraPayload!.customTag).toBe('test-tag');
 
       // Verify it also appears in getAllDownloadedTracks
-      const allDownloads = DownloadManager.getAllDownloadedTracks();
+      const allDownloads = await DownloadManager.getAllDownloadedTracks();
       const retrievedTrack = allDownloads.find(dt => dt.trackId === trackWithPayload.id);
       expect(retrievedTrack).not.toBeNull();
       expect(retrievedTrack!.originalTrack.extraPayload).not.toBeNull();
@@ -477,17 +478,17 @@ describe('DownloadManager - Comprehensive Tests', () => {
   // ============================================
 
   describe('Playback Source Preference', () => {
-    it('should return network URL when preference is network', () => {
+    it('should return network URL when preference is network', async () => {
       DownloadManager.setPlaybackSourcePreference('network');
 
-      const effectiveUrl = DownloadManager.getEffectiveUrl(testTracks[0]);
+      const effectiveUrl = await DownloadManager.getEffectiveUrl(testTracks[0]);
       expect(effectiveUrl).toBe(testTracks[0].url);
     });
 
-    it('should return network URL for non-downloaded track with auto preference', () => {
+    it('should return network URL for non-downloaded track with auto preference', async () => {
       DownloadManager.setPlaybackSourcePreference('auto');
 
-      const effectiveUrl = DownloadManager.getEffectiveUrl(testTracks[0]);
+      const effectiveUrl = await DownloadManager.getEffectiveUrl(testTracks[0]);
       // Since track is not downloaded, should return network URL
       expect(effectiveUrl).toBe(testTracks[0].url);
     });

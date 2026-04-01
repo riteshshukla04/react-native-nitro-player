@@ -1,7 +1,7 @@
 {
   "name": "react-native-nitro-player",
   "private": true,
-  "version": "0.7.0",
+  "version": "0.7.1-alpha.1",
   "repository": "https://github.com/mrousavy/react-native-nitro-player.git",
   "author": "Ritesh Shukla <riteshshukla2381@gmail.com> (https://github.com/riteshshukla04)",
   "workspaces": [
@@ -32,7 +32,7 @@
     "@babel/preset-react": "^7.27.1",
     "@babel/preset-typescript": "^7.27.1",
     "@jamesacarr/eslint-formatter-github-actions": "^0.2.0",
-    "@react-native/eslint-config": "^0.82.0",
+    "@react-native/eslint-config": "0.85.0-rc.6",
     "@types/bun": "latest",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",

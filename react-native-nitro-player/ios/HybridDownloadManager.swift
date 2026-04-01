@@ -118,45 +118,51 @@ final class HybridDownloadManager: HybridDownloadManagerSpec {
 
   // MARK: - Downloaded Content Queries
 
-  func isTrackDownloaded(trackId: String) throws -> Bool {
-    return core.isTrackDownloaded(trackId: trackId)
+  func isTrackDownloaded(trackId: String) throws -> Promise<Bool> {
+    Promise.async { self.core.isTrackDownloaded(trackId: trackId) }
   }
 
-  func isPlaylistDownloaded(playlistId: String) throws -> Bool {
-    return core.isPlaylistDownloaded(playlistId: playlistId)
+  func isPlaylistDownloaded(playlistId: String) throws -> Promise<Bool> {
+    Promise.async { self.core.isPlaylistDownloaded(playlistId: playlistId) }
   }
 
-  func isPlaylistPartiallyDownloaded(playlistId: String) throws -> Bool {
-    return core.isPlaylistPartiallyDownloaded(playlistId: playlistId)
+  func isPlaylistPartiallyDownloaded(playlistId: String) throws -> Promise<Bool> {
+    Promise.async { self.core.isPlaylistPartiallyDownloaded(playlistId: playlistId) }
   }
 
-  func getDownloadedTrack(trackId: String) throws -> Variant_NullType_DownloadedTrack {
-    if let track = core.getDownloadedTrack(trackId: trackId) {
-      return Variant_NullType_DownloadedTrack.second(track)
+  func getDownloadedTrack(trackId: String) throws -> Promise<Variant_NullType_DownloadedTrack> {
+    Promise.async {
+      if let track = self.core.getDownloadedTrack(trackId: trackId) {
+        return Variant_NullType_DownloadedTrack.second(track)
+      }
+      return Variant_NullType_DownloadedTrack.first(NullType.null)
     }
-    return Variant_NullType_DownloadedTrack.first(NullType.null)
   }
 
-  func getAllDownloadedTracks() throws -> [DownloadedTrack] {
-    return core.getAllDownloadedTracks()
+  func getAllDownloadedTracks() throws -> Promise<[DownloadedTrack]> {
+    Promise.async { self.core.getAllDownloadedTracks() }
   }
 
-  func getDownloadedPlaylist(playlistId: String) throws -> Variant_NullType_DownloadedPlaylist {
-    if let playlist = core.getDownloadedPlaylist(playlistId: playlistId) {
-      return Variant_NullType_DownloadedPlaylist.second(playlist)
+  func getDownloadedPlaylist(playlistId: String) throws -> Promise<Variant_NullType_DownloadedPlaylist> {
+    Promise.async {
+      if let playlist = self.core.getDownloadedPlaylist(playlistId: playlistId) {
+        return Variant_NullType_DownloadedPlaylist.second(playlist)
+      }
+      return Variant_NullType_DownloadedPlaylist.first(NullType.null)
     }
-    return Variant_NullType_DownloadedPlaylist.first(NullType.null)
   }
 
-  func getAllDownloadedPlaylists() throws -> [DownloadedPlaylist] {
-    return core.getAllDownloadedPlaylists()
+  func getAllDownloadedPlaylists() throws -> Promise<[DownloadedPlaylist]> {
+    Promise.async { self.core.getAllDownloadedPlaylists() }
   }
 
-  func getLocalPath(trackId: String) throws -> Variant_NullType_String {
-    if let path = core.getLocalPath(trackId: trackId) {
-      return Variant_NullType_String.second(path)
+  func getLocalPath(trackId: String) throws -> Promise<Variant_NullType_String> {
+    Promise.async {
+      if let path = self.core.getLocalPath(trackId: trackId) {
+        return Variant_NullType_String.second(path)
+      }
+      return Variant_NullType_String.first(NullType.null)
     }
-    return Variant_NullType_String.first(NullType.null)
   }
 
   // MARK: - Deletion
@@ -187,8 +193,8 @@ final class HybridDownloadManager: HybridDownloadManagerSpec {
     }
   }
 
-  func syncDownloads() throws -> Double {
-    return Double(core.syncDownloads())
+  func syncDownloads() throws -> Promise<Double> {
+    Promise.async { Double(self.core.syncDownloads()) }
   }
 
   // MARK: - Playback Source Preference
@@ -201,8 +207,8 @@ final class HybridDownloadManager: HybridDownloadManagerSpec {
     return core.getPlaybackSourcePreference()
   }
 
-  func getEffectiveUrl(track: TrackItem) throws -> String {
-    return core.getEffectiveUrl(track: track)
+  func getEffectiveUrl(track: TrackItem) throws -> Promise<String> {
+    Promise.async { self.core.getEffectiveUrl(track: track) }
   }
 
   // MARK: - Event Callbacks

@@ -318,63 +318,151 @@ namespace margelo::nitro::nitroplayer {
     auto __result = method(_javaPart, jni::make_jstring(trackId));
     return __result->toCpp();
   }
-  bool JHybridDownloadManagerSpec::isTrackDownloaded(const std::string& trackId) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jboolean(jni::alias_ref<jni::JString> /* trackId */)>("isTrackDownloaded");
+  std::shared_ptr<Promise<bool>> JHybridDownloadManagerSpec::isTrackDownloaded(const std::string& trackId) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* trackId */)>("isTrackDownloaded");
     auto __result = method(_javaPart, jni::make_jstring(trackId));
-    return static_cast<bool>(__result);
-  }
-  bool JHybridDownloadManagerSpec::isPlaylistDownloaded(const std::string& playlistId) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jboolean(jni::alias_ref<jni::JString> /* playlistId */)>("isPlaylistDownloaded");
-    auto __result = method(_javaPart, jni::make_jstring(playlistId));
-    return static_cast<bool>(__result);
-  }
-  bool JHybridDownloadManagerSpec::isPlaylistPartiallyDownloaded(const std::string& playlistId) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jboolean(jni::alias_ref<jni::JString> /* playlistId */)>("isPlaylistPartiallyDownloaded");
-    auto __result = method(_javaPart, jni::make_jstring(playlistId));
-    return static_cast<bool>(__result);
-  }
-  std::variant<nitro::NullType, DownloadedTrack> JHybridDownloadManagerSpec::getDownloadedTrack(const std::string& trackId) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JVariant_NullType_DownloadedTrack>(jni::alias_ref<jni::JString> /* trackId */)>("getDownloadedTrack");
-    auto __result = method(_javaPart, jni::make_jstring(trackId));
-    return __result->toCpp();
-  }
-  std::vector<DownloadedTrack> JHybridDownloadManagerSpec::getAllDownloadedTracks() {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<jni::JArrayClass<JDownloadedTrack>>()>("getAllDownloadedTracks");
-    auto __result = method(_javaPart);
     return [&]() {
-      size_t __size = __result->size();
-      std::vector<DownloadedTrack> __vector;
-      __vector.reserve(__size);
-      for (size_t __i = 0; __i < __size; __i++) {
-        auto __element = __result->getElement(__i);
-        __vector.push_back(__element->toCpp());
-      }
-      return __vector;
+      auto __promise = Promise<bool>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {
+        auto __result = jni::static_ref_cast<jni::JBoolean>(__boxedResult);
+        __promise->resolve(static_cast<bool>(__result->value()));
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
     }();
   }
-  std::variant<nitro::NullType, DownloadedPlaylist> JHybridDownloadManagerSpec::getDownloadedPlaylist(const std::string& playlistId) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JVariant_NullType_DownloadedPlaylist>(jni::alias_ref<jni::JString> /* playlistId */)>("getDownloadedPlaylist");
+  std::shared_ptr<Promise<bool>> JHybridDownloadManagerSpec::isPlaylistDownloaded(const std::string& playlistId) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* playlistId */)>("isPlaylistDownloaded");
     auto __result = method(_javaPart, jni::make_jstring(playlistId));
-    return __result->toCpp();
-  }
-  std::vector<DownloadedPlaylist> JHybridDownloadManagerSpec::getAllDownloadedPlaylists() {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<jni::JArrayClass<JDownloadedPlaylist>>()>("getAllDownloadedPlaylists");
-    auto __result = method(_javaPart);
     return [&]() {
-      size_t __size = __result->size();
-      std::vector<DownloadedPlaylist> __vector;
-      __vector.reserve(__size);
-      for (size_t __i = 0; __i < __size; __i++) {
-        auto __element = __result->getElement(__i);
-        __vector.push_back(__element->toCpp());
-      }
-      return __vector;
+      auto __promise = Promise<bool>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {
+        auto __result = jni::static_ref_cast<jni::JBoolean>(__boxedResult);
+        __promise->resolve(static_cast<bool>(__result->value()));
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
     }();
   }
-  std::variant<nitro::NullType, std::string> JHybridDownloadManagerSpec::getLocalPath(const std::string& trackId) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JVariant_NullType_String>(jni::alias_ref<jni::JString> /* trackId */)>("getLocalPath");
+  std::shared_ptr<Promise<bool>> JHybridDownloadManagerSpec::isPlaylistPartiallyDownloaded(const std::string& playlistId) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* playlistId */)>("isPlaylistPartiallyDownloaded");
+    auto __result = method(_javaPart, jni::make_jstring(playlistId));
+    return [&]() {
+      auto __promise = Promise<bool>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {
+        auto __result = jni::static_ref_cast<jni::JBoolean>(__boxedResult);
+        __promise->resolve(static_cast<bool>(__result->value()));
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
+  }
+  std::shared_ptr<Promise<std::variant<nitro::NullType, DownloadedTrack>>> JHybridDownloadManagerSpec::getDownloadedTrack(const std::string& trackId) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* trackId */)>("getDownloadedTrack");
     auto __result = method(_javaPart, jni::make_jstring(trackId));
-    return __result->toCpp();
+    return [&]() {
+      auto __promise = Promise<std::variant<nitro::NullType, DownloadedTrack>>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {
+        auto __result = jni::static_ref_cast<JVariant_NullType_DownloadedTrack>(__boxedResult);
+        __promise->resolve(__result->toCpp());
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
+  }
+  std::shared_ptr<Promise<std::vector<DownloadedTrack>>> JHybridDownloadManagerSpec::getAllDownloadedTracks() {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>()>("getAllDownloadedTracks");
+    auto __result = method(_javaPart);
+    return [&]() {
+      auto __promise = Promise<std::vector<DownloadedTrack>>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {
+        auto __result = jni::static_ref_cast<jni::JArrayClass<JDownloadedTrack>>(__boxedResult);
+        __promise->resolve([&]() {
+          size_t __size = __result->size();
+          std::vector<DownloadedTrack> __vector;
+          __vector.reserve(__size);
+          for (size_t __i = 0; __i < __size; __i++) {
+            auto __element = __result->getElement(__i);
+            __vector.push_back(__element->toCpp());
+          }
+          return __vector;
+        }());
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
+  }
+  std::shared_ptr<Promise<std::variant<nitro::NullType, DownloadedPlaylist>>> JHybridDownloadManagerSpec::getDownloadedPlaylist(const std::string& playlistId) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* playlistId */)>("getDownloadedPlaylist");
+    auto __result = method(_javaPart, jni::make_jstring(playlistId));
+    return [&]() {
+      auto __promise = Promise<std::variant<nitro::NullType, DownloadedPlaylist>>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {
+        auto __result = jni::static_ref_cast<JVariant_NullType_DownloadedPlaylist>(__boxedResult);
+        __promise->resolve(__result->toCpp());
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
+  }
+  std::shared_ptr<Promise<std::vector<DownloadedPlaylist>>> JHybridDownloadManagerSpec::getAllDownloadedPlaylists() {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>()>("getAllDownloadedPlaylists");
+    auto __result = method(_javaPart);
+    return [&]() {
+      auto __promise = Promise<std::vector<DownloadedPlaylist>>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {
+        auto __result = jni::static_ref_cast<jni::JArrayClass<JDownloadedPlaylist>>(__boxedResult);
+        __promise->resolve([&]() {
+          size_t __size = __result->size();
+          std::vector<DownloadedPlaylist> __vector;
+          __vector.reserve(__size);
+          for (size_t __i = 0; __i < __size; __i++) {
+            auto __element = __result->getElement(__i);
+            __vector.push_back(__element->toCpp());
+          }
+          return __vector;
+        }());
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
+  }
+  std::shared_ptr<Promise<std::variant<nitro::NullType, std::string>>> JHybridDownloadManagerSpec::getLocalPath(const std::string& trackId) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* trackId */)>("getLocalPath");
+    auto __result = method(_javaPart, jni::make_jstring(trackId));
+    return [&]() {
+      auto __promise = Promise<std::variant<nitro::NullType, std::string>>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {
+        auto __result = jni::static_ref_cast<JVariant_NullType_String>(__boxedResult);
+        __promise->resolve(__result->toCpp());
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
   }
   std::shared_ptr<Promise<void>> JHybridDownloadManagerSpec::deleteDownloadedTrack(const std::string& trackId) {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* trackId */)>("deleteDownloadedTrack");
@@ -437,10 +525,21 @@ namespace margelo::nitro::nitroplayer {
       return __promise;
     }();
   }
-  double JHybridDownloadManagerSpec::syncDownloads() {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<double()>("syncDownloads");
+  std::shared_ptr<Promise<double>> JHybridDownloadManagerSpec::syncDownloads() {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>()>("syncDownloads");
     auto __result = method(_javaPart);
-    return __result;
+    return [&]() {
+      auto __promise = Promise<double>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {
+        auto __result = jni::static_ref_cast<jni::JDouble>(__boxedResult);
+        __promise->resolve(__result->value());
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
   }
   void JHybridDownloadManagerSpec::setPlaybackSourcePreference(PlaybackSource preference) {
     static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<JPlaybackSource> /* preference */)>("setPlaybackSourcePreference");
@@ -451,10 +550,21 @@ namespace margelo::nitro::nitroplayer {
     auto __result = method(_javaPart);
     return __result->toCpp();
   }
-  std::string JHybridDownloadManagerSpec::getEffectiveUrl(const TrackItem& track) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<jni::JString>(jni::alias_ref<JTrackItem> /* track */)>("getEffectiveUrl");
+  std::shared_ptr<Promise<std::string>> JHybridDownloadManagerSpec::getEffectiveUrl(const TrackItem& track) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<JTrackItem> /* track */)>("getEffectiveUrl");
     auto __result = method(_javaPart, JTrackItem::fromCpp(track));
-    return __result->toStdString();
+    return [&]() {
+      auto __promise = Promise<std::string>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {
+        auto __result = jni::static_ref_cast<jni::JString>(__boxedResult);
+        __promise->resolve(__result->toStdString());
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
   }
   void JHybridDownloadManagerSpec::onDownloadProgress(const std::function<void(const DownloadProgress& /* progress */)>& callback) {
     static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_DownloadProgress::javaobject> /* callback */)>("onDownloadProgress_cxx");

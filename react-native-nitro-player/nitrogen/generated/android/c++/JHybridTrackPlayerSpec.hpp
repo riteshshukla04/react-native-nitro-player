@@ -54,27 +54,27 @@ namespace margelo::nitro::nitroplayer {
 
   public:
     // Methods
-    void play() override;
-    void pause() override;
+    std::shared_ptr<Promise<void>> play() override;
+    std::shared_ptr<Promise<void>> pause() override;
     std::shared_ptr<Promise<void>> playSong(const std::string& songId, const std::optional<std::string>& fromPlaylist) override;
-    void skipToNext() override;
+    std::shared_ptr<Promise<void>> skipToNext() override;
     std::shared_ptr<Promise<bool>> skipToIndex(double index) override;
-    void skipToPrevious() override;
-    void seek(double position) override;
+    std::shared_ptr<Promise<void>> skipToPrevious() override;
+    std::shared_ptr<Promise<void>> seek(double position) override;
     std::shared_ptr<Promise<void>> addToUpNext(const std::string& trackId) override;
     std::shared_ptr<Promise<void>> playNext(const std::string& trackId) override;
     std::shared_ptr<Promise<std::vector<TrackItem>>> getActualQueue() override;
     std::shared_ptr<Promise<PlayerState>> getState() override;
-    bool setRepeatMode(RepeatMode mode) override;
+    std::shared_ptr<Promise<void>> setRepeatMode(RepeatMode mode) override;
     RepeatMode getRepeatMode() override;
-    void configure(const PlayerConfig& config) override;
+    std::shared_ptr<Promise<void>> configure(const PlayerConfig& config) override;
     void onChangeTrack(const std::function<void(const TrackItem& /* track */, std::optional<Reason> /* reason */)>& callback) override;
     void onPlaybackStateChange(const std::function<void(TrackPlayerState /* state */, std::optional<Reason> /* reason */)>& callback) override;
     void onSeek(const std::function<void(double /* position */, double /* totalDuration */)>& callback) override;
     void onPlaybackProgressChange(const std::function<void(double /* position */, double /* totalDuration */, std::optional<bool> /* isManuallySeeked */)>& callback) override;
     void onAndroidAutoConnectionChange(const std::function<void(bool /* connected */)>& callback) override;
     bool isAndroidAutoConnected() override;
-    bool setVolume(double volume) override;
+    std::shared_ptr<Promise<void>> setVolume(double volume) override;
     std::shared_ptr<Promise<void>> updateTracks(const std::vector<TrackItem>& tracks) override;
     std::shared_ptr<Promise<std::vector<TrackItem>>> getTracksById(const std::vector<std::string>& trackIds) override;
     std::shared_ptr<Promise<std::vector<TrackItem>>> getTracksNeedingUrls() override;
@@ -83,6 +83,14 @@ namespace margelo::nitro::nitroplayer {
     void onTracksNeedUpdate(const std::function<void(const std::vector<TrackItem>& /* tracks */, double /* lookahead */)>& callback) override;
     std::shared_ptr<Promise<void>> setPlaybackSpeed(double speed) override;
     std::shared_ptr<Promise<double>> getPlaybackSpeed() override;
+    std::shared_ptr<Promise<bool>> removeFromPlayNext(const std::string& trackId) override;
+    std::shared_ptr<Promise<bool>> removeFromUpNext(const std::string& trackId) override;
+    std::shared_ptr<Promise<void>> clearPlayNext() override;
+    std::shared_ptr<Promise<void>> clearUpNext() override;
+    std::shared_ptr<Promise<bool>> reorderTemporaryTrack(const std::string& trackId, double newIndex) override;
+    std::shared_ptr<Promise<std::vector<TrackItem>>> getPlayNextQueue() override;
+    std::shared_ptr<Promise<std::vector<TrackItem>>> getUpNextQueue() override;
+    void onTemporaryQueueChange(const std::function<void(const std::vector<TrackItem>& /* playNextQueue */, const std::vector<TrackItem>& /* upNextQueue */)>& callback) override;
 
   private:
     jni::global_ref<JHybridTrackPlayerSpec::JavaPart> _javaPart;

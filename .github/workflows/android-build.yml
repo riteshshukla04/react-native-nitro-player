@@ -2,9 +2,9 @@ name: Android Build
 
 on:
   push:
-    branches: [main]
+    branches: [main,V2]
   pull_request:
-    branches: [main]
+    branches: [main,V2]
     paths:
       - 'react-native-nitro-player/android/**'
       - 'example/android/**'

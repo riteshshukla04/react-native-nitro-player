@@ -26,6 +26,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.margelo.nitro.nitroplayer.TrackItem
 import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
 import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
+import com.margelo.nitro.nitroplayer.core.loadPlaylist
 import com.margelo.nitro.nitroplayer.media.NitroPlayerMediaBrowserService
 import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
 import kotlinx.coroutines.CoroutineScope
@@ -50,9 +51,17 @@ class MediaSessionManager(
         private set
     private var notificationManager: NotificationManager? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    private val artworkCache = object : LruCache<String, Bitmap>(20) {
-        override fun sizeOf(key: String, value: Bitmap): Int = 1
-    }
+
+    @Volatile private var currentTrack: TrackItem? = null
+
+    @Volatile private var isPlaying: Boolean = false
+    private val artworkCache =
+        object : LruCache<String, Bitmap>(20) {
+            override fun sizeOf(
+                key: String,
+                value: Bitmap,
+            ): Int = 1
+        }
 
     private var androidAutoEnabled: Boolean = false
     private var carPlayEnabled: Boolean = false
@@ -216,7 +225,7 @@ class MediaSessionManager(
 
                                             if (trackIndex >= 0) {
                                                 // Load the entire playlist into TrackPlayerCore
-                                                trackPlayerCore?.loadPlaylist(playlistId)
+                                                trackPlayerCore?.let { core -> scope.launch { core.loadPlaylist(playlistId) } }
 
                                                 // Create MediaItems for the entire playlist
                                                 val playlistMediaItems =
@@ -324,28 +333,7 @@ class MediaSessionManager(
         }
     }
 
-    private fun getCurrentTrack(): TrackItem? {
-        val currentMediaItem = player.currentMediaItem ?: return null
-        val mediaId = currentMediaItem.mediaId
-
-        // Parse mediaId format: "playlistId:trackId" or just "trackId"
-        val trackId =
-            if (mediaId.contains(':')) {
-                mediaId.substring(mediaId.indexOf(':') + 1)
-            } else {
-                mediaId
-            }
-
-        // Find track in current playlist or all playlists
-        return trackPlayerCore?.getCurrentPlaylistId()?.let { playlistId ->
-            playlistManager.getPlaylist(playlistId)?.tracks?.find { it.id == trackId }
-        } ?: run {
-            for (playlist in playlistManager.getAllPlaylists()) {
-                playlist.tracks.find { it.id == trackId }?.let { return it }
-            }
-            null
-        }
-    }
+    private fun getCurrentTrack(): TrackItem? = currentTrack
 
     private fun updateNotification() {
         if (!showInNotification) return
@@ -376,7 +364,7 @@ class MediaSessionManager(
                 .setSmallIcon(android.R.drawable.ic_media_play)
                 .setContentIntent(contentIntent)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                .setOngoing(player.isPlaying)
+                .setOngoing(isPlaying)
                 .setShowWhen(false)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
@@ -401,7 +389,7 @@ class MediaSessionManager(
             createMediaAction(ACTION_PREVIOUS),
         )
 
-        if (player.isPlaying) {
+        if (isPlaying) {
             builder.addAction(
                 android.R.drawable.ic_media_pause,
                 "Pause",
@@ -459,12 +447,12 @@ class MediaSessionManager(
         notificationManager?.cancel(NOTIFICATION_ID)
     }
 
-    fun onTrackChanged() {
+    fun onTrackChanged(track: TrackItem?) {
+        currentTrack = track
         // Preload artwork for better notification display
-        val currentTrack = getCurrentTrack()
-        if (currentTrack != null) {
+        if (track != null) {
             scope.launch {
-                currentTrack.artwork?.asSecondOrNull()?.let { artworkUrl ->
+                track.artwork?.asSecondOrNull()?.let { artworkUrl ->
                     loadArtworkBitmap(artworkUrl)
                 }
                 updateNotification()
@@ -474,7 +462,8 @@ class MediaSessionManager(
         }
     }
 
-    fun onPlaybackStateChanged() {
+    fun onPlaybackStateChanged(playing: Boolean) {
+        isPlaying = playing
         updateNotification()
     }
 

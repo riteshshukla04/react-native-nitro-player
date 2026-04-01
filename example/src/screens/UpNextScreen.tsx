@@ -27,17 +27,17 @@ export default function UpNextScreen() {
   console.log('nowPlaying', nowPlaying);
 
   const handleAddToUpNext = useCallback((trackId: string) => {
-    TrackPlayer.addToUpNext(trackId);
-    console.log('Added to Up Next:', trackId);
-    // Refresh queue after a short delay to allow native side to update
-    setTimeout(refreshQueue, 100);
+    void TrackPlayer.addToUpNext(trackId).then(() => {
+      console.log('Added to Up Next:', trackId);
+      setTimeout(refreshQueue, 100);
+    });
   }, [refreshQueue]);
 
   const handlePlayNext = useCallback((trackId: string) => {
-    TrackPlayer.playNext(trackId);
-    console.log('Added to Play Next:', trackId);
-    // Refresh queue after a short delay to allow native side to update
-    setTimeout(refreshQueue, 100);
+    void TrackPlayer.playNext(trackId).then(() => {
+      console.log('Added to Play Next:', trackId);
+      setTimeout(refreshQueue, 100);
+    });
   }, [refreshQueue]);
 
   const handleRefresh = useCallback(() => {
@@ -68,7 +68,7 @@ export default function UpNextScreen() {
       }
 
       // 3. Add track to playlist
-      PlayerQueue.addTrackToPlaylist(playlistId, newTrack);
+      await PlayerQueue.addTrackToPlaylist(playlistId, newTrack);
       console.log('✅ Added to playlist:', playlistId);
 
       // 4. Move it to next position (currentIndex + 1)
@@ -83,7 +83,7 @@ export default function UpNextScreen() {
         // Find current track index in the playlist
         const currentTrackIndex = (await TrackPlayer.getState()).currentIndex;
         console.log('Current track index:', currentTrackIndex);
-        PlayerQueue.reorderTrackInPlaylist(playlistId, newTrack.id, currentTrackIndex + 1);
+        await PlayerQueue.reorderTrackInPlaylist(playlistId, newTrack.id, currentTrackIndex + 1);
         console.log(`✅ Moved track ${newTrack.id} to index ${currentTrackIndex + 1} (Play Next)`);
 
       }

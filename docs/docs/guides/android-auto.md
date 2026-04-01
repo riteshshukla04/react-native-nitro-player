@@ -159,10 +159,10 @@ import {
   AndroidAutoMediaLibrary,
 } from 'react-native-nitro-player'
 
-// 1. Create your playlists
-const rockId = PlayerQueue.createPlaylist('Rock Classics')
-const jazzId = PlayerQueue.createPlaylist('Jazz Essentials')
-const popId = PlayerQueue.createPlaylist('Pop Hits')
+// 1. Create your playlists (async — run inside an async function)
+const rockId = await PlayerQueue.createPlaylist('Rock Classics')
+const jazzId = await PlayerQueue.createPlaylist('Jazz Essentials')
+const popId = await PlayerQueue.createPlaylist('Pop Hits')
 
 // ... add tracks to playlists ...
 

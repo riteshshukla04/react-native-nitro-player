@@ -7,6 +7,10 @@ import com.margelo.nitro.nitroplayer.*
 import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
 import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
 import com.margelo.nitro.nitroplayer.storage.NitroPlayerStorage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -37,6 +41,7 @@ class DownloadDatabase private constructor(
     private val downloadedTracks = mutableMapOf<String, DownloadedTrackRecord>()
     private val playlistTracks = mutableMapOf<String, MutableSet<String>>()
     private val fileManager = DownloadFileManager.getInstance(context)
+    private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     init {
         loadFromDisk()
@@ -295,27 +300,31 @@ class DownloadDatabase private constructor(
         }
     }
 
-    // Persistence
+    // Persistence — called while holding synchronized(this); snapshots data then writes on IO.
     private fun saveToDisk() {
-        try {
-            val tracksJson = JSONObject()
-            for ((trackId, record) in downloadedTracks) {
-                tracksJson.put(trackId, record.toJson())
-            }
-
-            val playlistJson = JSONObject()
-            for ((playlistId, trackIds) in playlistTracks) {
-                playlistJson.put(playlistId, JSONArray(trackIds.toList()))
-            }
-
-            val wrapper =
-                JSONObject().apply {
-                    put("downloadedTracks", tracksJson)
-                    put("playlistTracks", playlistJson)
+        val trackSnapshot = downloadedTracks.toMap()
+        val playlistSnapshot = playlistTracks.mapValues { it.value.toSet() }
+        ioScope.launch {
+            try {
+                val tracksJson = JSONObject()
+                for ((trackId, record) in trackSnapshot) {
+                    tracksJson.put(trackId, record.toJson())
                 }
-            NitroPlayerStorage.write(context, "downloads.json", wrapper.toString())
-        } catch (e: Exception) {
-            e.printStackTrace()
+
+                val playlistJson = JSONObject()
+                for ((playlistId, trackIds) in playlistSnapshot) {
+                    playlistJson.put(playlistId, JSONArray(trackIds.toList()))
+                }
+
+                val wrapper =
+                    JSONObject().apply {
+                        put("downloadedTracks", tracksJson)
+                        put("playlistTracks", playlistJson)
+                    }
+                NitroPlayerStorage.write(context, "downloads.json", wrapper.toString())
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 

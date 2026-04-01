@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'react-native-harness';
-import { TrackPlayer, PlayerQueue } from 'react-native-nitro-player';
-import type { TrackItem } from 'react-native-nitro-player';
+import { TrackPlayer, PlayerQueue, TrackItem } from 'react-native-nitro-player';
 import { sampleTracks1, sampleTracks2 } from '../../src/data/sampleTracks';
 
 describe('TrackPlayer - Comprehensive Tests', () => {
@@ -25,51 +24,47 @@ describe('TrackPlayer - Comprehensive Tests', () => {
         artwork: `https://example.com/${id}.jpg`,
     });
 
-    beforeEach(() => {
+    beforeEach(async () => {
         console.log('Setting up TrackPlayer test...');
 
-        // Clean up any existing playlists
         try {
             const existingPlaylists = PlayerQueue.getAllPlaylists();
-            existingPlaylists.forEach(playlist => {
+            for (const playlist of existingPlaylists) {
                 try {
-                    PlayerQueue.deletePlaylist(playlist.id);
+                    await PlayerQueue.deletePlaylist(playlist.id);
                 } catch (e) {
                     console.warn('Error deleting existing playlist:', e);
                 }
-            });
+            }
         } catch (e) {
             console.warn('Error getting existing playlists:', e);
         }
 
         createdPlaylistIds = [];
 
-        // Create test playlists
-        playlist1Id = PlayerQueue.createPlaylist('Test Playlist 1', 'First test playlist');
-        playlist2Id = PlayerQueue.createPlaylist('Test Playlist 2', 'Second test playlist');
-        playlist3Id = PlayerQueue.createPlaylist('Test Playlist 3', 'Third test playlist');
+        playlist1Id = await PlayerQueue.createPlaylist('Test Playlist 1', 'First test playlist');
+        playlist2Id = await PlayerQueue.createPlaylist('Test Playlist 2', 'Second test playlist');
+        playlist3Id = await PlayerQueue.createPlaylist('Test Playlist 3', 'Third test playlist');
 
         createdPlaylistIds.push(playlist1Id, playlist2Id, playlist3Id);
 
-        // Add tracks to playlists
-        PlayerQueue.addTracksToPlaylist(playlist1Id, sampleTracks1);
-        PlayerQueue.addTracksToPlaylist(playlist2Id, sampleTracks2);
-        PlayerQueue.addTracksToPlaylist(playlist3Id, [
+        await PlayerQueue.addTracksToPlaylist(playlist1Id, sampleTracks1);
+        await PlayerQueue.addTracksToPlaylist(playlist2Id, sampleTracks2);
+        await PlayerQueue.addTracksToPlaylist(playlist3Id, [
             createTestTrack('p3-1', 'Playlist 3 Track 1'),
             createTestTrack('p3-2', 'Playlist 3 Track 2'),
             createTestTrack('p3-3', 'Playlist 3 Track 3'),
         ]);
     });
 
-    afterEach(() => {
-        // Clean up playlists
-        createdPlaylistIds.forEach(id => {
+    afterEach(async () => {
+        for (const id of createdPlaylistIds) {
             try {
-                PlayerQueue.deletePlaylist(id);
+                await PlayerQueue.deletePlaylist(id);
             } catch (e) {
                 console.warn('Error deleting playlist:', e);
             }
-        });
+        }
         createdPlaylistIds = [];
     });
 
@@ -79,7 +74,7 @@ describe('TrackPlayer - Comprehensive Tests', () => {
 
     describe('playNext (LIFO)', () => {
         it('should add single track to play-next stack', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
 
             // Add track from playlist 2 to play next
@@ -95,7 +90,7 @@ describe('TrackPlayer - Comprehensive Tests', () => {
         });
 
         it('should add multiple tracks in LIFO order (last added plays first)', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
 
             // Add tracks in order - using tracks from playlist2 and playlist3
@@ -114,7 +109,7 @@ describe('TrackPlayer - Comprehensive Tests', () => {
         });
 
         it('should add playNext tracks from different playlists', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
 
             // Add tracks from different playlists
@@ -131,14 +126,14 @@ describe('TrackPlayer - Comprehensive Tests', () => {
         });
 
         it('should clear playNext stack when loading new playlist', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
 
             await TrackPlayer.playNext('4');
             await TrackPlayer.playNext('5');
 
             // Load different playlist - should clear playNext
-            PlayerQueue.loadPlaylist(playlist2Id);
+            await PlayerQueue.loadPlaylist(playlist2Id);
 
             const queue = await TrackPlayer.getActualQueue();
 
@@ -153,7 +148,7 @@ describe('TrackPlayer - Comprehensive Tests', () => {
 
     describe('addToUpNext (FIFO)', () => {
         it('should add single track to up-next queue', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
 
             await TrackPlayer.addToUpNext('4');
@@ -166,7 +161,7 @@ describe('TrackPlayer - Comprehensive Tests', () => {
         });
 
         it('should add multiple tracks in FIFO order (first added plays first)', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
 
             // Add tracks in order: song-4, song-5, p3-1
@@ -187,7 +182,7 @@ describe('TrackPlayer - Comprehensive Tests', () => {
         });
 
         it('should add upNext tracks from different playlists', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
 
             // Add tracks from different playlists
@@ -207,14 +202,14 @@ describe('TrackPlayer - Comprehensive Tests', () => {
         });
 
         it('should clear upNext queue when loading new playlist', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
 
             await TrackPlayer.addToUpNext('4');
             await TrackPlayer.addToUpNext('5');
 
             // Load different playlist - should clear upNext
-            PlayerQueue.loadPlaylist(playlist2Id);
+            await PlayerQueue.loadPlaylist(playlist2Id);
 
             const queue = await TrackPlayer.getActualQueue();
 
@@ -229,7 +224,7 @@ describe('TrackPlayer - Comprehensive Tests', () => {
 
     describe('Combined playNext + upNext', () => {
         it('should maintain correct queue order: current → playNext(LIFO) → upNext(FIFO) → remaining', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
 
             // Add playNext tracks (LIFO)
@@ -264,7 +259,7 @@ describe('TrackPlayer - Comprehensive Tests', () => {
         });
 
         it('should handle complex cross-playlist scenario', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
 
             // Mix playNext and upNext from all 3 playlists
@@ -301,13 +296,13 @@ describe('TrackPlayer - Comprehensive Tests', () => {
                 reasons.push(reason);
             });
 
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await waitForNextTick();
 
             await TrackPlayer.playSong('1', playlist1Id);
             await waitForNextTick();
 
-            TrackPlayer.skipToNext();
+            await TrackPlayer.skipToNext();
             await waitForNextTick();
 
             expect(changedTracks.length).toBeGreaterThan(0);
@@ -321,7 +316,7 @@ describe('TrackPlayer - Comprehensive Tests', () => {
                 changedTracks.push(track);
             });
 
-
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
             await waitForNextTick();
 
@@ -335,9 +330,9 @@ describe('TrackPlayer - Comprehensive Tests', () => {
                 states.push(state);
             });
 
-            PlayerQueue.loadPlaylist(playlist1Id);
-            TrackPlayer.pause()
-            TrackPlayer.play();
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.pause();
+            await TrackPlayer.play();
             await waitForNextTick();
 
             expect(states).toContain('playing');
@@ -350,11 +345,11 @@ describe('TrackPlayer - Comprehensive Tests', () => {
                 states.push(state);
             });
 
-            PlayerQueue.loadPlaylist(playlist1Id);
-            TrackPlayer.play();
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.play();
             await waitForNextTick();
 
-            TrackPlayer.pause();
+            await TrackPlayer.pause();
             await waitForNextTick();
 
             expect(states).toContain('paused');
@@ -367,11 +362,11 @@ describe('TrackPlayer - Comprehensive Tests', () => {
                 seekPositions.push(position);
             });
 
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
             await waitForNextTick();
 
-            TrackPlayer.seek(30);
+            await TrackPlayer.seek(30);
             await waitForNextTick();
 
             expect(seekPositions).toContain(30);
@@ -429,42 +424,42 @@ describe('TrackPlayer - Comprehensive Tests', () => {
 
     describe('Playback Controls', () => {
         it('should play and pause correctly', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
 
-            TrackPlayer.play();
+            await TrackPlayer.play();
             let state = await TrackPlayer.getState();
             expect(state.currentState).toBe('playing');
 
-            TrackPlayer.pause();
+            await TrackPlayer.pause();
             state = await TrackPlayer.getState();
             expect(state.currentState).toBe('paused');
         });
 
         it('should skip to next track', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
 
-            TrackPlayer.skipToNext();
+            await TrackPlayer.skipToNext();
 
             const state = await TrackPlayer.getState();
             expect(state.currentTrack?.id).toBe('2');
         });
 
         it('should skip to previous track', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('2', playlist1Id);
 
-            TrackPlayer.skipToPrevious();
+            await TrackPlayer.skipToPrevious();
 
             const state = await TrackPlayer.getState();
             expect(state.currentTrack?.id).toBe('1');
         });
 
         it('should seek to position', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
 
-            TrackPlayer.seek(30);
+            await TrackPlayer.seek(30);
 
             // Position should be around 30 seconds
             const state = await TrackPlayer.getState();
@@ -473,44 +468,36 @@ describe('TrackPlayer - Comprehensive Tests', () => {
         });
 
         it('should set repeat mode to off', async () => {
-            const success = TrackPlayer.setRepeatMode('off');
-            expect(success).toBe(true);
+            await TrackPlayer.setRepeatMode('off');
         });
 
         it('should set repeat mode to Playlist', async () => {
-            const success = TrackPlayer.setRepeatMode('Playlist');
-            expect(success).toBe(true);
+            await TrackPlayer.setRepeatMode('Playlist');
         });
 
         it('should set repeat mode to track', async () => {
-            const success = TrackPlayer.setRepeatMode('track');
-            expect(success).toBe(true);
+            await TrackPlayer.setRepeatMode('track');
         });
 
         it('should set volume to 50%', async () => {
-            const success = TrackPlayer.setVolume(50);
-            expect(success).toBe(true);
+            await TrackPlayer.setVolume(50);
         });
 
         it('should set volume to 0 (mute)', async () => {
-            const success = TrackPlayer.setVolume(0);
-            expect(success).toBe(true);
+            await TrackPlayer.setVolume(0);
         });
 
         it('should set volume to 100 (max)', async () => {
-            const success = TrackPlayer.setVolume(100);
-            expect(success).toBe(true);
+            await TrackPlayer.setVolume(100);
         });
 
         it('should clamp volume below 0', async () => {
-            const success = TrackPlayer.setVolume(-10);
-            expect(success).toBe(true);
+            await TrackPlayer.setVolume(-10);
             // Volume should be clamped to 0
         });
 
         it('should clamp volume above 100', async () => {
-            const success = TrackPlayer.setVolume(150);
-            expect(success).toBe(true);
+            await TrackPlayer.setVolume(150);
             // Volume should be clamped to 100
         });
     });
@@ -521,7 +508,7 @@ describe('TrackPlayer - Comprehensive Tests', () => {
 
     describe('State Management', () => {
         it('should return correct state after loading playlist', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
 
             const state = await TrackPlayer.getState();
             expect(state.currentPlaylistId).toBe(playlist1Id);
@@ -536,7 +523,7 @@ describe('TrackPlayer - Comprehensive Tests', () => {
         });
 
         it('should return correct actual queue', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
 
             const queue = await TrackPlayer.getActualQueue();
             expect(queue.length).toBe(sampleTracks1.length);
@@ -544,10 +531,10 @@ describe('TrackPlayer - Comprehensive Tests', () => {
         });
 
         it('should update state after skip', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
 
-            TrackPlayer.skipToNext();
+            await TrackPlayer.skipToNext();
 
             const state = await TrackPlayer.getState();
             expect(state.currentTrack?.id).toBe('2');
@@ -555,11 +542,11 @@ describe('TrackPlayer - Comprehensive Tests', () => {
         });
 
         it('should maintain playlist ID across track changes', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
 
-            TrackPlayer.skipToNext();
-            TrackPlayer.skipToNext();
+            await TrackPlayer.skipToNext();
+            await TrackPlayer.skipToNext();
 
             const state = await TrackPlayer.getState();
             expect(state.currentPlaylistId).toBe(playlist1Id);
@@ -572,7 +559,7 @@ describe('TrackPlayer - Comprehensive Tests', () => {
 
     describe('skipToIndex', () => {
         it('should skip to index in playNext section', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
 
             // Add playNext tracks (LIFO): p3-3, p3-2, p3-1
@@ -591,7 +578,7 @@ describe('TrackPlayer - Comprehensive Tests', () => {
         });
 
         it('should skip to index in upNext section', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
 
             // Add upNext tracks (FIFO): 4, 5
@@ -609,7 +596,7 @@ describe('TrackPlayer - Comprehensive Tests', () => {
         });
 
         it('should clear temporary tracks when skipping to original playlist section', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
             await waitForNextTick();
 
@@ -640,7 +627,7 @@ describe('TrackPlayer - Comprehensive Tests', () => {
         });
 
         it('should skip to index before current position', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('2', playlist1Id);
 
             // Skip to index 0 (track 1)
@@ -653,7 +640,7 @@ describe('TrackPlayer - Comprehensive Tests', () => {
         });
 
         it('should return false for invalid index', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
 
             const success = await TrackPlayer.skipToIndex(100);
@@ -661,7 +648,7 @@ describe('TrackPlayer - Comprehensive Tests', () => {
         });
 
         it('should return false for negative index', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
 
             const success = await TrackPlayer.skipToIndex(-1);
@@ -675,7 +662,7 @@ describe('TrackPlayer - Comprehensive Tests', () => {
 
     describe('currentPlayingType in PlayerState', () => {
         it('should return "playlist" when playing from original playlist', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
 
             const state = await TrackPlayer.getState();
@@ -683,11 +670,11 @@ describe('TrackPlayer - Comprehensive Tests', () => {
         });
 
         it('should return "play-next" when playing from playNext stack', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
 
             await TrackPlayer.playNext('4');
-            TrackPlayer.skipToNext();
+            await TrackPlayer.skipToNext();
             await waitForNextTick();
 
             const state = await TrackPlayer.getState();
@@ -695,11 +682,11 @@ describe('TrackPlayer - Comprehensive Tests', () => {
         });
 
         it('should return "up-next" when playing from upNext queue', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
 
             await TrackPlayer.addToUpNext('4');
-            TrackPlayer.skipToNext();
+            await TrackPlayer.skipToNext();
             await waitForNextTick();
 
             const state = await TrackPlayer.getState();
@@ -708,7 +695,7 @@ describe('TrackPlayer - Comprehensive Tests', () => {
 
         it('should return "not-playing" when no track is playing', async () => {
             // Before loading any playlist, or after stopping
-            TrackPlayer.pause();
+            await TrackPlayer.pause();
             await waitForNextTick();
 
             // Note: This test checks the initial state before any playlist is loaded
@@ -716,17 +703,17 @@ describe('TrackPlayer - Comprehensive Tests', () => {
         });
 
         it('should transition from play-next to playlist after temp track finishes', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
 
             await TrackPlayer.playNext('4');
-            TrackPlayer.skipToNext(); // Now playing playNext track
+            await TrackPlayer.skipToNext(); // Now playing playNext track
             await waitForNextTick();
 
             let state = await TrackPlayer.getState();
             expect(state.currentPlayingType).toBe('play-next');
 
-            TrackPlayer.skipToNext(); // Skip to next (should be original playlist)
+            await TrackPlayer.skipToNext(); // Skip to next (should be original playlist)
             await waitForNextTick();
 
             state = await TrackPlayer.getState();
@@ -755,10 +742,10 @@ describe('TrackPlayer - Comprehensive Tests', () => {
                 },
             };
 
-            const payloadPlaylistId = PlayerQueue.createPlaylist('Payload Test Playlist', 'Test playlist for extraPayload');
+            const payloadPlaylistId = await PlayerQueue.createPlaylist('Payload Test Playlist', 'Test playlist for extraPayload');
             createdPlaylistIds.push(payloadPlaylistId);
 
-            PlayerQueue.addTracksToPlaylist(payloadPlaylistId, [trackWithPayload]);
+            await PlayerQueue.addTracksToPlaylist(payloadPlaylistId, [trackWithPayload]);
 
             const playlist = PlayerQueue.getPlaylist(payloadPlaylistId);
             expect(playlist).not.toBeNull();
@@ -782,10 +769,10 @@ describe('TrackPlayer - Comprehensive Tests', () => {
                 },
             };
 
-            const payloadPlaylistId = PlayerQueue.createPlaylist('Play Payload Playlist', 'Test playlist for playing with extraPayload');
+            const payloadPlaylistId = await PlayerQueue.createPlaylist('Play Payload Playlist', 'Test playlist for playing with extraPayload');
             createdPlaylistIds.push(payloadPlaylistId);
 
-            PlayerQueue.addTracksToPlaylist(payloadPlaylistId, [trackWithPayload]);
+            await PlayerQueue.addTracksToPlaylist(payloadPlaylistId, [trackWithPayload]);
 
             await TrackPlayer.playSong('payload-test-2', payloadPlaylistId);
             await waitForNextTick();
@@ -806,10 +793,10 @@ describe('TrackPlayer - Comprehensive Tests', () => {
                 artwork: null,
             };
 
-            const noPayloadPlaylistId = PlayerQueue.createPlaylist('No Payload Playlist', 'Test playlist without extraPayload');
+            const noPayloadPlaylistId = await PlayerQueue.createPlaylist('No Payload Playlist', 'Test playlist without extraPayload');
             createdPlaylistIds.push(noPayloadPlaylistId);
 
-            PlayerQueue.addTracksToPlaylist(noPayloadPlaylistId, [trackWithoutPayload]);
+            await PlayerQueue.addTracksToPlaylist(noPayloadPlaylistId, [trackWithoutPayload]);
 
             await TrackPlayer.playSong('no-payload-test', noPayloadPlaylistId);
             await waitForNextTick();
@@ -836,11 +823,11 @@ describe('TrackPlayer - Comprehensive Tests', () => {
                 },
             };
 
-            const queuePayloadPlaylistId = PlayerQueue.createPlaylist('Queue Payload Playlist', 'Test playlist for queue extraPayload');
+            const queuePayloadPlaylistId = await PlayerQueue.createPlaylist('Queue Payload Playlist', 'Test playlist for queue extraPayload');
             createdPlaylistIds.push(queuePayloadPlaylistId);
 
-            PlayerQueue.addTracksToPlaylist(queuePayloadPlaylistId, [trackWithPayload]);
-            PlayerQueue.loadPlaylist(queuePayloadPlaylistId);
+            await PlayerQueue.addTracksToPlaylist(queuePayloadPlaylistId, [trackWithPayload]);
+            await PlayerQueue.loadPlaylist(queuePayloadPlaylistId);
 
             const queue = await TrackPlayer.getActualQueue();
             expect(queue.length).toBe(1);
@@ -863,12 +850,12 @@ describe('TrackPlayer - Comprehensive Tests', () => {
                 },
             };
 
-            const sourcePlaylistId = PlayerQueue.createPlaylist('Source Playlist', 'Source for playNext');
+            const sourcePlaylistId = await PlayerQueue.createPlaylist('Source Playlist', 'Source for playNext');
             createdPlaylistIds.push(sourcePlaylistId);
-            PlayerQueue.addTracksToPlaylist(sourcePlaylistId, [trackForPlayNext]);
+            await PlayerQueue.addTracksToPlaylist(sourcePlaylistId, [trackForPlayNext]);
 
             // Load main playlist and add track to playNext
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
             await TrackPlayer.playNext('playnext-payload');
 
@@ -886,53 +873,42 @@ describe('TrackPlayer - Comprehensive Tests', () => {
     // // ============================================
 
     describe('Edge Cases', () => {
-        it('should handle playNext with non-existent track ID', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+        it('should reject playNext with non-existent track ID', async () => {
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
 
-            // This should not crash
-            await expect(TrackPlayer.playNext('non-existent-id')).resolves.not.toThrow();
+            await expect(TrackPlayer.playNext('non-existent-id')).rejects.toThrow();
         });
 
-        it('should handle addToUpNext with non-existent track ID', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+        it('should reject addToUpNext with non-existent track ID', async () => {
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
 
-            // This should not crash
-            await expect(TrackPlayer.addToUpNext('non-existent-id')).resolves.not.toThrow();
+            await expect(TrackPlayer.addToUpNext('non-existent-id')).rejects.toThrow();
         });
 
         it('should handle seek beyond track duration', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
 
-            // Seek to 1000 seconds (beyond duration)
-            expect(() => {
-                TrackPlayer.seek(1000);
-            }).not.toThrow();
+            await expect(TrackPlayer.seek(1000)).resolves.toBeUndefined();
         });
 
         it('should handle skip at last track with repeat off', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
-            TrackPlayer.setRepeatMode('off');
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.setRepeatMode('off');
 
             // Play last track
             await TrackPlayer.playSong('3', playlist1Id);
 
-            // Skip to next should not crash
-            expect(() => {
-                TrackPlayer.skipToNext();
-            }).not.toThrow();
+            await expect(TrackPlayer.skipToNext()).resolves.toBeUndefined();
         });
 
         it('should handle skip at first track going previous', async () => {
-            PlayerQueue.loadPlaylist(playlist1Id);
+            await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
 
-            // Skip to previous should not crash
-            expect(() => {
-                TrackPlayer.skipToPrevious();
-            }).not.toThrow();
+            await expect(TrackPlayer.skipToPrevious()).resolves.toBeUndefined();
         });
     });
 });

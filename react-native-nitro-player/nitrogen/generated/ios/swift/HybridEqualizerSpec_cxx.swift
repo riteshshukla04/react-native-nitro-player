@@ -125,14 +125,21 @@ open class HybridEqualizerSpec_cxx {
 
   // Methods
   @inline(__always)
-  public final func setEnabled(enabled: Bool) -> bridge.Result_bool_ {
+  public final func setEnabled(enabled: Bool) -> bridge.Result_std__shared_ptr_Promise_void___ {
     do {
       let __result = try self.__implementation.setEnabled(enabled: enabled)
-      let __resultCpp = __result
-      return bridge.create_Result_bool_(__resultCpp)
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_void__ in
+        let __promise = bridge.create_std__shared_ptr_Promise_void__()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_void__(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve() })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
+      }()
+      return bridge.create_Result_std__shared_ptr_Promise_void___(__resultCpp)
     } catch (let __error) {
       let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_bool_(__exceptionPtr)
+      return bridge.create_Result_std__shared_ptr_Promise_void___(__exceptionPtr)
     }
   }
   
@@ -149,44 +156,65 @@ open class HybridEqualizerSpec_cxx {
   }
   
   @inline(__always)
-  public final func getBands() -> bridge.Result_std__vector_EqualizerBand__ {
+  public final func getBands() -> bridge.Result_std__shared_ptr_Promise_std__vector_EqualizerBand____ {
     do {
       let __result = try self.__implementation.getBands()
-      let __resultCpp = { () -> bridge.std__vector_EqualizerBand_ in
-        var __vector = bridge.create_std__vector_EqualizerBand_(__result.count)
-        for __item in __result {
-          __vector.push_back(__item)
-        }
-        return __vector
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_std__vector_EqualizerBand___ in
+        let __promise = bridge.create_std__shared_ptr_Promise_std__vector_EqualizerBand___()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_std__vector_EqualizerBand___(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve({ () -> bridge.std__vector_EqualizerBand_ in
+              var __vector = bridge.create_std__vector_EqualizerBand_(__result.count)
+              for __item in __result {
+                __vector.push_back(__item)
+              }
+              return __vector
+            }()) })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
       }()
-      return bridge.create_Result_std__vector_EqualizerBand__(__resultCpp)
+      return bridge.create_Result_std__shared_ptr_Promise_std__vector_EqualizerBand____(__resultCpp)
     } catch (let __error) {
       let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_std__vector_EqualizerBand__(__exceptionPtr)
+      return bridge.create_Result_std__shared_ptr_Promise_std__vector_EqualizerBand____(__exceptionPtr)
     }
   }
   
   @inline(__always)
-  public final func setBandGain(bandIndex: Double, gainDb: Double) -> bridge.Result_bool_ {
+  public final func setBandGain(bandIndex: Double, gainDb: Double) -> bridge.Result_std__shared_ptr_Promise_void___ {
     do {
       let __result = try self.__implementation.setBandGain(bandIndex: bandIndex, gainDb: gainDb)
-      let __resultCpp = __result
-      return bridge.create_Result_bool_(__resultCpp)
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_void__ in
+        let __promise = bridge.create_std__shared_ptr_Promise_void__()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_void__(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve() })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
+      }()
+      return bridge.create_Result_std__shared_ptr_Promise_void___(__resultCpp)
     } catch (let __error) {
       let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_bool_(__exceptionPtr)
+      return bridge.create_Result_std__shared_ptr_Promise_void___(__exceptionPtr)
     }
   }
   
   @inline(__always)
-  public final func setAllBandGains(gains: bridge.std__vector_double_) -> bridge.Result_bool_ {
+  public final func setAllBandGains(gains: bridge.std__vector_double_) -> bridge.Result_std__shared_ptr_Promise_void___ {
     do {
       let __result = try self.__implementation.setAllBandGains(gains: gains.map({ __item in __item }))
-      let __resultCpp = __result
-      return bridge.create_Result_bool_(__resultCpp)
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_void__ in
+        let __promise = bridge.create_std__shared_ptr_Promise_void__()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_void__(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve() })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
+      }()
+      return bridge.create_Result_std__shared_ptr_Promise_void___(__resultCpp)
     } catch (let __error) {
       let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_bool_(__exceptionPtr)
+      return bridge.create_Result_std__shared_ptr_Promise_void___(__exceptionPtr)
     }
   }
   
@@ -257,14 +285,21 @@ open class HybridEqualizerSpec_cxx {
   }
   
   @inline(__always)
-  public final func applyPreset(presetName: std.string) -> bridge.Result_bool_ {
+  public final func applyPreset(presetName: std.string) -> bridge.Result_std__shared_ptr_Promise_void___ {
     do {
       let __result = try self.__implementation.applyPreset(presetName: String(presetName))
-      let __resultCpp = __result
-      return bridge.create_Result_bool_(__resultCpp)
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_void__ in
+        let __promise = bridge.create_std__shared_ptr_Promise_void__()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_void__(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve() })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
+      }()
+      return bridge.create_Result_std__shared_ptr_Promise_void___(__resultCpp)
     } catch (let __error) {
       let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_bool_(__exceptionPtr)
+      return bridge.create_Result_std__shared_ptr_Promise_void___(__exceptionPtr)
     }
   }
   
@@ -288,49 +323,78 @@ open class HybridEqualizerSpec_cxx {
   }
   
   @inline(__always)
-  public final func saveCustomPreset(name: std.string) -> bridge.Result_bool_ {
+  public final func saveCustomPreset(name: std.string) -> bridge.Result_std__shared_ptr_Promise_void___ {
     do {
       let __result = try self.__implementation.saveCustomPreset(name: String(name))
-      let __resultCpp = __result
-      return bridge.create_Result_bool_(__resultCpp)
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_void__ in
+        let __promise = bridge.create_std__shared_ptr_Promise_void__()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_void__(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve() })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
+      }()
+      return bridge.create_Result_std__shared_ptr_Promise_void___(__resultCpp)
     } catch (let __error) {
       let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_bool_(__exceptionPtr)
+      return bridge.create_Result_std__shared_ptr_Promise_void___(__exceptionPtr)
     }
   }
   
   @inline(__always)
-  public final func deleteCustomPreset(name: std.string) -> bridge.Result_bool_ {
+  public final func deleteCustomPreset(name: std.string) -> bridge.Result_std__shared_ptr_Promise_void___ {
     do {
       let __result = try self.__implementation.deleteCustomPreset(name: String(name))
-      let __resultCpp = __result
-      return bridge.create_Result_bool_(__resultCpp)
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_void__ in
+        let __promise = bridge.create_std__shared_ptr_Promise_void__()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_void__(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve() })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
+      }()
+      return bridge.create_Result_std__shared_ptr_Promise_void___(__resultCpp)
     } catch (let __error) {
       let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_bool_(__exceptionPtr)
+      return bridge.create_Result_std__shared_ptr_Promise_void___(__exceptionPtr)
     }
   }
   
   @inline(__always)
-  public final func getState() -> bridge.Result_EqualizerState_ {
+  public final func getState() -> bridge.Result_std__shared_ptr_Promise_EqualizerState___ {
     do {
       let __result = try self.__implementation.getState()
-      let __resultCpp = __result
-      return bridge.create_Result_EqualizerState_(__resultCpp)
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_EqualizerState__ in
+        let __promise = bridge.create_std__shared_ptr_Promise_EqualizerState__()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_EqualizerState__(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve(__result) })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
+      }()
+      return bridge.create_Result_std__shared_ptr_Promise_EqualizerState___(__resultCpp)
     } catch (let __error) {
       let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_EqualizerState_(__exceptionPtr)
+      return bridge.create_Result_std__shared_ptr_Promise_EqualizerState___(__exceptionPtr)
     }
   }
   
   @inline(__always)
-  public final func reset() -> bridge.Result_void_ {
+  public final func reset() -> bridge.Result_std__shared_ptr_Promise_void___ {
     do {
-      try self.__implementation.reset()
-      return bridge.create_Result_void_()
+      let __result = try self.__implementation.reset()
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_void__ in
+        let __promise = bridge.create_std__shared_ptr_Promise_void__()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_void__(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve() })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
+      }()
+      return bridge.create_Result_std__shared_ptr_Promise_void___(__resultCpp)
     } catch (let __error) {
       let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_void_(__exceptionPtr)
+      return bridge.create_Result_std__shared_ptr_Promise_void___(__exceptionPtr)
     }
   }
   

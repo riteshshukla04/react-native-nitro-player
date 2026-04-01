@@ -33,6 +33,7 @@ export default function PlayerScreen() {
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
   const fetchPlaybackSpeed = async () => {
     const current = await TrackPlayer.getPlaybackSpeed();
+    console.log('current', current);
     setPlaybackSpeed(current);
   };
 
@@ -41,8 +42,7 @@ export default function PlayerScreen() {
   }, []);
 
   const setPlaybackSpeedState = (speed: number) => {
-    TrackPlayer.setPlaybackSpeed(speed);
-    fetchPlaybackSpeed();
+    void TrackPlayer.setPlaybackSpeed(speed).then(() => fetchPlaybackSpeed());
   };
   const [repeatMode, setRepeatModeState] = useState<RepeatMode>('off');
 
@@ -56,8 +56,7 @@ export default function PlayerScreen() {
   const cycleRepeatMode = () => {
     const nextIndex = (REPEAT_MODES.indexOf(repeatMode) + 1) % REPEAT_MODES.length;
     const next = REPEAT_MODES[nextIndex];
-    TrackPlayer.setRepeatMode(next);
-    setRepeatModeState(next);
+    void TrackPlayer.setRepeatMode(next).then(() => setRepeatModeState(next));
   };
 
   const fetchRepeatMode = async () => {
@@ -110,15 +109,15 @@ export default function PlayerScreen() {
           <View style={styles.controlsRow}>
             <TouchableOpacity
               style={styles.controlButton}
-              onPress={() => TrackPlayer.skipToPrevious()}>
+              onPress={() => void TrackPlayer.skipToPrevious()}>
               <Text style={styles.controlButtonText}>⏮️</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.controlButton, styles.playButton]}
               onPress={() =>
                 playbackState === 'playing'
-                  ? TrackPlayer.pause()
-                  : TrackPlayer.play()
+                  ? void TrackPlayer.pause()
+                  : void TrackPlayer.play()
               }>
               <Text style={styles.playButtonText}>
                 {playbackState === 'playing' ? '⏸️' : '▶️'}
@@ -126,7 +125,7 @@ export default function PlayerScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.controlButton}
-              onPress={() => TrackPlayer.skipToNext()}>
+              onPress={() => void TrackPlayer.skipToNext()}>
               <Text style={styles.controlButtonText}>⏭️</Text>
             </TouchableOpacity>
           </View>
@@ -167,8 +166,7 @@ export default function PlayerScreen() {
                   repeatMode === mode && styles.repeatModeButtonActive,
                 ]}
                 onPress={() => {
-                  TrackPlayer.setRepeatMode(mode);
-                  setRepeatModeState(mode);
+                  void TrackPlayer.setRepeatMode(mode).then(() => setRepeatModeState(mode));
                 }}>
                 <Text
                   style={[
@@ -196,18 +194,18 @@ export default function PlayerScreen() {
           <View style={styles.seekRow}>
             <TouchableOpacity
               style={styles.seekButton}
-              onPress={() => TrackPlayer.seek(30)}>
+              onPress={() => void TrackPlayer.seek(30)}>
               <Text style={commonStyles.buttonText}>30s</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.seekButton}
-              onPress={() => TrackPlayer.seek(60)}>
+              onPress={() => void TrackPlayer.seek(60)}>
               <Text style={commonStyles.buttonText}>60s</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.seekButton}
               onPress={() =>
-                totalDuration > 10 && TrackPlayer.seek(totalDuration - 10)
+                totalDuration > 10 && void TrackPlayer.seek(totalDuration - 10)
               }>
               <Text style={commonStyles.buttonText}>-10s</Text>
             </TouchableOpacity>

@@ -158,9 +158,9 @@ Access all downloaded tracks and playlists.
 
 - `downloadedTracks: DownloadedTrack[]` - All downloaded tracks
 - `downloadedPlaylists: DownloadedPlaylist[]` - All downloaded playlists
-- `isTrackDownloaded: (trackId: string) => boolean` - Check if track is downloaded
-- `isPlaylistDownloaded: (playlistId: string) => boolean` - Check if playlist is fully downloaded
-- `isPlaylistPartiallyDownloaded: (playlistId: string) => boolean` - Check if playlist is partially downloaded
+- `isTrackDownloaded: (trackId: string) => boolean` - **Sync**: whether `trackId` appears in the last refreshed lists (not a disk probe; use `DownloadManager.isTrackDownloaded` for that)
+- `isPlaylistDownloaded: (playlistId: string) => boolean` - **Sync**: derived from cached `downloadedPlaylists`
+- `isPlaylistPartiallyDownloaded: (playlistId: string) => boolean` - **Sync**: derived from cached `downloadedPlaylists`
 - `getDownloadedTrack: (trackId: string) => DownloadedTrack | undefined` - Get downloaded track info
 - `getDownloadedPlaylist: (playlistId: string) => DownloadedPlaylist | undefined` - Get downloaded playlist info
 - `refresh: () => void` - Refresh downloaded content list
@@ -289,35 +289,37 @@ Get download state for a track. States: `'pending'`, `'downloading'`, `'paused'`
 
 ### Downloaded Content Queries
 
-#### `isTrackDownloaded(trackId: string): boolean`
+These methods consult the download database / filesystem and return **Promises** (see `new-version plan.md`). **`getDownloadTask`**, **`getActiveDownloads`**, **`isDownloading`**, and **`getDownloadState`** remain synchronous and reflect in-memory task state only.
 
-Check if a track is downloaded.
+#### `isTrackDownloaded(trackId: string): Promise<boolean>`
 
-#### `isPlaylistDownloaded(playlistId: string): boolean`
+Check if a track is downloaded on disk.
+
+#### `isPlaylistDownloaded(playlistId: string): Promise<boolean>`
 
 Check if all tracks in a playlist are downloaded.
 
-#### `isPlaylistPartiallyDownloaded(playlistId: string): boolean`
+#### `isPlaylistPartiallyDownloaded(playlistId: string): Promise<boolean>`
 
 Check if at least one track in a playlist is downloaded.
 
-#### `getDownloadedTrack(trackId: string): DownloadedTrack | null`
+#### `getDownloadedTrack(trackId: string): Promise<DownloadedTrack | null>`
 
 Get downloaded track information.
 
-#### `getAllDownloadedTracks(): DownloadedTrack[]`
+#### `getAllDownloadedTracks(): Promise<DownloadedTrack[]>`
 
 Get all downloaded tracks.
 
-#### `getDownloadedPlaylist(playlistId: string): DownloadedPlaylist | null`
+#### `getDownloadedPlaylist(playlistId: string): Promise<DownloadedPlaylist | null>`
 
 Get downloaded playlist information.
 
-#### `getAllDownloadedPlaylists(): DownloadedPlaylist[]`
+#### `getAllDownloadedPlaylists(): Promise<DownloadedPlaylist[]>`
 
 Get all downloaded playlists.
 
-#### `getLocalPath(trackId: string): string | null`
+#### `getLocalPath(trackId: string): Promise<string | null>`
 
 Get local file path for a downloaded track.
 
@@ -353,9 +355,9 @@ Get storage usage information.
 }
 ```
 
-#### `syncDownloads(): number`
+#### `syncDownloads(): Promise<number>`
 
-Validate all downloads and remove orphaned records. Returns the number of orphaned records cleaned up.
+Validate all downloads and remove orphaned records. Resolves to the number of orphaned records cleaned up.
 
 ### Playback Source Preference
 
@@ -371,9 +373,9 @@ Set playback source preference: `'auto'`, `'download'`, or `'network'`.
 
 Get current playback source preference.
 
-#### `getEffectiveUrl(track: TrackItem): string`
+#### `getEffectiveUrl(track: TrackItem): Promise<string>`
 
-Get the effective URL for a track (local or network based on preference and availability).
+Get the effective URL for a track (local or network based on preference and availability). **`await`** the result.
 
 ### Event Callbacks
 
@@ -537,7 +539,7 @@ await TrackPlayer.playSong('track-id')
 
 // Check what URL will be used
 const track = { id: 'track-id', url: 'https://...' /* ... */ }
-const effectiveUrl = DownloadManager.getEffectiveUrl(track)
+const effectiveUrl = await DownloadManager.getEffectiveUrl(track)
 console.log('Playing from:', effectiveUrl) // Local path or network URL
 ```
 
@@ -557,7 +559,7 @@ async function showStorageInfo() {
 }
 
 // Clean up orphaned records
-const cleaned = DownloadManager.syncDownloads()
+const cleaned = await DownloadManager.syncDownloads()
 console.log(`Cleaned up ${cleaned} orphaned records`)
 ```
 

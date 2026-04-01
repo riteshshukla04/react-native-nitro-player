@@ -55,7 +55,7 @@ namespace margelo::nitro::nitroplayer {
   public:
     // Methods
     std::vector<TAudioDevice> getAudioDevices() override;
-    bool setAudioDevice(double deviceId) override;
+    std::shared_ptr<Promise<void>> setAudioDevice(double deviceId) override;
 
   private:
     jni::global_ref<JHybridAudioDevicesSpec::JavaPart> _javaPart;

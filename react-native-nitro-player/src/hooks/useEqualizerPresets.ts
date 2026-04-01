@@ -11,11 +11,11 @@ export interface UseEqualizerPresetsResult {
   /** Custom user presets */
   customPresets: EqualizerPreset[]
   /** Apply a preset by name */
-  applyPreset: (name: string) => boolean
+  applyPreset: (name: string) => Promise<boolean>
   /** Save current settings as custom preset */
-  saveCustomPreset: (name: string) => boolean
+  saveCustomPreset: (name: string) => Promise<boolean>
   /** Delete a custom preset */
-  deleteCustomPreset: (name: string) => boolean
+  deleteCustomPreset: (name: string) => Promise<boolean>
   /** Currently applied preset name */
   currentPreset: string | null
   /** Whether presets are loading */
@@ -75,13 +75,11 @@ export function useEqualizerPresets(): UseEqualizerPresetsResult {
     return unsubscribe
   }, [])
 
-  const applyPreset = useCallback((name: string): boolean => {
+  const applyPreset = useCallback(async (name: string): Promise<boolean> => {
     try {
-      const success = Equalizer.applyPreset(name)
-      if (success) {
-        setCurrentPreset(name)
-      }
-      return success
+      await Equalizer.applyPreset(name)
+      setCurrentPreset(name)
+      return true
     } catch (error) {
       console.error('[useEqualizerPresets] Error applying preset:', error)
       return false
@@ -89,13 +87,11 @@ export function useEqualizerPresets(): UseEqualizerPresetsResult {
   }, [])
 
   const saveCustomPreset = useCallback(
-    (name: string): boolean => {
+    async (name: string): Promise<boolean> => {
       try {
-        const success = Equalizer.saveCustomPreset(name)
-        if (success) {
-          refreshPresets()
-        }
-        return success
+        await Equalizer.saveCustomPreset(name)
+        refreshPresets()
+        return true
       } catch (error) {
         console.error(
           '[useEqualizerPresets] Error saving custom preset:',
@@ -108,13 +104,11 @@ export function useEqualizerPresets(): UseEqualizerPresetsResult {
   )
 
   const deleteCustomPreset = useCallback(
-    (name: string): boolean => {
+    async (name: string): Promise<boolean> => {
       try {
-        const success = Equalizer.deleteCustomPreset(name)
-        if (success) {
-          refreshPresets()
-        }
-        return success
+        await Equalizer.deleteCustomPreset(name)
+        refreshPresets()
+        return true
       } catch (error) {
         console.error(
           '[useEqualizerPresets] Error deleting custom preset:',

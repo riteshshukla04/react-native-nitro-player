@@ -69,27 +69,27 @@ namespace margelo::nitro::nitroplayer {
 
     public:
       // Methods
-      virtual void play() = 0;
-      virtual void pause() = 0;
+      virtual std::shared_ptr<Promise<void>> play() = 0;
+      virtual std::shared_ptr<Promise<void>> pause() = 0;
       virtual std::shared_ptr<Promise<void>> playSong(const std::string& songId, const std::optional<std::string>& fromPlaylist) = 0;
-      virtual void skipToNext() = 0;
+      virtual std::shared_ptr<Promise<void>> skipToNext() = 0;
       virtual std::shared_ptr<Promise<bool>> skipToIndex(double index) = 0;
-      virtual void skipToPrevious() = 0;
-      virtual void seek(double position) = 0;
+      virtual std::shared_ptr<Promise<void>> skipToPrevious() = 0;
+      virtual std::shared_ptr<Promise<void>> seek(double position) = 0;
       virtual std::shared_ptr<Promise<void>> addToUpNext(const std::string& trackId) = 0;
       virtual std::shared_ptr<Promise<void>> playNext(const std::string& trackId) = 0;
       virtual std::shared_ptr<Promise<std::vector<TrackItem>>> getActualQueue() = 0;
       virtual std::shared_ptr<Promise<PlayerState>> getState() = 0;
-      virtual bool setRepeatMode(RepeatMode mode) = 0;
+      virtual std::shared_ptr<Promise<void>> setRepeatMode(RepeatMode mode) = 0;
       virtual RepeatMode getRepeatMode() = 0;
-      virtual void configure(const PlayerConfig& config) = 0;
+      virtual std::shared_ptr<Promise<void>> configure(const PlayerConfig& config) = 0;
       virtual void onChangeTrack(const std::function<void(const TrackItem& /* track */, std::optional<Reason> /* reason */)>& callback) = 0;
       virtual void onPlaybackStateChange(const std::function<void(TrackPlayerState /* state */, std::optional<Reason> /* reason */)>& callback) = 0;
       virtual void onSeek(const std::function<void(double /* position */, double /* totalDuration */)>& callback) = 0;
       virtual void onPlaybackProgressChange(const std::function<void(double /* position */, double /* totalDuration */, std::optional<bool> /* isManuallySeeked */)>& callback) = 0;
       virtual void onAndroidAutoConnectionChange(const std::function<void(bool /* connected */)>& callback) = 0;
       virtual bool isAndroidAutoConnected() = 0;
-      virtual bool setVolume(double volume) = 0;
+      virtual std::shared_ptr<Promise<void>> setVolume(double volume) = 0;
       virtual std::shared_ptr<Promise<void>> updateTracks(const std::vector<TrackItem>& tracks) = 0;
       virtual std::shared_ptr<Promise<std::vector<TrackItem>>> getTracksById(const std::vector<std::string>& trackIds) = 0;
       virtual std::shared_ptr<Promise<std::vector<TrackItem>>> getTracksNeedingUrls() = 0;
@@ -98,6 +98,14 @@ namespace margelo::nitro::nitroplayer {
       virtual void onTracksNeedUpdate(const std::function<void(const std::vector<TrackItem>& /* tracks */, double /* lookahead */)>& callback) = 0;
       virtual std::shared_ptr<Promise<void>> setPlaybackSpeed(double speed) = 0;
       virtual std::shared_ptr<Promise<double>> getPlaybackSpeed() = 0;
+      virtual std::shared_ptr<Promise<bool>> removeFromPlayNext(const std::string& trackId) = 0;
+      virtual std::shared_ptr<Promise<bool>> removeFromUpNext(const std::string& trackId) = 0;
+      virtual std::shared_ptr<Promise<void>> clearPlayNext() = 0;
+      virtual std::shared_ptr<Promise<void>> clearUpNext() = 0;
+      virtual std::shared_ptr<Promise<bool>> reorderTemporaryTrack(const std::string& trackId, double newIndex) = 0;
+      virtual std::shared_ptr<Promise<std::vector<TrackItem>>> getPlayNextQueue() = 0;
+      virtual std::shared_ptr<Promise<std::vector<TrackItem>>> getUpNextQueue() = 0;
+      virtual void onTemporaryQueueChange(const std::function<void(const std::vector<TrackItem>& /* playNextQueue */, const std::vector<TrackItem>& /* upNextQueue */)>& callback) = 0;
 
     protected:
       // Hybrid Setup

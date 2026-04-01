@@ -62,10 +62,11 @@ export default function EqualizerScreen() {
                     text: 'Save',
                     onPress: (name?: string) => {
                         if (name) {
-                            const success = saveCustomPreset(name);
-                            if (!success) {
-                                Alert.alert('Error', 'Failed to save preset');
-                            }
+                            void saveCustomPreset(name).then((success) => {
+                                if (!success) {
+                                    Alert.alert('Error', 'Failed to save preset');
+                                }
+                            });
                         }
                     },
                 },
@@ -83,7 +84,7 @@ export default function EqualizerScreen() {
                 {
                     text: 'Delete',
                     style: 'destructive',
-                    onPress: () => deleteCustomPreset(name),
+                    onPress: () => void deleteCustomPreset(name),
                 },
             ]
         );
@@ -108,20 +109,14 @@ export default function EqualizerScreen() {
                         <Switch
                             value={isEnabled}
                             onValueChange={(val) => {
-                                try {
-                                    const success = setEnabled(val);
+                                void setEnabled(val).then((success) => {
                                     if (!success && val) {
                                         Alert.alert(
                                             'Cannot Enable Equalizer',
                                             'Please load and play a track first before enabling the equalizer.'
                                         );
                                     }
-                                } catch {
-                                    Alert.alert(
-                                        'Cannot Enable Equalizer',
-                                        'Please load and play a track first before enabling the equalizer.'
-                                    );
-                                }
+                                });
                             }}
                             trackColor={{ false: '#767577', true: colors.primary }}
                             thumbColor={colors.white}
@@ -156,7 +151,7 @@ export default function EqualizerScreen() {
                                         isActive && styles.activePresetBadge,
                                         !isEnabled && styles.disabledBadge
                                     ]}
-                                    onPress={() => isEnabled && applyPreset(preset.name)}
+                                    onPress={() => isEnabled && void applyPreset(preset.name)}
                                     onLongPress={() => isEnabled && isCustom && handleDeletePreset(preset.name)}
                                     disabled={!isEnabled}
                                 >
@@ -182,7 +177,7 @@ export default function EqualizerScreen() {
                 <View style={commonStyles.section}>
                     <View style={styles.headerRow}>
                         <Text style={commonStyles.sectionTitle}>Bands ({gainRange.min}dB to +{gainRange.max}dB)</Text>
-                        <TouchableOpacity onPress={reset} disabled={!isEnabled}>
+                        <TouchableOpacity onPress={() => void reset()} disabled={!isEnabled}>
                             <Text style={[styles.actionText, !isEnabled && styles.disabledText]}>Reset</Text>
                         </TouchableOpacity>
                     </View>
@@ -198,7 +193,7 @@ export default function EqualizerScreen() {
                                     value={band.gainDb}
                                     min={gainRange.min}
                                     max={gainRange.max}
-                                    onChange={(val) => setBandGain(band.index, val)}
+                                    onChange={(val) => void setBandGain(band.index, val)}
                                     disabled={!isEnabled}
                                     height={200}
                                 />

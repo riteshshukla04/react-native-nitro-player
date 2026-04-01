@@ -29,22 +29,22 @@ public protocol HybridDownloadManagerSpec_protocol: HybridObject {
   func getQueueStatus() throws -> DownloadQueueStatus
   func isDownloading(trackId: String) throws -> Bool
   func getDownloadState(trackId: String) throws -> DownloadState
-  func isTrackDownloaded(trackId: String) throws -> Bool
-  func isPlaylistDownloaded(playlistId: String) throws -> Bool
-  func isPlaylistPartiallyDownloaded(playlistId: String) throws -> Bool
-  func getDownloadedTrack(trackId: String) throws -> Variant_NullType_DownloadedTrack
-  func getAllDownloadedTracks() throws -> [DownloadedTrack]
-  func getDownloadedPlaylist(playlistId: String) throws -> Variant_NullType_DownloadedPlaylist
-  func getAllDownloadedPlaylists() throws -> [DownloadedPlaylist]
-  func getLocalPath(trackId: String) throws -> Variant_NullType_String
+  func isTrackDownloaded(trackId: String) throws -> Promise<Bool>
+  func isPlaylistDownloaded(playlistId: String) throws -> Promise<Bool>
+  func isPlaylistPartiallyDownloaded(playlistId: String) throws -> Promise<Bool>
+  func getDownloadedTrack(trackId: String) throws -> Promise<Variant_NullType_DownloadedTrack>
+  func getAllDownloadedTracks() throws -> Promise<[DownloadedTrack]>
+  func getDownloadedPlaylist(playlistId: String) throws -> Promise<Variant_NullType_DownloadedPlaylist>
+  func getAllDownloadedPlaylists() throws -> Promise<[DownloadedPlaylist]>
+  func getLocalPath(trackId: String) throws -> Promise<Variant_NullType_String>
   func deleteDownloadedTrack(trackId: String) throws -> Promise<Void>
   func deleteDownloadedPlaylist(playlistId: String) throws -> Promise<Void>
   func deleteAllDownloads() throws -> Promise<Void>
   func getStorageInfo() throws -> Promise<DownloadStorageInfo>
-  func syncDownloads() throws -> Double
+  func syncDownloads() throws -> Promise<Double>
   func setPlaybackSourcePreference(preference: PlaybackSource) throws -> Void
   func getPlaybackSourcePreference() throws -> PlaybackSource
-  func getEffectiveUrl(track: TrackItem) throws -> String
+  func getEffectiveUrl(track: TrackItem) throws -> Promise<String>
   func onDownloadProgress(callback: @escaping (_ progress: DownloadProgress) -> Void) throws -> Void
   func onDownloadStateChange(callback: @escaping (_ downloadId: String, _ trackId: String, _ state: DownloadState, _ error: DownloadError?) -> Void) throws -> Void
   func onDownloadComplete(callback: @escaping (_ downloadedTrack: DownloadedTrack) -> Void) throws -> Void

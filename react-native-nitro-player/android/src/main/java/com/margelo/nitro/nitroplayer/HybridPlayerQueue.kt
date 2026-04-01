@@ -1,11 +1,15 @@
+@file:Suppress("ktlint:standard:max-line-length")
+
 package com.margelo.nitro.nitroplayer
 
 import androidx.annotation.Keep
-import com.facebook.jni.HybridData
 import com.facebook.proguard.annotations.DoNotStrip
 import com.margelo.nitro.NitroModules
 import com.margelo.nitro.core.NullType
+import com.margelo.nitro.core.Promise
 import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
+import com.margelo.nitro.nitroplayer.core.loadPlaylist
+import com.margelo.nitro.nitroplayer.core.updatePlaylist
 import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
 import java.util.UUID
 import com.margelo.nitro.nitroplayer.playlist.Playlist as InternalPlaylist
@@ -17,7 +21,9 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
     private val playlistManager: PlaylistManager
 
     init {
-        val context = NitroModules.applicationContext ?: throw IllegalStateException("React Context is not initialized")
+        val context =
+            NitroModules.applicationContext
+                ?: throw IllegalStateException("React Context is not initialized")
         core = TrackPlayerCore.getInstance(context)
         playlistManager = core.getPlaylistManager()
     }
@@ -25,33 +31,30 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
     private val playlistsChangeListeners = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
     private val playlistChangeListeners = java.util.concurrent.ConcurrentHashMap<String, () -> Unit>()
 
-    @DoNotStrip
-    @Keep
+    // ── Playlist CRUD ─────────────────────────────────────────────────────────
+
     override fun createPlaylist(
         name: String,
         description: String?,
         artwork: String?,
-    ): String = playlistManager.createPlaylist(name, description, artwork)
+    ): Promise<String> = Promise.async { playlistManager.createPlaylist(name, description, artwork) }
 
-    @DoNotStrip
-    @Keep
-    override fun deletePlaylist(playlistId: String) {
-        playlistManager.deletePlaylist(playlistId)
-    }
+    override fun deletePlaylist(playlistId: String): Promise<Unit> =
+        Promise.async {
+            playlistManager.deletePlaylist(playlistId)
+        }
 
-    @DoNotStrip
-    @Keep
     override fun updatePlaylist(
         playlistId: String,
         name: String?,
         description: String?,
         artwork: String?,
-    ) {
-        playlistManager.updatePlaylist(playlistId, name, description, artwork)
-    }
+    ): Promise<Unit> =
+        Promise.async {
+            playlistManager.updatePlaylist(playlistId, name, description, artwork)
+            core.updatePlaylist(playlistId)
+        }
 
-    @DoNotStrip
-    @Keep
     override fun getPlaylist(playlistId: String): Variant_NullType_Playlist {
         val playlist = playlistManager.getPlaylist(playlistId)
         return if (playlist != null) {
@@ -61,77 +64,68 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
         }
     }
 
-    @DoNotStrip
-    @Keep
-    override fun getAllPlaylists(): Array<Playlist> =
-        playlistManager
-            .getAllPlaylists()
-            .map {
-                it.toPlaylist()
-            }.toTypedArray()
+    override fun getAllPlaylists(): Array<Playlist> = playlistManager.getAllPlaylists().map { it.toPlaylist() }.toTypedArray()
 
-    @DoNotStrip
-    @Keep
+    // ── Track mutations ───────────────────────────────────────────────────────
+
     override fun addTrackToPlaylist(
         playlistId: String,
         track: TrackItem,
         index: Double?,
-    ) {
-        val insertIndex = index?.toInt()
-        playlistManager.addTrackToPlaylist(playlistId, track, insertIndex)
-    }
+    ): Promise<Unit> =
+        Promise.async {
+            playlistManager.addTrackToPlaylist(playlistId, track, index?.toInt())
+            core.updatePlaylist(playlistId)
+        }
 
-    @DoNotStrip
-    @Keep
     override fun addTracksToPlaylist(
         playlistId: String,
         tracks: Array<TrackItem>,
         index: Double?,
-    ) {
-        val insertIndex = index?.toInt()
-        playlistManager.addTracksToPlaylist(playlistId, tracks.toList(), insertIndex)
-    }
+    ): Promise<Unit> =
+        Promise.async {
+            playlistManager.addTracksToPlaylist(playlistId, tracks.toList(), index?.toInt())
+            core.updatePlaylist(playlistId)
+        }
 
-    @DoNotStrip
-    @Keep
     override fun removeTrackFromPlaylist(
         playlistId: String,
         trackId: String,
-    ) {
-        playlistManager.removeTrackFromPlaylist(playlistId, trackId)
-    }
+    ): Promise<Unit> =
+        Promise.async {
+            playlistManager.removeTrackFromPlaylist(playlistId, trackId)
+            core.updatePlaylist(playlistId)
+        }
 
-    @DoNotStrip
-    @Keep
     override fun reorderTrackInPlaylist(
         playlistId: String,
         trackId: String,
         newIndex: Double,
-    ) {
-        playlistManager.reorderTrackInPlaylist(playlistId, trackId, newIndex.toInt())
-    }
+    ): Promise<Unit> =
+        Promise.async {
+            playlistManager.reorderTrackInPlaylist(playlistId, trackId, newIndex.toInt())
+            core.updatePlaylist(playlistId)
+        }
 
-    @DoNotStrip
-    @Keep
-    override fun loadPlaylist(playlistId: String) {
-        playlistManager.loadPlaylist(playlistId)
-    }
+    // ── Playback control ──────────────────────────────────────────────────────
 
-    @DoNotStrip
-    @Keep
+    override fun loadPlaylist(playlistId: String): Promise<Unit> =
+        Promise.async {
+            core.loadPlaylist(playlistId)
+        }
+
     override fun getCurrentPlaylistId(): Variant_NullType_String {
-        val playlistId = playlistManager.getCurrentPlaylistId()
-        return if (playlistId != null) {
-            Variant_NullType_String.create(playlistId)
+        val id = core.getCurrentPlaylistId()
+        return if (id != null) {
+            Variant_NullType_String.create(id)
         } else {
             Variant_NullType_String.create(NullType.NULL)
         }
     }
 
-    @DoNotStrip
-    @Keep
+    // ── Events ────────────────────────────────────────────────────────────────
+
     override fun onPlaylistsChanged(callback: (playlists: Array<Playlist>, operation: QueueOperation?) -> Unit) {
-        // Add new listener and store the cleanup function
         val removeListener =
             playlistManager.addPlaylistsChangeListener { playlists, operation ->
                 callback(playlists.map { it.toPlaylist() }.toTypedArray(), operation)
@@ -139,13 +133,8 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
         playlistsChangeListeners.add(removeListener)
     }
 
-    @DoNotStrip
-    @Keep
     override fun onPlaylistChanged(callback: (playlistId: String, playlist: Playlist, operation: QueueOperation?) -> Unit) {
-        // Listen to all playlists and filter by playlistId
         val listenerId = UUID.randomUUID().toString()
-
-        // For each playlist, add a listener
         playlistManager.getAllPlaylists().forEach { internalPlaylist ->
             val removeListener =
                 playlistManager.addPlaylistChangeListener(internalPlaylist.id) { playlist, operation ->
@@ -155,7 +144,8 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
         }
     }
 
-    // Helper to convert internal Playlist to generated Playlist type
+    // ── Helper ────────────────────────────────────────────────────────────────
+
     private fun InternalPlaylist.toPlaylist(): Playlist =
         Playlist(
             id = this.id,

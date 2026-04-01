@@ -54,21 +54,21 @@ namespace margelo::nitro::nitroplayer {
 
   public:
     // Methods
-    bool setEnabled(bool enabled) override;
+    std::shared_ptr<Promise<void>> setEnabled(bool enabled) override;
     bool isEnabled() override;
-    std::vector<EqualizerBand> getBands() override;
-    bool setBandGain(double bandIndex, double gainDb) override;
-    bool setAllBandGains(const std::vector<double>& gains) override;
+    std::shared_ptr<Promise<std::vector<EqualizerBand>>> getBands() override;
+    std::shared_ptr<Promise<void>> setBandGain(double bandIndex, double gainDb) override;
+    std::shared_ptr<Promise<void>> setAllBandGains(const std::vector<double>& gains) override;
     GainRange getBandRange() override;
     std::vector<EqualizerPreset> getPresets() override;
     std::vector<EqualizerPreset> getBuiltInPresets() override;
     std::vector<EqualizerPreset> getCustomPresets() override;
-    bool applyPreset(const std::string& presetName) override;
+    std::shared_ptr<Promise<void>> applyPreset(const std::string& presetName) override;
     std::variant<nitro::NullType, std::string> getCurrentPresetName() override;
-    bool saveCustomPreset(const std::string& name) override;
-    bool deleteCustomPreset(const std::string& name) override;
-    EqualizerState getState() override;
-    void reset() override;
+    std::shared_ptr<Promise<void>> saveCustomPreset(const std::string& name) override;
+    std::shared_ptr<Promise<void>> deleteCustomPreset(const std::string& name) override;
+    std::shared_ptr<Promise<EqualizerState>> getState() override;
+    std::shared_ptr<Promise<void>> reset() override;
     void onEnabledChange(const std::function<void(bool /* enabled */)>& callback) override;
     void onBandChange(const std::function<void(const std::vector<EqualizerBand>& /* bands */)>& callback) override;
     void onPresetChange(const std::function<void(const std::optional<std::variant<nitro::NullType, std::string>>& /* presetName */)>& callback) override;

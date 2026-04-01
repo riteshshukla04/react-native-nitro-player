@@ -23,6 +23,7 @@ namespace margelo::nitro::nitroplayer { enum class PresetType; }
 // Forward declaration of `EqualizerState` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct EqualizerState; }
 
+#include <NitroModules/Promise.hpp>
 #include "EqualizerBand.hpp"
 #include <vector>
 #include <string>
@@ -85,7 +86,7 @@ namespace margelo::nitro::nitroplayer {
 
   public:
     // Methods
-    inline bool setEnabled(bool enabled) override {
+    inline std::shared_ptr<Promise<void>> setEnabled(bool enabled) override {
       auto __result = _swiftPart.setEnabled(std::forward<decltype(enabled)>(enabled));
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
@@ -101,7 +102,7 @@ namespace margelo::nitro::nitroplayer {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline std::vector<EqualizerBand> getBands() override {
+    inline std::shared_ptr<Promise<std::vector<EqualizerBand>>> getBands() override {
       auto __result = _swiftPart.getBands();
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
@@ -109,7 +110,7 @@ namespace margelo::nitro::nitroplayer {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline bool setBandGain(double bandIndex, double gainDb) override {
+    inline std::shared_ptr<Promise<void>> setBandGain(double bandIndex, double gainDb) override {
       auto __result = _swiftPart.setBandGain(std::forward<decltype(bandIndex)>(bandIndex), std::forward<decltype(gainDb)>(gainDb));
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
@@ -117,7 +118,7 @@ namespace margelo::nitro::nitroplayer {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline bool setAllBandGains(const std::vector<double>& gains) override {
+    inline std::shared_ptr<Promise<void>> setAllBandGains(const std::vector<double>& gains) override {
       auto __result = _swiftPart.setAllBandGains(gains);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
@@ -157,7 +158,7 @@ namespace margelo::nitro::nitroplayer {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline bool applyPreset(const std::string& presetName) override {
+    inline std::shared_ptr<Promise<void>> applyPreset(const std::string& presetName) override {
       auto __result = _swiftPart.applyPreset(presetName);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
@@ -173,7 +174,7 @@ namespace margelo::nitro::nitroplayer {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline bool saveCustomPreset(const std::string& name) override {
+    inline std::shared_ptr<Promise<void>> saveCustomPreset(const std::string& name) override {
       auto __result = _swiftPart.saveCustomPreset(name);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
@@ -181,7 +182,7 @@ namespace margelo::nitro::nitroplayer {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline bool deleteCustomPreset(const std::string& name) override {
+    inline std::shared_ptr<Promise<void>> deleteCustomPreset(const std::string& name) override {
       auto __result = _swiftPart.deleteCustomPreset(name);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
@@ -189,7 +190,7 @@ namespace margelo::nitro::nitroplayer {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline EqualizerState getState() override {
+    inline std::shared_ptr<Promise<EqualizerState>> getState() override {
       auto __result = _swiftPart.getState();
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
@@ -197,11 +198,13 @@ namespace margelo::nitro::nitroplayer {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline void reset() override {
+    inline std::shared_ptr<Promise<void>> reset() override {
       auto __result = _swiftPart.reset();
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
+      auto __value = std::move(__result.value());
+      return __value;
     }
     inline void onEnabledChange(const std::function<void(bool /* enabled */)>& callback) override {
       auto __result = _swiftPart.onEnabledChange(callback);

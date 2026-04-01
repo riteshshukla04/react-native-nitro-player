@@ -20,6 +20,7 @@ namespace margelo::nitro::nitroplayer { struct TrackItem; }
 namespace margelo::nitro::nitroplayer { enum class QueueOperation; }
 
 #include <string>
+#include <NitroModules/Promise.hpp>
 #include <optional>
 #include <NitroModules/Null.hpp>
 #include "Playlist.hpp"
@@ -80,7 +81,7 @@ namespace margelo::nitro::nitroplayer {
 
   public:
     // Methods
-    inline std::string createPlaylist(const std::string& name, const std::optional<std::string>& description, const std::optional<std::string>& artwork) override {
+    inline std::shared_ptr<Promise<std::string>> createPlaylist(const std::string& name, const std::optional<std::string>& description, const std::optional<std::string>& artwork) override {
       auto __result = _swiftPart.createPlaylist(name, description, artwork);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
@@ -88,17 +89,21 @@ namespace margelo::nitro::nitroplayer {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline void deletePlaylist(const std::string& playlistId) override {
+    inline std::shared_ptr<Promise<void>> deletePlaylist(const std::string& playlistId) override {
       auto __result = _swiftPart.deletePlaylist(playlistId);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
+      auto __value = std::move(__result.value());
+      return __value;
     }
-    inline void updatePlaylist(const std::string& playlistId, const std::optional<std::string>& name, const std::optional<std::string>& description, const std::optional<std::string>& artwork) override {
+    inline std::shared_ptr<Promise<void>> updatePlaylist(const std::string& playlistId, const std::optional<std::string>& name, const std::optional<std::string>& description, const std::optional<std::string>& artwork) override {
       auto __result = _swiftPart.updatePlaylist(playlistId, name, description, artwork);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
+      auto __value = std::move(__result.value());
+      return __value;
     }
     inline std::variant<nitro::NullType, Playlist> getPlaylist(const std::string& playlistId) override {
       auto __result = _swiftPart.getPlaylist(playlistId);
@@ -116,35 +121,45 @@ namespace margelo::nitro::nitroplayer {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline void addTrackToPlaylist(const std::string& playlistId, const TrackItem& track, std::optional<double> index) override {
+    inline std::shared_ptr<Promise<void>> addTrackToPlaylist(const std::string& playlistId, const TrackItem& track, std::optional<double> index) override {
       auto __result = _swiftPart.addTrackToPlaylist(playlistId, std::forward<decltype(track)>(track), index);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
+      auto __value = std::move(__result.value());
+      return __value;
     }
-    inline void addTracksToPlaylist(const std::string& playlistId, const std::vector<TrackItem>& tracks, std::optional<double> index) override {
+    inline std::shared_ptr<Promise<void>> addTracksToPlaylist(const std::string& playlistId, const std::vector<TrackItem>& tracks, std::optional<double> index) override {
       auto __result = _swiftPart.addTracksToPlaylist(playlistId, tracks, index);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
+      auto __value = std::move(__result.value());
+      return __value;
     }
-    inline void removeTrackFromPlaylist(const std::string& playlistId, const std::string& trackId) override {
+    inline std::shared_ptr<Promise<void>> removeTrackFromPlaylist(const std::string& playlistId, const std::string& trackId) override {
       auto __result = _swiftPart.removeTrackFromPlaylist(playlistId, trackId);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
+      auto __value = std::move(__result.value());
+      return __value;
     }
-    inline void reorderTrackInPlaylist(const std::string& playlistId, const std::string& trackId, double newIndex) override {
+    inline std::shared_ptr<Promise<void>> reorderTrackInPlaylist(const std::string& playlistId, const std::string& trackId, double newIndex) override {
       auto __result = _swiftPart.reorderTrackInPlaylist(playlistId, trackId, std::forward<decltype(newIndex)>(newIndex));
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
+      auto __value = std::move(__result.value());
+      return __value;
     }
-    inline void loadPlaylist(const std::string& playlistId) override {
+    inline std::shared_ptr<Promise<void>> loadPlaylist(const std::string& playlistId) override {
       auto __result = _swiftPart.loadPlaylist(playlistId);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
+      auto __value = std::move(__result.value());
+      return __value;
     }
     inline std::variant<nitro::NullType, std::string> getCurrentPlaylistId() override {
       auto __result = _swiftPart.getCurrentPlaylistId();

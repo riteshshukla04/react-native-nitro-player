@@ -405,131 +405,187 @@ open class HybridDownloadManagerSpec_cxx {
   }
   
   @inline(__always)
-  public final func isTrackDownloaded(trackId: std.string) -> bridge.Result_bool_ {
+  public final func isTrackDownloaded(trackId: std.string) -> bridge.Result_std__shared_ptr_Promise_bool___ {
     do {
       let __result = try self.__implementation.isTrackDownloaded(trackId: String(trackId))
-      let __resultCpp = __result
-      return bridge.create_Result_bool_(__resultCpp)
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_bool__ in
+        let __promise = bridge.create_std__shared_ptr_Promise_bool__()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_bool__(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve(__result) })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
+      }()
+      return bridge.create_Result_std__shared_ptr_Promise_bool___(__resultCpp)
     } catch (let __error) {
       let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_bool_(__exceptionPtr)
+      return bridge.create_Result_std__shared_ptr_Promise_bool___(__exceptionPtr)
     }
   }
   
   @inline(__always)
-  public final func isPlaylistDownloaded(playlistId: std.string) -> bridge.Result_bool_ {
+  public final func isPlaylistDownloaded(playlistId: std.string) -> bridge.Result_std__shared_ptr_Promise_bool___ {
     do {
       let __result = try self.__implementation.isPlaylistDownloaded(playlistId: String(playlistId))
-      let __resultCpp = __result
-      return bridge.create_Result_bool_(__resultCpp)
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_bool__ in
+        let __promise = bridge.create_std__shared_ptr_Promise_bool__()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_bool__(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve(__result) })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
+      }()
+      return bridge.create_Result_std__shared_ptr_Promise_bool___(__resultCpp)
     } catch (let __error) {
       let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_bool_(__exceptionPtr)
+      return bridge.create_Result_std__shared_ptr_Promise_bool___(__exceptionPtr)
     }
   }
   
   @inline(__always)
-  public final func isPlaylistPartiallyDownloaded(playlistId: std.string) -> bridge.Result_bool_ {
+  public final func isPlaylistPartiallyDownloaded(playlistId: std.string) -> bridge.Result_std__shared_ptr_Promise_bool___ {
     do {
       let __result = try self.__implementation.isPlaylistPartiallyDownloaded(playlistId: String(playlistId))
-      let __resultCpp = __result
-      return bridge.create_Result_bool_(__resultCpp)
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_bool__ in
+        let __promise = bridge.create_std__shared_ptr_Promise_bool__()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_bool__(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve(__result) })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
+      }()
+      return bridge.create_Result_std__shared_ptr_Promise_bool___(__resultCpp)
     } catch (let __error) {
       let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_bool_(__exceptionPtr)
+      return bridge.create_Result_std__shared_ptr_Promise_bool___(__exceptionPtr)
     }
   }
   
   @inline(__always)
-  public final func getDownloadedTrack(trackId: std.string) -> bridge.Result_std__variant_nitro__NullType__DownloadedTrack__ {
+  public final func getDownloadedTrack(trackId: std.string) -> bridge.Result_std__shared_ptr_Promise_std__variant_nitro__NullType__DownloadedTrack____ {
     do {
       let __result = try self.__implementation.getDownloadedTrack(trackId: String(trackId))
-      let __resultCpp = { () -> bridge.std__variant_nitro__NullType__DownloadedTrack_ in
-        switch __result {
-          case .first(let __value):
-            return bridge.create_std__variant_nitro__NullType__DownloadedTrack_(margelo.nitro.NullType.null)
-          case .second(let __value):
-            return bridge.create_std__variant_nitro__NullType__DownloadedTrack_(__value)
-        }
-      }().variant
-      return bridge.create_Result_std__variant_nitro__NullType__DownloadedTrack__(__resultCpp)
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_std__variant_nitro__NullType__DownloadedTrack___ in
+        let __promise = bridge.create_std__shared_ptr_Promise_std__variant_nitro__NullType__DownloadedTrack___()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_std__variant_nitro__NullType__DownloadedTrack___(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve({ () -> bridge.std__variant_nitro__NullType__DownloadedTrack_ in
+              switch __result {
+                case .first(let __value):
+                  return bridge.create_std__variant_nitro__NullType__DownloadedTrack_(margelo.nitro.NullType.null)
+                case .second(let __value):
+                  return bridge.create_std__variant_nitro__NullType__DownloadedTrack_(__value)
+              }
+            }().variant) })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
+      }()
+      return bridge.create_Result_std__shared_ptr_Promise_std__variant_nitro__NullType__DownloadedTrack____(__resultCpp)
     } catch (let __error) {
       let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_std__variant_nitro__NullType__DownloadedTrack__(__exceptionPtr)
+      return bridge.create_Result_std__shared_ptr_Promise_std__variant_nitro__NullType__DownloadedTrack____(__exceptionPtr)
     }
   }
   
   @inline(__always)
-  public final func getAllDownloadedTracks() -> bridge.Result_std__vector_DownloadedTrack__ {
+  public final func getAllDownloadedTracks() -> bridge.Result_std__shared_ptr_Promise_std__vector_DownloadedTrack____ {
     do {
       let __result = try self.__implementation.getAllDownloadedTracks()
-      let __resultCpp = { () -> bridge.std__vector_DownloadedTrack_ in
-        var __vector = bridge.create_std__vector_DownloadedTrack_(__result.count)
-        for __item in __result {
-          __vector.push_back(__item)
-        }
-        return __vector
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_std__vector_DownloadedTrack___ in
+        let __promise = bridge.create_std__shared_ptr_Promise_std__vector_DownloadedTrack___()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_std__vector_DownloadedTrack___(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve({ () -> bridge.std__vector_DownloadedTrack_ in
+              var __vector = bridge.create_std__vector_DownloadedTrack_(__result.count)
+              for __item in __result {
+                __vector.push_back(__item)
+              }
+              return __vector
+            }()) })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
       }()
-      return bridge.create_Result_std__vector_DownloadedTrack__(__resultCpp)
+      return bridge.create_Result_std__shared_ptr_Promise_std__vector_DownloadedTrack____(__resultCpp)
     } catch (let __error) {
       let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_std__vector_DownloadedTrack__(__exceptionPtr)
+      return bridge.create_Result_std__shared_ptr_Promise_std__vector_DownloadedTrack____(__exceptionPtr)
     }
   }
   
   @inline(__always)
-  public final func getDownloadedPlaylist(playlistId: std.string) -> bridge.Result_std__variant_nitro__NullType__DownloadedPlaylist__ {
+  public final func getDownloadedPlaylist(playlistId: std.string) -> bridge.Result_std__shared_ptr_Promise_std__variant_nitro__NullType__DownloadedPlaylist____ {
     do {
       let __result = try self.__implementation.getDownloadedPlaylist(playlistId: String(playlistId))
-      let __resultCpp = { () -> bridge.std__variant_nitro__NullType__DownloadedPlaylist_ in
-        switch __result {
-          case .first(let __value):
-            return bridge.create_std__variant_nitro__NullType__DownloadedPlaylist_(margelo.nitro.NullType.null)
-          case .second(let __value):
-            return bridge.create_std__variant_nitro__NullType__DownloadedPlaylist_(__value)
-        }
-      }().variant
-      return bridge.create_Result_std__variant_nitro__NullType__DownloadedPlaylist__(__resultCpp)
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_std__variant_nitro__NullType__DownloadedPlaylist___ in
+        let __promise = bridge.create_std__shared_ptr_Promise_std__variant_nitro__NullType__DownloadedPlaylist___()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_std__variant_nitro__NullType__DownloadedPlaylist___(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve({ () -> bridge.std__variant_nitro__NullType__DownloadedPlaylist_ in
+              switch __result {
+                case .first(let __value):
+                  return bridge.create_std__variant_nitro__NullType__DownloadedPlaylist_(margelo.nitro.NullType.null)
+                case .second(let __value):
+                  return bridge.create_std__variant_nitro__NullType__DownloadedPlaylist_(__value)
+              }
+            }().variant) })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
+      }()
+      return bridge.create_Result_std__shared_ptr_Promise_std__variant_nitro__NullType__DownloadedPlaylist____(__resultCpp)
     } catch (let __error) {
       let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_std__variant_nitro__NullType__DownloadedPlaylist__(__exceptionPtr)
+      return bridge.create_Result_std__shared_ptr_Promise_std__variant_nitro__NullType__DownloadedPlaylist____(__exceptionPtr)
     }
   }
   
   @inline(__always)
-  public final func getAllDownloadedPlaylists() -> bridge.Result_std__vector_DownloadedPlaylist__ {
+  public final func getAllDownloadedPlaylists() -> bridge.Result_std__shared_ptr_Promise_std__vector_DownloadedPlaylist____ {
     do {
       let __result = try self.__implementation.getAllDownloadedPlaylists()
-      let __resultCpp = { () -> bridge.std__vector_DownloadedPlaylist_ in
-        var __vector = bridge.create_std__vector_DownloadedPlaylist_(__result.count)
-        for __item in __result {
-          __vector.push_back(__item)
-        }
-        return __vector
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_std__vector_DownloadedPlaylist___ in
+        let __promise = bridge.create_std__shared_ptr_Promise_std__vector_DownloadedPlaylist___()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_std__vector_DownloadedPlaylist___(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve({ () -> bridge.std__vector_DownloadedPlaylist_ in
+              var __vector = bridge.create_std__vector_DownloadedPlaylist_(__result.count)
+              for __item in __result {
+                __vector.push_back(__item)
+              }
+              return __vector
+            }()) })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
       }()
-      return bridge.create_Result_std__vector_DownloadedPlaylist__(__resultCpp)
+      return bridge.create_Result_std__shared_ptr_Promise_std__vector_DownloadedPlaylist____(__resultCpp)
     } catch (let __error) {
       let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_std__vector_DownloadedPlaylist__(__exceptionPtr)
+      return bridge.create_Result_std__shared_ptr_Promise_std__vector_DownloadedPlaylist____(__exceptionPtr)
     }
   }
   
   @inline(__always)
-  public final func getLocalPath(trackId: std.string) -> bridge.Result_std__variant_nitro__NullType__std__string__ {
+  public final func getLocalPath(trackId: std.string) -> bridge.Result_std__shared_ptr_Promise_std__variant_nitro__NullType__std__string____ {
     do {
       let __result = try self.__implementation.getLocalPath(trackId: String(trackId))
-      let __resultCpp = { () -> bridge.std__variant_nitro__NullType__std__string_ in
-        switch __result {
-          case .first(let __value):
-            return bridge.create_std__variant_nitro__NullType__std__string_(margelo.nitro.NullType.null)
-          case .second(let __value):
-            return bridge.create_std__variant_nitro__NullType__std__string_(std.string(__value))
-        }
-      }().variant
-      return bridge.create_Result_std__variant_nitro__NullType__std__string__(__resultCpp)
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_std__variant_nitro__NullType__std__string___ in
+        let __promise = bridge.create_std__shared_ptr_Promise_std__variant_nitro__NullType__std__string___()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_std__variant_nitro__NullType__std__string___(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve({ () -> bridge.std__variant_nitro__NullType__std__string_ in
+              switch __result {
+                case .first(let __value):
+                  return bridge.create_std__variant_nitro__NullType__std__string_(margelo.nitro.NullType.null)
+                case .second(let __value):
+                  return bridge.create_std__variant_nitro__NullType__std__string_(std.string(__value))
+              }
+            }().variant) })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
+      }()
+      return bridge.create_Result_std__shared_ptr_Promise_std__variant_nitro__NullType__std__string____(__resultCpp)
     } catch (let __error) {
       let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_std__variant_nitro__NullType__std__string__(__exceptionPtr)
+      return bridge.create_Result_std__shared_ptr_Promise_std__variant_nitro__NullType__std__string____(__exceptionPtr)
     }
   }
   
@@ -610,14 +666,21 @@ open class HybridDownloadManagerSpec_cxx {
   }
   
   @inline(__always)
-  public final func syncDownloads() -> bridge.Result_double_ {
+  public final func syncDownloads() -> bridge.Result_std__shared_ptr_Promise_double___ {
     do {
       let __result = try self.__implementation.syncDownloads()
-      let __resultCpp = __result
-      return bridge.create_Result_double_(__resultCpp)
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_double__ in
+        let __promise = bridge.create_std__shared_ptr_Promise_double__()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_double__(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve(__result) })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
+      }()
+      return bridge.create_Result_std__shared_ptr_Promise_double___(__resultCpp)
     } catch (let __error) {
       let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_double_(__exceptionPtr)
+      return bridge.create_Result_std__shared_ptr_Promise_double___(__exceptionPtr)
     }
   }
   
@@ -645,14 +708,21 @@ open class HybridDownloadManagerSpec_cxx {
   }
   
   @inline(__always)
-  public final func getEffectiveUrl(track: TrackItem) -> bridge.Result_std__string_ {
+  public final func getEffectiveUrl(track: TrackItem) -> bridge.Result_std__shared_ptr_Promise_std__string___ {
     do {
       let __result = try self.__implementation.getEffectiveUrl(track: track)
-      let __resultCpp = std.string(__result)
-      return bridge.create_Result_std__string_(__resultCpp)
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_std__string__ in
+        let __promise = bridge.create_std__shared_ptr_Promise_std__string__()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_std__string__(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve(std.string(__result)) })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
+      }()
+      return bridge.create_Result_std__shared_ptr_Promise_std__string___(__resultCpp)
     } catch (let __error) {
       let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_std__string_(__exceptionPtr)
+      return bridge.create_Result_std__shared_ptr_Promise_std__string___(__exceptionPtr)
     }
   }
   

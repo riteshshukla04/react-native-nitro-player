@@ -9,109 +9,112 @@ import NitroModules
 
 final class HybridPlayerQueue: HybridPlayerQueueSpec {
   private let playlistManager = PlaylistManager.shared
+  private let core = TrackPlayerCore.shared
 
-  // Static storage for callbacks to ensure they persist across HybridPlayerQueue instances
-  private static var playlistsChangeCallbacks: [([Playlist], QueueOperation?) -> Void] = []
-  private static var playlistChangeCallbacks: [(String, Playlist, QueueOperation?) -> Void] = []
-  private static var isPlaylistsListenerRegistered = false
-  private static var playlistListenerIds: Set<String> = []
+  // Per-instance listener removers (no static storage)
+  private var playlistsChangeRemover: (() -> Void)?
+  private var playlistChangeRemovers: [() -> Void] = []
 
-  func createPlaylist(name: String, description: String?, artwork: String?) throws -> String {
-    return playlistManager.createPlaylist(name: name, description: description, artwork: artwork)
+  // MARK: - Playlist CRUD
+
+  func createPlaylist(name: String, description: String?, artwork: String?) throws -> Promise<String> {
+    Promise.async { self.playlistManager.createPlaylist(name: name, description: description, artwork: artwork) }
   }
 
-  func deletePlaylist(playlistId: String) throws {
-    _ = playlistManager.deletePlaylist(playlistId: playlistId)
+  func deletePlaylist(playlistId: String) throws -> Promise<Void> {
+    Promise.async { _ = self.playlistManager.deletePlaylist(playlistId: playlistId) }
   }
 
-  func updatePlaylist(playlistId: String, name: String?, description: String?, artwork: String?)
-    throws
-  {
-    _ = playlistManager.updatePlaylist(
-      playlistId: playlistId, name: name, description: description, artwork: artwork)
+  func updatePlaylist(playlistId: String, name: String?, description: String?, artwork: String?) throws -> Promise<Void> {
+    Promise.async {
+      _ = self.playlistManager.updatePlaylist(
+        playlistId: playlistId, name: name, description: description, artwork: artwork)
+      self.core.updatePlaylist(playlistId: playlistId)
+    }
   }
 
   func getPlaylist(playlistId: String) throws -> Variant_NullType_Playlist {
     if let playlist = playlistManager.getPlaylist(playlistId: playlistId) {
       return Variant_NullType_Playlist.second(playlist.toGeneratedPlaylist())
-    } else {
-      return Variant_NullType_Playlist.first(NullType.null)
     }
+    return Variant_NullType_Playlist.first(NullType.null)
   }
 
   func getAllPlaylists() throws -> [Playlist] {
-    return playlistManager.getAllPlaylists().map { $0.toGeneratedPlaylist() }
+    playlistManager.getAllPlaylists().map { $0.toGeneratedPlaylist() }
   }
 
-  func addTrackToPlaylist(playlistId: String, track: TrackItem, index: Double?) throws {
-    let insertIndex = index.map { Int($0) }
-    _ = playlistManager.addTrackToPlaylist(playlistId: playlistId, track: track, index: insertIndex)
+  // MARK: - Track mutations
+
+  func addTrackToPlaylist(playlistId: String, track: TrackItem, index: Double?) throws -> Promise<Void> {
+    Promise.async {
+      _ = self.playlistManager.addTrackToPlaylist(playlistId: playlistId, track: track, index: index.map { Int($0) })
+      self.core.updatePlaylist(playlistId: playlistId)
+    }
   }
 
-  func addTracksToPlaylist(playlistId: String, tracks: [TrackItem], index: Double?) throws {
-    let insertIndex = index.map { Int($0) }
-    _ = playlistManager.addTracksToPlaylist(
-      playlistId: playlistId, tracks: tracks, index: insertIndex)
+  func addTracksToPlaylist(playlistId: String, tracks: [TrackItem], index: Double?) throws -> Promise<Void> {
+    Promise.async {
+      _ = self.playlistManager.addTracksToPlaylist(playlistId: playlistId, tracks: tracks, index: index.map { Int($0) })
+      self.core.updatePlaylist(playlistId: playlistId)
+    }
   }
 
-  func removeTrackFromPlaylist(playlistId: String, trackId: String) throws {
-    _ = playlistManager.removeTrackFromPlaylist(playlistId: playlistId, trackId: trackId)
+  func removeTrackFromPlaylist(playlistId: String, trackId: String) throws -> Promise<Void> {
+    Promise.async {
+      _ = self.playlistManager.removeTrackFromPlaylist(playlistId: playlistId, trackId: trackId)
+      self.core.updatePlaylist(playlistId: playlistId)
+    }
   }
 
-  func reorderTrackInPlaylist(playlistId: String, trackId: String, newIndex: Double) throws {
-    _ = playlistManager.reorderTrackInPlaylist(
-      playlistId: playlistId, trackId: trackId, newIndex: Int(newIndex))
+  func reorderTrackInPlaylist(playlistId: String, trackId: String, newIndex: Double) throws -> Promise<Void> {
+    Promise.async {
+      _ = self.playlistManager.reorderTrackInPlaylist(
+        playlistId: playlistId, trackId: trackId, newIndex: Int(newIndex))
+      self.core.updatePlaylist(playlistId: playlistId)
+    }
   }
 
-  func loadPlaylist(playlistId: String) throws {
-    _ = playlistManager.loadPlaylist(playlistId: playlistId)
+  // MARK: - Playback control
+
+  func loadPlaylist(playlistId: String) throws -> Promise<Void> {
+    Promise.async {
+      // Update PlaylistManager.currentPlaylistId so getCurrentPlaylistId() returns correctly
+      _ = self.playlistManager.loadPlaylist(playlistId: playlistId)
+      await self.core.loadPlaylist(playlistId: playlistId)
+    }
   }
 
   func getCurrentPlaylistId() throws -> Variant_NullType_String {
-    if let playlistId = playlistManager.getCurrentPlaylistId() {
-      return Variant_NullType_String.second(playlistId)
-    } else {
-      return Variant_NullType_String.first(NullType.null)
+    if let id = playlistManager.getCurrentPlaylistId() {
+      return Variant_NullType_String.second(id)
     }
+    return Variant_NullType_String.first(NullType.null)
   }
 
-  func onPlaylistsChanged(callback: @escaping ([Playlist], QueueOperation?) -> Void) throws {
-    // Store callback in static storage so it persists across HybridPlayerQueue instances
-    HybridPlayerQueue.playlistsChangeCallbacks.removeAll()
-    HybridPlayerQueue.playlistsChangeCallbacks.append(callback)
+  // MARK: - Events (per-instance listener storage)
 
-    // Register a single listener with PlaylistManager that dispatches to all callbacks
-    if !HybridPlayerQueue.isPlaylistsListenerRegistered {
-      HybridPlayerQueue.isPlaylistsListenerRegistered = true
-      _ = playlistManager.addPlaylistsChangeListener { playlists, operation in
-        let generatedPlaylists = playlists.map { $0.toGeneratedPlaylist() }
-        // Call all registered callbacks
-        for cb in HybridPlayerQueue.playlistsChangeCallbacks {
-          cb(generatedPlaylists, operation)
-        }
-      }
+  func onPlaylistsChanged(callback: @escaping (_ playlists: [Playlist], _ operation: QueueOperation?) -> Void) throws {
+    let remover = playlistManager.addPlaylistsChangeListener { playlists, operation in
+      callback(playlists.map { $0.toGeneratedPlaylist() }, operation)
     }
+    playlistsChangeRemover = remover
   }
 
-  func onPlaylistChanged(callback: @escaping (String, Playlist, QueueOperation?) -> Void) throws {
-    // Store callback in static storage so it persists across HybridPlayerQueue instances
-    HybridPlayerQueue.playlistChangeCallbacks.removeAll()
-    HybridPlayerQueue.playlistChangeCallbacks.append(callback)
-
-    // Register listeners for all existing playlists (only once per playlist)
+  func onPlaylistChanged(callback: @escaping (_ playlistId: String, _ playlist: Playlist, _ operation: QueueOperation?) -> Void) throws {
     let allPlaylists = playlistManager.getAllPlaylists()
     for playlist in allPlaylists {
-      if !HybridPlayerQueue.playlistListenerIds.contains(playlist.id) {
-        HybridPlayerQueue.playlistListenerIds.insert(playlist.id)
-        _ = playlistManager.addPlaylistChangeListener(playlistId: playlist.id) {
-          updatedPlaylist, operation in
-          let generatedPlaylist = updatedPlaylist.toGeneratedPlaylist()
-          // Call all registered callbacks
-          for cb in HybridPlayerQueue.playlistChangeCallbacks {
-            cb(updatedPlaylist.id, generatedPlaylist, operation)
-          }
-        }
+      let remover = playlistManager.addPlaylistChangeListener(playlistId: playlist.id) { updated, operation in
+        callback(updated.id, updated.toGeneratedPlaylist(), operation)
       }
+      playlistChangeRemovers.append(remover)
     }
+  }
+
+  // MARK: - Cleanup
+
+  deinit {
+    playlistsChangeRemover?()
+    playlistChangeRemovers.forEach { $0() }
   }
 }

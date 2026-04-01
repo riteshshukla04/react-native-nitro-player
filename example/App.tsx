@@ -10,8 +10,7 @@ import { StatusBar } from 'react-native';
 import { TrackPlayer } from 'react-native-nitro-player';
 import AppNavigator from './src/navigation/AppNavigator';
 
-// Configure TrackPlayer
-TrackPlayer.configure({
+void TrackPlayer.configure({
   androidAutoEnabled: true,
   carPlayEnabled: false,
   showInNotification: true,

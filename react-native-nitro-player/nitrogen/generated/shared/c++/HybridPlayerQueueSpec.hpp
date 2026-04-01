@@ -21,6 +21,7 @@ namespace margelo::nitro::nitroplayer { struct TrackItem; }
 namespace margelo::nitro::nitroplayer { enum class QueueOperation; }
 
 #include <string>
+#include <NitroModules/Promise.hpp>
 #include <optional>
 #include <NitroModules/Null.hpp>
 #include "Playlist.hpp"
@@ -61,16 +62,16 @@ namespace margelo::nitro::nitroplayer {
 
     public:
       // Methods
-      virtual std::string createPlaylist(const std::string& name, const std::optional<std::string>& description, const std::optional<std::string>& artwork) = 0;
-      virtual void deletePlaylist(const std::string& playlistId) = 0;
-      virtual void updatePlaylist(const std::string& playlistId, const std::optional<std::string>& name, const std::optional<std::string>& description, const std::optional<std::string>& artwork) = 0;
+      virtual std::shared_ptr<Promise<std::string>> createPlaylist(const std::string& name, const std::optional<std::string>& description, const std::optional<std::string>& artwork) = 0;
+      virtual std::shared_ptr<Promise<void>> deletePlaylist(const std::string& playlistId) = 0;
+      virtual std::shared_ptr<Promise<void>> updatePlaylist(const std::string& playlistId, const std::optional<std::string>& name, const std::optional<std::string>& description, const std::optional<std::string>& artwork) = 0;
       virtual std::variant<nitro::NullType, Playlist> getPlaylist(const std::string& playlistId) = 0;
       virtual std::vector<Playlist> getAllPlaylists() = 0;
-      virtual void addTrackToPlaylist(const std::string& playlistId, const TrackItem& track, std::optional<double> index) = 0;
-      virtual void addTracksToPlaylist(const std::string& playlistId, const std::vector<TrackItem>& tracks, std::optional<double> index) = 0;
-      virtual void removeTrackFromPlaylist(const std::string& playlistId, const std::string& trackId) = 0;
-      virtual void reorderTrackInPlaylist(const std::string& playlistId, const std::string& trackId, double newIndex) = 0;
-      virtual void loadPlaylist(const std::string& playlistId) = 0;
+      virtual std::shared_ptr<Promise<void>> addTrackToPlaylist(const std::string& playlistId, const TrackItem& track, std::optional<double> index) = 0;
+      virtual std::shared_ptr<Promise<void>> addTracksToPlaylist(const std::string& playlistId, const std::vector<TrackItem>& tracks, std::optional<double> index) = 0;
+      virtual std::shared_ptr<Promise<void>> removeTrackFromPlaylist(const std::string& playlistId, const std::string& trackId) = 0;
+      virtual std::shared_ptr<Promise<void>> reorderTrackInPlaylist(const std::string& playlistId, const std::string& trackId, double newIndex) = 0;
+      virtual std::shared_ptr<Promise<void>> loadPlaylist(const std::string& playlistId) = 0;
       virtual std::variant<nitro::NullType, std::string> getCurrentPlaylistId() = 0;
       virtual void onPlaylistsChanged(const std::function<void(const std::vector<Playlist>& /* playlists */, std::optional<QueueOperation> /* operation */)>& callback) = 0;
       virtual void onPlaylistChanged(const std::function<void(const std::string& /* playlistId */, const Playlist& /* playlist */, std::optional<QueueOperation> /* operation */)>& callback) = 0;

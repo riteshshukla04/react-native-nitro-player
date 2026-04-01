@@ -10,6 +10,8 @@ tags: [android, ios]
 
 The `PlayerQueue` object manages playlists and tracks.
 
+**Playlist mutations** (`createPlaylist`, `loadPlaylist`, `addTracksToPlaylist`, …) return **Promises** and reject on failure. **`getPlaylist`** and **`getAllPlaylists`** are synchronous reads from the native cache.
+
 ## Methods
 
 ### `createPlaylist(name, description, artwork)`
@@ -18,19 +20,24 @@ Creates a new playlist.
 - **name**: `string`
 - **description**: `string` (optional)
 - **artwork**: `string` (optional URL)
-- **Returns**: `string` (playlistId)
+- **Returns**: `Promise<string>` (playlistId)
 
 ```typescript
-const playlistId = PlayerQueue.createPlaylist('My Jams', 'Favorites', 'https://artwork.url')
+const playlistId = await PlayerQueue.createPlaylist(
+  'My Jams',
+  'Favorites',
+  'https://artwork.url'
+)
 ```
 
 ### `deletePlaylist(id)`
 
 Deletes a playlist by ID.
 - **id**: `string`
+- **Returns:** `Promise<void>`
 
 ```typescript
-PlayerQueue.deletePlaylist('playlist-id')
+await PlayerQueue.deletePlaylist('playlist-id')
 ```
 
 ### `updatePlaylist(id, name, description, artwork)`
@@ -40,9 +47,10 @@ Updates playlist metadata.
 - **name**: `string` (optional)
 - **description**: `string` (optional)
 - **artwork**: `string` (optional)
+- **Returns:** `Promise<void>`
 
 ```typescript
-PlayerQueue.updatePlaylist('playlist-id', 'New Name', 'New Description')
+await PlayerQueue.updatePlaylist('playlist-id', 'New Name', 'New Description')
 ```
 
 ### `getPlaylist(id)`
@@ -68,9 +76,10 @@ const playlists = PlayerQueue.getAllPlaylists()
 
 Loads a playlist into the player context.
 - **id**: `string`
+- **Returns:** `Promise<void>`
 
 ```typescript
-PlayerQueue.loadPlaylist('playlist-id')
+await PlayerQueue.loadPlaylist('playlist-id')
 ```
 
 ### `getCurrentPlaylistId()`
@@ -87,9 +96,10 @@ const id = PlayerQueue.getCurrentPlaylistId()
 Adds a track to a playlist.
 - **pid**: `string` (playlistId)
 - **track**: [`TrackItem`](#trackitem)
+- **Returns:** `Promise<void>`
 
 ```typescript
-PlayerQueue.addTrackToPlaylist('playlist-id', trackItem)
+await PlayerQueue.addTrackToPlaylist('playlist-id', trackItem)
 ```
 
 ### `addTracksToPlaylist(pid, tracks)`
@@ -97,9 +107,10 @@ PlayerQueue.addTrackToPlaylist('playlist-id', trackItem)
 Adds multiple tracks to a playlist.
 - **pid**: `string` (playlistId)
 - **tracks**: [`TrackItem[]`](#trackitem)
+- **Returns:** `Promise<void>`
 
 ```typescript
-PlayerQueue.addTracksToPlaylist('playlist-id', [track1, track2])
+await PlayerQueue.addTracksToPlaylist('playlist-id', [track1, track2])
 ```
 
 ### `removeTrackFromPlaylist(pid, tid)`
@@ -107,9 +118,10 @@ PlayerQueue.addTracksToPlaylist('playlist-id', [track1, track2])
 Removes a track from a playlist.
 - **pid**: `string` (playlistId)
 - **tid**: `string` (trackId)
+- **Returns:** `Promise<void>`
 
 ```typescript
-PlayerQueue.removeTrackFromPlaylist('playlist-id', 'track-id')
+await PlayerQueue.removeTrackFromPlaylist('playlist-id', 'track-id')
 ```
 
 ### `reorderTrackInPlaylist(pid, tid, idx)`
@@ -118,9 +130,10 @@ Moves a track to a new position in the playlist.
 - **pid**: `string` (playlistId)
 - **tid**: `string` (trackId)
 - **idx**: `number` (new index)
+- **Returns:** `Promise<void>`
 
 ```typescript
-PlayerQueue.reorderTrackInPlaylist('playlist-id', 'track-id', 0)
+await PlayerQueue.reorderTrackInPlaylist('playlist-id', 'track-id', 0)
 ```
 
 ## Types

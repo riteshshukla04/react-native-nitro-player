@@ -19,7 +19,7 @@ export interface AudioDevices extends HybridObject<{ android: 'kotlin' }> {
    * Set the audio device
    *
    * @param deviceId - The ID of the audio device
-   * @returns True if the audio device was set successfully, false otherwise
+   * @returns Promise that resolves when the device has been set
    */
-  setAudioDevice(deviceId: number): boolean
+  setAudioDevice(deviceId: number): Promise<void>
 }
