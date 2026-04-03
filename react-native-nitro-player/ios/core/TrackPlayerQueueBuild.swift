@@ -216,19 +216,33 @@ extension TrackPlayerCore {
     guard let player = self.player else { return }
 
     let currentItem = player.currentItem
+
+    guard let playingTrackId = currentItem?.trackId else {
+      NitroPlayerLogger.log("TrackPlayerCore", "❌ No current item or track ID found during queue rebuild")
+      return
+    }
+
     let playingItems = player.items()
 
     // If the currently playing AVPlayerItem is no longer in currentTracks,
     // delegate to rebuildQueueFromPlaylistIndex so the player immediately
     // starts what is now at currentTrackIndex in the updated list.
-    if let playingTrackId = currentItem?.trackId,
-      !currentTracks.contains(where: { $0.id == playingTrackId }) {
+    if !currentTracks.contains(where: { $0.id == playingTrackId }) &&
+      currentTemporaryType == .none {
       let targetIndex = currentTrackIndex < currentTracks.count
         ? currentTrackIndex : currentTracks.count - 1
       if targetIndex >= 0 {
         _ = rebuildQueueFromPlaylistIndex(index: targetIndex)
       }
       return
+    }
+
+    // Sync currentTrackIndex to the track's actual position after a playlist mutation
+    // (e.g. reorder). Without this, the remaining-tracks slice uses the stale index,
+    // causing wrong tracks to play after skip/next.
+    if currentTemporaryType == .none,
+      let newIndex = currentTracks.firstIndex(where: { $0.id == playingTrackId }) {
+      currentTrackIndex = newIndex
     }
 
     // Build the desired upcoming track list
