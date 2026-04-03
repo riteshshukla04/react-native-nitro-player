@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import {
   TrackPlayer,
+  PlayerQueue,
   useOnChangeTrack,
   useOnPlaybackStateChange,
   useOnPlaybackProgressChange,
@@ -18,6 +19,7 @@ import {
 } from 'react-native-nitro-player';
 import type { RepeatMode } from 'react-native-nitro-player';
 import { colors, commonStyles, spacing, borderRadius } from '../styles/theme';
+import { sampleTracks1 } from '../data/sampleTracks';
 
 export default function PlayerScreen() {
   const { track: currentTrack } = useOnChangeTrack();
@@ -44,6 +46,21 @@ export default function PlayerScreen() {
   const setPlaybackSpeedState = (speed: number) => {
     void TrackPlayer.setPlaybackSpeed(speed).then(() => fetchPlaybackSpeed());
   };
+  const [quickLoading, setQuickLoading] = useState(false);
+  const quickTest = async () => {
+    try {
+      setQuickLoading(true);
+      const playlistId = await PlayerQueue.createPlaylist('Test Playlist', 'Quick test');
+      await PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
+      await PlayerQueue.loadPlaylist(playlistId);
+      await TrackPlayer.play();
+    } catch (e) {
+      console.error('Quick test failed:', e);
+    } finally {
+      setQuickLoading(false);
+    }
+  };
+
   const [repeatMode, setRepeatModeState] = useState<RepeatMode>('off');
 
   const REPEAT_MODES: RepeatMode[] = ['off', 'track', 'Playlist'];
@@ -67,6 +84,16 @@ export default function PlayerScreen() {
   return (
     <SafeAreaView style={commonStyles.container}>
       <ScrollView style={commonStyles.scrollView}>
+        {/* Quick Test Button */}
+        <TouchableOpacity
+          style={[styles.quickTestButton, quickLoading && {opacity: 0.5}]}
+          onPress={quickTest}
+          disabled={quickLoading}>
+          <Text style={styles.quickTestText}>
+            {quickLoading ? '⏳ Loading...' : '🚀 Quick Test — Load & Play'}
+          </Text>
+        </TouchableOpacity>
+
         {/* Now Playing */}
         <View style={commonStyles.section}>
           <Text style={commonStyles.sectionTitle}>Now Playing</Text>
@@ -365,5 +392,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: spacing.sm,
+  },
+  quickTestButton: {
+    backgroundColor: '#4CAF50',
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  quickTestText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

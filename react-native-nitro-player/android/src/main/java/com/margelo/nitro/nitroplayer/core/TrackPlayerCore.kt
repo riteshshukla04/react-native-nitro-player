@@ -2,9 +2,12 @@
 
 package com.margelo.nitro.nitroplayer.core
 
+import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
 import android.os.Handler
-import android.os.HandlerThread
+import android.os.IBinder
 import android.os.Looper
 import com.margelo.nitro.nitroplayer.Reason
 import com.margelo.nitro.nitroplayer.RepeatMode
@@ -14,7 +17,9 @@ import com.margelo.nitro.nitroplayer.connection.AndroidAutoConnectionDetector
 import com.margelo.nitro.nitroplayer.download.DownloadManagerCore
 import com.margelo.nitro.nitroplayer.media.MediaLibraryManager
 import com.margelo.nitro.nitroplayer.media.MediaSessionManager
+import com.margelo.nitro.nitroplayer.media.NitroPlayerPlaybackService
 import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -26,13 +31,18 @@ class TrackPlayerCore private constructor(
     internal val context: Context,
 ) {
     // ── Thread infrastructure ──────────────────────────────────────────────
-    /** Main-looper handler — only for Android Auto connection callbacks */
+    /** Main-looper handler — used for player operations and Android Auto callbacks. */
     internal val handler = Handler(Looper.getMainLooper())
-    internal val playerThread = HandlerThread("NitroPlayer").apply { start() }
-    internal val playerHandler = Handler(playerThread.looper)
+
+    /** Populated from the service binder. Player runs on main looper. */
+    internal lateinit var playerHandler: Handler
+
     internal val scope = CoroutineScope(SupervisorJob())
 
-    // ── ExoPlayer wrapper (created on player thread inside initExoAndMedia) ──
+    /** Gates all player operations until the service is bound and init is complete. */
+    private val serviceReady = CompletableDeferred<Unit>()
+
+    // ── ExoPlayer wrapper (created on player thread inside initFromService) ──
     internal lateinit var exo: ExoPlayerCore
 
     /** Safe initialized check — backing field can only be read from the declaring class. */
@@ -112,6 +122,32 @@ class TrackPlayerCore private constructor(
             }
         }
 
+    // ── Service binding ────────────────────────────────────────────────────
+    private var serviceBound = false
+
+    private val serviceConnection =
+        object : ServiceConnection {
+            override fun onServiceConnected(
+                name: ComponentName?,
+                service: IBinder?,
+            ) {
+                val binder = service as NitroPlayerPlaybackService.LocalBinder
+                playerHandler = binder.handler
+                binder.service.trackPlayerCore = this@TrackPlayerCore
+                serviceBound = true
+
+                // Initialize on main thread (player now runs on main looper)
+                playerHandler.post {
+                    initFromService(binder)
+                    setupAndroidAutoDetector()
+                }
+            }
+
+            override fun onServiceDisconnected(name: ComponentName?) {
+                serviceBound = false
+            }
+        }
+
     // ── Singleton ──────────────────────────────────────────────────────────
     companion object {
         @Volatile
@@ -125,16 +161,26 @@ class TrackPlayerCore private constructor(
     }
 
     init {
-        // ExoPlayer must be created on its own thread
-        playerHandler.post { initExoAndMedia() }
-        // Android Auto receiver must be registered on the main thread
-        handler.post { setupAndroidAutoDetector() }
+        // Defer service start/bind to the main thread so it doesn't run
+        // synchronously on the JNI thread during HybridObject creation.
+        handler.post {
+            val intent = Intent(context, NitroPlayerPlaybackService::class.java)
+            context.startService(intent)
+
+            val bindIntent =
+                Intent(context, NitroPlayerPlaybackService::class.java).apply {
+                    action = NitroPlayerPlaybackService.ACTION_LOCAL_BIND
+                }
+            context.bindService(bindIntent, serviceConnection, Context.BIND_AUTO_CREATE)
+        }
     }
 
-    // ── Coroutine bridge to player thread ──────────────────────────────────
+    // ── Coroutine bridge to player looper (main thread) ────────────────────
 
     internal suspend fun <T> withPlayerContext(block: () -> T): T {
-        if (Looper.myLooper() == playerThread.looper) return block()
+        // Wait until the service is bound and player is initialized
+        serviceReady.await()
+        if (Looper.myLooper() == playerHandler.looper) return block()
         return suspendCancellableCoroutine { cont ->
             val r =
                 Runnable {
@@ -149,19 +195,33 @@ class TrackPlayerCore private constructor(
         }
     }
 
+    /** Called from initFromService once everything is wired up. */
+    internal fun completeServiceReady() {
+        serviceReady.complete(Unit)
+    }
+
     // ── Lifecycle ──────────────────────────────────────────────────────────
 
     fun destroy() {
-        playerHandler.post {
-            androidAutoConnectionDetector?.unregisterCarConnectionReceiver()
-            playerHandler.removeCallbacks(progressUpdateRunnable)
-            if (::exo.isInitialized) {
-                playerListener?.let { exo.removeListener(it) }
+        if (::playerHandler.isInitialized) {
+            playerHandler.post {
+                androidAutoConnectionDetector?.unregisterCarConnectionReceiver()
+                playerHandler.removeCallbacks(progressUpdateRunnable)
+                if (::exo.isInitialized) {
+                    playerListener?.let { exo.removeListener(it) }
+                }
+                playerListener = null
             }
-            playerListener = null
         }
         scope.cancel()
-        playerThread.quitSafely()
+        // Do NOT stop the service — it owns the player.
+        // Unbind so Android can clean up if needed.
+        if (serviceBound) {
+            try {
+                context.unbindService(serviceConnection)
+            } catch (_: Exception) {}
+            serviceBound = false
+        }
     }
 
     // ── Simple read-only accessors ─────────────────────────────────────────

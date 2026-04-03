@@ -5,8 +5,8 @@
  * @format
  */
 
-import React from 'react';
-import { StatusBar } from 'react-native';
+import React, { useEffect } from 'react';
+import { Platform, PermissionsAndroid, StatusBar } from 'react-native';
 import { TrackPlayer } from 'react-native-nitro-player';
 import AppNavigator from './src/navigation/AppNavigator';
 
@@ -30,7 +30,13 @@ TrackPlayer.onTracksNeedUpdate(async (tracks, lookahead) => {
   await TrackPlayer.updateTracks(updatedTracks);
 })
 
-export default  function App() {
+export default function App() {
+  useEffect(() => {
+    if (Platform.OS === 'android' && Platform.Version >= 33) {
+      PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+    }
+  }, []);
+
   return (
     <>
       <StatusBar barStyle="dark-content" />

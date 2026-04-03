@@ -12,7 +12,7 @@ import com.margelo.nitro.nitroplayer.media.NitroPlayerMediaBrowserService
 /**
  * ExoPlayer event listener — translates low-level ExoPlayer callbacks into
  * TrackPlayerCore state mutations and JS-facing listener notifications.
- * All callbacks fire on the player thread (ExoPlayerCore is built with playerThread.looper).
+ * All callbacks fire on the main looper (ExoPlayer uses the default application looper).
  */
 internal class TrackPlayerEventListener(
     private val core: TrackPlayerCore,
