@@ -1,5 +1,6 @@
 package com.margelo.nitro.nitroplayer.core
 
+import com.margelo.nitro.nitroplayer.equalizer.EqualizerCore
 import com.margelo.nitro.nitroplayer.media.MediaSessionManager
 import com.margelo.nitro.nitroplayer.media.NitroPlayerMediaBrowserService
 import com.margelo.nitro.nitroplayer.media.NitroPlayerPlaybackService
@@ -26,6 +27,17 @@ internal fun TrackPlayerCore.initFromService(binder: NitroPlayerPlaybackService.
     val listener = TrackPlayerEventListener(this)
     playerListener = listener
     exo.addListener(listener)
+
+    // The audio session ID is assigned during ExoPlayer construction (in
+    // PlaybackService.onCreate), before our listener is attached.
+    // onAudioSessionIdChanged only fires on *changes*, so we'd miss the
+    // initial value. Manually feed it to the equalizer now.
+    val sessionId = binder.exoPlayer.audioSessionId
+    if (sessionId != 0) {
+        try {
+            EqualizerCore.getInstance(context).initialize(sessionId)
+        } catch (_: Exception) { }
+    }
 
     // Start progress ticks on the main looper
     playerHandler.postDelayed(progressUpdateRunnable, 250)

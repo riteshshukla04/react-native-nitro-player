@@ -13,7 +13,6 @@ import com.margelo.nitro.nitroplayer.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.BufferedInputStream
-import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
@@ -28,25 +27,33 @@ class DownloadWorker(
     companion object {
         const val KEY_DOWNLOAD_ID = "download_id"
         const val KEY_TRACK_ID = "track_id"
+        const val KEY_TRACK_TITLE = "track_title"
         const val KEY_URL = "url"
         const val KEY_PLAYLIST_ID = "playlist_id"
         const val KEY_STORAGE_LOCATION = "storage_location"
 
         private const val NOTIFICATION_CHANNEL_ID = "nitro_player_downloads"
-        private const val NOTIFICATION_ID = 2001
+        private const val BASE_NOTIFICATION_ID = 2001
         private const val BUFFER_SIZE = 8192
         private val CONTENT_DISPOSITION_REGEX = Regex("filename=\"?([^\";]+)\"?")
     }
 
     private val downloadManager = DownloadManagerCore.getInstance(context)
     private val fileManager = DownloadFileManager.getInstance(context)
+    private val notificationManager =
+        context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    /** Stable notification ID per download — derived from trackId hash. */
+    private var notificationId = BASE_NOTIFICATION_ID
 
     override suspend fun doWork(): Result =
         withContext(Dispatchers.IO) {
             val downloadId = inputData.getString(KEY_DOWNLOAD_ID) ?: return@withContext Result.failure()
             val trackId = inputData.getString(KEY_TRACK_ID) ?: return@withContext Result.failure()
+            val trackTitle = inputData.getString(KEY_TRACK_TITLE) ?: "Unknown track"
             val urlString = inputData.getString(KEY_URL) ?: return@withContext Result.failure()
             val storageLocationStr = inputData.getString(KEY_STORAGE_LOCATION) ?: StorageLocation.PRIVATE.name
+
+            notificationId = BASE_NOTIFICATION_ID + trackId.hashCode().and(0xFFFF)
 
             val storageLocation =
                 try {
@@ -56,14 +63,21 @@ class DownloadWorker(
                 }
 
             try {
-                // Set foreground notification
-                setForeground(createForegroundInfo(trackId))
+                // Set foreground notification — if POST_NOTIFICATIONS is denied,
+                // WorkManager still runs the task; the notification just won't show.
+                try {
+                    setForeground(createForegroundInfo(trackTitle, 0, true))
+                } catch (_: Exception) {
+                    // Foreground promotion failed (e.g. missing permission on some OEMs).
+                    // Download continues in background.
+                }
 
                 // Perform download
-                val localPath = downloadFile(downloadId, trackId, urlString, storageLocation)
+                val localPath = downloadFile(downloadId, trackId, trackTitle, urlString, storageLocation)
 
                 if (localPath != null) {
                     downloadManager.onComplete(downloadId, trackId, localPath)
+                    showCompletionNotification(trackTitle)
                     Result.success()
                 } else {
                     val error =
@@ -74,6 +88,7 @@ class DownloadWorker(
                             isRetryable = true,
                         )
                     downloadManager.onError(downloadId, trackId, error)
+                    showErrorNotification(trackTitle)
                     Result.retry()
                 }
             } catch (e: Exception) {
@@ -93,6 +108,7 @@ class DownloadWorker(
                         isRetryable = errorReason in listOf(DownloadErrorReason.NETWORK_ERROR, DownloadErrorReason.TIMEOUT),
                     )
                 downloadManager.onError(downloadId, trackId, error)
+                showErrorNotification(trackTitle)
 
                 if (error.isRetryable) {
                     Result.retry()
@@ -105,6 +121,7 @@ class DownloadWorker(
     private suspend fun downloadFile(
         downloadId: String,
         trackId: String,
+        trackTitle: String,
         urlString: String,
         storageLocation: StorageLocation,
     ): String? =
@@ -167,10 +184,12 @@ class DownloadWorker(
                     outputStream.write(buffer, 0, bytesRead)
                     bytesDownloaded += bytesRead
 
-                    // Update progress every 250ms
+                    // Update progress every 250ms — both the callback and the notification
                     val now = System.currentTimeMillis()
                     if (now - lastProgressUpdate >= 250) {
                         downloadManager.onProgress(downloadId, trackId, bytesDownloaded, totalBytes)
+                        val percent = if (totalBytes > 0) ((bytesDownloaded * 100) / totalBytes).toInt() else 0
+                        updateProgressNotification(trackTitle, percent)
                         lastProgressUpdate = now
                     }
                 }
@@ -194,31 +213,85 @@ class DownloadWorker(
             }
         }
 
-    private fun createForegroundInfo(trackId: String): ForegroundInfo {
-        createNotificationChannel()
+    // ── Notification helpers ──────────────────────────────────────────────
 
-        val notification =
-            NotificationCompat
-                .Builder(context, NOTIFICATION_CHANNEL_ID)
-                .setContentTitle("Downloading")
-                .setContentText("Downloading track...")
-                .setSmallIcon(android.R.drawable.stat_sys_download)
-                .setOngoing(true)
-                .setProgress(100, 0, true)
-                .build()
+    private fun createForegroundInfo(
+        trackTitle: String,
+        percent: Int,
+        indeterminate: Boolean,
+    ): ForegroundInfo {
+        ensureNotificationChannel()
+
+        val notification = buildProgressNotification(trackTitle, percent, indeterminate)
 
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             ForegroundInfo(
-                NOTIFICATION_ID,
+                notificationId,
                 notification,
                 android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
             )
         } else {
-            ForegroundInfo(NOTIFICATION_ID, notification)
+            ForegroundInfo(notificationId, notification)
         }
     }
 
-    private fun createNotificationChannel() {
+    private fun buildProgressNotification(
+        trackTitle: String,
+        percent: Int,
+        indeterminate: Boolean,
+    ) = NotificationCompat
+        .Builder(context, NOTIFICATION_CHANNEL_ID)
+        .setContentTitle("Downloading")
+        .setContentText(trackTitle)
+        .setSubText(if (!indeterminate) "$percent%" else null)
+        .setSmallIcon(android.R.drawable.stat_sys_download)
+        .setOngoing(true)
+        .setOnlyAlertOnce(true)
+        .setProgress(100, percent, indeterminate)
+        .build()
+
+    private fun updateProgressNotification(trackTitle: String, percent: Int) {
+        try {
+            notificationManager.notify(
+                notificationId,
+                buildProgressNotification(trackTitle, percent, false),
+            )
+        } catch (_: SecurityException) {
+            // POST_NOTIFICATIONS not granted — download continues silently
+        }
+    }
+
+    private fun showCompletionNotification(trackTitle: String) {
+        try {
+            notificationManager.notify(
+                notificationId,
+                NotificationCompat
+                    .Builder(context, NOTIFICATION_CHANNEL_ID)
+                    .setContentTitle("Download complete")
+                    .setContentText(trackTitle)
+                    .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                    .setAutoCancel(true)
+                    .build(),
+            )
+        } catch (_: SecurityException) { }
+    }
+
+    private fun showErrorNotification(trackTitle: String) {
+        try {
+            notificationManager.notify(
+                notificationId,
+                NotificationCompat
+                    .Builder(context, NOTIFICATION_CHANNEL_ID)
+                    .setContentTitle("Download failed")
+                    .setContentText(trackTitle)
+                    .setSmallIcon(android.R.drawable.stat_notify_error)
+                    .setAutoCancel(true)
+                    .build(),
+            )
+        } catch (_: SecurityException) { }
+    }
+
+    private fun ensureNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel =
                 NotificationChannel(
@@ -228,9 +301,7 @@ class DownloadWorker(
                 ).apply {
                     description = "Download progress notifications"
                 }
-
-            val notificationManager = context.getSystemService(NotificationManager::class.java)
-            notificationManager?.createNotificationChannel(channel)
+            notificationManager.createNotificationChannel(channel)
         }
     }
 }
