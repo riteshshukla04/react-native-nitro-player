@@ -3,22 +3,14 @@ package com.margelo.nitro.nitroplayer.media
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
-import android.util.Log
-import android.util.LruCache
-import androidx.core.app.NotificationCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
-import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
-import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
@@ -27,14 +19,11 @@ import com.margelo.nitro.nitroplayer.TrackItem
 import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
 import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
 import com.margelo.nitro.nitroplayer.core.loadPlaylist
-import com.margelo.nitro.nitroplayer.media.NitroPlayerMediaBrowserService
 import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.net.URL
 
 class MediaSessionManager(
     private val context: Context,
@@ -49,32 +38,19 @@ class MediaSessionManager(
 
     var mediaSession: MediaSession? = null // Make public so MediaBrowserService can access it
         private set
-    private var notificationManager: NotificationManager? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     @Volatile private var currentTrack: TrackItem? = null
 
     @Volatile private var isPlaying: Boolean = false
-    private val artworkCache =
-        object : LruCache<String, Bitmap>(20) {
-            override fun sizeOf(
-                key: String,
-                value: Bitmap,
-            ): Int = 1
-        }
 
     private var androidAutoEnabled: Boolean = false
     private var carPlayEnabled: Boolean = false
     private var showInNotification: Boolean = true
 
     companion object {
-        private const val NOTIFICATION_ID = 1001
         private const val CHANNEL_ID = "nitro_player_channel"
         private const val CHANNEL_NAME = "Music Player"
-        const val ACTION_PLAY = "com.margelo.nitro.nitroplayer.PLAY"
-        const val ACTION_PAUSE = "com.margelo.nitro.nitroplayer.PAUSE"
-        const val ACTION_NEXT = "com.margelo.nitro.nitroplayer.NEXT"
-        const val ACTION_PREVIOUS = "com.margelo.nitro.nitroplayer.PREVIOUS"
     }
 
     init {
@@ -91,10 +67,8 @@ class MediaSessionManager(
         carPlayEnabled?.let { this.carPlayEnabled = it }
         showInNotification?.let {
             this.showInNotification = it
-            if (it) {
-                updateNotification()
-            } else {
-                hideNotification()
+            if (!it) {
+                stopPlaybackService()
             }
         }
     }
@@ -279,45 +253,17 @@ class MediaSessionManager(
                             }
                         },
                     ).build()
-            // MediaSession is active by default in Media3
-            updateMediaSessionMetadata()
+
+            // Wire the session into the PlaybackService so it can be promoted to foreground
+            NitroPlayerPlaybackService.mediaSession = mediaSession
         } catch (e: Exception) {
             e.printStackTrace()
-        }
-    }
-
-    private fun updateMediaSessionMetadata() {
-        // MediaSession will automatically use the metadata from player's current MediaItem
-        // No need to manually update here as TrackPlayerCore already sets metadata
-    }
-
-    private suspend fun loadArtworkBitmap(artworkUrl: String?): Bitmap? {
-        if (artworkUrl.isNullOrEmpty()) return null
-
-        // Check cache first
-        artworkCache.get(artworkUrl)?.let { return it }
-
-        return try {
-            val bitmap =
-                withContext(Dispatchers.IO) {
-                    val url = URL(artworkUrl)
-                    BitmapFactory.decodeStream(url.openConnection().getInputStream())
-                }
-            // Cache the bitmap
-            if (bitmap != null) {
-                artworkCache.put(artworkUrl, bitmap)
-            }
-            bitmap
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
         }
     }
 
     private fun createNotificationChannel() {
-        notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             val channel =
                 NotificationChannel(
                     CHANNEL_ID,
@@ -328,150 +274,50 @@ class MediaSessionManager(
                     setShowBadge(false)
                     lockscreenVisibility = Notification.VISIBILITY_PUBLIC
                 }
-
-            notificationManager?.createNotificationChannel(channel)
+            manager.createNotificationChannel(channel)
         }
     }
 
-    private fun getCurrentTrack(): TrackItem? = currentTrack
-
-    private fun updateNotification() {
-        if (!showInNotification) return
-
-        val currentTrack = getCurrentTrack()
-        val notification = buildNotification(currentTrack)
-        notificationManager?.notify(NOTIFICATION_ID, notification)
-    }
-
-    private fun buildNotification(track: TrackItem?): Notification {
-        val mediaSession = this.mediaSession ?: return createEmptyNotification()
-
-        // Launch intent
-        val contentIntent =
-            PendingIntent.getActivity(
-                context,
-                0,
-                context.packageManager.getLaunchIntentForPackage(context.packageName),
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-            )
-
-        val builder =
-            NotificationCompat
-                .Builder(context, CHANNEL_ID)
-                .setContentTitle(track?.title ?: "Unknown Title")
-                .setContentText(track?.artist ?: "Unknown Artist")
-                .setSubText(track?.album ?: "")
-                .setSmallIcon(android.R.drawable.ic_media_play)
-                .setContentIntent(contentIntent)
-                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                .setOngoing(isPlaying)
-                .setShowWhen(false)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
-                .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
+    private fun startPlaybackService() {
         try {
-            val compatToken =
-                android.support.v4.media.session.MediaSessionCompat.Token
-                    .fromToken(mediaSession.platformToken)
-            builder.setStyle(
-                androidx.media.app.NotificationCompat
-                    .MediaStyle()
-                    .setMediaSession(compatToken)
-                    .setShowActionsInCompactView(0, 1, 2),
-            )
+            val intent = Intent(context, NitroPlayerPlaybackService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
         } catch (e: Exception) {
-            NitroPlayerLogger.log("MediaSessionManager") { "Failed to set media session token: ${e.message}" }
+            NitroPlayerLogger.log("MediaSessionManager") { "Failed to start PlaybackService: ${e.message}" }
         }
-
-        // Add action buttons
-        builder.addAction(
-            android.R.drawable.ic_media_previous,
-            "Previous",
-            createMediaAction(ACTION_PREVIOUS),
-        )
-
-        if (isPlaying) {
-            builder.addAction(
-                android.R.drawable.ic_media_pause,
-                "Pause",
-                createMediaAction(ACTION_PAUSE),
-            )
-        } else {
-            builder.addAction(
-                android.R.drawable.ic_media_play,
-                "Play",
-                createMediaAction(ACTION_PLAY),
-            )
-        }
-
-        builder.addAction(
-            android.R.drawable.ic_media_next,
-            "Next",
-            createMediaAction(ACTION_NEXT),
-        )
-
-        // Load artwork asynchronously and update notification
-        track?.artwork?.asSecondOrNull()?.let { artworkUrl ->
-            scope.launch {
-                val bitmap = loadArtworkBitmap(artworkUrl)
-                if (bitmap != null) {
-                    builder.setLargeIcon(bitmap)
-                    notificationManager?.notify(NOTIFICATION_ID, builder.build())
-                }
-            }
-        }
-
-        return builder.build()
     }
 
-    private fun createEmptyNotification(): Notification =
-        NotificationCompat
-            .Builder(context, CHANNEL_ID)
-            .setContentTitle("Music Player")
-            .setSmallIcon(android.R.drawable.ic_media_play)
-            .build()
-
-    private fun createMediaAction(action: String): PendingIntent {
-        val intent =
-            Intent(action).apply {
-                setPackage(context.packageName)
-            }
-        return PendingIntent.getBroadcast(
-            context,
-            0,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-    }
-
-    private fun hideNotification() {
-        notificationManager?.cancel(NOTIFICATION_ID)
+    private fun stopPlaybackService() {
+        try {
+            val intent = Intent(context, NitroPlayerPlaybackService::class.java)
+            context.stopService(intent)
+        } catch (e: Exception) {
+            NitroPlayerLogger.log("MediaSessionManager") { "Failed to stop PlaybackService: ${e.message}" }
+        }
     }
 
     fun onTrackChanged(track: TrackItem?) {
         currentTrack = track
-        // Preload artwork for better notification display
-        if (track != null) {
-            scope.launch {
-                track.artwork?.asSecondOrNull()?.let { artworkUrl ->
-                    loadArtworkBitmap(artworkUrl)
-                }
-                updateNotification()
-            }
-        } else {
-            updateNotification()
-        }
     }
 
     fun onPlaybackStateChanged(playing: Boolean) {
         isPlaying = playing
-        updateNotification()
+        if (playing && showInNotification) {
+            startPlaybackService()
+        } else if (!playing) {
+            stopPlaybackService()
+        }
     }
 
     fun release() {
-        hideNotification()
+        stopPlaybackService()
+        NitroPlayerPlaybackService.mediaSession = null
         mediaSession?.release()
         mediaSession = null
-        artworkCache.evictAll()
     }
 
     private fun createMediaItem(

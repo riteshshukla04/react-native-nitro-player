@@ -50,6 +50,7 @@ class ExoPlayerCore(
             .setLoadControl(loadControl)
             .setAudioAttributes(audioAttrs, /* handleAudioFocus */ true)
             .setHandleAudioBecomingNoisy(true)
+            .setWakeMode(C.WAKE_MODE_NETWORK)
             .setPauseAtEndOfMediaItems(false)
             .build()
     }

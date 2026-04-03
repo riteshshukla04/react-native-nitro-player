@@ -4,8 +4,21 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-    
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
     <application>
+        <!-- PlaybackService keeps music alive when screen is locked / app backgrounded -->
+        <service
+            android:name="com.margelo.nitro.nitroplayer.media.NitroPlayerPlaybackService"
+            android:foregroundServiceType="mediaPlayback"
+            android:exported="true"
+            tools:node="merge">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
+
         <!-- WorkManager's SystemForegroundService for download notifications -->
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"
