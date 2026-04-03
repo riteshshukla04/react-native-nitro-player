@@ -45,10 +45,24 @@ internal fun TrackPlayerCore.rebuildQueueFromCurrentPosition() {
 
     // If current track was removed from the playlist, jump to best substitute
     val currentTrackId = exo.currentMediaItem?.mediaId?.let { extractTrackId(it) }
-    if (currentTrackId != null && currentTracks.none { it.id == currentTrackId }) {
+
+    if (
+        currentTrackId != null && 
+        currentTracks.none { it.id == currentTrackId } &&
+        currentTemporaryType == TrackPlayerCore.TemporaryType.NONE
+    ) {
         if (currentTracks.isEmpty()) return
         playFromIndexInternal(minOf(currentTrackIndex, currentTracks.size - 1))
         return
+    }
+
+    // Keep the logical playlist pointer in sync after playlist mutations.
+    // Without this, getActualQueue/getState can report a stale index until the next track transition.
+    if (currentTemporaryType == TrackPlayerCore.TemporaryType.NONE && currentTrackId != null) {
+        val resolvedIndex = currentTracks.indexOfFirst { it.id == currentTrackId }
+        if (resolvedIndex >= 0) {
+            currentTrackIndex = resolvedIndex
+        }
     }
 
     val newQueueTracks = ArrayList<TrackItem>(playNextStack.size + upNextQueue.size + currentTracks.size)
