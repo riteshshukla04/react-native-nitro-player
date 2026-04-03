@@ -1,59 +1,19 @@
 package com.margelo.nitro.nitroplayer.core
 
-import android.content.Context
-import android.os.HandlerThread
-import androidx.media3.common.AudioAttributes
-import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 
+/**
+ * Thin wrapper around an [ExoPlayer] instance owned by the playback service.
+ * All delegation methods are unchanged — only the constructor now accepts an
+ * existing player instead of building one.
+ */
 class ExoPlayerCore(
-    context: Context,
-    playerThread: HandlerThread,
+    exoPlayer: ExoPlayer,
 ) {
-    /** The underlying ExoPlayer instance — accessible for MediaSessionManager wiring. */
-    internal val player: ExoPlayer = build(context, playerThread)
-
-    private fun build(
-        context: Context,
-        playerThread: HandlerThread,
-    ): ExoPlayer {
-        val loadControl =
-            DefaultLoadControl
-                .Builder()
-                .setBufferDurationsMs(
-                    // minBufferMs
-                    30_000,
-                    // maxBufferMs
-                    120_000,
-                    // bufferForPlayback
-                    2_500,
-                    // bufferForRebuffer
-                    5_000,
-                ).setBackBuffer(30_000, /* retainBackBufferFromKeyframe */ true)
-                .setTargetBufferBytes(C.LENGTH_UNSET)
-                .setPrioritizeTimeOverSizeThresholds(true)
-                .build()
-
-        val audioAttrs =
-            AudioAttributes
-                .Builder()
-                .setUsage(C.USAGE_MEDIA)
-                .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
-                .build()
-
-        return ExoPlayer
-            .Builder(context)
-            .setLooper(playerThread.looper)
-            .setLoadControl(loadControl)
-            .setAudioAttributes(audioAttrs, /* handleAudioFocus */ true)
-            .setHandleAudioBecomingNoisy(true)
-            .setWakeMode(C.WAKE_MODE_NETWORK)
-            .setPauseAtEndOfMediaItems(false)
-            .build()
-    }
+    /** The underlying ExoPlayer instance — accessible for wiring. */
+    internal val player: ExoPlayer = exoPlayer
 
     // ── Playback ───────────────────────────────────────────────────────────
     fun play() = player.play()

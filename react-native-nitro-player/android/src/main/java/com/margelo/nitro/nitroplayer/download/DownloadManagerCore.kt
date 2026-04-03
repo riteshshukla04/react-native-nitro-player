@@ -111,6 +111,7 @@ class DownloadManagerCore private constructor(
             workDataOf(
                 DownloadWorker.KEY_DOWNLOAD_ID to downloadId,
                 DownloadWorker.KEY_TRACK_ID to track.id,
+                DownloadWorker.KEY_TRACK_TITLE to track.title,
                 DownloadWorker.KEY_URL to track.url,
                 DownloadWorker.KEY_PLAYLIST_ID to (playlistId ?: ""),
                 DownloadWorker.KEY_STORAGE_LOCATION to (config.storageLocation?.name ?: StorageLocation.PRIVATE.name),
@@ -169,6 +170,7 @@ class DownloadManagerCore private constructor(
                 workDataOf(
                     DownloadWorker.KEY_DOWNLOAD_ID to downloadId,
                     DownloadWorker.KEY_TRACK_ID to track.id,
+                    DownloadWorker.KEY_TRACK_TITLE to track.title,
                     DownloadWorker.KEY_URL to track.url,
                     DownloadWorker.KEY_PLAYLIST_ID to (playlistId ?: ""),
                     DownloadWorker.KEY_STORAGE_LOCATION to (config.storageLocation?.name ?: StorageLocation.PRIVATE.name),
