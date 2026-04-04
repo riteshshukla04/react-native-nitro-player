@@ -5,10 +5,14 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:worker": "opennextjs-cloudflare build",
     "start": "next start",
+    "deploy": "wrangler deploy",
+    "preview": "wrangler dev",
     "postinstall": "fumadocs-mdx"
   },
   "dependencies": {
+    "@opennextjs/cloudflare": "^1.18.0",
     "fumadocs-core": "^15.8.5",
     "fumadocs-mdx": "^13.0.8",
     "fumadocs-ui": "^15.8.5",
