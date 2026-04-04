@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     title: 'Nitro Player',
     description:
       'A powerful audio player library for React Native with playlist management, playback controls, and support for Android Auto and CarPlay.',
-    images: ['/og?title=Nitro+Player&description=The+Audio+Player+React+Native+Deserves'],
+    images: ['/og.svg'],
     type: 'website',
   },
   twitter: {
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     title: 'Nitro Player',
     description:
       'A powerful audio player library for React Native with playlist management, playback controls, and support for Android Auto and CarPlay.',
-    images: ['/og?title=Nitro+Player&description=The+Audio+Player+React+Native+Deserves'],
+    images: ['/og.svg'],
   },
   icons: {
     icon: '/icon.svg',
