@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bar-grad" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#22c55e"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#0a0a1a"/>
+
+  <!-- Background waveform bars (decorative, right side) -->
+  <g opacity="0.12" transform="translate(880, 100)">
+    <rect x="0" y="180" width="16" height="165" rx="8" fill="url(#bar-grad)"/>
+    <rect x="24" y="80" width="16" height="265" rx="8" fill="url(#bar-grad)"/>
+    <rect x="48" y="140" width="16" height="205" rx="8" fill="url(#bar-grad)"/>
+    <rect x="72" y="40" width="16" height="305" rx="8" fill="url(#bar-grad)"/>
+    <rect x="96" y="200" width="16" height="145" rx="8" fill="url(#bar-grad)"/>
+    <rect x="120" y="100" width="16" height="245" rx="8" fill="url(#bar-grad)"/>
+    <rect x="144" y="60" width="16" height="285" rx="8" fill="url(#bar-grad)"/>
+    <rect x="168" y="160" width="16" height="185" rx="8" fill="url(#bar-grad)"/>
+    <rect x="192" y="90" width="16" height="255" rx="8" fill="url(#bar-grad)"/>
+    <rect x="216" y="220" width="16" height="125" rx="8" fill="url(#bar-grad)"/>
+    <rect x="240" y="120" width="16" height="225" rx="8" fill="url(#bar-grad)"/>
+    <rect x="264" y="20" width="16" height="325" rx="8" fill="url(#bar-grad)"/>
+  </g>
+
+  <!-- Logo waveform bars -->
+  <g transform="translate(80, 160)">
+    <rect x="0" y="20" width="8" height="30" rx="4" fill="url(#bar-grad)"/>
+    <rect x="14" y="0" width="8" height="50" rx="4" fill="url(#bar-grad)"/>
+    <rect x="28" y="15" width="8" height="35" rx="4" fill="url(#bar-grad)"/>
+    <rect x="42" y="5" width="8" height="45" rx="4" fill="url(#bar-grad)"/>
+    <rect x="56" y="25" width="8" height="25" rx="4" fill="url(#bar-grad)"/>
+  </g>
+
+  <!-- Title -->
+  <text x="80" y="290" fill="#f8fafc" font-family="system-ui, -apple-system, sans-serif" font-size="64" font-weight="700">Nitro Player</text>
+
+  <!-- Subtitle -->
+  <text x="80" y="350" fill="#94a3b8" font-family="system-ui, -apple-system, sans-serif" font-size="28">The Audio Player React Native Deserves</text>
+
+  <!-- Description -->
+  <text x="80" y="410" fill="#64748b" font-family="system-ui, -apple-system, sans-serif" font-size="22">Playback Control  ·  Playlists  ·  Downloads  ·  Equalizer  ·  Android Auto &amp; CarPlay</text>
+
+  <!-- Bottom branding -->
+  <text x="80" y="560" fill="#7c3aed" font-family="ui-monospace, monospace" font-size="20" font-weight="600">react-native-nitro-player</text>
+  <text x="410" y="560" fill="#475569" font-family="ui-monospace, monospace" font-size="20">|  v1.0.1</text>
+</svg>

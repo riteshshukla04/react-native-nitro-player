@@ -71,11 +71,6 @@ const features = [
   },
 ];
 
-const stats = [
-  { value: '7', label: 'Native Modules' },
-  { value: '15+', label: 'React Hooks' },
-  { value: '30+', label: 'TypeScript Types' },
-];
 
 export default function HomePage() {
   return (
@@ -155,20 +150,6 @@ export default function HomePage() {
           <InstallCommand />
         </div>
 
-        {/* Stats */}
-        <div className="flex flex-wrap items-center justify-center gap-8 mt-16">
-          {stats.map((stat) => (
-            <div key={stat.label} className="text-center">
-              <div
-                className="text-2xl font-bold text-violet-600 dark:text-violet-400"
-                style={{ fontFamily: 'var(--font-jetbrains)' }}
-              >
-                {stat.value}
-              </div>
-              <div className="text-sm text-fd-muted-foreground mt-1">{stat.label}</div>
-            </div>
-          ))}
-        </div>
       </section>
 
       {/* Features Section */}

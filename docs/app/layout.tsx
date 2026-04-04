@@ -23,6 +23,23 @@ export const metadata: Metadata = {
   },
   description:
     'A powerful audio player library for React Native with playlist management, playback controls, and support for Android Auto and CarPlay.',
+  openGraph: {
+    title: 'Nitro Player',
+    description:
+      'A powerful audio player library for React Native with playlist management, playback controls, and support for Android Auto and CarPlay.',
+    images: ['/og.svg'],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Nitro Player',
+    description:
+      'A powerful audio player library for React Native with playlist management, playback controls, and support for Android Auto and CarPlay.',
+    images: ['/og.svg'],
+  },
+  icons: {
+    icon: '/icon.svg',
+  },
 };
 
 export default function Layout({ children }: { children: ReactNode }) {
