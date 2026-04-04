@@ -40,8 +40,22 @@ export async function generateMetadata(props: {
   const page = source.getPage(params.slug);
   if (!page) notFound();
 
+  const ogTitle = encodeURIComponent(page.data.title);
+  const ogDesc = encodeURIComponent(page.data.description ?? '');
+
   return {
     title: page.data.title,
     description: page.data.description,
+    openGraph: {
+      title: page.data.title,
+      description: page.data.description,
+      images: [`/og?title=${ogTitle}&description=${ogDesc}`],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: page.data.title,
+      description: page.data.description,
+      images: [`/og?title=${ogTitle}&description=${ogDesc}`],
+    },
   };
 }
