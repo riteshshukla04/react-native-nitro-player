@@ -1,0 +1,121 @@
+---
+title: Quick Start
+description: Build a working music player in 5 minutes
+---
+
+## Define Your Tracks
+
+```typescript
+import type { TrackItem } from 'react-native-nitro-player';
+
+const tracks: TrackItem[] = [
+  {
+    id: '1',
+    title: 'Midnight Drive',
+    artist: 'Synthwave FM',
+    album: 'Neon Highways',
+    duration: 245,
+    url: 'https://example.com/tracks/midnight-drive.mp3',
+    artwork: 'https://example.com/art/neon-highways.jpg',
+  },
+  {
+    id: '2',
+    title: 'Ocean Breeze',
+    artist: 'Lo-Fi Beats',
+    album: 'Chill Sessions',
+    duration: 198,
+    url: 'https://example.com/tracks/ocean-breeze.mp3',
+    artwork: 'https://example.com/art/chill-sessions.jpg',
+  },
+];
+```
+
+## Create a Playlist and Play
+
+```typescript
+import { TrackPlayer, PlayerQueue } from 'react-native-nitro-player';
+
+// Create a playlist
+const playlistId = await PlayerQueue.createPlaylist(
+  'My Playlist',
+  'My first playlist'
+);
+
+// Add tracks
+await PlayerQueue.addTracksToPlaylist(playlistId, tracks);
+
+// Load and play
+await PlayerQueue.loadPlaylist(playlistId);
+await TrackPlayer.play();
+```
+
+## React Component Example
+
+```tsx
+import React, { useEffect } from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
+import {
+  TrackPlayer,
+  PlayerQueue,
+  useNowPlaying,
+  useOnPlaybackProgressChange,
+} from 'react-native-nitro-player';
+
+export function MiniPlayer() {
+  const state = useNowPlaying();
+  const progress = useOnPlaybackProgressChange();
+
+  useEffect(() => {
+    async function setup() {
+      await TrackPlayer.configure({ showInNotification: true });
+
+      const id = await PlayerQueue.createPlaylist('Queue', 'Default queue');
+      await PlayerQueue.addTracksToPlaylist(id, tracks);
+      await PlayerQueue.loadPlaylist(id);
+    }
+    setup();
+  }, []);
+
+  const toggle = async () => {
+    if (state.currentState === 'playing') {
+      await TrackPlayer.pause();
+    } else {
+      await TrackPlayer.play();
+    }
+  };
+
+  return (
+    <View style={{ padding: 20 }}>
+      <Text style={{ fontSize: 18, fontWeight: 'bold' }}>
+        {state.currentTrack?.title ?? 'No track'}
+      </Text>
+      <Text style={{ color: '#888' }}>
+        {state.currentTrack?.artist}
+      </Text>
+      <Text style={{ marginTop: 8 }}>
+        {Math.floor(progress.position)}s / {Math.floor(progress.totalDuration)}s
+      </Text>
+      <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
+        <TouchableOpacity onPress={() => TrackPlayer.skipToPrevious()}>
+          <Text style={{ fontSize: 24 }}>Previous</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={toggle}>
+          <Text style={{ fontSize: 24 }}>
+            {state.currentState === 'playing' ? 'Pause' : 'Play'}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => TrackPlayer.skipToNext()}>
+          <Text style={{ fontSize: 24 }}>Next</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+```
+
+## What's Next?
+
+- [TrackPlayer API](/docs/api/track-player) — Full playback control reference
+- [Queue Management](/docs/guides/queue-management) — Learn playNext vs upNext
+- [Hooks](/docs/hooks) — All reactive hooks for building UIs
+- [Offline Playback](/docs/guides/offline-playback) — Download tracks for offline use

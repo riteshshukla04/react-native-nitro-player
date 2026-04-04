@@ -1,0 +1,181 @@
+---
+title: Download Hooks
+description: Hooks for managing offline downloads, progress tracking, and storage
+---
+
+## useDownloadProgress
+
+Track download progress for specific tracks, download IDs, or all active downloads.
+
+```tsx
+import { useDownloadProgress } from 'react-native-nitro-player';
+
+function DownloadProgressView() {
+  const {
+    progressList,
+    overallProgress,
+    isDownloading,
+    getProgress,
+  } = useDownloadProgress({ activeOnly: true });
+
+  return (
+    <View>
+      <Text>Overall: {(overallProgress * 100).toFixed(0)}%</Text>
+      {progressList.map((p) => (
+        <Text key={p.trackId}>
+          {p.trackId}: {(p.progress * 100).toFixed(0)}%
+        </Text>
+      ))}
+    </View>
+  );
+}
+```
+
+### Options
+
+```typescript
+interface UseDownloadProgressOptions {
+  trackIds?: string[];     // Filter by specific track IDs
+  downloadIds?: string[];  // Filter by specific download IDs
+  activeOnly?: boolean;    // Only show active downloads
+}
+```
+
+### Return Type: `UseDownloadProgressResult`
+
+| Field | Type | Description |
+|---|---|---|
+| `progressMap` | `Map<string, DownloadProgress>` | Progress by track ID |
+| `progressList` | `DownloadProgress[]` | All progress entries as array |
+| `overallProgress` | `number` | Combined progress (0.0 to 1.0) |
+| `isDownloading` | `boolean` | `true` if any download is active |
+| `getProgress` | `(trackId: string) => DownloadProgress \| undefined` | Get progress for a specific track |
+
+---
+
+## useDownloadedTracks
+
+Query downloaded content with utility functions for checking download status.
+
+```tsx
+import { useDownloadedTracks } from 'react-native-nitro-player';
+
+function DownloadedLibrary() {
+  const {
+    downloadedTracks,
+    downloadedPlaylists,
+    isTrackDownloaded,
+    isPlaylistDownloaded,
+    refresh,
+    isLoading,
+  } = useDownloadedTracks();
+
+  return (
+    <View>
+      <Text>{downloadedTracks.length} tracks downloaded</Text>
+      <Text>{downloadedPlaylists.length} playlists downloaded</Text>
+    </View>
+  );
+}
+```
+
+### Return Type: `UseDownloadedTracksResult`
+
+| Field | Type | Description |
+|---|---|---|
+| `downloadedTracks` | `DownloadedTrack[]` | All downloaded tracks |
+| `downloadedPlaylists` | `DownloadedPlaylist[]` | All downloaded playlists |
+| `isTrackDownloaded` | `(trackId: string) => boolean` | Check if a track is downloaded |
+| `isPlaylistDownloaded` | `(playlistId: string) => boolean` | Check if a playlist is fully downloaded |
+| `isPlaylistPartiallyDownloaded` | `(playlistId: string) => boolean` | Check if a playlist is partially downloaded |
+| `getDownloadedTrack` | `(trackId: string) => DownloadedTrack \| undefined` | Get downloaded track info |
+| `getDownloadedPlaylist` | `(playlistId: string) => DownloadedPlaylist \| undefined` | Get downloaded playlist info |
+| `refresh` | `() => void` | Manually refresh data |
+| `isLoading` | `boolean` | Loading state |
+
+---
+
+## useDownloadActions
+
+Actions for downloading, pausing, resuming, cancelling, and deleting downloads.
+
+```tsx
+import { useDownloadActions } from 'react-native-nitro-player';
+
+function DownloadButton({ track }) {
+  const { downloadTrack, isDownloading, error } = useDownloadActions();
+
+  return (
+    <TouchableOpacity
+      onPress={() => downloadTrack(track)}
+      disabled={isDownloading}
+    >
+      <Text>{isDownloading ? 'Downloading...' : 'Download'}</Text>
+      {error && <Text style={{ color: 'red' }}>{error.message}</Text>}
+    </TouchableOpacity>
+  );
+}
+```
+
+### Return Type: `UseDownloadActionsResult`
+
+| Field | Type | Description |
+|---|---|---|
+| `downloadTrack` | `(track: TrackItem, playlistId?: string) => Promise<string>` | Download a track |
+| `downloadPlaylist` | `(playlistId: string, tracks: TrackItem[]) => Promise<string[]>` | Download a playlist |
+| `pauseDownload` | `(downloadId: string) => Promise<void>` | Pause a download |
+| `resumeDownload` | `(downloadId: string) => Promise<void>` | Resume a download |
+| `cancelDownload` | `(downloadId: string) => Promise<void>` | Cancel a download |
+| `retryDownload` | `(downloadId: string) => Promise<void>` | Retry a failed download |
+| `pauseAll` | `() => Promise<void>` | Pause all downloads |
+| `resumeAll` | `() => Promise<void>` | Resume all downloads |
+| `cancelAll` | `() => Promise<void>` | Cancel all downloads |
+| `deleteTrack` | `(trackId: string) => Promise<void>` | Delete a downloaded track |
+| `deletePlaylist` | `(playlistId: string) => Promise<void>` | Delete a downloaded playlist |
+| `deleteAll` | `() => Promise<void>` | Delete all downloads |
+| `configure` | `(config: DownloadConfig) => void` | Configure download manager |
+| `setPlaybackSourcePreference` | `(preference: PlaybackSource) => void` | Set playback source |
+| `getPlaybackSourcePreference` | `() => PlaybackSource` | Get playback source |
+| `isDownloading` | `boolean` | Any download in progress |
+| `isDeleting` | `boolean` | Any delete in progress |
+| `error` | `Error \| null` | Last error |
+
+---
+
+## useDownloadStorage
+
+Get download storage usage information with formatted values.
+
+```tsx
+import { useDownloadStorage } from 'react-native-nitro-player';
+
+function StorageInfo() {
+  const {
+    storageInfo,
+    formattedSize,
+    formattedAvailable,
+    usagePercentage,
+    refresh,
+    isLoading,
+  } = useDownloadStorage();
+
+  return (
+    <View>
+      <Text>Downloads: {formattedSize}</Text>
+      <Text>Available: {formattedAvailable}</Text>
+      <Text>Usage: {usagePercentage.toFixed(1)}%</Text>
+    </View>
+  );
+}
+```
+
+### Return Type: `UseDownloadStorageResult`
+
+| Field | Type | Description |
+|---|---|---|
+| `storageInfo` | `DownloadStorageInfo \| null` | Raw storage info |
+| `isLoading` | `boolean` | Loading state |
+| `refresh` | `() => Promise<void>` | Refresh storage info |
+| `formattedSize` | `string` | Total downloaded size (e.g., "2.5 GB") |
+| `formattedAvailable` | `string` | Available space (e.g., "10.2 GB") |
+| `usagePercentage` | `number` | Download usage percentage (0-100) |

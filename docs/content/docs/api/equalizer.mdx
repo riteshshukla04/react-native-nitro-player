@@ -1,0 +1,272 @@
+---
+title: Equalizer
+description: 10-band audio equalizer with built-in and custom presets
+---
+
+Import:
+
+```typescript
+import { Equalizer } from 'react-native-nitro-player';
+```
+
+---
+
+## Enable / Disable
+
+### `setEnabled(enabled)`
+
+Enable or disable the equalizer.
+
+```typescript
+await Equalizer.setEnabled(true);
+```
+
+**Returns:** `Promise<void>`
+
+---
+
+### `isEnabled()`
+
+Check if the equalizer is currently enabled. **Synchronous.**
+
+```typescript
+const enabled = Equalizer.isEnabled();
+```
+
+**Returns:** `boolean`
+
+---
+
+## Band Control
+
+The equalizer has 10 frequency bands, each adjustable from -12 to +12 dB.
+
+### `getBands()`
+
+Get all equalizer bands with their current gain values.
+
+```typescript
+const bands = await Equalizer.getBands();
+// [
+//   { index: 0, centerFrequency: 31, gainDb: 0, frequencyLabel: '31 Hz' },
+//   { index: 1, centerFrequency: 62, gainDb: 0, frequencyLabel: '62 Hz' },
+//   ...
+// ]
+```
+
+**Returns:** `Promise<EqualizerBand[]>` — See [EqualizerBand](/docs/types#equalizerband)
+
+---
+
+### `setBandGain(bandIndex, gainDb)`
+
+Set the gain for a specific band.
+
+```typescript
+await Equalizer.setBandGain(0, 6.0); // Boost bass by 6 dB
+```
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `bandIndex` | `number` | Yes | Band index (0-9) |
+| `gainDb` | `number` | Yes | Gain in dB (-12 to +12) |
+
+**Returns:** `Promise<void>`
+
+---
+
+### `setAllBandGains(gains)`
+
+Set gains for all 10 bands at once.
+
+```typescript
+await Equalizer.setAllBandGains([6, 4, 2, 0, -1, -2, 0, 2, 4, 6]);
+```
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `gains` | `number[]` | Yes | Array of 10 gain values in dB |
+
+**Returns:** `Promise<void>`
+
+---
+
+### `getBandRange()`
+
+Get the valid gain range for bands. **Synchronous.**
+
+```typescript
+const range = Equalizer.getBandRange();
+// { min: -12, max: 12 }
+```
+
+**Returns:** `GainRange` — See [GainRange](/docs/types#gainrange)
+
+---
+
+## Presets
+
+### Built-in Presets
+
+19 presets are available out of the box:
+
+| Preset | Preset | Preset |
+|---|---|---|
+| Flat | Rock | Pop |
+| Classical | Dance | Techno |
+| Club | Live | Reggae |
+| Full Bass | Full Treble | Full Bass & Treble |
+| Large Hall | Party | Ska |
+| Soft | Soft Rock | Headphones |
+| Laptop Speakers | | |
+
+### `getPresets()`
+
+Get all available presets (built-in + custom). **Synchronous.**
+
+```typescript
+const presets = Equalizer.getPresets();
+```
+
+**Returns:** `EqualizerPreset[]` — See [EqualizerPreset](/docs/types#equalizerpreset)
+
+---
+
+### `getBuiltInPresets()`
+
+Get only built-in presets. **Synchronous.**
+
+```typescript
+const builtIn = Equalizer.getBuiltInPresets();
+```
+
+**Returns:** `EqualizerPreset[]`
+
+---
+
+### `getCustomPresets()`
+
+Get only user-created custom presets. **Synchronous.**
+
+```typescript
+const custom = Equalizer.getCustomPresets();
+```
+
+**Returns:** `EqualizerPreset[]`
+
+---
+
+### `applyPreset(presetName)`
+
+Apply a preset by name.
+
+```typescript
+await Equalizer.applyPreset('Rock');
+```
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `presetName` | `string` | Yes | Name of the preset |
+
+**Returns:** `Promise<void>`
+
+---
+
+### `getCurrentPresetName()`
+
+Get the name of the currently applied preset. Returns `null` if using custom band values. **Synchronous.**
+
+```typescript
+const name = Equalizer.getCurrentPresetName();
+```
+
+**Returns:** `string | null`
+
+---
+
+### `saveCustomPreset(name)`
+
+Save the current band settings as a custom preset.
+
+```typescript
+await Equalizer.saveCustomPreset('My Bass Boost');
+```
+
+**Returns:** `Promise<void>`
+
+---
+
+### `deleteCustomPreset(name)`
+
+Delete a custom preset.
+
+```typescript
+await Equalizer.deleteCustomPreset('My Bass Boost');
+```
+
+**Returns:** `Promise<void>`
+
+---
+
+## State
+
+### `getState()`
+
+Get the complete equalizer state.
+
+```typescript
+const state = await Equalizer.getState();
+// { enabled: true, bands: [...], currentPreset: 'Rock' }
+```
+
+**Returns:** `Promise<EqualizerState>` — See [EqualizerState](/docs/types#equalizerstate)
+
+---
+
+### `reset()`
+
+Reset all bands to 0 dB (flat response).
+
+```typescript
+await Equalizer.reset();
+```
+
+**Returns:** `Promise<void>`
+
+---
+
+## Events
+
+### `onEnabledChange(callback)`
+
+Called when the equalizer is enabled or disabled.
+
+```typescript
+Equalizer.onEnabledChange((enabled) => {
+  console.log(`Equalizer ${enabled ? 'enabled' : 'disabled'}`);
+});
+```
+
+---
+
+### `onBandChange(callback)`
+
+Called when any band gain changes.
+
+```typescript
+Equalizer.onBandChange((bands) => {
+  // Update UI with new band values
+});
+```
+
+---
+
+### `onPresetChange(callback)`
+
+Called when the active preset changes.
+
+```typescript
+Equalizer.onPresetChange((presetName) => {
+  console.log(`Preset: ${presetName ?? 'Custom'}`);
+});
+```

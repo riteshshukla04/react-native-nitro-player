@@ -1,0 +1,169 @@
+---
+title: Offline Playback
+description: Download tracks for offline listening with the DownloadManager
+---
+
+Nitro Player includes a full download manager for offline playback with progress tracking, pause/resume, retry logic, and storage management.
+
+## Android Permissions
+
+Add these permissions to `android/app/src/main/AndroidManifest.xml`:
+
+```xml
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+```
+
+## Configure
+
+```typescript
+import { DownloadManager } from 'react-native-nitro-player';
+
+DownloadManager.configure({
+  maxConcurrentDownloads: 3,
+  autoRetry: true,
+  maxRetryAttempts: 3,
+  backgroundDownloadsEnabled: true,
+  downloadArtwork: true,
+  wifiOnlyDownloads: false,
+  storageLocation: 'private',
+});
+```
+
+## Download a Track
+
+```typescript
+const downloadId = await DownloadManager.downloadTrack(track, 'my-playlist');
+```
+
+## Download an Entire Playlist
+
+```typescript
+const downloadIds = await DownloadManager.downloadPlaylist('playlist-123', tracks);
+```
+
+## Track Progress with Hooks
+
+```tsx
+import {
+  useDownloadProgress,
+  useDownloadActions,
+  useDownloadedTracks,
+} from 'react-native-nitro-player';
+
+function DownloadScreen() {
+  const { progressList, overallProgress, isDownloading } = useDownloadProgress({
+    activeOnly: true,
+  });
+
+  const { downloadTrack, pauseDownload, resumeDownload, cancelDownload } =
+    useDownloadActions();
+
+  const { isTrackDownloaded } = useDownloadedTracks();
+
+  return (
+    <View>
+      <Text>Overall: {(overallProgress * 100).toFixed(0)}%</Text>
+      {progressList.map((p) => (
+        <View key={p.downloadId}>
+          <Text>{p.trackId}: {(p.progress * 100).toFixed(0)}%</Text>
+          {p.state === 'downloading' && (
+            <Button title="Pause" onPress={() => pauseDownload(p.downloadId)} />
+          )}
+          {p.state === 'paused' && (
+            <Button title="Resume" onPress={() => resumeDownload(p.downloadId)} />
+          )}
+        </View>
+      ))}
+    </View>
+  );
+}
+```
+
+## Playback Source Preference
+
+Control whether the player uses local files or streams from the network:
+
+```typescript
+// Automatically use local file if available (default)
+DownloadManager.setPlaybackSourcePreference('auto');
+
+// Always use local files (fails if not downloaded)
+DownloadManager.setPlaybackSourcePreference('download');
+
+// Always stream from network
+DownloadManager.setPlaybackSourcePreference('network');
+```
+
+Get the effective URL the player will use:
+
+```typescript
+const url = await DownloadManager.getEffectiveUrl(track);
+// Returns local path if downloaded + preference is 'auto'/'download'
+// Otherwise returns the track's original network URL
+```
+
+## Check Download Status
+
+```typescript
+const downloaded = await DownloadManager.isTrackDownloaded('track-1');
+const playlistDone = await DownloadManager.isPlaylistDownloaded('playlist-123');
+const partial = await DownloadManager.isPlaylistPartiallyDownloaded('playlist-123');
+```
+
+## Storage Management
+
+```typescript
+const info = await DownloadManager.getStorageInfo();
+console.log(`Downloaded: ${info.totalDownloadedSize} bytes`);
+console.log(`Tracks: ${info.trackCount}`);
+console.log(`Available: ${info.availableSpace} bytes`);
+```
+
+Or use the hook with pre-formatted values:
+
+```tsx
+const { formattedSize, formattedAvailable, usagePercentage } = useDownloadStorage();
+// formattedSize: "2.5 GB"
+// formattedAvailable: "10.2 GB"
+// usagePercentage: 18.5
+```
+
+## Delete Downloads
+
+```typescript
+await DownloadManager.deleteDownloadedTrack('track-1');
+await DownloadManager.deleteDownloadedPlaylist('playlist-123');
+await DownloadManager.deleteAllDownloads();
+```
+
+## Sync & Cleanup
+
+If files are manually deleted from the filesystem, sync the database:
+
+```typescript
+const cleanedUp = await DownloadManager.syncDownloads();
+console.log(`Removed ${cleanedUp} orphaned records`);
+```
+
+## Event-Based Monitoring
+
+For non-hook usage (e.g., background services):
+
+```typescript
+DownloadManager.onDownloadProgress((progress) => {
+  console.log(`${progress.trackId}: ${(progress.progress * 100).toFixed(1)}%`);
+});
+
+DownloadManager.onDownloadStateChange((downloadId, trackId, state, error) => {
+  if (state === 'failed') {
+    console.error(`Failed: ${error?.message} (retryable: ${error?.isRetryable})`);
+  }
+});
+
+DownloadManager.onDownloadComplete((downloadedTrack) => {
+  console.log(`Done: ${downloadedTrack.originalTrack.title}`);
+  console.log(`Path: ${downloadedTrack.localPath}`);
+});
+```

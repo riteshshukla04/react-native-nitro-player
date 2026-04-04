@@ -1,0 +1,558 @@
+---
+title: TrackPlayer
+description: Core playback control API — play, pause, seek, skip, queue, events
+---
+
+Import:
+
+```typescript
+import { TrackPlayer } from 'react-native-nitro-player';
+```
+
+---
+
+## Playback Control
+
+### `play()`
+
+Resume or start playback.
+
+```typescript
+await TrackPlayer.play();
+```
+
+**Returns:** `Promise<void>`
+
+---
+
+### `pause()`
+
+Pause the current playback.
+
+```typescript
+await TrackPlayer.pause();
+```
+
+**Returns:** `Promise<void>`
+
+---
+
+### `playSong(songId, fromPlaylist?)`
+
+Play a specific track by ID, optionally from a specific playlist.
+
+```typescript
+await TrackPlayer.playSong('track-123');
+await TrackPlayer.playSong('track-123', 'playlist-456');
+```
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `songId` | `string` | Yes | Track ID to play |
+| `fromPlaylist` | `string` | No | Playlist ID to load before playing |
+
+**Returns:** `Promise<void>`
+
+---
+
+### `skipToNext()`
+
+Skip to the next track. Follows the queue priority: playNext stack → upNext queue → playlist.
+
+```typescript
+await TrackPlayer.skipToNext();
+```
+
+**Returns:** `Promise<void>`
+
+---
+
+### `skipToPrevious()`
+
+Skip to the previous track.
+
+```typescript
+await TrackPlayer.skipToPrevious();
+```
+
+**Returns:** `Promise<void>`
+
+---
+
+### `skipToIndex(index)`
+
+Skip to a specific index in the current queue.
+
+```typescript
+const success = await TrackPlayer.skipToIndex(3);
+```
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `index` | `number` | Yes | 0-based index to skip to |
+
+**Returns:** `Promise<boolean>` — `true` if the skip succeeded
+
+---
+
+### `seek(position)`
+
+Seek to a specific position in the current track.
+
+```typescript
+await TrackPlayer.seek(30); // Seek to 30 seconds
+```
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `position` | `number` | Yes | Position in seconds |
+
+**Returns:** `Promise<void>`
+
+---
+
+### `setVolume(volume)`
+
+Set the playback volume.
+
+```typescript
+await TrackPlayer.setVolume(0.8); // 80% volume
+```
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `volume` | `number` | Yes | Volume level (0.0 to 1.0) |
+
+**Returns:** `Promise<void>`
+
+---
+
+### `setPlaybackSpeed(speed)`
+
+Set the playback speed.
+
+```typescript
+await TrackPlayer.setPlaybackSpeed(1.5); // 1.5x speed
+```
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `speed` | `number` | Yes | Playback speed multiplier |
+
+**Returns:** `Promise<void>`
+
+---
+
+### `getPlaybackSpeed()`
+
+Get the current playback speed.
+
+```typescript
+const speed = await TrackPlayer.getPlaybackSpeed();
+```
+
+**Returns:** `Promise<number>`
+
+---
+
+## State & Configuration
+
+### `getState()`
+
+Get the current player state.
+
+```typescript
+const state = await TrackPlayer.getState();
+// {
+//   currentTrack: TrackItem | null,
+//   currentPosition: number,
+//   totalDuration: number,
+//   currentState: 'playing' | 'paused' | 'stopped',
+//   currentPlaylistId: string | null,
+//   currentIndex: number,
+//   currentPlayingType: 'playlist' | 'up-next' | 'play-next' | 'not-playing'
+// }
+```
+
+**Returns:** `Promise<PlayerState>` — See [PlayerState](/docs/types#playerstate)
+
+---
+
+### `setRepeatMode(mode)`
+
+Set the repeat mode.
+
+```typescript
+await TrackPlayer.setRepeatMode('track');
+```
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `mode` | `RepeatMode` | Yes | `'off'` \| `'Playlist'` \| `'track'` |
+
+**Returns:** `Promise<void>`
+
+---
+
+### `getRepeatMode()`
+
+Get the current repeat mode. **Synchronous.**
+
+```typescript
+const mode = TrackPlayer.getRepeatMode(); // 'off' | 'Playlist' | 'track'
+```
+
+**Returns:** `RepeatMode`
+
+---
+
+### `configure(config)`
+
+Configure the player. Call this early in your app lifecycle.
+
+```typescript
+await TrackPlayer.configure({
+  androidAutoEnabled: true,
+  showInNotification: true,
+  lookaheadCount: 10,
+});
+```
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `config` | `PlayerConfig` | Yes | See [PlayerConfig](/docs/types#playerconfig) |
+
+**Returns:** `Promise<void>`
+
+---
+
+## Queue & Track Management
+
+### `getActualQueue()`
+
+Get the resolved queue including temporary tracks (playNext + upNext) merged with the playlist.
+
+```typescript
+const queue = await TrackPlayer.getActualQueue();
+```
+
+**Returns:** `Promise<TrackItem[]>`
+
+---
+
+### `updateTracks(tracks)`
+
+Update entire track objects across all playlists. Matches by `track.id` and updates all properties (url, artwork, title, etc.). Useful for lazy loading URLs.
+
+```typescript
+await TrackPlayer.updateTracks([
+  { ...track, url: 'https://new-url.mp3' }
+]);
+```
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `tracks` | `TrackItem[]` | Yes | Full track objects to update |
+
+**Returns:** `Promise<void>`
+
+---
+
+### `getTracksById(trackIds)`
+
+Get tracks by IDs from all playlists.
+
+```typescript
+const tracks = await TrackPlayer.getTracksById(['id-1', 'id-2']);
+```
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `trackIds` | `string[]` | Yes | Array of track IDs |
+
+**Returns:** `Promise<TrackItem[]>`
+
+---
+
+## Temporary Queue (playNext / upNext)
+
+The temporary queue system lets users insert tracks ahead of the normal playlist order. See the [Queue Management guide](/docs/guides/queue-management) for details.
+
+### `playNext(trackId)`
+
+Add a track to the **playNext stack** (LIFO). The most recently added track plays first.
+
+```typescript
+await TrackPlayer.playNext('track-5');
+```
+
+**Returns:** `Promise<void>`
+
+---
+
+### `addToUpNext(trackId)`
+
+Add a track to the **upNext queue** (FIFO). Tracks play in the order they were added, after all playNext tracks.
+
+```typescript
+await TrackPlayer.addToUpNext('track-6');
+```
+
+**Returns:** `Promise<void>`
+
+---
+
+### `removeFromPlayNext(trackId)`
+
+Remove a track from the playNext stack.
+
+```typescript
+const removed = await TrackPlayer.removeFromPlayNext('track-5');
+```
+
+**Returns:** `Promise<boolean>` — `true` if found and removed
+
+---
+
+### `removeFromUpNext(trackId)`
+
+Remove a track from the upNext queue.
+
+```typescript
+const removed = await TrackPlayer.removeFromUpNext('track-6');
+```
+
+**Returns:** `Promise<boolean>` — `true` if found and removed
+
+---
+
+### `clearPlayNext()`
+
+Clear the entire playNext stack.
+
+```typescript
+await TrackPlayer.clearPlayNext();
+```
+
+**Returns:** `Promise<void>`
+
+---
+
+### `clearUpNext()`
+
+Clear the entire upNext queue.
+
+```typescript
+await TrackPlayer.clearUpNext();
+```
+
+**Returns:** `Promise<void>`
+
+---
+
+### `reorderTemporaryTrack(trackId, newIndex)`
+
+Reorder a track within the combined temporary queue (playNext + upNext). Index is 0-based within the combined list.
+
+```typescript
+const success = await TrackPlayer.reorderTemporaryTrack('track-5', 0);
+```
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `trackId` | `string` | Yes | Track to move |
+| `newIndex` | `number` | Yes | New 0-based position |
+
+**Returns:** `Promise<boolean>` — `true` if found and moved
+
+---
+
+### `getPlayNextQueue()`
+
+Get the current playNext stack. Index 0 plays first.
+
+```typescript
+const playNext = await TrackPlayer.getPlayNextQueue();
+```
+
+**Returns:** `Promise<TrackItem[]>`
+
+---
+
+### `getUpNextQueue()`
+
+Get the current upNext queue. Index 0 plays first.
+
+```typescript
+const upNext = await TrackPlayer.getUpNextQueue();
+```
+
+**Returns:** `Promise<TrackItem[]>`
+
+---
+
+## Lazy Loading
+
+For tracks with empty URLs (e.g., DRM or token-based streams), Nitro Player supports resolving URLs on demand.
+
+### `getTracksNeedingUrls()`
+
+Get tracks in the current playlist that have missing or empty URLs.
+
+```typescript
+const tracks = await TrackPlayer.getTracksNeedingUrls();
+```
+
+**Returns:** `Promise<TrackItem[]>`
+
+---
+
+### `getNextTracks(count)`
+
+Get the next N tracks from the current position. Useful for preloading URLs.
+
+```typescript
+const upcoming = await TrackPlayer.getNextTracks(5);
+```
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `count` | `number` | Yes | Number of upcoming tracks |
+
+**Returns:** `Promise<TrackItem[]>`
+
+---
+
+### `getCurrentTrackIndex()`
+
+Get the current track index in the active playlist.
+
+```typescript
+const index = await TrackPlayer.getCurrentTrackIndex();
+// Returns -1 if no track is playing
+```
+
+**Returns:** `Promise<number>`
+
+---
+
+### `onTracksNeedUpdate(callback)`
+
+Register a callback that fires when tracks will be needed soon. Useful for proactive URL resolution.
+
+```typescript
+TrackPlayer.onTracksNeedUpdate((tracks, lookahead) => {
+  // Resolve URLs for these tracks
+  const updated = await resolveUrls(tracks);
+  await TrackPlayer.updateTracks(updated);
+});
+```
+
+| Param | Type | Description |
+|---|---|---|
+| `tracks` | `TrackItem[]` | Tracks needing URLs |
+| `lookahead` | `number` | Configured lookahead count |
+
+---
+
+## Events
+
+### `onChangeTrack(callback)`
+
+Called when the current track changes.
+
+```typescript
+TrackPlayer.onChangeTrack((track, reason) => {
+  console.log(`Now playing: ${track.title}, reason: ${reason}`);
+});
+```
+
+| Param | Type | Description |
+|---|---|---|
+| `track` | `TrackItem` | The new current track |
+| `reason` | `Reason?` | `'user_action'` \| `'skip'` \| `'end'` \| `'error'` \| `'repeat'` |
+
+---
+
+### `onPlaybackStateChange(callback)`
+
+Called when the playback state changes.
+
+```typescript
+TrackPlayer.onPlaybackStateChange((state, reason) => {
+  console.log(`State: ${state}, reason: ${reason}`);
+});
+```
+
+| Param | Type | Description |
+|---|---|---|
+| `state` | `TrackPlayerState` | `'playing'` \| `'paused'` \| `'stopped'` |
+| `reason` | `Reason?` | Why the state changed |
+
+---
+
+### `onSeek(callback)`
+
+Called when a seek operation occurs.
+
+```typescript
+TrackPlayer.onSeek((position, totalDuration) => {
+  console.log(`Seeked to ${position}/${totalDuration}`);
+});
+```
+
+---
+
+### `onPlaybackProgressChange(callback)`
+
+Called periodically with playback progress updates.
+
+```typescript
+TrackPlayer.onPlaybackProgressChange((position, totalDuration, isManuallySeeked) => {
+  updateProgressBar(position / totalDuration);
+});
+```
+
+| Param | Type | Description |
+|---|---|---|
+| `position` | `number` | Current position in seconds |
+| `totalDuration` | `number` | Total track duration in seconds |
+| `isManuallySeeked` | `boolean?` | Whether this update is from a manual seek |
+
+---
+
+### `onTemporaryQueueChange(callback)`
+
+Called when the temporary queue (playNext or upNext) changes.
+
+```typescript
+TrackPlayer.onTemporaryQueueChange((playNextQueue, upNextQueue) => {
+  console.log(`playNext: ${playNextQueue.length}, upNext: ${upNextQueue.length}`);
+});
+```
+
+---
+
+### `onAndroidAutoConnectionChange(callback)`
+
+Called when Android Auto connection state changes. **Android only.**
+
+```typescript
+TrackPlayer.onAndroidAutoConnectionChange((connected) => {
+  console.log(`Android Auto: ${connected ? 'connected' : 'disconnected'}`);
+});
+```
+
+---
+
+## Android Auto
+
+### `isAndroidAutoConnected()`
+
+Check if Android Auto is currently connected. **Synchronous.** Always returns `false` on iOS.
+
+```typescript
+const connected = TrackPlayer.isAndroidAutoConnected();
+```
+
+**Returns:** `boolean`

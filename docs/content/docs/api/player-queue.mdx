@@ -1,0 +1,230 @@
+---
+title: PlayerQueue
+description: Playlist and queue management API — create, update, delete playlists and manage tracks
+---
+
+Import:
+
+```typescript
+import { PlayerQueue } from 'react-native-nitro-player';
+```
+
+---
+
+## Playlist Management
+
+### `createPlaylist(name, description?, artwork?)`
+
+Create a new playlist.
+
+```typescript
+const playlistId = await PlayerQueue.createPlaylist(
+  'Road Trip',
+  'Summer driving playlist',
+  'https://example.com/art/road-trip.jpg'
+);
+```
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `name` | `string` | Yes | Playlist name |
+| `description` | `string` | No | Playlist description |
+| `artwork` | `string` | No | Artwork URL |
+
+**Returns:** `Promise<string>` — The new playlist ID
+
+---
+
+### `deletePlaylist(playlistId)`
+
+Delete a playlist and all its tracks.
+
+```typescript
+await PlayerQueue.deletePlaylist('playlist-123');
+```
+
+**Returns:** `Promise<void>`
+
+---
+
+### `updatePlaylist(playlistId, name?, description?, artwork?)`
+
+Update playlist metadata.
+
+```typescript
+await PlayerQueue.updatePlaylist('playlist-123', 'New Name', 'New description');
+```
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `playlistId` | `string` | Yes | Playlist to update |
+| `name` | `string` | No | New name |
+| `description` | `string` | No | New description |
+| `artwork` | `string` | No | New artwork URL |
+
+**Returns:** `Promise<void>`
+
+---
+
+### `getPlaylist(playlistId)`
+
+Get a playlist by ID. **Synchronous.**
+
+```typescript
+const playlist = PlayerQueue.getPlaylist('playlist-123');
+// Returns null if not found
+```
+
+**Returns:** `Playlist | null` — See [Playlist](/docs/types#playlist)
+
+---
+
+### `getAllPlaylists()`
+
+Get all playlists. **Synchronous.**
+
+```typescript
+const playlists = PlayerQueue.getAllPlaylists();
+```
+
+**Returns:** `Playlist[]`
+
+---
+
+## Track Management
+
+### `addTrackToPlaylist(playlistId, track, index?)`
+
+Add a single track to a playlist.
+
+```typescript
+await PlayerQueue.addTrackToPlaylist('playlist-123', {
+  id: 'track-1',
+  title: 'New Song',
+  artist: 'Artist',
+  album: 'Album',
+  duration: 210,
+  url: 'https://example.com/song.mp3',
+});
+```
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `playlistId` | `string` | Yes | Target playlist |
+| `track` | `TrackItem` | Yes | Track to add |
+| `index` | `number` | No | Insert position (appends if omitted) |
+
+**Returns:** `Promise<void>`
+
+---
+
+### `addTracksToPlaylist(playlistId, tracks, index?)`
+
+Add multiple tracks to a playlist.
+
+```typescript
+await PlayerQueue.addTracksToPlaylist('playlist-123', tracks, 0); // Insert at beginning
+```
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `playlistId` | `string` | Yes | Target playlist |
+| `tracks` | `TrackItem[]` | Yes | Tracks to add |
+| `index` | `number` | No | Insert position (appends if omitted) |
+
+**Returns:** `Promise<void>`
+
+---
+
+### `removeTrackFromPlaylist(playlistId, trackId)`
+
+Remove a track from a playlist.
+
+```typescript
+await PlayerQueue.removeTrackFromPlaylist('playlist-123', 'track-1');
+```
+
+**Returns:** `Promise<void>`
+
+---
+
+### `reorderTrackInPlaylist(playlistId, trackId, newIndex)`
+
+Move a track to a new position within a playlist.
+
+```typescript
+await PlayerQueue.reorderTrackInPlaylist('playlist-123', 'track-1', 3);
+```
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `playlistId` | `string` | Yes | Target playlist |
+| `trackId` | `string` | Yes | Track to move |
+| `newIndex` | `number` | Yes | New 0-based position |
+
+**Returns:** `Promise<void>`
+
+---
+
+## Playback
+
+### `loadPlaylist(playlistId)`
+
+Load a playlist into the player. Call `TrackPlayer.play()` after to start playback.
+
+```typescript
+await PlayerQueue.loadPlaylist('playlist-123');
+await TrackPlayer.play();
+```
+
+**Returns:** `Promise<void>`
+
+---
+
+### `getCurrentPlaylistId()`
+
+Get the currently loaded playlist ID. **Synchronous.**
+
+```typescript
+const id = PlayerQueue.getCurrentPlaylistId();
+// Returns null if no playlist is loaded
+```
+
+**Returns:** `string | null`
+
+---
+
+## Events
+
+### `onPlaylistsChanged(callback)`
+
+Called when the overall list of playlists changes (create, delete, etc.).
+
+```typescript
+PlayerQueue.onPlaylistsChanged((playlists, operation) => {
+  console.log(`Playlists ${operation}: ${playlists.length} total`);
+});
+```
+
+| Param | Type | Description |
+|---|---|---|
+| `playlists` | `Playlist[]` | All current playlists |
+| `operation` | `QueueOperation?` | `'add'` \| `'remove'` \| `'clear'` \| `'update'` |
+
+---
+
+### `onPlaylistChanged(callback)`
+
+Called when a specific playlist is modified (tracks added, removed, reordered).
+
+```typescript
+PlayerQueue.onPlaylistChanged((playlistId, playlist, operation) => {
+  console.log(`Playlist ${playlistId} ${operation}: ${playlist.tracks.length} tracks`);
+});
+```
+
+| Param | Type | Description |
+|---|---|---|
+| `playlistId` | `string` | Modified playlist ID |
+| `playlist` | `Playlist` | Updated playlist object |
+| `operation` | `QueueOperation?` | `'add'` \| `'remove'` \| `'clear'` \| `'update'` |

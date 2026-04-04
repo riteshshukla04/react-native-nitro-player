@@ -1,0 +1,112 @@
+---
+title: Equalizer Hooks
+description: Hooks for controlling the 10-band equalizer and managing presets
+---
+
+## useEqualizer
+
+Reactive equalizer state with control functions.
+
+```tsx
+import { useEqualizer } from 'react-native-nitro-player';
+
+function EqualizerControl() {
+  const {
+    isEnabled,
+    bands,
+    currentPreset,
+    setEnabled,
+    setBandGain,
+    reset,
+    isLoading,
+    gainRange,
+  } = useEqualizer();
+
+  return (
+    <View>
+      <Switch value={isEnabled} onValueChange={setEnabled} />
+      <Text>Preset: {currentPreset ?? 'Custom'}</Text>
+      <Text>Range: {gainRange.min} to {gainRange.max} dB</Text>
+      {bands.map((band) => (
+        <Slider
+          key={band.index}
+          value={band.gainDb}
+          minimumValue={gainRange.min}
+          maximumValue={gainRange.max}
+          onValueChange={(v) => setBandGain(band.index, v)}
+        />
+      ))}
+    </View>
+  );
+}
+```
+
+### Return Type: `UseEqualizerResult`
+
+| Field | Type | Description |
+|---|---|---|
+| `isEnabled` | `boolean` | Whether the equalizer is active |
+| `bands` | `EqualizerBand[]` | Current band values |
+| `currentPreset` | `string \| null` | Active preset name (`null` if custom) |
+| `setEnabled` | `(enabled: boolean) => Promise<boolean>` | Toggle equalizer |
+| `setBandGain` | `(bandIndex: number, gainDb: number) => Promise<boolean>` | Set a band's gain |
+| `setAllBandGains` | `(gains: number[]) => Promise<boolean>` | Set all 10 bands |
+| `reset` | `() => Promise<void>` | Reset to flat (0 dB) |
+| `isLoading` | `boolean` | Loading state |
+| `gainRange` | `{ min: number; max: number }` | Valid gain range |
+
+---
+
+## useEqualizerPresets
+
+Manage built-in and custom equalizer presets.
+
+```tsx
+import { useEqualizerPresets } from 'react-native-nitro-player';
+
+function PresetPicker() {
+  const {
+    presets,
+    builtInPresets,
+    customPresets,
+    currentPreset,
+    applyPreset,
+    saveCustomPreset,
+    deleteCustomPreset,
+    refreshPresets,
+    isLoading,
+  } = useEqualizerPresets();
+
+  return (
+    <FlatList
+      data={presets}
+      renderItem={({ item }) => (
+        <TouchableOpacity onPress={() => applyPreset(item.name)}>
+          <Text
+            style={{
+              fontWeight: item.name === currentPreset ? 'bold' : 'normal',
+              color: item.type === 'custom' ? '#22c55e' : '#f8fafc',
+            }}
+          >
+            {item.name}
+          </Text>
+        </TouchableOpacity>
+      )}
+    />
+  );
+}
+```
+
+### Return Type: `UseEqualizerPresetsResult`
+
+| Field | Type | Description |
+|---|---|---|
+| `presets` | `EqualizerPreset[]` | All presets (built-in + custom) |
+| `builtInPresets` | `EqualizerPreset[]` | Built-in presets only |
+| `customPresets` | `EqualizerPreset[]` | Custom presets only |
+| `applyPreset` | `(name: string) => Promise<boolean>` | Apply a preset |
+| `saveCustomPreset` | `(name: string) => Promise<boolean>` | Save current settings as preset |
+| `deleteCustomPreset` | `(name: string) => Promise<boolean>` | Delete a custom preset |
+| `currentPreset` | `string \| null` | Active preset name |
+| `isLoading` | `boolean` | Loading state |
+| `refreshPresets` | `() => void` | Refresh preset list |

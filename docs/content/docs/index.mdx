@@ -1,0 +1,56 @@
+---
+title: Introduction
+description: A powerful audio player library for React Native built on Nitro Modules
+---
+
+## What is Nitro Player?
+
+**react-native-nitro-player** is a high-performance audio player library for React Native. Built on [Nitro Modules](https://github.com/nicklasxyz/react-native-nitro-modules), it provides direct native communication without the traditional bridge overhead.
+
+### Key Capabilities
+
+- **Playback Control** — Play, pause, seek, skip, volume, playback speed
+- **Playlist Management** — Create, update, delete playlists with full track CRUD
+- **Smart Queue** — playNext stack (LIFO) + upNext queue (FIFO) alongside playlists
+- **Offline Downloads** — Download manager with progress, pause/resume, retry, storage management
+- **10-Band Equalizer** — 19 built-in presets, custom presets, per-band gain control
+- **Car Integration** — Android Auto with custom media library, CarPlay support
+- **Lock Screen & Control Center** — Full media session integration on both platforms
+- **15+ React Hooks** — Reactive state for playback, queue, downloads, equalizer
+- **Lazy Loading** — URL-on-demand for tracks, ideal for DRM or token-based streams
+
+### Platform Support
+
+| Feature | iOS | Android |
+|---|:---:|:---:|
+| Playback & Queue | Yes | Yes |
+| Playlists | Yes | Yes |
+| Downloads | Yes | Yes |
+| Equalizer | Yes | Yes |
+| Control Center / Notifications | Yes | Yes |
+| Audio Route Picker | Yes (AirPlay) | Yes (AudioDevices) |
+| Android Auto | — | Yes |
+| CarPlay | Yes | — |
+
+### Architecture
+
+Nitro Player uses **HybridObjects** — native Kotlin (Android/ExoPlayer) and Swift (iOS/AVQueuePlayer) implementations with direct Nitro bindings to JavaScript. No serialization, no bridge batching.
+
+```
+┌─────────────────────────┐
+│   React / TypeScript    │
+│   TrackPlayer, Hooks    │
+├─────────────────────────┤
+│   Nitro Bindings        │
+├────────────┬────────────┤
+│  iOS/Swift │ Android/Kt │
+│ AVQueue    │ ExoPlayer  │
+│ Player     │ (Media3)   │
+└────────────┴────────────┘
+```
+
+### Next Steps
+
+- [Installation](/docs/installation) — Set up Nitro Player in your project
+- [Quick Start](/docs/quick-start) — Build a working player in 5 minutes
+- [API Reference](/docs/api/track-player) — Explore the full API

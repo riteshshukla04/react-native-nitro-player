@@ -1,0 +1,185 @@
+---
+title: Android Auto
+description: Set up Android Auto integration with custom media browsing
+---
+
+Nitro Player provides first-class Android Auto support with media browsing, playback controls, and connection detection.
+
+## Enable in Configuration
+
+```typescript
+import { TrackPlayer } from 'react-native-nitro-player';
+
+await TrackPlayer.configure({
+  androidAutoEnabled: true,
+});
+```
+
+## AndroidManifest Setup
+
+Add the following to your `android/app/src/main/AndroidManifest.xml`:
+
+### Media Browser Service
+
+Inside the `<application>` tag:
+
+```xml
+<meta-data
+  android:name="com.google.android.gms.car.application"
+  android:resource="@xml/automotive_app_desc" />
+
+<service
+  android:name="com.margelo.nitro.nitroplayer.service.MediaBrowserService"
+  android:exported="true"
+  tools:ignore="ExportedService">
+  <intent-filter>
+    <action android:name="android.media.browse.MediaBrowserService" />
+  </intent-filter>
+</service>
+```
+
+### Automotive App Descriptor
+
+Create `android/app/src/main/res/xml/automotive_app_desc.xml`:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<automotiveApp>
+  <uses name="media" />
+</automotiveApp>
+```
+
+## Custom Media Library
+
+By default, Android Auto shows all your playlists. You can customize the browsing structure:
+
+```typescript
+import {
+  AndroidAutoMediaLibraryHelper,
+} from 'react-native-nitro-player';
+import type { MediaLibrary } from 'react-native-nitro-player';
+
+const library: MediaLibrary = {
+  layoutType: 'list',
+  rootItems: [
+    {
+      id: 'favorites',
+      title: 'Favorites',
+      subtitle: 'Your favorite tracks',
+      mediaType: 'folder',
+      isPlayable: false,
+      layoutType: 'grid',
+      children: [
+        {
+          id: 'top-tracks',
+          title: 'Top Tracks',
+          mediaType: 'playlist',
+          isPlayable: true,
+          playlistId: 'playlist-top',
+          iconUrl: 'https://example.com/art/top.jpg',
+        },
+      ],
+    },
+    {
+      id: 'recent',
+      title: 'Recently Played',
+      mediaType: 'playlist',
+      isPlayable: true,
+      playlistId: 'playlist-recent',
+    },
+    {
+      id: 'genres',
+      title: 'Genres',
+      mediaType: 'folder',
+      isPlayable: false,
+      children: [
+        {
+          id: 'rock',
+          title: 'Rock',
+          mediaType: 'playlist',
+          isPlayable: true,
+          playlistId: 'playlist-rock',
+        },
+        {
+          id: 'electronic',
+          title: 'Electronic',
+          mediaType: 'playlist',
+          isPlayable: true,
+          playlistId: 'playlist-electronic',
+        },
+      ],
+    },
+  ],
+  appName: 'My Music App',
+};
+
+if (AndroidAutoMediaLibraryHelper.isAvailable()) {
+  AndroidAutoMediaLibraryHelper.set(library);
+}
+```
+
+### Reset to Defaults
+
+```typescript
+AndroidAutoMediaLibraryHelper.clear();
+// Falls back to showing all playlists
+```
+
+## Connection Detection
+
+### Hook
+
+```tsx
+import { useAndroidAutoConnection } from 'react-native-nitro-player';
+
+function App() {
+  const { isConnected } = useAndroidAutoConnection();
+
+  useEffect(() => {
+    if (isConnected) {
+      // Load Android Auto media library
+      AndroidAutoMediaLibraryHelper.set(library);
+    }
+  }, [isConnected]);
+}
+```
+
+### Synchronous Check
+
+```typescript
+const connected = TrackPlayer.isAndroidAutoConnected();
+```
+
+### Event Callback
+
+```typescript
+TrackPlayer.onAndroidAutoConnectionChange((connected) => {
+  if (connected) {
+    AndroidAutoMediaLibraryHelper.set(library);
+  }
+});
+```
+
+## Testing with Desktop Head Unit (DHU)
+
+1. Install the [Android Auto Desktop Head Unit](https://developer.android.com/training/cars/testing/dhu)
+2. Connect your device via USB
+3. Run: `./desktop-head-unit`
+4. Your app's media library should appear in the media tab
+
+## MediaItem Types
+
+| `mediaType` | Behavior |
+|---|---|
+| `'folder'` | Browsable container — must have `children` |
+| `'playlist'` | Playable — links to a `PlayerQueue` playlist via `playlistId` |
+| `'audio'` | Single playable audio item |
+
+## Layout Options
+
+| `layoutType` | Display |
+|---|---|
+| `'list'` | Vertical list with text and icons |
+| `'grid'` | Grid of artwork tiles |
+
+Each folder can override the parent's layout type with its own `layoutType`.

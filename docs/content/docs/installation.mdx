@@ -1,0 +1,72 @@
+---
+title: Installation
+description: Install react-native-nitro-player in your React Native project
+---
+
+## Prerequisites
+
+- React Native **0.76+**
+- [react-native-nitro-modules](https://github.com/nicklasxyz/react-native-nitro-modules) **0.35+**
+
+## Install
+
+```bash tab="npm"
+npm install react-native-nitro-player react-native-nitro-modules
+```
+
+```bash tab="yarn"
+yarn add react-native-nitro-player react-native-nitro-modules
+```
+
+```bash tab="bun"
+bun add react-native-nitro-player react-native-nitro-modules
+```
+
+## iOS Setup
+
+Install CocoaPods:
+
+```bash
+cd ios && pod install
+```
+
+## Android Setup
+
+No additional steps needed — auto-linking handles everything.
+
+### Android Permissions
+
+Add these to your `android/app/src/main/AndroidManifest.xml` if using downloads or background playback:
+
+```xml
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+```
+
+## Configuration
+
+Configure the player early in your app lifecycle (e.g., in your root component):
+
+```typescript
+import { TrackPlayer } from 'react-native-nitro-player';
+
+await TrackPlayer.configure({
+  androidAutoEnabled: false,
+  carPlayEnabled: false,
+  showInNotification: true,
+  lookaheadCount: 5,
+});
+```
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `androidAutoEnabled` | `boolean` | `false` | Enable Android Auto integration |
+| `carPlayEnabled` | `boolean` | `false` | Enable CarPlay integration |
+| `showInNotification` | `boolean` | `true` | Show playback in notification/Control Center |
+| `lookaheadCount` | `number` | `5` | Tracks to preload URLs for (lazy loading) |
+
+## Next Steps
+
+Head to the [Quick Start](/docs/quick-start) to build your first player.

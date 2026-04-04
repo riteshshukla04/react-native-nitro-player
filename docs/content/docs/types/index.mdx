@@ -1,0 +1,422 @@
+---
+title: TypeScript Types
+description: Complete type reference for react-native-nitro-player
+---
+
+All types are importable from `react-native-nitro-player`:
+
+```typescript
+import type { TrackItem, Playlist, PlayerState, ... } from 'react-native-nitro-player';
+```
+
+---
+
+## Player Types
+
+### TrackItem
+
+Represents a single audio track.
+
+```typescript
+interface TrackItem {
+  id: string;
+  title: string;
+  artist: string;
+  album: string;
+  duration: number;         // Duration in seconds
+  url: string;              // Audio URL (empty string "" is valid for lazy loading)
+  artwork?: string | null;  // Artwork URL
+  extraPayload?: AnyMap;    // Custom metadata
+}
+```
+
+---
+
+### Playlist
+
+A collection of tracks.
+
+```typescript
+interface Playlist {
+  id: string;
+  name: string;
+  description?: string | null;
+  artwork?: string | null;
+  tracks: TrackItem[];
+}
+```
+
+---
+
+### PlayerState
+
+Complete player state snapshot.
+
+```typescript
+interface PlayerState {
+  currentTrack: TrackItem | null;
+  currentPosition: number;       // Seconds
+  totalDuration: number;         // Seconds
+  currentState: TrackPlayerState;
+  currentPlaylistId: string | null;
+  currentIndex: number;
+  currentPlayingType: CurrentPlayingType;
+}
+```
+
+---
+
+### PlayerConfig
+
+Configuration options for the player.
+
+```typescript
+interface PlayerConfig {
+  androidAutoEnabled?: boolean;   // Default: false
+  carPlayEnabled?: boolean;       // Default: false
+  showInNotification?: boolean;   // Default: true
+  lookaheadCount?: number;        // Default: 5 — tracks to preload URLs for
+}
+```
+
+---
+
+### TrackPlayerState
+
+```typescript
+type TrackPlayerState = 'playing' | 'paused' | 'stopped';
+```
+
+---
+
+### CurrentPlayingType
+
+Indicates where the current track originates from.
+
+```typescript
+type CurrentPlayingType = 'playlist' | 'up-next' | 'play-next' | 'not-playing';
+```
+
+---
+
+### RepeatMode
+
+```typescript
+type RepeatMode = 'off' | 'Playlist' | 'track';
+```
+
+---
+
+### QueueOperation
+
+```typescript
+type QueueOperation = 'add' | 'remove' | 'clear' | 'update';
+```
+
+---
+
+### Reason
+
+Why a track change or state change occurred.
+
+```typescript
+type Reason = 'user_action' | 'skip' | 'end' | 'error' | 'repeat';
+```
+
+---
+
+## Download Types
+
+### DownloadConfig
+
+```typescript
+interface DownloadConfig {
+  storageLocation?: StorageLocation;     // 'private' | 'public'
+  maxConcurrentDownloads?: number;
+  autoRetry?: boolean;
+  maxRetryAttempts?: number;
+  backgroundDownloadsEnabled?: boolean;
+  downloadArtwork?: boolean;
+  customDownloadPath?: string | null;
+  wifiOnlyDownloads?: boolean;
+}
+```
+
+---
+
+### DownloadProgress
+
+```typescript
+interface DownloadProgress {
+  trackId: string;
+  downloadId: string;
+  bytesDownloaded: number;
+  totalBytes: number;
+  progress: number;       // 0.0 to 1.0
+  state: DownloadState;
+}
+```
+
+---
+
+### DownloadTask
+
+```typescript
+interface DownloadTask {
+  downloadId: string;
+  trackId: string;
+  playlistId?: string | null;
+  state: DownloadState;
+  progress: DownloadProgress;
+  createdAt: number;          // Unix timestamp
+  startedAt?: number | null;
+  completedAt?: number | null;
+  error?: DownloadError | null;
+  retryCount: number;
+}
+```
+
+---
+
+### DownloadedTrack
+
+```typescript
+interface DownloadedTrack {
+  trackId: string;
+  originalTrack: TrackItem;
+  localPath: string;
+  localArtworkPath?: string | null;
+  downloadedAt: number;       // Unix timestamp
+  fileSize: number;           // Bytes
+  storageLocation: StorageLocation;
+}
+```
+
+---
+
+### DownloadedPlaylist
+
+```typescript
+interface DownloadedPlaylist {
+  playlistId: string;
+  originalPlaylist: Playlist;
+  downloadedTracks: DownloadedTrack[];
+  totalSize: number;          // Bytes
+  downloadedAt: number;       // Unix timestamp
+  isComplete: boolean;        // All tracks downloaded
+}
+```
+
+---
+
+### DownloadError
+
+```typescript
+interface DownloadError {
+  code: string;
+  message: string;
+  reason: DownloadErrorReason;
+  isRetryable: boolean;
+}
+```
+
+---
+
+### DownloadStorageInfo
+
+```typescript
+interface DownloadStorageInfo {
+  totalDownloadedSize: number; // Bytes
+  trackCount: number;
+  playlistCount: number;
+  availableSpace: number;      // Bytes
+  totalSpace: number;          // Bytes
+}
+```
+
+---
+
+### DownloadQueueStatus
+
+```typescript
+interface DownloadQueueStatus {
+  pendingCount: number;
+  activeCount: number;
+  completedCount: number;
+  failedCount: number;
+  totalBytesToDownload: number;
+  totalBytesDownloaded: number;
+  overallProgress: number;     // 0.0 to 1.0
+}
+```
+
+---
+
+### DownloadState
+
+```typescript
+type DownloadState = 'pending' | 'downloading' | 'paused' | 'completed' | 'failed' | 'cancelled';
+```
+
+---
+
+### DownloadErrorReason
+
+```typescript
+type DownloadErrorReason =
+  | 'network_error'
+  | 'storage_full'
+  | 'file_not_found'
+  | 'permission_denied'
+  | 'invalid_url'
+  | 'timeout'
+  | 'unknown';
+```
+
+---
+
+### StorageLocation
+
+```typescript
+type StorageLocation = 'private' | 'public';
+```
+
+---
+
+### PlaybackSource
+
+```typescript
+type PlaybackSource = 'auto' | 'download' | 'network';
+```
+
+---
+
+## Equalizer Types
+
+### EqualizerBand
+
+```typescript
+interface EqualizerBand {
+  index: number;              // 0-9
+  centerFrequency: number;    // Hz
+  gainDb: number;             // -12 to +12
+  frequencyLabel: string;     // e.g., "60 Hz", "3.6 kHz"
+}
+```
+
+---
+
+### EqualizerPreset
+
+```typescript
+interface EqualizerPreset {
+  name: string;
+  gains: number[];            // Array of 10 gain values in dB
+  type: PresetType;
+}
+```
+
+---
+
+### EqualizerState
+
+```typescript
+interface EqualizerState {
+  enabled: boolean;
+  bands: EqualizerBand[];
+  currentPreset: string | null;
+}
+```
+
+---
+
+### GainRange
+
+```typescript
+interface GainRange {
+  min: number;
+  max: number;
+}
+```
+
+---
+
+### PresetType
+
+```typescript
+type PresetType = 'built-in' | 'custom';
+```
+
+---
+
+### BuiltInPresetName
+
+```typescript
+type BuiltInPresetName =
+  | 'Flat' | 'Rock' | 'Pop' | 'Classical' | 'Dance' | 'Techno' | 'Club'
+  | 'Live' | 'Reggae' | 'Full Bass' | 'Full Treble' | 'Full Bass & Treble'
+  | 'Large Hall' | 'Party' | 'Ska' | 'Soft' | 'Soft Rock' | 'Headphones'
+  | 'Laptop Speakers';
+```
+
+---
+
+## Platform Types
+
+### TAudioDevice
+
+```typescript
+type TAudioDevice = {
+  id: number;
+  name: string;
+  type: number;       // Android AudioDeviceInfo type constant
+  isActive: boolean;
+};
+```
+
+---
+
+### MediaLibrary
+
+```typescript
+interface MediaLibrary {
+  layoutType: LayoutType;
+  rootItems: MediaItem[];
+  appName?: string;
+  appIconUrl?: string;
+}
+```
+
+---
+
+### MediaItem
+
+```typescript
+interface MediaItem {
+  id: string;
+  title: string;
+  subtitle?: string;
+  iconUrl?: string;
+  isPlayable: boolean;
+  mediaType: MediaType;
+  playlistId?: string;
+  children?: MediaItem[];
+  layoutType?: LayoutType;
+}
+```
+
+---
+
+### LayoutType
+
+```typescript
+type LayoutType = 'grid' | 'list';
+```
+
+---
+
+### MediaType
+
+```typescript
+type MediaType = 'folder' | 'audio' | 'playlist';
+```

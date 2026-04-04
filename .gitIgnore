@@ -81,3 +81,6 @@ web-build/
 # Maestro Output
 video.mp4
 .github/copilot-instructions.md
+
+.claude
+docs/.next/

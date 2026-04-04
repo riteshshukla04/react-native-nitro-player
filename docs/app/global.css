@@ -1,0 +1,166 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+
+:root {
+  --fd-layout-width: 1400px;
+  --color-fd-background: #faf9fb;
+  --color-fd-foreground: #0f0a1a;
+  --color-fd-primary: #7c3aed;
+  --color-fd-primary-foreground: #ffffff;
+  --color-fd-card: #f3f0f7;
+  --color-fd-card-foreground: #0f0a1a;
+  --color-fd-muted: #f3f0f7;
+  --color-fd-muted-foreground: #5b5675;
+  --color-fd-accent: rgba(124, 58, 237, 0.1);
+  --color-fd-accent-foreground: #0f0a1a;
+  --color-fd-border: rgba(124, 58, 237, 0.15);
+  --color-fd-popover: #f3f0f7;
+  --color-fd-popover-foreground: #0f0a1a;
+  --color-fd-secondary: #f3f0f7;
+  --color-fd-secondary-foreground: #0f0a1a;
+  --color-fd-ring: #7c3aed;
+}
+
+.dark {
+  --color-fd-background: #0a0a1a;
+  --color-fd-foreground: #f8fafc;
+  --color-fd-primary: #7c3aed;
+  --color-fd-primary-foreground: #f8fafc;
+  --color-fd-card: #0e0e22;
+  --color-fd-card-foreground: #f8fafc;
+  --color-fd-muted: #0e0e22;
+  --color-fd-muted-foreground: #94a3b8;
+  --color-fd-accent: rgba(124, 58, 237, 0.15);
+  --color-fd-accent-foreground: #f8fafc;
+  --color-fd-border: rgba(124, 58, 237, 0.15);
+  --color-fd-popover: #0e0e22;
+  --color-fd-popover-foreground: #f8fafc;
+  --color-fd-secondary: #0e0e22;
+  --color-fd-secondary-foreground: #f8fafc;
+  --color-fd-ring: #7c3aed;
+}
+
+body {
+  font-family: var(--font-ibm-plex), ui-sans-serif, system-ui, sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-jetbrains), ui-monospace, monospace;
+  letter-spacing: -0.02em;
+}
+
+code, pre, kbd {
+  font-family: var(--font-jetbrains), ui-monospace, monospace;
+}
+
+/* Code blocks — seamless, no double borders */
+pre {
+  border: none !important;
+  box-shadow: none !important;
+}
+.dark pre {
+  background: #0e0e22 !important;
+}
+:root:not(.dark) pre {
+  background: #f0edf5 !important;
+}
+
+/* Code block wrappers — single clean border */
+.shiki,
+div.shiki,
+.dark .shiki,
+.dark div.shiki {
+  border: none !important;
+}
+.dark .shiki {
+  background: #0e0e22 !important;
+}
+:root:not(.dark) .shiki {
+  background: #f0edf5 !important;
+}
+
+/* Inline code — only inside prose/article content */
+.dark .prose :not(pre) > code,
+.dark article :not(pre) > code {
+  background: rgba(124, 58, 237, 0.1) !important;
+  border: 1px solid rgba(124, 58, 237, 0.12) !important;
+  color: #c4b5fd !important;
+}
+:root:not(.dark) .prose :not(pre) > code,
+:root:not(.dark) article :not(pre) > code {
+  background: rgba(124, 58, 237, 0.08) !important;
+  border: 1px solid rgba(124, 58, 237, 0.1) !important;
+  color: #6d28d9 !important;
+}
+
+/* Sidebar active link glow */
+.dark [data-active='true'] {
+  color: #7c3aed !important;
+  text-shadow: 0 0 12px rgba(124, 58, 237, 0.4);
+}
+:root:not(.dark) [data-active='true'] {
+  color: #7c3aed !important;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(124, 58, 237, 0.3);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 58, 237, 0.5);
+}
+
+/* Animated gradient border utility */
+@keyframes gradient-rotate {
+  0% { --gradient-angle: 0deg; }
+  100% { --gradient-angle: 360deg; }
+}
+
+.gradient-border {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.dark .gradient-border {
+  background: #0e0e22;
+}
+:root:not(.dark) .gradient-border {
+  background: #f3f0f7;
+}
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  padding: 1px;
+  background: linear-gradient(
+    var(--gradient-angle, 135deg),
+    #7c3aed,
+    #22c55e,
+    #7c3aed
+  );
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  animation: gradient-rotate 4s linear infinite;
+}
+
+@property --gradient-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+/* Waveform animation */
+@keyframes waveform-bar {
+  0%, 100% { height: 20%; }
+  50% { height: 100%; }
+}

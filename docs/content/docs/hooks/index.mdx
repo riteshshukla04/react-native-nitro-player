@@ -1,0 +1,30 @@
+---
+title: Hooks Overview
+description: React hooks for building reactive music player UIs
+---
+
+All hooks are imported from `react-native-nitro-player`:
+
+```typescript
+import { useNowPlaying, useOnChangeTrack, ... } from 'react-native-nitro-player';
+```
+
+## Available Hooks
+
+| Hook | Returns | Description |
+|---|---|---|
+| [`useNowPlaying`](/docs/hooks/playback-hooks#usenowplaying) | `PlayerState` | Current player state (track, position, status) |
+| [`useOnChangeTrack`](/docs/hooks/playback-hooks#usonchangetrack) | `TrackChangeResult` | Track change events with reason |
+| [`useOnPlaybackStateChange`](/docs/hooks/playback-hooks#usonplaybackstatechange) | `PlaybackStateResult` | Play/pause/stop state changes |
+| [`useOnPlaybackProgressChange`](/docs/hooks/playback-hooks#usonplaybackprogresschange) | `ProgressResult` | Periodic progress updates |
+| [`useOnSeek`](/docs/hooks/playback-hooks#usonseek) | `SeekResult` | Seek events |
+| [`usePlaylist`](/docs/hooks/queue-hooks#useplaylist) | `UsePlaylistResult` | Playlist state and management |
+| [`useActualQueue`](/docs/hooks/queue-hooks#useactualqueue) | `UseActualQueueResult` | Resolved queue with temporary tracks |
+| [`useDownloadProgress`](/docs/hooks/download-hooks#usedownloadprogress) | `UseDownloadProgressResult` | Download progress tracking |
+| [`useDownloadedTracks`](/docs/hooks/download-hooks#usedownloadedtracks) | `UseDownloadedTracksResult` | Downloaded content queries |
+| [`useDownloadActions`](/docs/hooks/download-hooks#usedownloadactions) | `UseDownloadActionsResult` | Download control actions |
+| [`useDownloadStorage`](/docs/hooks/download-hooks#usedownloadstorage) | `UseDownloadStorageResult` | Storage usage info |
+| [`useEqualizer`](/docs/hooks/equalizer-hooks#useequalizer) | `UseEqualizerResult` | Equalizer state and control |
+| [`useEqualizerPresets`](/docs/hooks/equalizer-hooks#useequalizerpresets) | `UseEqualizerPresetsResult` | Preset management |
+| [`useAndroidAutoConnection`](/docs/hooks/platform-hooks#useandroidautoconnection) | `{ isConnected }` | Android Auto connection state |
+| [`useAudioDevices`](/docs/hooks/platform-hooks#useaudiodevices) | `{ devices }` | Available audio devices (Android) |

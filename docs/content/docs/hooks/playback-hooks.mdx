@@ -1,0 +1,148 @@
+---
+title: Playback Hooks
+description: Hooks for tracking playback state, progress, and track changes
+---
+
+## useNowPlaying
+
+Returns the complete current player state. Updates reactively on any state change.
+
+```tsx
+import { useNowPlaying } from 'react-native-nitro-player';
+
+function NowPlaying() {
+  const state = useNowPlaying();
+
+  return (
+    <View>
+      <Text>{state.currentTrack?.title ?? 'Nothing playing'}</Text>
+      <Text>{state.currentState}</Text>
+      <Text>
+        {state.currentPosition}s / {state.totalDuration}s
+      </Text>
+    </View>
+  );
+}
+```
+
+### Return Type: `PlayerState`
+
+| Field | Type | Description |
+|---|---|---|
+| `currentTrack` | `TrackItem \| null` | Currently playing track |
+| `currentPosition` | `number` | Position in seconds |
+| `totalDuration` | `number` | Track duration in seconds |
+| `currentState` | `TrackPlayerState` | `'playing'` \| `'paused'` \| `'stopped'` |
+| `currentPlaylistId` | `string \| null` | Active playlist ID |
+| `currentIndex` | `number` | Current index in queue |
+| `currentPlayingType` | `CurrentPlayingType` | `'playlist'` \| `'play-next'` \| `'up-next'` \| `'not-playing'` |
+
+---
+
+## useOnChangeTrack
+
+Fires when the current track changes. Provides the new track and the reason for the change.
+
+```tsx
+import { useOnChangeTrack } from 'react-native-nitro-player';
+
+function TrackNotifier() {
+  const { track, reason, isReady } = useOnChangeTrack();
+
+  useEffect(() => {
+    if (isReady && track) {
+      console.log(`Now playing: ${track.title} (${reason})`);
+    }
+  }, [track, reason, isReady]);
+
+  return null;
+}
+```
+
+### Return Type: `TrackChangeResult`
+
+| Field | Type | Description |
+|---|---|---|
+| `track` | `TrackItem \| null` | The new current track |
+| `reason` | `Reason \| undefined` | `'user_action'` \| `'skip'` \| `'end'` \| `'error'` \| `'repeat'` |
+| `isReady` | `boolean` | `true` after the first callback fires |
+
+---
+
+## useOnPlaybackStateChange
+
+Fires when playback state changes (play/pause/stop).
+
+```tsx
+import { useOnPlaybackStateChange } from 'react-native-nitro-player';
+
+function PlaybackIndicator() {
+  const { state, reason, isReady } = useOnPlaybackStateChange();
+
+  return <Text>{isReady ? state : 'Loading...'}</Text>;
+}
+```
+
+### Return Type: `PlaybackStateResult`
+
+| Field | Type | Description |
+|---|---|---|
+| `state` | `TrackPlayerState` | `'playing'` \| `'paused'` \| `'stopped'` |
+| `reason` | `Reason \| undefined` | Why the state changed |
+| `isReady` | `boolean` | `true` after the first callback fires |
+
+---
+
+## useOnPlaybackProgressChange
+
+Receives periodic progress updates during playback. Use this for progress bars and time displays.
+
+```tsx
+import { useOnPlaybackProgressChange } from 'react-native-nitro-player';
+
+function ProgressBar() {
+  const { position, totalDuration } = useOnPlaybackProgressChange();
+  const progress = totalDuration > 0 ? position / totalDuration : 0;
+
+  return (
+    <View style={{ width: `${progress * 100}%`, height: 4, backgroundColor: '#7c3aed' }} />
+  );
+}
+```
+
+### Return Type
+
+| Field | Type | Description |
+|---|---|---|
+| `position` | `number` | Current position in seconds |
+| `totalDuration` | `number` | Total duration in seconds |
+| `isManuallySeeked` | `boolean \| undefined` | Whether this update is from a manual seek |
+
+---
+
+## useOnSeek
+
+Fires when a seek operation occurs.
+
+```tsx
+import { useOnSeek } from 'react-native-nitro-player';
+
+function SeekLogger() {
+  const { position, totalDuration } = useOnSeek();
+
+  useEffect(() => {
+    if (position !== undefined) {
+      console.log(`Seeked to ${position}/${totalDuration}`);
+    }
+  }, [position]);
+
+  return null;
+}
+```
+
+### Return Type
+
+| Field | Type | Description |
+|---|---|---|
+| `position` | `number \| undefined` | Position seeked to (in seconds) |
+| `totalDuration` | `number \| undefined` | Total track duration |
