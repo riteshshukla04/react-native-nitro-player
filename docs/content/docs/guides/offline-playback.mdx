@@ -5,7 +5,9 @@ description: Download tracks for offline listening with the DownloadManager
 
 Nitro Player includes a full download manager for offline playback with progress tracking, pause/resume, retry logic, and storage management.
 
-## Android Permissions
+## Android Setup
+
+### Permissions
 
 Add these permissions to `android/app/src/main/AndroidManifest.xml`:
 
@@ -13,7 +15,42 @@ Add these permissions to `android/app/src/main/AndroidManifest.xml`:
 <uses-permission android:name="android.permission.INTERNET" />
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 ```
+
+### WorkManager Service
+
+Downloads use WorkManager with a foreground service. Add this inside the `<application>` tag in your `AndroidManifest.xml`:
+
+```xml
+<!-- WorkManager's SystemForegroundService for download notifications -->
+<service
+  android:name="androidx.work.impl.foreground.SystemForegroundService"
+  android:foregroundServiceType="dataSync"
+  android:exported="false" />
+```
+
+### Why Data Sync?
+
+Downloads use a `dataSync` foreground service so they continue reliably even when the app is in the background or the screen is off. This means users can queue up an entire playlist for download, switch to another app, and come back to find everything ready for offline listening — no interrupted downloads, no silent failures.
+
+### Notification Permission (Android 13+)
+
+`FOREGROUND_SERVICE_DATA_SYNC` requires Play Store approval. You may need to present a video proof demonstrating the data sync use case. To show download progress notifications, request the `POST_NOTIFICATIONS` permission at runtime before starting downloads:
+
+```typescript
+import { PermissionsAndroid, Platform } from 'react-native';
+
+async function requestNotificationPermission() {
+  if (Platform.OS === 'android' && Platform.Version >= 33) {
+    await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
+    );
+  }
+}
+```
+
+Call this before your first download so users can see progress in the notification tray.
 
 ## Configure
 

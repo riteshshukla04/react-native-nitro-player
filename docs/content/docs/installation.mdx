@@ -36,14 +36,15 @@ No additional steps needed — auto-linking handles everything.
 
 ### Android Permissions
 
-Add these to your `android/app/src/main/AndroidManifest.xml` if using downloads or background playback:
+Add these to your `android/app/src/main/AndroidManifest.xml` for background playback:
 
 ```xml
 <uses-permission android:name="android.permission.INTERNET" />
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
-<uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 ```
+
+If you plan to use offline downloads, see the [Offline Playback](/docs/guides/offline-playback) guide for additional permissions and WorkManager setup.
 
 ## Configuration
 
