@@ -1,0 +1,78 @@
+---
+title: Platform Hooks
+description: Hooks for Android Auto connection and audio device management
+---
+
+## useAndroidAutoConnection
+
+Track Android Auto connection state reactively. Works on both platforms — always returns `false` on iOS.
+
+```tsx
+import { useAndroidAutoConnection } from 'react-native-nitro-player';
+
+function AutoConnectionStatus() {
+  const { isConnected } = useAndroidAutoConnection();
+
+  if (!isConnected) return null;
+
+  return <Text>Connected to Android Auto</Text>;
+}
+```
+
+### Return Type
+
+| Field | Type | Description |
+|---|---|---|
+| `isConnected` | `boolean` | `true` if Android Auto is connected |
+
+---
+
+## useAudioDevices
+
+List available audio output devices. **Android only.** Polls for device changes every 2 seconds. 
+
+*This is highly beta feature and is not recommended to use in production unless you have tested it in all the OEMs yourself.*
+
+```tsx
+import { useAudioDevices } from 'react-native-nitro-player';
+import { AudioDevices } from 'react-native-nitro-player';
+
+function DevicePicker() {
+  const { devices } = useAudioDevices();
+
+  return (
+    <FlatList
+      data={devices}
+      renderItem={({ item }) => (
+        <TouchableOpacity
+          onPress={() => AudioDevices?.setAudioDevice(item.id)}
+          style={{ opacity: item.isActive ? 1 : 0.6 }}
+        >
+          <Text>
+            {item.name} {item.isActive ? '(Active)' : ''}
+          </Text>
+        </TouchableOpacity>
+      )}
+    />
+  );
+}
+```
+
+### Return Type
+
+| Field | Type | Description |
+|---|---|---|
+| `devices` | `TAudioDevice[]` | Available audio output devices |
+
+### TAudioDevice
+
+```typescript
+type TAudioDevice = {
+  id: number;
+  name: string;
+  type: number;       // Android AudioDeviceInfo type constant
+  isActive: boolean;
+};
+```
+
+Supported device types include: Bluetooth A2DP, Bluetooth SCO, USB headset, wired headset, wired headphones, BLE headset (Android 12+), built-in speaker, and built-in earpiece.

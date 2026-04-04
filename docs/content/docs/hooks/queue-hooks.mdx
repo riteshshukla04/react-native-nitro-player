@@ -1,0 +1,82 @@
+---
+title: Queue Hooks
+description: Hooks for playlist and queue state management
+---
+
+## usePlaylist
+
+Reactive access to all playlists and the current playlist state. Automatically updates when playlists change.
+
+```tsx
+import { usePlaylist } from 'react-native-nitro-player';
+
+function PlaylistList() {
+  const {
+    currentPlaylist,
+    currentPlaylistId,
+    allPlaylists,
+    allTracks,
+    isLoading,
+    refreshPlaylists,
+  } = usePlaylist();
+
+  if (isLoading) return <Text>Loading...</Text>;
+
+  return (
+    <FlatList
+      data={allPlaylists}
+      renderItem={({ item }) => (
+        <Text style={{ fontWeight: item.id === currentPlaylistId ? 'bold' : 'normal' }}>
+          {item.name} ({item.tracks.length} tracks)
+        </Text>
+      )}
+    />
+  );
+}
+```
+
+### Return Type: `UsePlaylistResult`
+
+| Field | Type | Description |
+|---|---|---|
+| `currentPlaylist` | `Playlist \| null` | Currently loaded playlist |
+| `currentPlaylistId` | `string \| null` | Currently loaded playlist ID |
+| `allPlaylists` | `Playlist[]` | All playlists |
+| `allTracks` | `TrackItem[]` | All tracks across all playlists |
+| `isLoading` | `boolean` | Loading state |
+| `refreshPlaylists` | `() => void` | Manually refresh playlist data |
+
+---
+
+## useActualQueue
+
+Returns the resolved queue including temporary tracks (playNext + upNext) merged with the playlist in the correct order. Automatically refreshes when the queue changes.
+
+```tsx
+import { useActualQueue } from 'react-native-nitro-player';
+
+function QueueView() {
+  const { queue, refreshQueue, isLoading } = useActualQueue();
+
+  return (
+    <FlatList
+      data={queue}
+      renderItem={({ item, index }) => (
+        <Text>
+          {index + 1}. {item.title} — {item.artist}
+        </Text>
+      )}
+      onRefresh={refreshQueue}
+      refreshing={isLoading}
+    />
+  );
+}
+```
+
+### Return Type: `UseActualQueueResult`
+
+| Field | Type | Description |
+|---|---|---|
+| `queue` | `TrackItem[]` | The complete resolved queue |
+| `refreshQueue` | `() => void` | Manually refresh the queue |
+| `isLoading` | `boolean` | Loading state |

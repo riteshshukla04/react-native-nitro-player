@@ -1,0 +1,432 @@
+---
+title: DownloadManager
+description: Offline download and storage management API
+---
+
+Import:
+
+```typescript
+import { DownloadManager } from 'react-native-nitro-player';
+```
+
+---
+
+## Configuration
+
+### `configure(config)`
+
+Configure the download manager. **Synchronous.**
+
+```typescript
+DownloadManager.configure({
+  maxConcurrentDownloads: 3,
+  autoRetry: true,
+  maxRetryAttempts: 3,
+  backgroundDownloadsEnabled: true,
+  downloadArtwork: true,
+  wifiOnlyDownloads: false,
+  storageLocation: 'private',
+});
+```
+
+See [DownloadConfig](/docs/types#downloadconfig) for all options.
+
+---
+
+### `getConfig()`
+
+Get the current download configuration. **Synchronous.**
+
+```typescript
+const config = DownloadManager.getConfig();
+```
+
+**Returns:** `DownloadConfig`
+
+---
+
+### `setPlaybackSourcePreference(preference)`
+
+Set whether playback should prefer downloaded or network files. **Synchronous.**
+
+```typescript
+DownloadManager.setPlaybackSourcePreference('auto');
+```
+
+| Value | Behavior |
+|---|---|
+| `'auto'` | Use downloaded file if available, otherwise stream |
+| `'download'` | Only play downloaded files |
+| `'network'` | Always stream from network |
+
+---
+
+### `getPlaybackSourcePreference()`
+
+Get the current playback source preference. **Synchronous.**
+
+```typescript
+const pref = DownloadManager.getPlaybackSourcePreference();
+```
+
+**Returns:** `PlaybackSource` — `'auto'` | `'download'` | `'network'`
+
+---
+
+## Download Operations
+
+### `downloadTrack(track, playlistId?)`
+
+Download a single track.
+
+```typescript
+const downloadId = await DownloadManager.downloadTrack(track, 'playlist-123');
+```
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `track` | `TrackItem` | Yes | Track to download |
+| `playlistId` | `string` | No | Associated playlist ID |
+
+**Returns:** `Promise<string>` — Download ID for tracking
+
+---
+
+### `downloadPlaylist(playlistId, tracks)`
+
+Download all tracks in a playlist.
+
+```typescript
+const downloadIds = await DownloadManager.downloadPlaylist('playlist-123', tracks);
+```
+
+**Returns:** `Promise<string[]>` — Array of download IDs
+
+---
+
+## Download Control
+
+### `pauseDownload(downloadId)`
+
+```typescript
+await DownloadManager.pauseDownload('dl-123');
+```
+
+### `resumeDownload(downloadId)`
+
+```typescript
+await DownloadManager.resumeDownload('dl-123');
+```
+
+### `cancelDownload(downloadId)`
+
+```typescript
+await DownloadManager.cancelDownload('dl-123');
+```
+
+### `retryDownload(downloadId)`
+
+Retry a failed download.
+
+```typescript
+await DownloadManager.retryDownload('dl-123');
+```
+
+### `pauseAllDownloads()`
+
+```typescript
+await DownloadManager.pauseAllDownloads();
+```
+
+### `resumeAllDownloads()`
+
+```typescript
+await DownloadManager.resumeAllDownloads();
+```
+
+### `cancelAllDownloads()`
+
+```typescript
+await DownloadManager.cancelAllDownloads();
+```
+
+All return `Promise<void>`.
+
+---
+
+## Download Status
+
+### `getDownloadTask(downloadId)`
+
+Get a download task by ID. **Synchronous.**
+
+```typescript
+const task = DownloadManager.getDownloadTask('dl-123');
+```
+
+**Returns:** `DownloadTask | null` — See [DownloadTask](/docs/types#downloadtask)
+
+---
+
+### `getActiveDownloads()`
+
+Get all active (in-progress) download tasks. **Synchronous.**
+
+```typescript
+const active = DownloadManager.getActiveDownloads();
+```
+
+**Returns:** `DownloadTask[]`
+
+---
+
+### `getQueueStatus()`
+
+Get overall download queue status. **Synchronous.**
+
+```typescript
+const status = DownloadManager.getQueueStatus();
+// { pendingCount, activeCount, completedCount, failedCount,
+//   totalBytesToDownload, totalBytesDownloaded, overallProgress }
+```
+
+**Returns:** `DownloadQueueStatus` — See [DownloadQueueStatus](/docs/types#downloadqueuestatus)
+
+---
+
+### `isDownloading(trackId)`
+
+Check if a track is currently downloading. **Synchronous.**
+
+```typescript
+const downloading = DownloadManager.isDownloading('track-1');
+```
+
+**Returns:** `boolean`
+
+---
+
+### `getDownloadState(trackId)`
+
+Get the download state for a track. **Synchronous.**
+
+```typescript
+const state = DownloadManager.getDownloadState('track-1');
+// 'pending' | 'downloading' | 'paused' | 'completed' | 'failed' | 'cancelled' | null
+```
+
+**Returns:** `DownloadState | null`
+
+---
+
+## Downloaded Content
+
+### `isTrackDownloaded(trackId)`
+
+```typescript
+const downloaded = await DownloadManager.isTrackDownloaded('track-1');
+```
+
+**Returns:** `Promise<boolean>`
+
+---
+
+### `isPlaylistDownloaded(playlistId)`
+
+Check if all tracks in a playlist are downloaded.
+
+```typescript
+const complete = await DownloadManager.isPlaylistDownloaded('playlist-123');
+```
+
+**Returns:** `Promise<boolean>`
+
+---
+
+### `isPlaylistPartiallyDownloaded(playlistId)`
+
+Check if some (but not all) tracks in a playlist are downloaded.
+
+```typescript
+const partial = await DownloadManager.isPlaylistPartiallyDownloaded('playlist-123');
+```
+
+**Returns:** `Promise<boolean>`
+
+---
+
+### `getDownloadedTrack(trackId)`
+
+```typescript
+const track = await DownloadManager.getDownloadedTrack('track-1');
+```
+
+**Returns:** `Promise<DownloadedTrack | null>` — See [DownloadedTrack](/docs/types#downloadedtrack)
+
+---
+
+### `getAllDownloadedTracks()`
+
+```typescript
+const tracks = await DownloadManager.getAllDownloadedTracks();
+```
+
+**Returns:** `Promise<DownloadedTrack[]>`
+
+---
+
+### `getDownloadedPlaylist(playlistId)`
+
+```typescript
+const playlist = await DownloadManager.getDownloadedPlaylist('playlist-123');
+```
+
+**Returns:** `Promise<DownloadedPlaylist | null>` — See [DownloadedPlaylist](/docs/types#downloadedplaylist)
+
+---
+
+### `getAllDownloadedPlaylists()`
+
+```typescript
+const playlists = await DownloadManager.getAllDownloadedPlaylists();
+```
+
+**Returns:** `Promise<DownloadedPlaylist[]>`
+
+---
+
+### `getLocalPath(trackId)`
+
+Get the local file path for a downloaded track.
+
+```typescript
+const path = await DownloadManager.getLocalPath('track-1');
+```
+
+**Returns:** `Promise<string | null>`
+
+---
+
+### `getEffectiveUrl(track)`
+
+Get the URL to use for playback based on the current playback source preference.
+
+```typescript
+const url = await DownloadManager.getEffectiveUrl(track);
+// Returns local path if downloaded and preference is 'auto'/'download',
+// otherwise returns the track's original URL
+```
+
+**Returns:** `Promise<string>`
+
+---
+
+## Deletion
+
+### `deleteDownloadedTrack(trackId)`
+
+```typescript
+await DownloadManager.deleteDownloadedTrack('track-1');
+```
+
+### `deleteDownloadedPlaylist(playlistId)`
+
+Delete all downloaded tracks in a playlist.
+
+```typescript
+await DownloadManager.deleteDownloadedPlaylist('playlist-123');
+```
+
+### `deleteAllDownloads()`
+
+Delete all downloaded content.
+
+```typescript
+await DownloadManager.deleteAllDownloads();
+```
+
+All return `Promise<void>`.
+
+---
+
+## Storage
+
+### `getStorageInfo()`
+
+Get download storage usage information.
+
+```typescript
+const info = await DownloadManager.getStorageInfo();
+// { totalDownloadedSize, trackCount, playlistCount, availableSpace, totalSpace }
+```
+
+**Returns:** `Promise<DownloadStorageInfo>` — See [DownloadStorageInfo](/docs/types#downloadstorageinfo)
+
+---
+
+### `syncDownloads()`
+
+Validate all downloads and clean up orphaned records. Call this after manual file deletion.
+
+```typescript
+const cleaned = await DownloadManager.syncDownloads();
+console.log(`Cleaned ${cleaned} orphaned records`);
+```
+
+**Returns:** `Promise<number>` — Number of orphaned records removed
+
+---
+
+## Events
+
+### `onDownloadProgress(callback)`
+
+Called with progress updates during downloads.
+
+```typescript
+DownloadManager.onDownloadProgress((progress) => {
+  console.log(`${progress.trackId}: ${(progress.progress * 100).toFixed(1)}%`);
+});
+```
+
+| Param | Type | Description |
+|---|---|---|
+| `progress` | `DownloadProgress` | See [DownloadProgress](/docs/types#downloadprogress) |
+
+---
+
+### `onDownloadStateChange(callback)`
+
+Called when a download's state changes.
+
+```typescript
+DownloadManager.onDownloadStateChange((downloadId, trackId, state, error) => {
+  if (state === 'failed' && error) {
+    console.error(`Download failed: ${error.message} (${error.reason})`);
+  }
+});
+```
+
+| Param | Type | Description |
+|---|---|---|
+| `downloadId` | `string` | Download task ID |
+| `trackId` | `string` | Track ID |
+| `state` | `DownloadState` | New state |
+| `error` | `DownloadError?` | Error details if failed |
+
+---
+
+### `onDownloadComplete(callback)`
+
+Called when a download finishes successfully.
+
+```typescript
+DownloadManager.onDownloadComplete((downloadedTrack) => {
+  console.log(`Downloaded: ${downloadedTrack.originalTrack.title}`);
+  console.log(`Local path: ${downloadedTrack.localPath}`);
+});
+```
+
+| Param | Type | Description |
+|---|---|---|
+| `downloadedTrack` | `DownloadedTrack` | The completed download |

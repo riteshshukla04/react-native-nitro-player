@@ -1,0 +1,199 @@
+---
+title: Platform-Specific APIs
+description: AudioDevices (Android), AudioRoutePicker (iOS), and AndroidAutoMediaLibrary
+---
+
+## AudioDevices (Android Only)
+
+Manage audio output devices on Android — Bluetooth, USB, wired headsets, speakers, etc.
+
+```typescript
+import { AudioDevices } from 'react-native-nitro-player';
+```
+
+> `AudioDevices` is `null` on iOS. Always check availability before use.
+
+### `getAudioDevices()`
+
+Get all available audio output devices. **Synchronous.**
+
+```typescript
+const devices = AudioDevices?.getAudioDevices() ?? [];
+```
+
+**Returns:** `TAudioDevice[]`
+
+```typescript
+type TAudioDevice = {
+  id: number;       // Device ID
+  name: string;     // Display name
+  type: number;     // Android AudioDeviceInfo type constant
+  isActive: boolean; // Currently active output
+};
+```
+
+---
+
+### `setAudioDevice(deviceId)`
+
+Route audio output to a specific device.
+
+```typescript
+await AudioDevices?.setAudioDevice(device.id);
+```
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `deviceId` | `number` | Yes | Device ID from `getAudioDevices()` |
+
+**Returns:** `Promise<void>`
+
+---
+
+## AudioRoutePicker (iOS Only)
+
+Show the native iOS audio route picker for AirPlay and Bluetooth output selection.
+
+```typescript
+import { AudioRoutePicker } from 'react-native-nitro-player';
+```
+
+> `AudioRoutePicker` is `null` on Android. Always check availability before use.
+
+### `showRoutePicker()`
+
+Present the native `AVRoutePickerView` to let the user select an audio output. **Synchronous.**
+
+```typescript
+AudioRoutePicker?.showRoutePicker();
+```
+
+---
+
+## AndroidAutoMediaLibrary (Android Only)
+
+Configure the media browsing structure that appears in Android Auto.
+
+```typescript
+import { AndroidAutoMediaLibrary } from 'react-native-nitro-player';
+```
+
+> `AndroidAutoMediaLibrary` is `null` on iOS. For a simpler API, use the `AndroidAutoMediaLibraryHelper` utility below.
+
+### `setMediaLibrary(libraryJson)`
+
+Set the Android Auto media library structure as a JSON string.
+
+```typescript
+await AndroidAutoMediaLibrary?.setMediaLibrary(JSON.stringify(library));
+```
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `libraryJson` | `string` | Yes | JSON string of `MediaLibrary` |
+
+**Returns:** `Promise<void>`
+
+---
+
+### `clearMediaLibrary()`
+
+Clear the custom media library. Falls back to showing all playlists.
+
+```typescript
+await AndroidAutoMediaLibrary?.clearMediaLibrary();
+```
+
+**Returns:** `Promise<void>`
+
+---
+
+## AndroidAutoMediaLibraryHelper
+
+A convenience wrapper around `AndroidAutoMediaLibrary` that handles JSON serialization and null checks.
+
+```typescript
+import { AndroidAutoMediaLibraryHelper } from 'react-native-nitro-player';
+```
+
+### `set(library)`
+
+Set the media library structure with a typed object.
+
+```typescript
+import type { MediaLibrary } from 'react-native-nitro-player';
+
+const library: MediaLibrary = {
+  layoutType: 'list',
+  rootItems: [
+    {
+      id: 'favorites',
+      title: 'Favorites',
+      mediaType: 'folder',
+      isPlayable: false,
+      children: [
+        {
+          id: 'fav-playlist',
+          title: 'My Top Tracks',
+          mediaType: 'playlist',
+          isPlayable: true,
+          playlistId: 'playlist-123',
+        },
+      ],
+    },
+    {
+      id: 'recent',
+      title: 'Recently Played',
+      mediaType: 'playlist',
+      isPlayable: true,
+      playlistId: 'playlist-recent',
+    },
+  ],
+  appName: 'My Music App',
+};
+
+AndroidAutoMediaLibraryHelper.set(library);
+```
+
+### `clear()`
+
+```typescript
+AndroidAutoMediaLibraryHelper.clear();
+```
+
+### `isAvailable()`
+
+Check if Android Auto media library is available (always `false` on iOS).
+
+```typescript
+if (AndroidAutoMediaLibraryHelper.isAvailable()) {
+  AndroidAutoMediaLibraryHelper.set(library);
+}
+```
+
+**Returns:** `boolean`
+
+---
+
+## MediaLibrary Types
+
+```typescript
+interface MediaLibrary {
+  layoutType: LayoutType;    // 'grid' | 'list'
+  rootItems: MediaItem[];
+  appName?: string;
+  appIconUrl?: string;
+}
+
+interface MediaItem {
+  id: string;
+  title: string;
+  subtitle?: string;
+  iconUrl?: string;
+  isPlayable: boolean;
+  mediaType: MediaType;      // 'folder' | 'audio' | 'playlist'
+  playlistId?: string;       // Links to a PlayerQueue playlist
+  children?: MediaItem[];    // For browsable folders
+  layoutType?: LayoutType;   // Override parent's layout
+}
+```

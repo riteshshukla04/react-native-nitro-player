@@ -1,0 +1,126 @@
+---
+title: Queue Management
+description: Understanding the playNext stack, upNext queue, and playlist queue system
+---
+
+Nitro Player uses a three-tier queue system that determines the order tracks play.
+
+## Queue Priority
+
+When the current track ends, the player picks the next track using this priority:
+
+```
+1. playNext Stack (LIFO)  ← Highest priority
+2. upNext Queue (FIFO)
+3. Playlist                ← Lowest priority
+```
+
+### playNext Stack (LIFO)
+
+Last In, First Out. The most recently added track plays next. Think of it like interrupting: "play this one right now."
+
+```typescript
+await TrackPlayer.playNext('track-A');
+await TrackPlayer.playNext('track-B');
+// Next track will be: track-B (last added plays first)
+```
+
+### upNext Queue (FIFO)
+
+First In, First Out. Tracks play in the order they were added. Think of it like a queue: "add this to the line."
+
+```typescript
+await TrackPlayer.addToUpNext('track-C');
+await TrackPlayer.addToUpNext('track-D');
+// After playNext is empty: track-C plays first, then track-D
+```
+
+### Playlist
+
+The base queue. After all temporary tracks are exhausted, playback continues from the current position in the loaded playlist.
+
+## Visual Example
+
+Imagine a playlist with tracks [1, 2, 3, 4, 5], currently playing track 2:
+
+```
+Currently playing: Track 2
+
+playNext stack: [Track X, Track Y]  ← Y plays next (LIFO)
+upNext queue:   [Track A, Track B]  ← A plays after playNext is empty
+
+Effective play order:
+  Track Y → Track X → Track A → Track B → Track 3 → Track 4 → Track 5
+```
+
+## Managing Temporary Tracks
+
+### Remove specific tracks
+
+```typescript
+const removed = await TrackPlayer.removeFromPlayNext('track-Y');
+const removed = await TrackPlayer.removeFromUpNext('track-A');
+```
+
+### Clear entire lists
+
+```typescript
+await TrackPlayer.clearPlayNext();
+await TrackPlayer.clearUpNext();
+```
+
+### Reorder within the combined temporary queue
+
+```typescript
+// Move a track to position 0 (plays next)
+await TrackPlayer.reorderTemporaryTrack('track-A', 0);
+```
+
+The `newIndex` is 0-based within the combined list of playNext + upNext.
+
+### Inspect the queues
+
+```typescript
+const playNext = await TrackPlayer.getPlayNextQueue();
+const upNext = await TrackPlayer.getUpNextQueue();
+const actualQueue = await TrackPlayer.getActualQueue(); // Full resolved queue
+```
+
+## Reactive Updates
+
+### With hooks
+
+```tsx
+import { useActualQueue } from 'react-native-nitro-player';
+
+function QueueScreen() {
+  const { queue, isLoading } = useActualQueue();
+  // queue = resolved order including temporary tracks
+}
+```
+
+### With events
+
+```typescript
+TrackPlayer.onTemporaryQueueChange((playNextQueue, upNextQueue) => {
+  console.log(`playNext: ${playNextQueue.length}, upNext: ${upNextQueue.length}`);
+});
+```
+
+## currentPlayingType
+
+The `PlayerState.currentPlayingType` field tells you where the current track originates:
+
+| Value | Meaning |
+|---|---|
+| `'playlist'` | Playing from the loaded playlist |
+| `'play-next'` | Playing from the playNext stack |
+| `'up-next'` | Playing from the upNext queue |
+| `'not-playing'` | No track is playing |
+
+```typescript
+const state = await TrackPlayer.getState();
+if (state.currentPlayingType === 'play-next') {
+  // Current track was inserted via playNext()
+}
+```

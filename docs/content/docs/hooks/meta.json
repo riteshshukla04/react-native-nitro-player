@@ -1,0 +1,11 @@
+{
+  "title": "Hooks",
+  "pages": [
+    "index",
+    "playback-hooks",
+    "queue-hooks",
+    "download-hooks",
+    "equalizer-hooks",
+    "platform-hooks"
+  ]
+}

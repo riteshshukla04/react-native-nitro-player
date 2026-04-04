@@ -1,0 +1,10 @@
+{
+  "title": "API Reference",
+  "pages": [
+    "track-player",
+    "player-queue",
+    "download-manager",
+    "equalizer",
+    "platform-specific"
+  ]
+}
