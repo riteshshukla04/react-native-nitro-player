@@ -79,14 +79,16 @@ extension TrackPlayerCore {
       currentItem.status == .readyToPlay else { return }
 
     let duration = currentItem.duration.seconds
-    guard duration > 0 && !duration.isNaN && !duration.isInfinite else { return }
-
     let interval: Double
-    if duration > Constants.twoHoursInSeconds { interval = Constants.boundaryIntervalLong }
-    else if duration > Constants.oneHourInSeconds { interval = Constants.boundaryIntervalMedium }
-    else { interval = Constants.boundaryIntervalDefault }
+    if duration > 0 && !duration.isNaN && !duration.isInfinite {
+      if duration > Constants.twoHoursInSeconds { interval = Constants.boundaryIntervalLong }
+      else if duration > Constants.oneHourInSeconds { interval = Constants.boundaryIntervalMedium }
+      else { interval = Constants.boundaryIntervalDefault }
+    } else {
+      interval = Constants.boundaryIntervalDefault
+    }
 
-    NitroPlayerLogger.log("TrackPlayerCore", "⏱️ Setting up periodic observer (interval: \(interval)s, duration: \(Int(duration))s)")
+    NitroPlayerLogger.log("TrackPlayerCore", "⏱️ Setting up periodic observer (interval: \(interval)s, duration: \(duration)s)")
 
     let cmInterval = CMTime(seconds: interval, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
     // Deliver on playerQueue (not main)
@@ -104,20 +106,23 @@ extension TrackPlayerCore {
     guard player.rate > 0 else { return }
 
     let position = currentItem.currentTime().seconds
-    let duration = currentItem.duration.seconds
-    guard duration > 0 && !duration.isNaN && !duration.isInfinite else { return }
+    let rawDuration = currentItem.duration.seconds
+    let duration = (rawDuration > 0 && !rawDuration.isNaN && !rawDuration.isInfinite) ? rawDuration : 0.0
 
-    NitroPlayerLogger.log("TrackPlayerCore", "⏱️ Boundary crossed - position: \(Int(position))s / \(Int(duration))s")
+    NitroPlayerLogger.log("TrackPlayerCore", "⏱️ Boundary crossed - position: \(Int(position))s / duration: \(duration)s")
 
     notifyPlaybackProgress(position, duration, isManuallySeeked ? true : nil)
     isManuallySeeked = false
 
-    let remaining = duration - position
-    if remaining > 0 && remaining <= Constants.preferredForwardBufferDuration && !didRequestUrlsForCurrentItem {
-      didRequestUrlsForCurrentItem = true
-      NitroPlayerLogger.log("TrackPlayerCore",
-        "⏳ \(Int(remaining))s remaining — proactively checking upcoming URLs")
-      checkUpcomingTracksForUrls(lookahead: lookaheadCount)
+    // Only do remaining-time preload when duration is known
+    if duration > 0 {
+      let remaining = duration - position
+      if remaining > 0 && remaining <= Constants.preferredForwardBufferDuration && !didRequestUrlsForCurrentItem {
+        didRequestUrlsForCurrentItem = true
+        NitroPlayerLogger.log("TrackPlayerCore",
+          "⏳ \(Int(remaining))s remaining — proactively checking upcoming URLs")
+        checkUpcomingTracksForUrls(lookahead: lookaheadCount)
+      }
     }
   }
 

@@ -7,6 +7,7 @@
 
 import AVFoundation
 import Foundation
+import MediaPlayer
 
 extension TrackPlayerCore {
 
@@ -115,8 +116,15 @@ extension TrackPlayerCore {
     self.isManuallySeeked = true
     let time = CMTime(seconds: position, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
     player.seek(to: time) { [weak self] completed in
-      // Update now playing info to restore playback rate after seek
-      DispatchQueue.main.async { self?.mediaSessionManager?.refresh() }
+       // HackFix I dont know how to fix this, but it works.
+      let rate = Double(player.rate)
+      DispatchQueue.main.async {
+        if var info = MPNowPlayingInfoCenter.default().nowPlayingInfo {
+          info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = position
+          info[MPNowPlayingInfoPropertyPlaybackRate] = rate
+          MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+        }
+      }
       if completed {
         let duration = player.currentItem?.duration.seconds ?? 0.0
         self?.notifySeek(position, duration)

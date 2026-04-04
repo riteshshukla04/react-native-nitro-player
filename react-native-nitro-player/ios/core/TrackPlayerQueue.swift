@@ -43,7 +43,8 @@ extension TrackPlayerCore {
     }
     let currentTrack = getCurrentTrack()
     let currentPosition = player.currentTime().seconds
-    let totalDuration = player.currentItem?.duration.seconds ?? 0.0
+    let rawDuration = player.currentItem?.duration.seconds ?? 0.0
+    let totalDuration = (rawDuration > 0 && !rawDuration.isNaN && !rawDuration.isInfinite) ? rawDuration : 0.0
 
     let state: TrackPlayerState
     if player.rate == 0 { state = .paused }
