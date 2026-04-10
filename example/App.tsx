@@ -7,15 +7,42 @@
 
 import React, { useEffect } from 'react';
 import { Platform, PermissionsAndroid, StatusBar } from 'react-native';
-import { TrackPlayer } from 'react-native-nitro-player';
+import { TrackPlayer, CarPlayMediaLibraryHelper } from 'react-native-nitro-player';
 import AppNavigator from './src/navigation/AppNavigator';
 
 void TrackPlayer.configure({
   androidAutoEnabled: true,
-  carPlayEnabled: false,
+  carPlayEnabled: true,
   showInNotification: true,
   lookaheadCount: 3,
 });
+
+// Set up CarPlay media library (iOS only)
+if (Platform.OS === 'ios') {
+  CarPlayMediaLibraryHelper.set({
+    layoutType: 'list',
+    rootItems: [
+      {
+        id: 'chill_vibes',
+        title: 'Chill Vibes',
+        subtitle: 'Lofi & relaxation tracks',
+        mediaType: 'playlist',
+        playlistId: '', // Will be populated after playlist creation
+        isPlayable: false,
+        iconUrl: 'https://img.freepik.com/free-photo/sunset-time-tropical-beach-sea-with-coconut-palm-tree_74190-1075.jpg?w=740',
+      },
+      {
+        id: 'hip_hop',
+        title: 'Hip Hop',
+        subtitle: 'Rap & hip hop tracks',
+        mediaType: 'playlist',
+        playlistId: '', // Will be populated after playlist creation
+        isPlayable: false,
+        iconUrl: 'https://i.ytimg.com/vi/AMUcevp0sME/hq720.jpg',
+      },
+    ],
+  });
+}
 
 TrackPlayer.onTracksNeedUpdate(async (tracks, lookahead) => {
   console.info(`🔄 onTracksNeedUpdate fired! ${tracks.length} tracks need URLs (lookahead: ${lookahead})`);

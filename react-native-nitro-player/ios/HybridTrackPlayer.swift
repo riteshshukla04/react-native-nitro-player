@@ -168,6 +168,17 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
 
   func isAndroidAutoConnected() throws -> Bool { false }
 
+  // MARK: - CarPlay
+
+  func onCarPlayConnectionChange(callback: @escaping (Bool) -> Void) throws {
+    let id = core.addOnCarPlayConnectionChangeListener(callback)
+    listenerIds.append(("onCarPlayConnectionChange", id))
+  }
+
+  func isCarPlayConnected() throws -> Bool {
+    core.isCarPlayConnected()
+  }
+
   // MARK: - Event listeners (v2 — store IDs for cleanup)
 
   func onChangeTrack(callback: @escaping (_ track: TrackItem, _ reason: Reason?) -> Void) throws {
@@ -213,6 +224,7 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
       case "onPlaybackProgressChange":_ = core.removeOnProgressListener(id: id)
       case "onTracksNeedUpdate":      _ = core.removeOnTracksNeedUpdateListener(id: id)
       case "onTemporaryQueueChange":  _ = core.removeOnTemporaryQueueChangeListener(id: id)
+      case "onCarPlayConnectionChange": _ = core.removeOnCarPlayConnectionChangeListener(id: id)
       default: break
       }
     }

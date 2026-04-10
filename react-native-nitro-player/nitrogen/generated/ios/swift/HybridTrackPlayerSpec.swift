@@ -33,6 +33,8 @@ public protocol HybridTrackPlayerSpec_protocol: HybridObject {
   func onPlaybackProgressChange(callback: @escaping (_ position: Double, _ totalDuration: Double, _ isManuallySeeked: Bool?) -> Void) throws -> Void
   func onAndroidAutoConnectionChange(callback: @escaping (_ connected: Bool) -> Void) throws -> Void
   func isAndroidAutoConnected() throws -> Bool
+  func onCarPlayConnectionChange(callback: @escaping (_ connected: Bool) -> Void) throws -> Void
+  func isCarPlayConnected() throws -> Bool
   func setVolume(volume: Double) throws -> Promise<Void>
   func updateTracks(tracks: [TrackItem]) throws -> Promise<Void>
   func getTracksById(trackIds: [String]) throws -> Promise<[TrackItem]>

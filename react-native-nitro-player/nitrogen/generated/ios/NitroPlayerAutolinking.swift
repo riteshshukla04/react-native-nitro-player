@@ -36,6 +36,18 @@ public final class NitroPlayerAutolinking {
     return HybridTrackPlayer.self is any RecyclableView.Type
   }
   
+  public static func createCarPlayMediaLibrary() -> bridge.std__shared_ptr_HybridCarPlayMediaLibrarySpec_ {
+    let hybridObject = HybridCarPlayMediaLibrary()
+    return { () -> bridge.std__shared_ptr_HybridCarPlayMediaLibrarySpec_ in
+      let __cxxWrapped = hybridObject.getCxxWrapper()
+      return __cxxWrapped.getCxxPart()
+    }()
+  }
+  
+  public static func isCarPlayMediaLibraryRecyclable() -> Bool {
+    return HybridCarPlayMediaLibrary.self is any RecyclableView.Type
+  }
+  
   public static func createAudioRoutePicker() -> bridge.std__shared_ptr_HybridAudioRoutePickerSpec_ {
     let hybridObject = HybridAudioRoutePicker()
     return { () -> bridge.std__shared_ptr_HybridAudioRoutePickerSpec_ in

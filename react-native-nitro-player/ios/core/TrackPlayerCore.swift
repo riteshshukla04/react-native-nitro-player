@@ -70,6 +70,11 @@ class TrackPlayerCore: NSObject {
   internal let onTracksNeedUpdateListeners    = ListenerRegistry<([TrackItem], Int) -> Void>()
   internal let onTemporaryQueueChangeListeners = ListenerRegistry<([TrackItem], [TrackItem]) -> Void>()
 
+  // MARK: - CarPlay
+  internal var _isCarPlayConnectedField: Bool = false
+  internal var carPlayEnabled: Bool = false
+  internal let onCarPlayConnectionChangeListeners = ListenerRegistry<(Bool) -> Void>()
+
   // MARK: - Singleton
   static let shared = TrackPlayerCore()
 

@@ -54,6 +54,10 @@ extension TrackPlayerCore {
         self.lookaheadCount = la
         NitroPlayerLogger.log("TrackPlayerCore", "🔄 Lookahead count set to: \(la)")
       }
+      if let cp = carPlayEnabled {
+        self.carPlayEnabled = cp
+        NitroPlayerLogger.log("TrackPlayerCore", "🚗 CarPlay enabled: \(cp)")
+      }
     }
     DispatchQueue.main.async { [weak self] in
       self?.mediaSessionManager?.configure(

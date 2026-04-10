@@ -40,6 +40,8 @@ namespace margelo::nitro::nitroplayer { struct EqualizerState; }
 namespace margelo::nitro::nitroplayer { struct GainRange; }
 // Forward declaration of `HybridAudioRoutePickerSpec` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { class HybridAudioRoutePickerSpec; }
+// Forward declaration of `HybridCarPlayMediaLibrarySpec` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { class HybridCarPlayMediaLibrarySpec; }
 // Forward declaration of `HybridDownloadManagerSpec` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { class HybridDownloadManagerSpec; }
 // Forward declaration of `HybridEqualizerSpec` to properly resolve imports.
@@ -72,6 +74,8 @@ namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 // Forward declarations of Swift defined types
 // Forward declaration of `HybridAudioRoutePickerSpec_cxx` to properly resolve imports.
 namespace NitroPlayer { class HybridAudioRoutePickerSpec_cxx; }
+// Forward declaration of `HybridCarPlayMediaLibrarySpec_cxx` to properly resolve imports.
+namespace NitroPlayer { class HybridCarPlayMediaLibrarySpec_cxx; }
 // Forward declaration of `HybridDownloadManagerSpec_cxx` to properly resolve imports.
 namespace NitroPlayer { class HybridDownloadManagerSpec_cxx; }
 // Forward declaration of `HybridEqualizerSpec_cxx` to properly resolve imports.
@@ -98,6 +102,7 @@ namespace NitroPlayer { class HybridTrackPlayerSpec_cxx; }
 #include "EqualizerState.hpp"
 #include "GainRange.hpp"
 #include "HybridAudioRoutePickerSpec.hpp"
+#include "HybridCarPlayMediaLibrarySpec.hpp"
 #include "HybridDownloadManagerSpec.hpp"
 #include "HybridEqualizerSpec.hpp"
 #include "HybridPlayerQueueSpec.hpp"
@@ -150,6 +155,83 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
   }
   inline Result_void_ create_Result_void_(const std::exception_ptr& error) noexcept {
     return Result<void>::withError(error);
+  }
+  
+  // pragma MARK: std::shared_ptr<Promise<void>>
+  /**
+   * Specialized version of `std::shared_ptr<Promise<void>>`.
+   */
+  using std__shared_ptr_Promise_void__ = std::shared_ptr<Promise<void>>;
+  inline std::shared_ptr<Promise<void>> create_std__shared_ptr_Promise_void__() noexcept {
+    return Promise<void>::create();
+  }
+  inline PromiseHolder<void> wrap_std__shared_ptr_Promise_void__(std::shared_ptr<Promise<void>> promise) noexcept {
+    return PromiseHolder<void>(std::move(promise));
+  }
+  
+  // pragma MARK: std::function<void()>
+  /**
+   * Specialized version of `std::function<void()>`.
+   */
+  using Func_void = std::function<void()>;
+  /**
+   * Wrapper class for a `std::function<void()>`, this can be used from Swift.
+   */
+  class Func_void_Wrapper final {
+  public:
+    explicit Func_void_Wrapper(std::function<void()>&& func): _function(std::make_unique<std::function<void()>>(std::move(func))) {}
+    inline void call() const noexcept {
+      _function->operator()();
+    }
+  private:
+    std::unique_ptr<std::function<void()>> _function;
+  } SWIFT_NONCOPYABLE;
+  Func_void create_Func_void(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_Wrapper wrap_Func_void(Func_void value) noexcept {
+    return Func_void_Wrapper(std::move(value));
+  }
+  
+  // pragma MARK: std::function<void(const std::exception_ptr& /* error */)>
+  /**
+   * Specialized version of `std::function<void(const std::exception_ptr&)>`.
+   */
+  using Func_void_std__exception_ptr = std::function<void(const std::exception_ptr& /* error */)>;
+  /**
+   * Wrapper class for a `std::function<void(const std::exception_ptr& / * error * /)>`, this can be used from Swift.
+   */
+  class Func_void_std__exception_ptr_Wrapper final {
+  public:
+    explicit Func_void_std__exception_ptr_Wrapper(std::function<void(const std::exception_ptr& /* error */)>&& func): _function(std::make_unique<std::function<void(const std::exception_ptr& /* error */)>>(std::move(func))) {}
+    inline void call(std::exception_ptr error) const noexcept {
+      _function->operator()(error);
+    }
+  private:
+    std::unique_ptr<std::function<void(const std::exception_ptr& /* error */)>> _function;
+  } SWIFT_NONCOPYABLE;
+  Func_void_std__exception_ptr create_Func_void_std__exception_ptr(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_std__exception_ptr_Wrapper wrap_Func_void_std__exception_ptr(Func_void_std__exception_ptr value) noexcept {
+    return Func_void_std__exception_ptr_Wrapper(std::move(value));
+  }
+  
+  // pragma MARK: std::shared_ptr<HybridCarPlayMediaLibrarySpec>
+  /**
+   * Specialized version of `std::shared_ptr<HybridCarPlayMediaLibrarySpec>`.
+   */
+  using std__shared_ptr_HybridCarPlayMediaLibrarySpec_ = std::shared_ptr<HybridCarPlayMediaLibrarySpec>;
+  std::shared_ptr<HybridCarPlayMediaLibrarySpec> create_std__shared_ptr_HybridCarPlayMediaLibrarySpec_(void* NON_NULL swiftUnsafePointer) noexcept;
+  void* NON_NULL get_std__shared_ptr_HybridCarPlayMediaLibrarySpec_(std__shared_ptr_HybridCarPlayMediaLibrarySpec_ cppType);
+  
+  // pragma MARK: std::weak_ptr<HybridCarPlayMediaLibrarySpec>
+  using std__weak_ptr_HybridCarPlayMediaLibrarySpec_ = std::weak_ptr<HybridCarPlayMediaLibrarySpec>;
+  inline std__weak_ptr_HybridCarPlayMediaLibrarySpec_ weakify_std__shared_ptr_HybridCarPlayMediaLibrarySpec_(const std::shared_ptr<HybridCarPlayMediaLibrarySpec>& strong) noexcept { return strong; }
+  
+  // pragma MARK: Result<std::shared_ptr<Promise<void>>>
+  using Result_std__shared_ptr_Promise_void___ = Result<std::shared_ptr<Promise<void>>>;
+  inline Result_std__shared_ptr_Promise_void___ create_Result_std__shared_ptr_Promise_void___(const std::shared_ptr<Promise<void>>& value) noexcept {
+    return Result<std::shared_ptr<Promise<void>>>::withValue(value);
+  }
+  inline Result_std__shared_ptr_Promise_void___ create_Result_std__shared_ptr_Promise_void___(const std::exception_ptr& error) noexcept {
+    return Result<std::shared_ptr<Promise<void>>>::withError(error);
   }
   
   // pragma MARK: std::optional<StorageLocation>
@@ -275,28 +357,6 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     return Func_void_std__string_Wrapper(std::move(value));
   }
   
-  // pragma MARK: std::function<void(const std::exception_ptr& /* error */)>
-  /**
-   * Specialized version of `std::function<void(const std::exception_ptr&)>`.
-   */
-  using Func_void_std__exception_ptr = std::function<void(const std::exception_ptr& /* error */)>;
-  /**
-   * Wrapper class for a `std::function<void(const std::exception_ptr& / * error * /)>`, this can be used from Swift.
-   */
-  class Func_void_std__exception_ptr_Wrapper final {
-  public:
-    explicit Func_void_std__exception_ptr_Wrapper(std::function<void(const std::exception_ptr& /* error */)>&& func): _function(std::make_unique<std::function<void(const std::exception_ptr& /* error */)>>(std::move(func))) {}
-    inline void call(std::exception_ptr error) const noexcept {
-      _function->operator()(error);
-    }
-  private:
-    std::unique_ptr<std::function<void(const std::exception_ptr& /* error */)>> _function;
-  } SWIFT_NONCOPYABLE;
-  Func_void_std__exception_ptr create_Func_void_std__exception_ptr(void* NON_NULL swiftClosureWrapper) noexcept;
-  inline Func_void_std__exception_ptr_Wrapper wrap_Func_void_std__exception_ptr(Func_void_std__exception_ptr value) noexcept {
-    return Func_void_std__exception_ptr_Wrapper(std::move(value));
-  }
-  
   // pragma MARK: std::optional<std::shared_ptr<AnyMap>>
   /**
    * Specialized version of `std::optional<std::shared_ptr<AnyMap>>`.
@@ -381,40 +441,6 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     std::vector<TrackItem> vector;
     vector.reserve(size);
     return vector;
-  }
-  
-  // pragma MARK: std::shared_ptr<Promise<void>>
-  /**
-   * Specialized version of `std::shared_ptr<Promise<void>>`.
-   */
-  using std__shared_ptr_Promise_void__ = std::shared_ptr<Promise<void>>;
-  inline std::shared_ptr<Promise<void>> create_std__shared_ptr_Promise_void__() noexcept {
-    return Promise<void>::create();
-  }
-  inline PromiseHolder<void> wrap_std__shared_ptr_Promise_void__(std::shared_ptr<Promise<void>> promise) noexcept {
-    return PromiseHolder<void>(std::move(promise));
-  }
-  
-  // pragma MARK: std::function<void()>
-  /**
-   * Specialized version of `std::function<void()>`.
-   */
-  using Func_void = std::function<void()>;
-  /**
-   * Wrapper class for a `std::function<void()>`, this can be used from Swift.
-   */
-  class Func_void_Wrapper final {
-  public:
-    explicit Func_void_Wrapper(std::function<void()>&& func): _function(std::make_unique<std::function<void()>>(std::move(func))) {}
-    inline void call() const noexcept {
-      _function->operator()();
-    }
-  private:
-    std::unique_ptr<std::function<void()>> _function;
-  } SWIFT_NONCOPYABLE;
-  Func_void create_Func_void(void* NON_NULL swiftClosureWrapper) noexcept;
-  inline Func_void_Wrapper wrap_Func_void(Func_void value) noexcept {
-    return Func_void_Wrapper(std::move(value));
   }
   
   // pragma MARK: std::variant<nitro::NullType, double>
@@ -1015,15 +1041,6 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
   }
   inline Result_std__shared_ptr_Promise_std__vector_std__string____ create_Result_std__shared_ptr_Promise_std__vector_std__string____(const std::exception_ptr& error) noexcept {
     return Result<std::shared_ptr<Promise<std::vector<std::string>>>>::withError(error);
-  }
-  
-  // pragma MARK: Result<std::shared_ptr<Promise<void>>>
-  using Result_std__shared_ptr_Promise_void___ = Result<std::shared_ptr<Promise<void>>>;
-  inline Result_std__shared_ptr_Promise_void___ create_Result_std__shared_ptr_Promise_void___(const std::shared_ptr<Promise<void>>& value) noexcept {
-    return Result<std::shared_ptr<Promise<void>>>::withValue(value);
-  }
-  inline Result_std__shared_ptr_Promise_void___ create_Result_std__shared_ptr_Promise_void___(const std::exception_ptr& error) noexcept {
-    return Result<std::shared_ptr<Promise<void>>>::withError(error);
   }
   
   // pragma MARK: Result<std::variant<nitro::NullType, DownloadTask>>

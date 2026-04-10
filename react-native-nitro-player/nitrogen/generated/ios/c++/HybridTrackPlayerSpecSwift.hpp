@@ -243,6 +243,20 @@ namespace margelo::nitro::nitroplayer {
       auto __value = std::move(__result.value());
       return __value;
     }
+    inline void onCarPlayConnectionChange(const std::function<void(bool /* connected */)>& callback) override {
+      auto __result = _swiftPart.onCarPlayConnectionChange(callback);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+    }
+    inline bool isCarPlayConnected() override {
+      auto __result = _swiftPart.isCarPlayConnected();
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
     inline std::shared_ptr<Promise<void>> setVolume(double volume) override {
       auto __result = _swiftPart.setVolume(std::forward<decltype(volume)>(volume));
       if (__result.hasError()) [[unlikely]] {

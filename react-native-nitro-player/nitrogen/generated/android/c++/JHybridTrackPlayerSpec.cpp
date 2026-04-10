@@ -329,6 +329,15 @@ namespace margelo::nitro::nitroplayer {
     auto __result = method(_javaPart);
     return static_cast<bool>(__result);
   }
+  void JHybridTrackPlayerSpec::onCarPlayConnectionChange(const std::function<void(bool /* connected */)>& callback) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_bool::javaobject> /* callback */)>("onCarPlayConnectionChange_cxx");
+    method(_javaPart, JFunc_void_bool_cxx::fromCpp(callback));
+  }
+  bool JHybridTrackPlayerSpec::isCarPlayConnected() {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jboolean()>("isCarPlayConnected");
+    auto __result = method(_javaPart);
+    return static_cast<bool>(__result);
+  }
   std::shared_ptr<Promise<void>> JHybridTrackPlayerSpec::setVolume(double volume) {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(double /* volume */)>("setVolume");
     auto __result = method(_javaPart, volume);

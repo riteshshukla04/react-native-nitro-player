@@ -41,6 +41,12 @@
         "implementationClassName": "HybridAudioDevices"
       }
     },
+    "CarPlayMediaLibrary": {
+      "ios": {
+        "language": "swift",
+        "implementationClassName": "HybridCarPlayMediaLibrary"
+      }
+    },
     "AudioRoutePicker": {
       "ios": {
         "language": "swift",
