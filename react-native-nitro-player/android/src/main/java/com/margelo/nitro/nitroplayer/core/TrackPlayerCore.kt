@@ -120,6 +120,7 @@ class TrackPlayerCore private constructor(
             } else {
                 updatePlayerQueue(playlist.tracks)
             }
+            checkUpcomingTracksForUrls(lookaheadCount)
         }
 
     // ── Service binding ────────────────────────────────────────────────────
