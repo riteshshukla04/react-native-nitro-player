@@ -172,6 +172,7 @@ class PlaylistManager {
     // Update TrackPlayerCore if this is the current playlist
     if currentPlaylistId == playlistId {
       TrackPlayerCore.shared.updatePlaylist(playlistId: playlistId)
+      TrackPlayerCore.shared.checkUpcomingTracksForUrls(lookahead: TrackPlayerCore.shared.lookaheadCount)
     }
 
     return true

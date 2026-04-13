@@ -53,12 +53,14 @@ extension TrackPlayerCore {
       // If nothing is playing yet, do a full load
       guard self.player?.currentItem != nil else {
         self.updatePlayerQueue(tracks: playlist.tracks)
+        self.checkUpcomingTracksForUrls(lookahead: self.lookaheadCount)
         return
       }
 
       // Update tracks list without interrupting playback
       self.currentTracks = playlist.tracks
       self.rebuildAVQueueFromCurrentPosition()
+      self.checkUpcomingTracksForUrls(lookahead: self.lookaheadCount)
     }
 
     pendingPlaylistUpdateWorkItem = workItem
