@@ -152,6 +152,25 @@ internal fun TrackPlayerCore.makeMediaItem(
 
     val effectiveUrl = downloadManager.getEffectiveUrl(track)
 
+    // Register headers from extraPayload if present
+    track.extraPayload?.let { payload ->
+        try {
+            if (payload.contains("headers") && payload.isObject("headers")) {
+                val map = payload.toHashMap()
+                val headersRaw = map["headers"]
+                if (headersRaw is Map<*, *>) {
+                    val headers = HashMap<String, String>()
+                    headersRaw.forEach { (k, v) ->
+                        if (k is String && v is String) headers[k] = v
+                    }
+                    if (headers.isNotEmpty()) {
+                        com.margelo.nitro.nitroplayer.media.AuthAwareHttpDataSourceFactory.setHeadersForUrl(effectiveUrl, headers)
+                    }
+                }
+            }
+        } catch (_: Exception) {}
+    }
+
     return MediaItem
         .Builder()
         .setMediaId(customMediaId ?: track.id)
