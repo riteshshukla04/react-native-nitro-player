@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -40,8 +41,15 @@ object ExoPlayerBuilder {
                 .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
                 .build()
 
+        // DefaultDataSource wraps AuthAwareHttpDataSourceFactory for HTTP/HTTPS
+        // and handles file://, content://, asset:// natively
+        val dataSourceFactory = DefaultDataSource.Factory(
+            context,
+            AuthAwareHttpDataSourceFactory()
+        )
+
         val mediaSourceFactory = DefaultMediaSourceFactory(context)
-            .setDataSourceFactory(AuthAwareHttpDataSourceFactory())
+            .setDataSourceFactory(dataSourceFactory)
 
         return ExoPlayer
             .Builder(context)
