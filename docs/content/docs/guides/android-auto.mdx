@@ -17,7 +17,14 @@ await TrackPlayer.configure({
 
 ## AndroidManifest Setup
 
-Add the following to your `android/app/src/main/AndroidManifest.xml`:
+Add the following to your `android/app/src/main/AndroidManifest.xml`. Make sure the root `<manifest>` tag declares the `tools` namespace:
+
+```xml
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+```
+
+> The library's own manifest already registers `NitroPlayerPlaybackService` (the Media3 `MediaSessionService` that powers playback and now-playing). For Android Auto **browsing**, you also need to expose the separate `NitroPlayerMediaBrowserService` from your app's manifest — Android Auto only discovers browse trees on services declared in the consuming app.
 
 ### Media Browser Service
 
@@ -29,7 +36,8 @@ Inside the `<application>` tag:
   android:resource="@xml/automotive_app_desc" />
 
 <service
-  android:name="com.margelo.nitro.nitroplayer.service.MediaBrowserService"
+  android:name="com.margelo.nitro.nitroplayer.media.NitroPlayerMediaBrowserService"
+  android:foregroundServiceType="mediaPlayback"
   android:exported="true"
   tools:ignore="ExportedService">
   <intent-filter>
@@ -37,6 +45,8 @@ Inside the `<application>` tag:
   </intent-filter>
 </service>
 ```
+
+> ⚠️ **Common pitfall:** declaring the `MediaBrowserService` intent-filter on `NitroPlayerPlaybackService` (or on a non-existent class like `com.margelo.nitro.nitroplayer.service.MediaBrowserService`) will let now-playing work but show an empty browse tree in Android Auto. The class name must be exactly `com.margelo.nitro.nitroplayer.media.NitroPlayerMediaBrowserService`.
 
 ### Automotive App Descriptor
 

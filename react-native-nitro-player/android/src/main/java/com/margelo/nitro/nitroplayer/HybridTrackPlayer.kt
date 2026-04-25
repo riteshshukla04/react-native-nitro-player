@@ -153,6 +153,12 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
     }
 
     override fun onAndroidAutoConnectionChange(callback: (connected: Boolean) -> Unit) {
+        // Replace any prior listener registered through this HybridObject so JS
+        // reloads (Fast Refresh, hot reload) don't accumulate handlers.
+        val existing = listenerIds.filter { it.first == "onAndroidAutoConnectionChange" }
+        existing.forEach { (_, oldId) -> core.removeOnAndroidAutoConnectionListener(oldId) }
+        listenerIds.removeAll { it.first == "onAndroidAutoConnectionChange" }
+
         val id = core.addOnAndroidAutoConnectionListener(callback)
         listenerIds += "onAndroidAutoConnectionChange" to id
     }
