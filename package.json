@@ -1,7 +1,7 @@
 {
   "name": "react-native-nitro-player",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.0.2",
   "repository": "https://github.com/mrousavy/react-native-nitro-player.git",
   "author": "Ritesh Shukla <riteshshukla2381@gmail.com> (https://github.com/riteshshukla04)",
   "workspaces": [
