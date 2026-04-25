@@ -319,7 +319,29 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
      * Fallback: Load playlists when no media library is set
      */
     private suspend fun loadFallbackPlaylists(): MutableList<MediaBrowserCompat.MediaItem> {
-        val playlists = trackPlayerCore?.getAllPlaylists() ?: emptyList()
+        // Apps frequently create internal queue playlists named with raw UUIDs
+        // (e.g. `PlayerQueue.createPlaylist(uuid.v4())`). Showing those in
+        // Android Auto surfaces ugly UUID strings as titles. Filter:
+        //   - empty playlists (no tracks)
+        //   - playlists whose name is a bare UUID
+        //   - duplicate names (keep latest)
+        // and prefer surfacing the currently-loaded playlist first so the user
+        // always has access to "what's playing now" while the JS side hasn't
+        // published a media library yet.
+        val rawPlaylists = trackPlayerCore?.getAllPlaylists() ?: emptyList()
+        val currentId = trackPlayerCore?.getCurrentPlaylistId()
+        val uuidRegex = Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+
+        val dedupedByName = linkedMapOf<String, com.margelo.nitro.nitroplayer.playlist.Playlist>()
+        rawPlaylists.forEach { p ->
+            if (p.tracks.isEmpty()) return@forEach
+            // Always keep the currently-playing playlist regardless of name shape.
+            val isCurrent = p.id == currentId
+            if (!isCurrent && uuidRegex.matches(p.name)) return@forEach
+            dedupedByName[p.name] = p
+        }
+        val playlists =
+            dedupedByName.values.sortedByDescending { it.id == currentId }
         val mediaItems = mutableListOf<MediaBrowserCompat.MediaItem>()
 
         playlists.forEach { playlist ->
@@ -331,11 +353,13 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
                     )
                 }
 
+            val displayTitle =
+                if (uuidRegex.matches(playlist.name)) "Now Playing" else playlist.name
             val description =
                 MediaDescriptionCompat
                     .Builder()
                     .setMediaId("$PLAYLIST_PREFIX${playlist.id}")
-                    .setTitle(playlist.name)
+                    .setTitle(displayTitle)
                     .setSubtitle(playlist.description ?: "${playlist.tracks.size} tracks")
                     .setIconUri(playlist.artwork?.let { Uri.parse(it) })
                     .setExtras(extras)

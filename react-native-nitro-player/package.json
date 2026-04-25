@@ -1,6 +1,6 @@
 {
   "name": "react-native-nitro-player",
-  "version": "1.0.1",
+  "version": "1.0.2-jellify-aa.1",
   "description": "A powerful audio player library for React Native with playlist management, playback controls, and support for Android Auto and CarPlay",
   "main": "lib/index",
   "module": "lib/index",
