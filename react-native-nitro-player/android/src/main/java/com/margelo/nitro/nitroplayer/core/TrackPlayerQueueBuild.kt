@@ -32,7 +32,6 @@ internal fun TrackPlayerCore.rebuildQueueAndPlayFromIndex(index: Int) {
     exo.clearMediaItems()
     exo.setMediaItems(mediaItems)
     exo.seekToDefaultPosition(0)
-    exo.playWhenReady = true
     exo.prepare()
 }
 
