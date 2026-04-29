@@ -372,16 +372,18 @@ extension TrackPlayerCore {
     }
     currentItemObservers.append(statusObserver)
 
-    let bufferEmptyObserver = item.observe(\.isPlaybackBufferEmpty, options: [.new]) { item, _ in
+    let bufferEmptyObserver = item.observe(\.isPlaybackBufferEmpty, options: [.new]) { [weak self] item, _ in
       if item.isPlaybackBufferEmpty {
         NitroPlayerLogger.log("TrackPlayerCore", "⏸️ Buffer empty (buffering)")
+        self?.emitStateChange()
       }
     }
     currentItemObservers.append(bufferEmptyObserver)
 
-    let bufferKeepUpObserver = item.observe(\.isPlaybackLikelyToKeepUp, options: [.new]) { item, _ in
+    let bufferKeepUpObserver = item.observe(\.isPlaybackLikelyToKeepUp, options: [.new]) { [weak self] item, _ in
       if item.isPlaybackLikelyToKeepUp {
         NitroPlayerLogger.log("TrackPlayerCore", "▶️ Buffer likely to keep up")
+        self?.emitStateChange()
       }
     }
     currentItemObservers.append(bufferKeepUpObserver)
@@ -390,10 +392,15 @@ extension TrackPlayerCore {
   func emitStateChange(reason: Reason? = nil) {
     guard let player else { return }
     let state: TrackPlayerState
-    if player.rate == 0 { state = .paused }
-    else if player.timeControlStatus == .playing { state = .playing }
-    else if player.timeControlStatus == .waitingToPlayAtSpecifiedRate { state = .paused }
-    else { state = .stopped }
+    if player.timeControlStatus == .playing {
+      state = .playing
+    } else if player.timeControlStatus == .waitingToPlayAtSpecifiedRate {
+      state = .buffering
+    } else if player.rate == 0 {
+      state = .paused
+    } else {
+      state = .stopped
+    }
     NitroPlayerLogger.log("TrackPlayerCore", "🔔 Emitting state change: \(state)")
     notifyPlaybackStateChange(state, reason)
   }

@@ -26,7 +26,7 @@ export interface Playlist {
 
 export type QueueOperation = 'add' | 'remove' | 'clear' | 'update'
 
-export type TrackPlayerState = 'playing' | 'paused' | 'stopped'
+export type TrackPlayerState = 'playing' | 'paused' | 'stopped' | 'buffering'
 
 export type Reason = 'user_action' | 'skip' | 'end' | 'error' | 'repeat'
 

@@ -47,8 +47,9 @@ extension TrackPlayerCore {
     let totalDuration = (rawDuration > 0 && !rawDuration.isNaN && !rawDuration.isInfinite) ? rawDuration : 0.0
 
     let state: TrackPlayerState
-    if player.rate == 0 { state = .paused }
-    else if player.timeControlStatus == .playing { state = .playing }
+    if player.timeControlStatus == .playing { state = .playing }
+    else if player.timeControlStatus == .waitingToPlayAtSpecifiedRate { state = .buffering }
+    else if player.rate == 0 { state = .paused }
     else { state = .stopped }
 
     let currentIndex: Double = currentTrackIndex >= 0 ? Double(currentTrackIndex) : -1.0
