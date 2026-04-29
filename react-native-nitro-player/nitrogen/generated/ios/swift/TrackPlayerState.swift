@@ -23,6 +23,8 @@ public extension TrackPlayerState {
         self = .playing
       case "stopped":
         self = .stopped
+      case "buffering":
+        self = .buffering
       default:
         return nil
     }
@@ -39,6 +41,8 @@ public extension TrackPlayerState {
         return "playing"
       case .stopped:
         return "stopped"
+      case .buffering:
+        return "buffering"
     }
   }
 }

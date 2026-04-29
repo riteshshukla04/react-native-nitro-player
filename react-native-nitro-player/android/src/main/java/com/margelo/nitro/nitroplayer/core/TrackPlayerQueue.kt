@@ -38,7 +38,7 @@ internal fun TrackPlayerCore.getStateInternal(): PlayerState {
     val state =
         when (exo.playbackState) {
             Player.STATE_IDLE -> TrackPlayerState.STOPPED
-            Player.STATE_BUFFERING -> if (exo.playWhenReady) TrackPlayerState.PLAYING else TrackPlayerState.PAUSED
+            Player.STATE_BUFFERING -> if (exo.playWhenReady) TrackPlayerState.BUFFERING else TrackPlayerState.PAUSED
             Player.STATE_READY -> if (exo.isPlaying) TrackPlayerState.PLAYING else TrackPlayerState.PAUSED
             Player.STATE_ENDED -> TrackPlayerState.STOPPED
             else -> TrackPlayerState.STOPPED

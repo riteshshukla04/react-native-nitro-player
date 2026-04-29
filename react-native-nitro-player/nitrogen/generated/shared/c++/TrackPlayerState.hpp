@@ -32,6 +32,7 @@ namespace margelo::nitro::nitroplayer {
     PAUSED      SWIFT_NAME(paused) = 0,
     PLAYING      SWIFT_NAME(playing) = 1,
     STOPPED      SWIFT_NAME(stopped) = 2,
+    BUFFERING      SWIFT_NAME(buffering) = 3,
   } CLOSED_ENUM;
 
 } // namespace margelo::nitro::nitroplayer
@@ -47,6 +48,7 @@ namespace margelo::nitro {
         case hashString("paused"): return margelo::nitro::nitroplayer::TrackPlayerState::PAUSED;
         case hashString("playing"): return margelo::nitro::nitroplayer::TrackPlayerState::PLAYING;
         case hashString("stopped"): return margelo::nitro::nitroplayer::TrackPlayerState::STOPPED;
+        case hashString("buffering"): return margelo::nitro::nitroplayer::TrackPlayerState::BUFFERING;
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert \"" + unionValue + "\" to enum TrackPlayerState - invalid value!");
       }
@@ -56,6 +58,7 @@ namespace margelo::nitro {
         case margelo::nitro::nitroplayer::TrackPlayerState::PAUSED: return JSIConverter<std::string>::toJSI(runtime, "paused");
         case margelo::nitro::nitroplayer::TrackPlayerState::PLAYING: return JSIConverter<std::string>::toJSI(runtime, "playing");
         case margelo::nitro::nitroplayer::TrackPlayerState::STOPPED: return JSIConverter<std::string>::toJSI(runtime, "stopped");
+        case margelo::nitro::nitroplayer::TrackPlayerState::BUFFERING: return JSIConverter<std::string>::toJSI(runtime, "buffering");
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert TrackPlayerState to JS - invalid value: "
                                     + std::to_string(static_cast<int>(arg)) + "!");
@@ -70,6 +73,7 @@ namespace margelo::nitro {
         case hashString("paused"):
         case hashString("playing"):
         case hashString("stopped"):
+        case hashString("buffering"):
           return true;
         default:
           return false;
