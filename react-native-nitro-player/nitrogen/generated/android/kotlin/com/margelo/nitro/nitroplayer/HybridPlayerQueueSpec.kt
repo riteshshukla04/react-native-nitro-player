@@ -68,7 +68,7 @@ abstract class HybridPlayerQueueSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
-  abstract fun loadPlaylist(playlistId: String): Promise<Unit>
+  abstract fun loadPlaylist(playlistId: String, index: Double?): Promise<Unit>
   
   @DoNotStrip
   @Keep

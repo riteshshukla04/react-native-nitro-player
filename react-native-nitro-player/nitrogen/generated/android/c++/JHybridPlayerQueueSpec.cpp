@@ -205,9 +205,9 @@ namespace margelo::nitro::nitroplayer {
       return __promise;
     }();
   }
-  std::shared_ptr<Promise<void>> JHybridPlayerQueueSpec::loadPlaylist(const std::string& playlistId) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* playlistId */)>("loadPlaylist");
-    auto __result = method(_javaPart, jni::make_jstring(playlistId));
+  std::shared_ptr<Promise<void>> JHybridPlayerQueueSpec::loadPlaylist(const std::string& playlistId, std::optional<double> index) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* playlistId */, jni::alias_ref<jni::JDouble> /* index */)>("loadPlaylist");
+    auto __result = method(_javaPart, jni::make_jstring(playlistId), index.has_value() ? jni::JDouble::valueOf(index.value()) : nullptr);
     return [&]() {
       auto __promise = Promise<void>::create();
       __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& /* unit */) {

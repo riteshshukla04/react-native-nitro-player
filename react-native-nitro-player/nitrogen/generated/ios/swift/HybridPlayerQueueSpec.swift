@@ -22,7 +22,7 @@ public protocol HybridPlayerQueueSpec_protocol: HybridObject {
   func addTracksToPlaylist(playlistId: String, tracks: [TrackItem], index: Double?) throws -> Promise<Void>
   func removeTrackFromPlaylist(playlistId: String, trackId: String) throws -> Promise<Void>
   func reorderTrackInPlaylist(playlistId: String, trackId: String, newIndex: Double) throws -> Promise<Void>
-  func loadPlaylist(playlistId: String) throws -> Promise<Void>
+  func loadPlaylist(playlistId: String, index: Double?) throws -> Promise<Void>
   func getCurrentPlaylistId() throws -> Variant_NullType_String
   func onPlaylistsChanged(callback: @escaping (_ playlists: [Playlist], _ operation: QueueOperation?) -> Void) throws -> Void
   func onPlaylistChanged(callback: @escaping (_ playlistId: String, _ playlist: Playlist, _ operation: QueueOperation?) -> Void) throws -> Void

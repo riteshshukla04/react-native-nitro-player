@@ -261,9 +261,13 @@ class PlaylistManager {
   /**
    * Load a playlist for playback (sets it as current)
    */
-  func loadPlaylist(playlistId: String) -> Bool {
-    let exists = queue.sync { playlists[playlistId] != nil }
-    guard exists else {
+  func loadPlaylist(playlistId: String, index: Int? = nil) -> Bool {
+    let isValid = queue.sync {
+      guard let playlist = playlists[playlistId] else { return false }
+      guard let index else { return true }
+      return index >= 0 && index < playlist.tracks.count
+    }
+    guard isValid else {
       return false
     }
 

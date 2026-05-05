@@ -8,7 +8,7 @@ import Foundation
 
 extension TrackPlayerCore {
 
-  func loadPlaylist(playlistId: String) async {
+  func loadPlaylist(playlistId: String, startIndex: Int? = nil) async {
     await withPlayerQueueNoThrow {
       self.playNextStack.removeAll()
       self.upNextQueue.removeAll()
@@ -32,8 +32,22 @@ extension TrackPlayerCore {
       }
       NitroPlayerLogger.log("TrackPlayerCore", String(repeating: "🎼", count: Constants.playlistSeparatorLength) + "\n")
 
+      let targetIndex: Int
+      if let startIndex {
+        guard startIndex >= 0 && startIndex < playlist.tracks.count else {
+          NitroPlayerLogger.log("TrackPlayerCore", "   ❌ Invalid start index: \(startIndex) (track count: \(playlist.tracks.count))")
+          return
+        }
+        targetIndex = startIndex
+      } else {
+        targetIndex = 0
+      }
+
       self.currentPlaylistId = playlistId
       self.updatePlayerQueue(tracks: playlist.tracks)
+      if targetIndex > 0 {
+        _ = self.rebuildQueueFromPlaylistIndex(index: targetIndex)
+      }
       self.emitStateChange()
       self.checkUpcomingTracksForUrls(lookahead: self.lookaheadCount)
       self.notifyTemporaryQueueChange()

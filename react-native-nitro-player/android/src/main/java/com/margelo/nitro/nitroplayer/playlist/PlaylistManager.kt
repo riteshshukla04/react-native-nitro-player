@@ -304,8 +304,9 @@ class PlaylistManager private constructor(
     /**
      * Load a playlist for playback (sets it as current)
      */
-    fun loadPlaylist(playlistId: String): Boolean {
-        if (playlists[playlistId] == null) return false
+    fun loadPlaylist(playlistId: String, index: Int? = null): Boolean {
+        val playlist = playlists[playlistId] ?: return false
+        if (index != null && (index < 0 || index >= playlist.tracks.size)) return false
         currentPlaylistId = playlistId
         return true
     }
