@@ -71,7 +71,7 @@ namespace margelo::nitro::nitroplayer {
       virtual std::shared_ptr<Promise<void>> addTracksToPlaylist(const std::string& playlistId, const std::vector<TrackItem>& tracks, std::optional<double> index) = 0;
       virtual std::shared_ptr<Promise<void>> removeTrackFromPlaylist(const std::string& playlistId, const std::string& trackId) = 0;
       virtual std::shared_ptr<Promise<void>> reorderTrackInPlaylist(const std::string& playlistId, const std::string& trackId, double newIndex) = 0;
-      virtual std::shared_ptr<Promise<void>> loadPlaylist(const std::string& playlistId) = 0;
+      virtual std::shared_ptr<Promise<void>> loadPlaylist(const std::string& playlistId, std::optional<double> index) = 0;
       virtual std::variant<nitro::NullType, std::string> getCurrentPlaylistId() = 0;
       virtual void onPlaylistsChanged(const std::function<void(const std::vector<Playlist>& /* playlists */, std::optional<QueueOperation> /* operation */)>& callback) = 0;
       virtual void onPlaylistChanged(const std::function<void(const std::string& /* playlistId */, const Playlist& /* playlist */, std::optional<QueueOperation> /* operation */)>& callback) = 0;

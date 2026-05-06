@@ -48,7 +48,7 @@ export interface PlayerQueue extends HybridObject<{
   ): Promise<void>
 
   // Playback control
-  loadPlaylist(playlistId: string): Promise<void>
+  loadPlaylist(playlistId: string, index?: number): Promise<void>
   getCurrentPlaylistId(): string | null
 
   // Events

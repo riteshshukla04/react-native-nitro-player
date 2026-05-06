@@ -109,9 +109,12 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
 
     // ── Playback control ──────────────────────────────────────────────────────
 
-    override fun loadPlaylist(playlistId: String): Promise<Unit> =
+    override fun loadPlaylist(playlistId: String, index: Double?): Promise<Unit> =
         Promise.async {
-            core.loadPlaylist(playlistId)
+            val startIndex = index?.toInt()
+            val loaded = playlistManager.loadPlaylist(playlistId, startIndex)
+            if (!loaded) return@async
+            core.loadPlaylist(playlistId, startIndex)
         }
 
     override fun getCurrentPlaylistId(): Variant_NullType_String {

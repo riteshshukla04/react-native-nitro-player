@@ -77,11 +77,13 @@ final class HybridPlayerQueue: HybridPlayerQueueSpec {
 
   // MARK: - Playback control
 
-  func loadPlaylist(playlistId: String) throws -> Promise<Void> {
+  func loadPlaylist(playlistId: String, index: Double?) throws -> Promise<Void> {
     Promise.async {
+      let startIndex = index.map { Int($0) }
       // Update PlaylistManager.currentPlaylistId so getCurrentPlaylistId() returns correctly
-      _ = self.playlistManager.loadPlaylist(playlistId: playlistId)
-      await self.core.loadPlaylist(playlistId: playlistId)
+      let loaded = self.playlistManager.loadPlaylist(playlistId: playlistId, index: startIndex)
+      guard loaded else { return }
+      await self.core.loadPlaylist(playlistId: playlistId, startIndex: startIndex)
     }
   }
 

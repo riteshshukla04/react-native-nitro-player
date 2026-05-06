@@ -11,14 +11,29 @@ import com.margelo.nitro.nitroplayer.TrackItem
 
 // ── Playlist loading ──────────────────────────────────────────────────────
 
-suspend fun TrackPlayerCore.loadPlaylist(playlistId: String) =
+suspend fun TrackPlayerCore.loadPlaylist(
+    playlistId: String,
+    startIndex: Int? = null,
+) =
     withPlayerContext {
         playNextStack.clear()
         upNextQueue.clear()
         currentTemporaryType = TrackPlayerCore.TemporaryType.NONE
         val playlist = playlistManager.getPlaylist(playlistId) ?: return@withPlayerContext
+
+        val targetIndex =
+            if (startIndex != null) {
+                if (startIndex < 0 || startIndex >= playlist.tracks.size) return@withPlayerContext
+                startIndex
+            } else {
+                0
+            }
+
         currentPlaylistId = playlistId
         updatePlayerQueue(playlist.tracks)
+        if (targetIndex > 0) {
+            playFromIndexInternal(targetIndex)
+        }
         checkUpcomingTracksForUrls(lookaheadCount)
         notifyTemporaryQueueChange()
     }
