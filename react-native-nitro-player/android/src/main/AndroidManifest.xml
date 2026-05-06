@@ -8,6 +8,11 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Required so Android Auto / Assistant treat this as a media app. -->
+    <uses-feature
+        android:name="android.hardware.audio.output"
+        android:required="false" />
+
     <application>
         <!-- PlaybackService keeps music alive when screen is locked / app backgrounded -->
         <service
@@ -17,6 +22,13 @@
             tools:node="merge">
             <intent-filter>
                 <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+            <!-- Legacy voice-search entry point. Modern Android Auto / Assistant
+                 routes through MediaSession.Callback.onSetMediaItems with a
+                 searchQuery, but some surfaces still send this action. -->
+            <intent-filter>
+                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </service>
 
