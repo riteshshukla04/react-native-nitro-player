@@ -30,9 +30,13 @@ suspend fun TrackPlayerCore.loadPlaylist(
             }
 
         currentPlaylistId = playlistId
-        updatePlayerQueue(playlist.tracks)
-        if (targetIndex > 0) {
-            playFromIndexInternal(targetIndex)
+        if (targetIndex == 0) {
+            updatePlayerQueue(playlist.tracks)
+        } else {
+            // Bypass updatePlayerQueue to avoid emitting a spurious onTrackChange for index 0.
+            // Set currentTracks directly so rebuildQueueAndPlayFromIndex can use them.
+            currentTracks = playlist.tracks
+            rebuildQueueAndPlayFromIndex(targetIndex)
         }
         checkUpcomingTracksForUrls(lookaheadCount)
         notifyTemporaryQueueChange()
