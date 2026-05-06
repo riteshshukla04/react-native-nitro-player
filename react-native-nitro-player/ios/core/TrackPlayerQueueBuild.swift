@@ -55,11 +55,11 @@ extension TrackPlayerCore {
     NitroPlayerLogger.log("TrackPlayerCore", "🔄 Removing \(existingPlayer.items().count) old items from player")
     existingPlayer.removeAllItems()
 
-    // Lazy-load mode: if any track has no URL AND is not downloaded locally,
-    // we can't create an AVPlayerItem for it and the queue order would be wrong.
-    let isLazyLoad = tracks.contains {
+    // Lazy-load mode if the first track needs a URL. Tracks further in the queue with
+    // empty URLs are dropped safely by compactMap below and resolved via onTracksNeedUpdate.
+    let isLazyLoad = tracks.first.map {
       $0.url.isEmpty && !DownloadManagerCore.shared.isTrackDownloaded(trackId: $0.id)
-    }
+    } ?? false
     if isLazyLoad {
       NitroPlayerLogger.log("TrackPlayerCore", "⏳ Lazy-load mode — player cleared, awaiting URL resolution")
       return
