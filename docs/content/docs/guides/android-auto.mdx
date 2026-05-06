@@ -170,6 +170,50 @@ TrackPlayer.onAndroidAutoConnectionChange((connected) => {
 });
 ```
 
+## Voice Search (Google Assistant / Gemini)
+
+Nitro Player supports voice queries like _"Hey Google, play **Daft Punk** on My Music App"_ on Android Auto, the lock screen, and Pixel devices running Gemini. Queries are routed into `MediaSession.Callback.onSetMediaItems` and matched against your loaded playlists — no extra wiring is required on the JS side.
+
+### Manifest
+
+To opt in, declare the legacy `MEDIA_PLAY_FROM_SEARCH` intent on your app's launcher activity. Some Assistant/Gemini surfaces still dispatch through this action, and registering it is what makes Android treat your app as a voice-targetable media app:
+
+```xml
+<activity android:name=".MainActivity" ...>
+  <intent-filter>
+    <action android:name="android.intent.action.MAIN" />
+    <category android:name="android.intent.category.LAUNCHER" />
+  </intent-filter>
+
+  <intent-filter>
+    <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
+    <category android:name="android.intent.category.DEFAULT" />
+  </intent-filter>
+</activity>
+```
+
+> The library's own `NitroPlayerPlaybackService` already declares the same intent-filter, so the modern `MediaSession` path works out of the box. Adding it to your launcher activity is what lets Assistant pick your app by name (_"…on My Music App"_).
+
+### How matching works
+
+When the user issues a voice command, Assistant/Gemini sends a `MediaItem` whose `requestMetadata.searchQuery` carries the spoken query, plus a `MediaStore.EXTRA_MEDIA_FOCUS` bundle indicating whether they asked for an artist, album, genre, playlist, or title. Nitro Player resolves it like this:
+
+| Spoken phrase | Match strategy |
+|---|---|
+| _"Play **Discovery**"_ (album focus) | Playlist whose title contains the album, or tracks whose `album` field matches |
+| _"Play **Daft Punk**"_ (artist focus) | Tracks whose `artist` matches; falls back to playlist title |
+| _"Play the **Workout** playlist"_ | Playlist whose title matches |
+| _"Play **One More Time**"_ (title focus) | Track whose `title` matches |
+| _"Play music"_ (empty query) | Resumes the current playlist, else the first non-empty one |
+
+If nothing matches, the controller surfaces a spoken error rather than silently failing.
+
+### Tips for better recognition
+
+- Make sure your `TrackItem` metadata (`title`, `artist`, `album`) is populated — voice matching is text-based and only works as well as your tags.
+- Load playlists into `PlaylistManager` before the user speaks; voice search only sees what's loaded.
+- Test by long-pressing the home button on Android Auto's head unit, or saying _"Hey Google, play X on \<your app name\>"_ on a phone with the app installed.
+
 ## Testing with Desktop Head Unit (DHU)
 
 1. Install the [Android Auto Desktop Head Unit](https://developer.android.com/training/cars/testing/dhu)
