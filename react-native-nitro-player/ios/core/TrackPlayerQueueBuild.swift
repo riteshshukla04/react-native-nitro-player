@@ -156,6 +156,12 @@ extension TrackPlayerCore {
       && !DownloadManagerCore.shared.isTrackDownloaded(trackId: targetTrack.id)
     if isLazyLoad {
       NitroPlayerLogger.log("TrackPlayerCore", "   ⏳ Lazy-load — deferring AVQueuePlayer setup; emitting track change for index \(index)")
+      // Clear old items immediately so the previous track stops while waiting for the URL to resolve
+      if let boundaryObserver = self.boundaryTimeObserver {
+        player?.removeTimeObserver(boundaryObserver)
+        self.boundaryTimeObserver = nil
+      }
+      player?.removeAllItems()
       self.currentTracks = fullPlaylist
       if let track = self.currentTracks[safe: index] {
         notifyTrackChange(track, .skip)
