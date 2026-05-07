@@ -44,8 +44,13 @@ extension TrackPlayerCore {
       }
 
       self.currentPlaylistId = playlistId
-      self.updatePlayerQueue(tracks: playlist.tracks)
-      if targetIndex > 0 {
+      if targetIndex == 0 {
+        self.updatePlayerQueue(tracks: playlist.tracks)
+      } else {
+        // Bypass updatePlayerQueue to avoid emitting a spurious onTrackChange for index 0.
+        // Set currentTracks directly so rebuildQueueFromPlaylistIndex can use them.
+        self.currentTracks = playlist.tracks
+        self.preloadedAssets.removeAll()
         _ = self.rebuildQueueFromPlaylistIndex(index: targetIndex)
       }
       self.emitStateChange()

@@ -30,8 +30,7 @@ internal fun TrackPlayerCore.rebuildQueueAndPlayFromIndex(index: Int) {
 
     currentTrackIndex = index
     exo.clearMediaItems()
-    exo.setMediaItems(mediaItems)
-    exo.seekToDefaultPosition(0)
+    exo.setMediaItems(mediaItems, true)
     exo.prepare()
 }
 
@@ -123,7 +122,7 @@ internal fun TrackPlayerCore.updatePlayerQueue(tracks: List<TrackItem>) {
             val mediaId = if (playlistId.isNotEmpty()) "$playlistId:${track.id}" else track.id
             makeMediaItem(track, mediaId)
         }
-    exo.setMediaItems(mediaItems, false)
+    exo.setMediaItems(mediaItems, true)
     if (exo.playbackState == Player.STATE_IDLE && mediaItems.isNotEmpty()) {
         exo.prepare()
     }
