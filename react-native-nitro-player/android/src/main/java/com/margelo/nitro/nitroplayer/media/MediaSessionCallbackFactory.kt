@@ -107,7 +107,7 @@ object MediaSessionCallbackFactory {
                 if (voiceMatch != null) {
                     val (playlistId, items, trackIndex) = voiceMatch
                     service.trackPlayerCore?.let { core ->
-                        scope.launch { core.loadPlaylist(playlistId) }
+                        scope.launch { core.loadPlaylist(playlistId, trackIndex) }
                     }
                     return Futures.immediateFuture(
                         MediaSession.MediaItemsWithStartPosition(items, trackIndex, startPositionMs),
@@ -130,7 +130,7 @@ object MediaSessionCallbackFactory {
                             val trackIndex = playlist.tracks.indexOfFirst { it.id == trackId }
                             if (trackIndex >= 0) {
                                 service.trackPlayerCore?.let { core ->
-                                    scope.launch { core.loadPlaylist(playlistId) }
+                                    scope.launch { core.loadPlaylist(playlistId, trackIndex) }
                                 }
                                 val playlistMediaItems =
                                     playlist.tracks
