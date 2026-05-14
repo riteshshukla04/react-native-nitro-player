@@ -140,11 +140,14 @@ dependencies {
   implementation project(":react-native-nitro-modules")
 
   implementation "androidx.media3:media3-exoplayer:$media3_version"
+  implementation "androidx.media3:media3-exoplayer-hls:$media3_version" //for .m3u8
+  implementation "androidx.media3:media3-exoplayer-dash:$media3_version"
+  implementation "androidx.media3:media3-exoplayer-smoothstreaming:$media3_version"
   implementation "androidx.media3:media3-session:$media3_version"
   implementation "androidx.media3:media3-common:$media3_version"
   implementation "androidx.media:media:1.7.0"
-  
-  // WorkManager for background downloads
-  implementation "androidx.work:work-runtime-ktx:2.9.0"
+
+  // WorkManager for background downloads.
+  implementation "androidx.work:work-runtime-ktx:2.10.5" // Latest version of 2.10
 }
 
