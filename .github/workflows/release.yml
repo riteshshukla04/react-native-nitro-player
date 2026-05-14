@@ -1,12 +1,5 @@
 name: Release package
 on:
-  workflow_run:
-    branches:
-      - main
-    workflows:
-      - CI
-    types:
-      - completed
   workflow_dispatch:
     inputs:
       release-type:
