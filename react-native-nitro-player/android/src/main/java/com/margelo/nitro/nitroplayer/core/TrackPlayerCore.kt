@@ -125,6 +125,7 @@ class TrackPlayerCore private constructor(
 
     // ── Service binding ────────────────────────────────────────────────────
     private var serviceBound = false
+    private var rebindAttempts = 0
 
     private val serviceConnection =
         object : ServiceConnection {
@@ -132,7 +133,35 @@ class TrackPlayerCore private constructor(
                 name: ComponentName?,
                 service: IBinder?,
             ) {
-                val binder = service as NitroPlayerPlaybackService.LocalBinder
+                // Android can redeliver the MediaSessionService binder instead of
+                // our LocalBinder (e.g. after the service is restarted). Guard the
+                // cast and rebind explicitly with ACTION_LOCAL_BIND instead of crashing.
+                val binder = service as? NitroPlayerPlaybackService.LocalBinder
+                if (binder == null) {
+                    NitroPlayerLogger.log("TrackPlayerCore") {
+                        "onServiceConnected received unexpected binder: $service"
+                    }
+                    try {
+                        context.unbindService(this)
+                    } catch (_: Exception) {}
+                    serviceBound = false
+                    if (rebindAttempts < 3) {
+                        rebindAttempts++
+                        handler.post {
+                            val bindIntent =
+                                Intent(context, NitroPlayerPlaybackService::class.java).apply {
+                                    action = NitroPlayerPlaybackService.ACTION_LOCAL_BIND
+                                }
+                            context.bindService(
+                                bindIntent,
+                                this,
+                                Context.BIND_AUTO_CREATE,
+                            )
+                        }
+                    }
+                    return
+                }
+                rebindAttempts = 0
                 playerHandler = binder.handler
                 binder.service.trackPlayerCore = this@TrackPlayerCore
                 serviceBound = true

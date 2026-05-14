@@ -11,7 +11,9 @@ import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import com.margelo.nitro.nitroplayer.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import java.io.BufferedInputStream
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
@@ -35,6 +37,14 @@ class DownloadWorker(
         private const val NOTIFICATION_CHANNEL_ID = "nitro_player_downloads"
         private const val BASE_NOTIFICATION_ID = 2001
         private const val BUFFER_SIZE = 8192
+
+        /**
+         * Hard upper bound on a single download. Bounds runaway/trickling
+         * downloads so the dataSync foreground service is always released
+         * well within the Android 14+ FGS timeout window — otherwise the
+         * system kills the app with ForegroundServiceDidNotStopInTimeException.
+         */
+        private const val MAX_DOWNLOAD_DURATION_MS = 30L * 60L * 1000L
         private val CONTENT_DISPOSITION_REGEX = Regex("filename=\"?([^\";]+)\"?")
     }
 
@@ -72,8 +82,12 @@ class DownloadWorker(
                     // Download continues in background.
                 }
 
-                // Perform download
-                val localPath = downloadFile(downloadId, trackId, trackTitle, urlString, storageLocation)
+                // Perform download, bounded so the foreground service is
+                // always released within the Android 14+ FGS timeout window.
+                val localPath =
+                    withTimeout(MAX_DOWNLOAD_DURATION_MS) {
+                        downloadFile(downloadId, trackId, trackTitle, urlString, storageLocation)
+                    }
 
                 if (localPath != null) {
                     downloadManager.onComplete(downloadId, trackId, localPath)
@@ -91,6 +105,17 @@ class DownloadWorker(
                     showErrorNotification(trackTitle)
                     Result.retry()
                 }
+            } catch (e: TimeoutCancellationException) {
+                val error =
+                    DownloadError(
+                        code = "DOWNLOAD_TIMEOUT",
+                        message = "Download exceeded maximum allowed duration",
+                        reason = DownloadErrorReason.TIMEOUT,
+                        isRetryable = true,
+                    )
+                downloadManager.onError(downloadId, trackId, error)
+                showErrorNotification(trackTitle)
+                Result.retry()
             } catch (e: Exception) {
                 val errorReason =
                     when {
