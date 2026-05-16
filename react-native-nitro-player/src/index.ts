@@ -7,6 +7,7 @@ import type {
   TrackPlayer as TrackPlayerType,
 } from './specs/TrackPlayer.nitro'
 import type { AndroidAutoMediaLibrary as AndroidAutoMediaLibraryType } from './specs/AndroidAutoMediaLibrary.nitro'
+import type { CarPlayMediaLibrary as CarPlayMediaLibraryType } from './specs/CarPlayMediaLibrary.nitro'
 import type { AudioDevices as AudioDevicesType } from './specs/AudioDevices.nitro'
 import type { AudioRoutePicker as AudioRoutePickerType } from './specs/AudioRoutePicker.nitro'
 import type { DownloadManager as DownloadManagerType } from './specs/DownloadManager.nitro'
@@ -22,6 +23,14 @@ export const AndroidAutoMediaLibrary =
   Platform.OS === 'android'
     ? NitroModules.createHybridObject<AndroidAutoMediaLibraryType>(
         'AndroidAutoMediaLibrary'
+      )
+    : null
+
+// iOS-only: CarPlay Media Library
+export const CarPlayMediaLibraryModule =
+  Platform.OS === 'ios'
+    ? NitroModules.createHybridObject<CarPlayMediaLibraryType>(
+        'CarPlayMediaLibrary'
       )
     : null
 
@@ -51,9 +60,11 @@ export * from './hooks'
 // Export types
 export * from './types/PlayerQueue'
 export * from './types/AndroidAutoMediaLibrary'
+export * from './types/CarPlayMediaLibrary'
 export * from './types/DownloadTypes'
 export * from './types/EqualizerTypes'
 export type { TAudioDevice } from './specs/AudioDevices.nitro'
 export type { RepeatMode } from './specs/TrackPlayer.nitro'
 // Export utilities
 export { AndroidAutoMediaLibraryHelper } from './utils/androidAutoMediaLibrary'
+export { CarPlayMediaLibraryHelper } from './utils/carPlayMediaLibrary'

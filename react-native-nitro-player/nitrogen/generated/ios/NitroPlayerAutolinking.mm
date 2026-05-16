@@ -12,6 +12,7 @@
 
 #include "HybridPlayerQueueSpecSwift.hpp"
 #include "HybridTrackPlayerSpecSwift.hpp"
+#include "HybridCarPlayMediaLibrarySpecSwift.hpp"
 #include "HybridAudioRoutePickerSpecSwift.hpp"
 #include "HybridDownloadManagerSpecSwift.hpp"
 #include "HybridEqualizerSpecSwift.hpp"
@@ -36,6 +37,13 @@
     "TrackPlayer",
     []() -> std::shared_ptr<HybridObject> {
       std::shared_ptr<HybridTrackPlayerSpec> hybridObject = NitroPlayer::NitroPlayerAutolinking::createTrackPlayer();
+      return hybridObject;
+    }
+  );
+  HybridObjectRegistry::registerHybridObjectConstructor(
+    "CarPlayMediaLibrary",
+    []() -> std::shared_ptr<HybridObject> {
+      std::shared_ptr<HybridCarPlayMediaLibrarySpec> hybridObject = NitroPlayer::NitroPlayerAutolinking::createCarPlayMediaLibrary();
       return hybridObject;
     }
   );

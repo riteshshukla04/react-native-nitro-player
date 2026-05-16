@@ -98,6 +98,8 @@ export interface TrackPlayer extends HybridObject<{
   ): void
   onAndroidAutoConnectionChange(callback: (connected: boolean) => void): void
   isAndroidAutoConnected(): boolean
+  onCarPlayConnectionChange(callback: (connected: boolean) => void): void
+  isCarPlayConnected(): boolean
   setVolume(volume: number): Promise<void>
 
   /**

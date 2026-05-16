@@ -130,6 +130,14 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
 
     override fun isAndroidAutoConnected(): Boolean = core.isAndroidAutoConnected()
 
+    // ── CarPlay (no-op on Android) ───────────────────────────────────────────
+
+    override fun isCarPlayConnected(): Boolean = false
+
+    override fun onCarPlayConnectionChange(callback: (connected: Boolean) -> Unit) {
+        // No-op on Android
+    }
+
     // ── Event listeners ───────────────────────────────────────────────────────
 
     override fun onChangeTrack(callback: (track: TrackItem, reason: Reason?) -> Unit) {

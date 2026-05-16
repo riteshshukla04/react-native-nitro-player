@@ -74,6 +74,8 @@ namespace margelo::nitro::nitroplayer {
     void onPlaybackProgressChange(const std::function<void(double /* position */, double /* totalDuration */, std::optional<bool> /* isManuallySeeked */)>& callback) override;
     void onAndroidAutoConnectionChange(const std::function<void(bool /* connected */)>& callback) override;
     bool isAndroidAutoConnected() override;
+    void onCarPlayConnectionChange(const std::function<void(bool /* connected */)>& callback) override;
+    bool isCarPlayConnected() override;
     std::shared_ptr<Promise<void>> setVolume(double volume) override;
     std::shared_ptr<Promise<void>> updateTracks(const std::vector<TrackItem>& tracks) override;
     std::shared_ptr<Promise<std::vector<TrackItem>>> getTracksById(const std::vector<std::string>& trackIds) override;

@@ -134,6 +134,19 @@ abstract class HybridTrackPlayerSpec: HybridObject() {
   @Keep
   abstract fun isAndroidAutoConnected(): Boolean
   
+  abstract fun onCarPlayConnectionChange(callback: (connected: Boolean) -> Unit): Unit
+  
+  @DoNotStrip
+  @Keep
+  private fun onCarPlayConnectionChange_cxx(callback: Func_void_bool): Unit {
+    val __result = onCarPlayConnectionChange(callback)
+    return __result
+  }
+  
+  @DoNotStrip
+  @Keep
+  abstract fun isCarPlayConnected(): Boolean
+  
   @DoNotStrip
   @Keep
   abstract fun setVolume(volume: Double): Promise<Unit>

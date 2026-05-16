@@ -1,4 +1,3 @@
-import CarPlay
 import React
 import ReactAppDependencyProvider
 import React_RCTAppDelegate
@@ -22,28 +21,55 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     reactNativeDelegate = delegate
     reactNativeFactory = factory
 
-    window = UIWindow(frame: UIScreen.main.bounds)
+    return true
+  }
+
+  // MARK: - UIScene Configuration
+
+  func application(
+    _ application: UIApplication,
+    configurationForConnecting connectingSceneSession: UISceneSession,
+    options: UIScene.ConnectionOptions
+  ) -> UISceneConfiguration {
+    if connectingSceneSession.role.rawValue == "CPTemplateApplicationSceneSessionRoleApplication" {
+      let config = UISceneConfiguration(name: "CarPlay", sessionRole: connectingSceneSession.role)
+      config.delegateClass = NSClassFromString("NitroPlayerCarPlaySceneDelegate") as? AnyClass
+      return config
+    }
+    let config = UISceneConfiguration(name: "Default Configuration", sessionRole: connectingSceneSession.role)
+    config.delegateClass = MainSceneDelegate.self
+    return config
+  }
+}
+
+// MARK: - Main Window Scene Delegate
+
+class MainSceneDelegate: UIResponder, UIWindowSceneDelegate {
+  var window: UIWindow?
+
+  func scene(
+    _ scene: UIScene,
+    willConnectTo session: UISceneSession,
+    options connectionOptions: UIScene.ConnectionOptions
+  ) {
+    guard let windowScene = scene as? UIWindowScene else { return }
+    guard let appDelegate = UIApplication.shared.delegate as? AppDelegate,
+          let factory = appDelegate.reactNativeFactory
+    else { return }
+
+    let window = UIWindow(windowScene: windowScene)
+    self.window = window
+    appDelegate.window = window
 
     factory.startReactNative(
       withModuleName: "example",
       in: window,
-      launchOptions: launchOptions
+      launchOptions: nil
     )
-
-    // Setup CarPlay if available
-    if #available(iOS 14.0, *) {
-      setupCarPlay()
-    }
-
-    return true
-  }
-
-  @available(iOS 14.0, *)
-  private func setupCarPlay() {
-    // CarPlay will be handled automatically through CPTemplateApplicationSceneDelegate
-    // when the user connects to CarPlay
   }
 }
+
+// MARK: - React Native Delegate
 
 class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
   override func sourceURL(for bridge: RCTBridge) -> URL? {
