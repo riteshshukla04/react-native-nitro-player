@@ -37,17 +37,22 @@ extension TrackPlayerCore {
     let currentTrackIsEmpty = currentTrack.map {
       $0.url.isEmpty && !DownloadManagerCore.shared.isTrackDownloaded(trackId: $0.id)
     } ?? false
+    // The current track's player item has failed (e.g. an expired streaming URL).
+    // Unlike a healthy current track, a failed one MUST accept a fresh URL so that
+    // recoverFailedItem can rebuild it from updated track data.
+    let currentItemFailed = self.player?.currentItem?.status == .failed
+      && self.player?.currentItem?.trackId == currentTrackId
 
     let safeTracks = tracks.filter { track in
       switch true {
-      case track.id == currentTrackId && !currentTrackIsEmpty:
+      case track.id == currentTrackId && (currentTrackIsEmpty || currentItemFailed):
+        NitroPlayerLogger.log("TrackPlayerCore",
+          "🔄 Updating current track (\(currentItemFailed ? "failed item" : "no URL")): \(track.id)")
+        return !track.url.isEmpty
+      case track.id == currentTrackId:
         NitroPlayerLogger.log("TrackPlayerCore",
           "⚠️ Skipping update for currently playing track: \(track.id) (preserves gapless)")
         return false
-      case track.id == currentTrackId && currentTrackIsEmpty:
-        NitroPlayerLogger.log("TrackPlayerCore",
-          "🔄 Updating current track with no URL: \(track.id)")
-        return !track.url.isEmpty
       case track.url.isEmpty:
         NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Skipping track with empty URL: \(track.id)")
         return false
