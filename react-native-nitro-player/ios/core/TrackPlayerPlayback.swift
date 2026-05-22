@@ -86,6 +86,11 @@ extension TrackPlayerCore {
 
   func playInternal() {
     NitroPlayerLogger.log("TrackPlayerCore", "▶️ play() called")
+    self.intendedToPlay = true
+    // An explicit play() is the ground truth for intent — clear any stale
+    // interruption flag so a missed AVAudioSession `.ended` can't permanently
+    // wedge recovery off.
+    self.isInterrupted = false
     if let player = self.player {
       NitroPlayerLogger.log("TrackPlayerCore", "▶️ Player status: \(player.status.rawValue)")
       if let currentItem = player.currentItem {
@@ -105,6 +110,9 @@ extension TrackPlayerCore {
 
   func pauseInternal() {
     NitroPlayerLogger.log("TrackPlayerCore", "⏸️ pause() called")
+    // User-initiated pause — cancel any pending stall auto-resume.
+    self.intendedToPlay = false
+    self.isRecoveringFromStall = false
     self.player?.pause()
     playerQueue.asyncAfter(deadline: .now() + Constants.stateChangeDelay) { [weak self] in
       self?.emitStateChange()
@@ -164,6 +172,8 @@ extension TrackPlayerCore {
       queuePlayer.advanceToNextItem()
     } else {
       queuePlayer.pause()
+      self.intendedToPlay = false
+      self.isRecoveringFromStall = false
       self.notifyPlaybackStateChange(.stopped, .end)
     }
 

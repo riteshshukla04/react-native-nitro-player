@@ -7,6 +7,7 @@
 import AVFoundation
 import Foundation
 import MediaPlayer
+import Network
 import NitroModules
 import ObjectiveC
 
@@ -25,6 +26,9 @@ class TrackPlayerCore: NSObject {
     static let preferredForwardBufferDuration: Double = 30.0
     static let preloadAssetKeys: [String] = ["playable", "duration", "tracks", "preferredTransform"]
     static let gaplessPreloadCount: Int = 3
+    // Stall & failure recovery
+    static let maxFailedItemRetries: Int = 3
+    static let failedItemRetryDelay: TimeInterval = 2.0
   }
 
   // MARK: - Thread infrastructure
@@ -52,6 +56,32 @@ class TrackPlayerCore: NSObject {
   internal var preloadedAssets: [String: AVURLAsset] = [:]
   internal let preloadQueue = DispatchQueue(label: "com.nitroplayer.preload", qos: .utility)
   internal var didRequestUrlsForCurrentItem = false
+
+  // MARK: - Stall & network recovery
+  // Whether the user/app wants playback ongoing (true after play(), false after pause()).
+  internal var intendedToPlay = false
+  // Set when AVPlayer stalls on a buffer underrun; cleared once the buffer refills.
+  // Needed because automaticallyWaitsToMinimizeStalling == false means AVPlayer
+  // will NOT auto-resume after a stall — we must re-issue play() ourselves.
+  internal var isRecoveringFromStall = false
+  // True while an audio-session interruption (phone call, Siri, other app) is active.
+  // Recovery must NOT resume playback during this window even though `intendedToPlay`
+  // may still be true — the system decides whether to resume when the interruption ends.
+  internal var isInterrupted = false
+  // Set right before `recoverFailedItem` swaps the current item in place. Tells the
+  // resulting `currentItemDidChange` that this is an in-place recovery of the SAME
+  // track, not a real track change — so it must not emit onChangeTrack or reset
+  // per-track state. Consumed (cleared) by the next `currentItemDidChange`.
+  internal var suppressTrackChangeEmit = false
+  // Last observed playback position, used to resume after recreating a failed item.
+  internal var lastKnownPosition: Double = 0
+  // Per-track retry budget for recreating AVPlayerItems that hit status == .failed.
+  internal var failedItemRetryCounts: [String: Int] = [:]
+  // Monitors network path changes (VPN toggle, Wi-Fi band switch) to drive recovery.
+  internal var pathMonitor: NWPathMonitor?
+  // Starts unsatisfied so the first genuine `.satisfied` update is treated as a
+  // transition (and so a network that starts down is not mistaken for "up").
+  internal var lastPathStatus: NWPath.Status = .unsatisfied
 
   // MARK: - Temporary queue
   internal var playNextStack: [TrackItem] = []
@@ -182,7 +212,10 @@ class TrackPlayerCore: NSObject {
         p.removeObserver(self, forKeyPath: "currentItem")
       }
       NotificationCenter.default.removeObserver(self)
+      self.pathMonitor?.cancel()
+      self.pathMonitor = nil
       self.preloadedAssets.removeAll()
+      self.failedItemRetryCounts.removeAll()
     }
   }
 

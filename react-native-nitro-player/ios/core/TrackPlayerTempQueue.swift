@@ -174,6 +174,10 @@ extension TrackPlayerCore {
 
   func findTrackById(_ trackId: String) -> TrackItem? {
     if let t = currentTracks.first(where: { $0.id == trackId }) { return t }
+    // Temporary-queue tracks need not exist in any playlist — search the temp
+    // stacks too so a failed playNext/upNext track is still recoverable.
+    if let t = playNextStack.first(where: { $0.id == trackId }) { return t }
+    if let t = upNextQueue.first(where: { $0.id == trackId }) { return t }
     for playlist in playlistManager.getAllPlaylists() {
       if let t = playlist.tracks.first(where: { $0.id == trackId }) { return t }
     }
