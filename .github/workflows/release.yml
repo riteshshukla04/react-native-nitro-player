@@ -3,13 +3,14 @@ on:
   workflow_dispatch:
     inputs:
       release-type:
-        description: 'Release type (auto = derive from conventional commits)'
+        description: 'Release type (auto = derive from conventional commits, alpha = pre-release)'
         type: choice
         options:
           - auto
           - patch
           - minor
           - major
+          - alpha
         default: auto
 
 jobs:
@@ -78,7 +79,11 @@ jobs:
         id: increment
         run: |
           TYPE="${{ github.event.inputs.release-type }}"
-          if [[ -n "$TYPE" && "$TYPE" != "auto" ]]; then
+          if [[ "$TYPE" == "alpha" ]]; then
+            # Pre-release: bump derived from conventional commits, tagged "alpha"
+            # on npm and marked as a pre-release on GitHub.
+            echo "arg=--preRelease=alpha --github.preRelease" >> $GITHUB_OUTPUT
+          elif [[ -n "$TYPE" && "$TYPE" != "auto" ]]; then
             echo "arg=$TYPE" >> $GITHUB_OUTPUT
           else
             echo "arg=" >> $GITHUB_OUTPUT
