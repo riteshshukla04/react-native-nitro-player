@@ -150,6 +150,23 @@ internal fun TrackPlayerCore.makeMediaItem(
 
     val effectiveUrl = downloadManager.getEffectiveUrl(track)
 
+    // Register custom HTTP headers (e.g. Authorization) from extraPayload.headers so they are
+    // injected into the request for this URL. Applies to remote streams only — see ExoPlayerBuilder.
+    track.extraPayload?.let { payload ->
+        try {
+            val headersRaw = payload.toHashMap()["headers"]
+            if (headersRaw is Map<*, *>) {
+                val headers = headersRaw
+                    .mapNotNull { (k, v) -> if (k is String && v is String) k to v else null }
+                    .toMap()
+                if (headers.isNotEmpty()) {
+                    com.margelo.nitro.nitroplayer.media.AuthAwareHttpDataSourceFactory
+                        .setHeadersForUrl(effectiveUrl, headers)
+                }
+            }
+        } catch (_: Exception) {}
+    }
+
     return MediaItem
         .Builder()
         .setMediaId(customMediaId ?: track.id)

@@ -358,6 +358,37 @@ extension TrackPlayerCore {
     }
   }
 
+  /// Extracts custom HTTP headers (e.g. `Authorization`) from `extraPayload.headers`.
+  /// These are passed to AVURLAsset so authenticated remote streams can be played.
+  /// Returns nil when no string headers are present.
+  func httpHeaders(for track: TrackItem) -> [String: String]? {
+    // AnyMap.toDictionary() returns nested objects as [String: Any?] (optional values),
+    // so cast to that and unwrap each value rather than [String: Any].
+    guard let payload = track.extraPayload?.toDictionary(),
+      let headersValue = payload["headers"],
+      let raw = headersValue as? [String: Any?]
+    else { return nil }
+
+    var headers: [String: String] = [:]
+    for (key, value) in raw {
+      if let stringValue = value as? String {
+        headers[key] = stringValue
+      }
+    }
+    return headers.isEmpty ? nil : headers
+  }
+
+  /// Builds AVURLAsset options, attaching custom HTTP headers for remote (non-local) tracks.
+  private func assetOptions(for track: TrackItem, isLocal: Bool) -> [String: Any] {
+    var options: [String: Any] = [AVURLAssetPreferPreciseDurationAndTimingKey: true]
+    if !isLocal, let headers = httpHeaders(for: track) {
+      // AVURLAssetHTTPHeaderFieldsKey is the de-facto mechanism for per-asset request
+      // headers (also used by react-native-track-player). Applies to non-DRM HTTP(S).
+      options["AVURLAssetHTTPHeaderFieldsKey"] = headers
+    }
+    return options
+  }
+
   /// Creates a gapless-optimized AVPlayerItem with proper buffering configuration
   func createGaplessPlayerItem(for track: TrackItem, isPreload: Bool = false) -> AVPlayerItem? {
     let effectiveUrlString = DownloadManagerCore.shared.getEffectiveUrl(track: track)
@@ -396,9 +427,7 @@ extension TrackPlayerCore {
       asset = preloadedAsset
       NitroPlayerLogger.log("TrackPlayerCore", "🚀 Using preloaded asset for \(track.title)")
     } else {
-      asset = AVURLAsset(url: url, options: [
-        AVURLAssetPreferPreciseDurationAndTimingKey: true
-      ])
+      asset = AVURLAsset(url: url, options: assetOptions(for: track, isLocal: isLocal))
     }
 
     let item = AVPlayerItem(asset: asset)
@@ -463,9 +492,7 @@ extension TrackPlayerCore {
           url = remoteUrl
         }
 
-        let asset = AVURLAsset(url: url, options: [
-          AVURLAssetPreferPreciseDurationAndTimingKey: true
-        ])
+        let asset = AVURLAsset(url: url, options: self.assetOptions(for: track, isLocal: isLocal))
 
         asset.loadValuesAsynchronously(forKeys: Constants.preloadAssetKeys) { [weak self] in
           var allKeysLoaded = true

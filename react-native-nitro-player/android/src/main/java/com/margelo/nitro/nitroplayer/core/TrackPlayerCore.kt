@@ -244,6 +244,7 @@ class TrackPlayerCore private constructor(
             }
         }
         scope.cancel()
+        com.margelo.nitro.nitroplayer.media.AuthAwareHttpDataSourceFactory.clear()
         // Do NOT stop the service — it owns the player.
         // Unbind so Android can clean up if needed.
         if (serviceBound) {
