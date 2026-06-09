@@ -30,6 +30,27 @@ interface TrackItem {
 }
 ```
 
+#### Custom HTTP headers
+
+Set `extraPayload.headers` to send custom request headers (e.g. `Authorization`)
+when streaming a remote `url`. This enables playback from authenticated endpoints
+(Google Drive, Dropbox, private APIs, etc.) on both iOS and Android. Headers are
+applied to remote streams only — downloaded/local files ignore them.
+
+```typescript
+const track: TrackItem = {
+  id: '1',
+  title: 'My Track',
+  artist: 'Artist',
+  album: 'Album',
+  duration: 0,
+  url: 'https://api.example.com/stream/123',
+  extraPayload: {
+    headers: { Authorization: 'Bearer token123' },
+  },
+};
+```
+
 ---
 
 ### Playlist
