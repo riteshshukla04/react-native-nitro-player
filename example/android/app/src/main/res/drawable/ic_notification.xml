@@ -1,0 +1,18 @@
+<!--
+  Notification small icon for the media notification.
+
+  Must be a white-on-transparent monochrome silhouette: Android tints the
+  alpha mask, so only the shape matters (a colored icon would render as a
+  solid white blob). Referenced from JS via:
+    TrackPlayer.configure({ androidNotificationIcon: 'ic_notification' })
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="#FFFFFFFF">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,3v10.55c-0.59,-0.34 -1.27,-0.55 -2,-0.55 -2.21,0 -4,1.79 -4,4s1.79,4 4,4 4,-1.79 4,-4L14,7h4L18,3h-6z" />
+</vector>

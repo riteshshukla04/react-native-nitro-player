@@ -15,6 +15,7 @@ void TrackPlayer.configure({
   carPlayEnabled: false,
   showInNotification: true,
   lookaheadCount: 3,
+  androidNotificationIcon: 'ic_notification', // Android Only
 });
 
 TrackPlayer.onTracksNeedUpdate(async (tracks, lookahead) => {

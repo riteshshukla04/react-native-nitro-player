@@ -7,6 +7,7 @@ import android.os.IBinder
 import android.os.Looper
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
@@ -29,11 +30,24 @@ class NitroPlayerPlaybackService : MediaSessionService() {
 
     companion object {
         const val ACTION_LOCAL_BIND = "com.margelo.nitro.nitroplayer.LOCAL_BIND"
+
+        @Volatile
+        var notificationSmallIconResName: String? = null
+            set(value) {
+                field = value
+                instance?.let { service ->
+                    service.mainHandler.post { service.applyNotificationSmallIcon() }
+                }
+            }
+
+        @Volatile
+        private var instance: NitroPlayerPlaybackService? = null
     }
 
     // ── Created in onCreate ────────────────────────────────────────────────
     private lateinit var player: ExoPlayer
     private var mediaSession: MediaSession? = null
+    private var notificationProvider: DefaultMediaNotificationProvider? = null
     private val mainHandler = Handler(Looper.getMainLooper())
 
     @Volatile
@@ -54,6 +68,7 @@ class NitroPlayerPlaybackService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
         NitroPlayerLogger.log("PlaybackService") { "onCreate" }
+        instance = this
 
         // Build ExoPlayer on main looper (default)
         player = ExoPlayerBuilder.build(this)
@@ -65,12 +80,35 @@ class NitroPlayerPlaybackService : MediaSessionService() {
             .setCallback(MediaSessionCallbackFactory.create(this, playlistManager))
             .build()
 
-        // Explicitly register the session with the service so that
-        // MediaNotificationManager (created in super.onCreate()) can
-        // connect its internal MediaController and post notifications.
-        addSession(mediaSession!!)
+        val provider = DefaultMediaNotificationProvider.Builder(this).build()
+        notificationProvider = provider
+        applyNotificationSmallIcon()
+        setMediaNotificationProvider(provider)
 
-        // Media3 automatically handles the notification via DefaultMediaNotificationProvider.
+        addSession(mediaSession!!)
+    }
+
+    private fun applyNotificationSmallIcon() {
+        val name = notificationSmallIconResName ?: return
+        val provider = notificationProvider ?: return
+        val resId = resources.getIdentifier(name, "drawable", packageName)
+        if (resId == 0) {
+            NitroPlayerLogger.log("PlaybackService") {
+                "androidNotificationIcon '$name' not found in drawable resources — using default"
+            }
+            return
+        }
+        provider.setSmallIcon(resId)
+
+        // Live Refresh :)
+        val session = mediaSession
+        if (session != null && session.player.isPlaying) {
+            try {
+                onUpdateNotification(session, false)
+            } catch (e: Exception) {
+                NitroPlayerLogger.log("PlaybackService") { "notification refresh failed: ${e.message}" }
+            }
+        }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? =
@@ -93,6 +131,8 @@ class NitroPlayerPlaybackService : MediaSessionService() {
 
     override fun onDestroy() {
         NitroPlayerLogger.log("PlaybackService") { "onDestroy" }
+        if (instance === this) instance = null
+        notificationProvider = null
         mediaSession?.release()
         mediaSession = null
         player.release()

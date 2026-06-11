@@ -8,6 +8,7 @@ import com.margelo.nitro.nitroplayer.Reason
 import com.margelo.nitro.nitroplayer.RepeatMode
 import com.margelo.nitro.nitroplayer.TrackPlayerState
 import com.margelo.nitro.nitroplayer.media.NitroPlayerMediaBrowserService
+import com.margelo.nitro.nitroplayer.media.NitroPlayerPlaybackService
 
 /**
  * Playback control — all public functions are suspend and execute on the player thread
@@ -95,6 +96,7 @@ suspend fun TrackPlayerCore.configure(config: PlayerConfig) =
     withPlayerContext {
         config.androidAutoEnabled?.let { NitroPlayerMediaBrowserService.isAndroidAutoEnabled = it }
         config.lookaheadCount?.let { lookaheadCount = it.toInt() }
+        config.androidNotificationIcon?.let { NitroPlayerPlaybackService.notificationSmallIconResName = it }
         mediaSessionManager?.configure(config.androidAutoEnabled, config.carPlayEnabled, config.showInNotification)
     }
 

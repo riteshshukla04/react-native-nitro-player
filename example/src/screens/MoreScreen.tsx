@@ -11,9 +11,15 @@ import {
 import { TrackPlayer, AudioDevices } from 'react-native-nitro-player';
 import { colors, commonStyles, spacing, borderRadius } from '../styles/theme';
 
+const NOTIFICATION_ICONS = [
+  { label: '🎵 Music Note', value: 'ic_notification' },
+  { label: '🎧 Headphones', value: 'ic_notification_alt' },
+];
+
 export default function MoreScreen() {
   const [volume, setVolume] = useState(50);
   const [audioDevices, setAudioDevices] = useState<any[]>([]);
+  const [notificationIcon, setNotificationIcon] = useState('ic_notification');
 
   useEffect(() => {
     if (Platform.OS === 'ios') {
@@ -31,6 +37,11 @@ export default function MoreScreen() {
   const handleVolumeChange = (newVolume: number) => {
     setVolume(newVolume);
     void TrackPlayer.setVolume(newVolume);
+  };
+
+  const handleNotificationIconChange = (icon: string) => {
+    setNotificationIcon(icon);
+    void TrackPlayer.configure({ androidNotificationIcon: icon });
   };
 
   return (
@@ -57,6 +68,37 @@ export default function MoreScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Notification Icon (Android) */}
+        {Platform.OS === 'android' && (
+          <View style={commonStyles.section}>
+            <Text style={commonStyles.sectionTitle}>Notification Icon</Text>
+            <Text style={commonStyles.infoText}>
+              Switch the media notification small icon, then check the
+              notification shade / lock screen.
+            </Text>
+            <View style={styles.iconButtons}>
+              {NOTIFICATION_ICONS.map((icon) => {
+                const active = notificationIcon === icon.value;
+                return (
+                  <TouchableOpacity
+                    key={icon.value}
+                    style={[
+                      commonStyles.button,
+                      styles.iconButton,
+                      active && styles.iconButtonActive,
+                    ]}
+                    onPress={() => handleNotificationIconChange(icon.value)}>
+                    <Text style={commonStyles.buttonText}>
+                      {active ? '✓ ' : ''}
+                      {icon.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        )}
 
         {/* Audio Devices (iOS) */}
         {Platform.OS === 'ios' && (
@@ -95,6 +137,17 @@ const styles = StyleSheet.create({
   volumeControls: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  iconButtons: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  iconButton: {
+    flex: 1,
+  },
+  iconButtonActive: {
+    backgroundColor: colors.success,
   },
   deviceCard: {
     backgroundColor: colors.cardBackground,
