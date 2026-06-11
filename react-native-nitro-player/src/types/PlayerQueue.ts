@@ -49,6 +49,6 @@ export interface PlayerConfig {
    * Higher values = more proactive loading, but more network requests
    */
   lookaheadCount?: number
-  
+
   androidNotificationIcon?: string
 }
