@@ -129,8 +129,26 @@ await TrackPlayer.configure({
   androidAutoEnabled: true,
   carPlayEnabled: false,
   showInNotification: true,
+  // Android only: drawable resource name in your app for the notification small icon
+  androidNotificationIcon: 'ic_notification',
 })
 ```
+
+#### Customizing the Android notification icon
+
+`androidNotificationIcon` is the name of a drawable resource **in your app**
+(not this library) used as the small icon in the media notification and on the
+lock screen. To use it:
+
+1. Add a **white-on-transparent monochrome** drawable to your app, e.g.
+   `android/app/src/main/res/drawable/ic_notification.xml`. Android tints the
+   silhouette, so a full-color icon will render as a solid white blob.
+2. Pass its name (without extension or `R.drawable.` prefix) to `configure`:
+   `androidNotificationIcon: 'ic_notification'`.
+
+If the name can't be resolved, Media3's default small icon is used. Set it
+before playback starts so the first notification already has it (changes also
+apply live to a playing notification). This option is a no-op on iOS.
 
 ### 2. Create Playlists
 

@@ -18,7 +18,7 @@ public extension PlayerConfig {
   /**
    * Create a new instance of `PlayerConfig`.
    */
-  init(androidAutoEnabled: Bool?, carPlayEnabled: Bool?, showInNotification: Bool?, lookaheadCount: Double?) {
+  init(androidAutoEnabled: Bool?, carPlayEnabled: Bool?, showInNotification: Bool?, lookaheadCount: Double?, androidNotificationIcon: String?) {
     self.init({ () -> bridge.std__optional_bool_ in
       if let __unwrappedValue = androidAutoEnabled {
         return bridge.create_std__optional_bool_(__unwrappedValue)
@@ -40,6 +40,12 @@ public extension PlayerConfig {
     }(), { () -> bridge.std__optional_double_ in
       if let __unwrappedValue = lookaheadCount {
         return bridge.create_std__optional_double_(__unwrappedValue)
+      } else {
+        return .init()
+      }
+    }(), { () -> bridge.std__optional_std__string_ in
+      if let __unwrappedValue = androidNotificationIcon {
+        return bridge.create_std__optional_std__string_(std.string(__unwrappedValue))
       } else {
         return .init()
       }
@@ -88,6 +94,18 @@ public extension PlayerConfig {
       if bridge.has_value_std__optional_double_(self.__lookaheadCount) {
         let __unwrapped = bridge.get_std__optional_double_(self.__lookaheadCount)
         return __unwrapped
+      } else {
+        return nil
+      }
+    }()
+  }
+  
+  @inline(__always)
+  var androidNotificationIcon: String? {
+    return { () -> String? in
+      if bridge.has_value_std__optional_std__string_(self.__androidNotificationIcon) {
+        let __unwrapped = bridge.get_std__optional_std__string_(self.__androidNotificationIcon)
+        return String(__unwrapped)
       } else {
         return nil
       }
