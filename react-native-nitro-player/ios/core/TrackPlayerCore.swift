@@ -57,6 +57,10 @@ class TrackPlayerCore: NSObject {
   internal let preloadQueue = DispatchQueue(label: "com.nitroplayer.preload", qos: .utility)
   internal var didRequestUrlsForCurrentItem = false
 
+  // Follows http→https redirects that AVURLAsset otherwise silently drops (issue #111).
+  // Attached as the resource-loader delegate for cleartext-http assets only.
+  internal let redirectResolver = TrackPlayerRedirectResolver()
+
   // MARK: - Stall & network recovery
   // Whether the user/app wants playback ongoing (true after play(), false after pause()).
   internal var intendedToPlay = false
@@ -216,6 +220,7 @@ class TrackPlayerCore: NSObject {
       self.pathMonitor = nil
       self.preloadedAssets.removeAll()
       self.failedItemRetryCounts.removeAll()
+      self.redirectResolver.clear()
     }
   }
 

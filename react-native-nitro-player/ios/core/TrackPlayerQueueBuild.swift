@@ -389,6 +389,20 @@ extension TrackPlayerCore {
     return options
   }
 
+  /// Builds the AVURLAsset for a track URL. Cleartext-`http` remote URLs are routed through
+  /// `redirectResolver` so AVFoundation follows http→https redirects it would otherwise drop
+  /// (issue #111). HTTPS and local URLs load natively, unchanged.
+  func makeAsset(for track: TrackItem, url: URL, isLocal: Bool) -> AVURLAsset {
+    let options = assetOptions(for: track, isLocal: isLocal)
+    guard !isLocal, let wrappedURL = TrackPlayerRedirectResolver.wrap(url) else {
+      return AVURLAsset(url: url, options: options)
+    }
+    redirectResolver.registerHeaders(httpHeaders(for: track), for: wrappedURL)
+    let asset = AVURLAsset(url: wrappedURL, options: options)
+    asset.resourceLoader.setDelegate(redirectResolver, queue: redirectResolver.queue)
+    return asset
+  }
+
   /// Creates a gapless-optimized AVPlayerItem with proper buffering configuration
   func createGaplessPlayerItem(for track: TrackItem, isPreload: Bool = false) -> AVPlayerItem? {
     let effectiveUrlString = DownloadManagerCore.shared.getEffectiveUrl(track: track)
@@ -427,7 +441,7 @@ extension TrackPlayerCore {
       asset = preloadedAsset
       NitroPlayerLogger.log("TrackPlayerCore", "🚀 Using preloaded asset for \(track.title)")
     } else {
-      asset = AVURLAsset(url: url, options: assetOptions(for: track, isLocal: isLocal))
+      asset = makeAsset(for: track, url: url, isLocal: isLocal)
     }
 
     let item = AVPlayerItem(asset: asset)
@@ -492,7 +506,7 @@ extension TrackPlayerCore {
           url = remoteUrl
         }
 
-        let asset = AVURLAsset(url: url, options: self.assetOptions(for: track, isLocal: isLocal))
+        let asset = self.makeAsset(for: track, url: url, isLocal: isLocal)
 
         asset.loadValuesAsynchronously(forKeys: Constants.preloadAssetKeys) { [weak self] in
           var allKeysLoaded = true

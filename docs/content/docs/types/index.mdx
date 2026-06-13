@@ -51,6 +51,23 @@ const track: TrackItem = {
 };
 ```
 
+#### HTTP (cleartext) URLs and redirects
+
+`http://` URLs that redirect to `https://` (e.g. a server-wide `308` upgrade) now play on
+both iOS and Android — the player follows the redirect to the final location. Two things are
+required for cleartext URLs to work at all, and **both are configured by the host app**, not
+by this library:
+
+- **iOS** — App Transport Security blocks cleartext by default. Add an `NSAppTransportSecurity`
+  exception for the domain (or `NSAllowsArbitraryLoads`) in your app's `Info.plist`, otherwise
+  the initial `http://` request never reaches the server and there is no redirect to follow.
+- **Android** — apps targeting API 28+ block cleartext by default. Set
+  `android:usesCleartextTraffic="true"` (or a network security config that allows the domain)
+  in your `AndroidManifest.xml`.
+
+Prefer passing `https://` URLs directly when you can: it skips the redirect round-trip and
+needs no cleartext exception.
+
 ---
 
 ### Playlist
