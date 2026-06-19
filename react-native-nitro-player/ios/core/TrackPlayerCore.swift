@@ -103,6 +103,14 @@ class TrackPlayerCore: NSObject {
   internal let onProgressListeners            = ListenerRegistry<(Double, Double, Bool?) -> Void>()
   internal let onTracksNeedUpdateListeners    = ListenerRegistry<([TrackItem], Int) -> Void>()
   internal let onTemporaryQueueChangeListeners = ListenerRegistry<([TrackItem], [TrackItem]) -> Void>()
+  internal let onCastStateChangeListeners     = ListenerRegistry<(CastState, String?) -> Void>()
+
+  // MARK: - Google Cast
+  /// Owns the GoogleCast session; created on the main thread in init. Cast features
+  /// are inert no-ops if the GoogleCast SDK is not linked.
+  internal var castManager: CastSessionManager?
+  /// True while playback is routed to a Cast device (audio plays only on the device).
+  internal var isCasting = false
 
   // MARK: - Singleton
   static let shared = TrackPlayerCore()
@@ -116,8 +124,14 @@ class TrackPlayerCore: NSObject {
       self?.setupPlayer()
     }
     DispatchQueue.main.async { [weak self] in
-      self?.mediaSessionManager = MediaSessionManager()
-      self?.mediaSessionManager?.setTrackPlayerCore(self!)
+      guard let self else { return }
+      self.mediaSessionManager = MediaSessionManager()
+      self.mediaSessionManager?.setTrackPlayerCore(self)
+      // Initialize Cast with the Default Media Receiver. Apps can override the
+      // receiver ID early via Cast.configure(id). No-op without the GoogleCast SDK.
+      self.castManager = CastSessionManager()
+      self.castManager?.core = self
+      self.castManager?.configure(receiverApplicationId: nil)
     }
   }
 
@@ -193,6 +207,13 @@ class TrackPlayerCore: NSObject {
   }
   @discardableResult func removeOnTemporaryQueueChangeListener(id: Int64) -> Bool {
     onTemporaryQueueChangeListeners.remove(id: id)
+  }
+
+  @discardableResult func addOnCastStateChangeListener(_ cb: @escaping (CastState, String?) -> Void) -> Int64 {
+    onCastStateChangeListeners.add(cb)
+  }
+  @discardableResult func removeOnCastStateChangeListener(id: Int64) -> Bool {
+    onCastStateChangeListeners.remove(id: id)
   }
 
   // MARK: - Simple accessors

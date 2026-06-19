@@ -45,6 +45,8 @@ android {
     minSdkVersion getExtOrIntegerDefault("minSdkVersion")
     targetSdkVersion getExtOrIntegerDefault("targetSdkVersion")
     buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", isNewArchitectureEnabled().toString()
+    // Keep the Cast OptionsProvider (referenced reflectively from the manifest) under R8.
+    consumerProguardFiles "consumer-rules.pro"
 
     externalNativeBuild {
       cmake {
@@ -146,6 +148,12 @@ dependencies {
   implementation "androidx.media3:media3-session:$media3_version"
   implementation "androidx.media3:media3-common:$media3_version"
   implementation "androidx.media:media:1.7.0"
+
+  // Google Cast: CastPlayer (drop-in Media3 Player), the Cast framework and the
+  // MediaRouter chooser/controller dialogs used by Cast.showCastPicker().
+  implementation "androidx.media3:media3-cast:$media3_version"
+  implementation "com.google.android.gms:play-services-cast-framework:21.5.0"
+  implementation "androidx.mediarouter:mediarouter:1.7.0"
 
   // WorkManager for background downloads.
   implementation "androidx.work:work-runtime-ktx:2.10.5" // Latest version of 2.10

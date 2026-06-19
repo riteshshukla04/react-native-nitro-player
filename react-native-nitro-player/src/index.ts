@@ -9,6 +9,7 @@ import type {
 import type { AndroidAutoMediaLibrary as AndroidAutoMediaLibraryType } from './specs/AndroidAutoMediaLibrary.nitro'
 import type { AudioDevices as AudioDevicesType } from './specs/AudioDevices.nitro'
 import type { AudioRoutePicker as AudioRoutePickerType } from './specs/AudioRoutePicker.nitro'
+import type { Cast as CastType } from './specs/Cast.nitro'
 import type { DownloadManager as DownloadManagerType } from './specs/DownloadManager.nitro'
 import type { Equalizer as EqualizerType } from './specs/Equalizer.nitro'
 
@@ -37,6 +38,9 @@ export const AudioRoutePicker =
     ? NitroModules.createHybridObject<AudioRoutePickerType>('AudioRoutePicker')
     : null
 
+// Google Cast (iOS + Android)
+export const Cast = NitroModules.createHybridObject<CastType>('Cast')
+
 // Download Manager
 export const DownloadManager =
   NitroModules.createHybridObject<DownloadManagerType>('DownloadManager')
@@ -48,7 +52,12 @@ export const Equalizer =
 // Export hooks
 export * from './hooks'
 
+// Export components
+export { CastButton } from './components/CastButton'
+export type { CastButtonProps } from './components/CastButton'
+
 // Export types
+export type { CastState } from './specs/Cast.nitro'
 export * from './types/PlayerQueue'
 export * from './types/AndroidAutoMediaLibrary'
 export * from './types/DownloadTypes'

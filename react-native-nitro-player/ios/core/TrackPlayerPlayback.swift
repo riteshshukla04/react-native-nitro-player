@@ -12,22 +12,44 @@ import MediaPlayer
 extension TrackPlayerCore {
 
   func play() async {
+    if isCasting {
+      intendedToPlay = true
+      castManager?.play()
+      return
+    }
     await withPlayerQueueNoThrow { self.playInternal() }
   }
 
   func pause() async {
+    if isCasting {
+      intendedToPlay = false
+      castManager?.pause()
+      return
+    }
     await withPlayerQueueNoThrow { self.pauseInternal() }
   }
 
   func seek(position: Double) async {
+    if isCasting {
+      castManager?.seek(to: position)
+      return
+    }
     await withPlayerQueueNoThrow { self.seekInternal(position: position) }
   }
 
   func skipToNext() async {
+    if isCasting {
+      castManager?.skipToNext()
+      return
+    }
     await withPlayerQueueNoThrow { self.skipToNextInternal() }
   }
 
   func skipToPrevious() async {
+    if isCasting {
+      castManager?.skipToPrevious()
+      return
+    }
     await withPlayerQueueNoThrow { self.skipToPreviousInternal() }
   }
 
@@ -40,6 +62,11 @@ extension TrackPlayerCore {
   }
 
   func setVolume(volume: Double) async {
+    if isCasting {
+      let clamped = max(0.0, min(100.0, volume))
+      castManager?.setVolume(Float(clamped / 100.0))
+      return
+    }
     await withPlayerQueueNoThrow {
       let clamped = max(0.0, min(100.0, volume))
       let normalized = Float(clamped / 100.0)
@@ -65,6 +92,11 @@ extension TrackPlayerCore {
   }
 
   func setPlaybackSpeed(_ speed: Double) async {
+    if isCasting {
+      currentPlaybackSpeed = speed
+      castManager?.setPlaybackRate(Float(speed))
+      return
+    }
     await withPlayerQueueNoThrow {
       self.currentPlaybackSpeed = speed
       // Only update rate if currently playing; pause keeps rate at 0 until play() is called

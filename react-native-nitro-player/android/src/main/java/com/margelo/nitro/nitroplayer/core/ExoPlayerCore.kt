@@ -2,18 +2,21 @@ package com.margelo.nitro.nitroplayer.core
 
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
 
 /**
- * Thin wrapper around an [ExoPlayer] instance owned by the playback service.
- * All delegation methods are unchanged — only the constructor now accepts an
- * existing player instead of building one.
+ * Thin wrapper around the **currently active** Media3 [Player].
+ *
+ * This is normally the service-owned `ExoPlayer` (local playback) but can be
+ * swapped to a `CastPlayer` while a Google Cast session is active — both
+ * implement the same [Player] interface, so every delegation method below works
+ * unchanged regardless of which backend is playing. The wrapper instance is
+ * reassigned (see `TrackPlayerCast.switchToPlayer`) when the backend changes.
  */
 class ExoPlayerCore(
-    exoPlayer: ExoPlayer,
+    player: Player,
 ) {
-    /** The underlying ExoPlayer instance — accessible for wiring. */
-    internal val player: ExoPlayer = exoPlayer
+    /** The underlying active player instance — accessible for wiring. */
+    internal val player: Player = player
 
     // ── Playback ───────────────────────────────────────────────────────────
     fun play() = player.play()

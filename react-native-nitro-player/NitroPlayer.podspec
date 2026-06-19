@@ -27,5 +27,11 @@ Pod::Spec.new do |s|
 
   s.dependency 'React-jsi'
   s.dependency 'React-callinvoker'
+
+  # Google Cast (CAF) — provides GCKCastContext / GCKRemoteMediaClient used by the
+  # Cast HybridObject. Requires NSBonjourServices + NSLocalNetworkUsageDescription
+  # (and, for guest mode, NSBluetoothAlwaysUsageDescription) in the host app's Info.plist.
+  s.dependency 'google-cast-sdk', '~> 4.8'
+
   install_modules_dependencies(s)
 end

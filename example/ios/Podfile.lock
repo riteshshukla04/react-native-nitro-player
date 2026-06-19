@@ -22,6 +22,7 @@ PODS:
     - ReactNativeDependencies
     - Yoga
   - FBLazyVector (0.86.0)
+  - google-cast-sdk (4.8.4)
   - hermes-engine (250829098.0.14):
     - hermes-engine/Pre-built (= 250829098.0.14)
   - hermes-engine/Pre-built (250829098.0.14)
@@ -49,6 +50,7 @@ PODS:
     - ReactNativeDependencies
     - Yoga
   - NitroPlayer (1.4.4-alpha.0):
+    - google-cast-sdk (~> 4.8)
     - hermes-engine
     - NitroModules
     - RCTRequired
@@ -2093,6 +2095,10 @@ DEPENDENCIES:
   - RNScreens (from `../../node_modules/react-native-screens`)
   - Yoga (from `../../node_modules/react-native/ReactCommon/yoga`)
 
+SPEC REPOS:
+  trunk:
+    - google-cast-sdk
+
 EXTERNAL SOURCES:
   AudioPro:
     :path: "../../node_modules/react-native-audio-pro"
@@ -2259,9 +2265,10 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   AudioPro: ad013c7f728179c32a5a1bc9b7d7640916427f7d
   FBLazyVector: b3e7ad108f0d882e30445c5527d774e3fd432f3d
+  google-cast-sdk: 32f65af50d164e3c475e79ad123db3cc26fbcd37
   hermes-engine: 1375d7766c778e7f5b4a987f0ac0e934aeac74de
   NitroModules: 2d92eeea80a5afdebe7b4fd2443b5bd4d7ba1a44
-  NitroPlayer: e26c955757c31a193d739f79be311727b4d2501c
+  NitroPlayer: a25238fbb2b611a22e506970ed60bdf73408e7b7
   RCTDeprecation: 2a74a2c57675e64419bd89078efde81f7c1de90b
   RCTRequired: 30451112e6fef4e6f31b4e7eee0845156e35e4b0
   RCTSwiftUI: 5aaf0b07e747ba749dc6acc94d8bd41eea4b570f

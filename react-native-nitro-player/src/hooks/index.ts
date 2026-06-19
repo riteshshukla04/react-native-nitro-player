@@ -12,6 +12,11 @@ export type { UsePlaylistResult } from './usePlaylist'
 export { useActualQueue } from './useActualQueue'
 export type { UseActualQueueResult } from './useActualQueue'
 
+// Cast hooks
+export { useIsCasting } from './useIsCasting'
+export { useCastState } from './useCastState'
+export type { UseCastStateResult } from './useCastState'
+
 // Download hooks
 export { useDownloadProgress } from './useDownloadProgress'
 export type {

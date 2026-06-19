@@ -47,6 +47,16 @@
         "implementationClassName": "HybridAudioRoutePicker"
       }
     },
+    "Cast": {
+      "ios": {
+        "language": "swift",
+        "implementationClassName": "HybridCast"
+      },
+      "android": {
+        "language": "kotlin",
+        "implementationClassName": "HybridCast"
+      }
+    },
     "DownloadManager": {
       "ios": {
         "language": "swift",
