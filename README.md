@@ -90,6 +90,8 @@ Mutations return **`Promise<void>`** (or **`Promise<string>`** for `createPlayli
 | `AudioDevices.getAudioDevices()`         | Android  | Returns list of available audio devices.          |
 | `AudioDevices.setAudioDevice(id)`        | Android  | Sets the active audio output device.              |
 | `AudioRoutePicker.showRoutePicker()`     | iOS      | Opens the native AirPlay/Audio Route picker menu. |
+| `Cast.showCastPicker()`                  | iOS & Android | Opens the native Google Cast device picker.  |
+| `Cast.isCasting()` / `useIsCasting()`    | iOS & Android | Whether playback is routed to a Cast device. |
 | `AndroidAutoMediaLibraryHelper.set(...)` | Android  | Sets custom folder structure for Android Auto.    |
 | `AndroidAutoMediaLibraryHelper.clear()`  | Android  | Resets Android Auto structure to default.         |
 
@@ -597,6 +599,116 @@ if (AudioRoutePicker) {
 }
 ```
 
+
+## Google Cast
+
+Cast playback to Chromecast / Google TV devices. Casting is **seamless**: it is
+implemented as an internal playback-backend swap, so a Cast device behaves like
+another output for the existing player. When a session is connected, audio plays
+**only on the Cast device**, the local output is silenced automatically, and your
+existing queue, transport controls (in-app, lock screen, notification) and events
+keep working against the remote. On disconnect, local playback resumes at the same
+position.
+
+- **Android** uses Media3's `CastPlayer` (the local ExoPlayer is swapped to it).
+- **iOS** uses the Google Cast SDK (`GCKRemoteMediaClient`).
+
+### JS API
+
+```ts
+import { Cast, CastButton, useIsCasting, useCastState } from 'react-native-nitro-player'
+
+// Optional: call once early (e.g. on app start) to use your own registered
+// Web Receiver. Omit / pass nothing to use the Default Media Receiver.
+await Cast.configure('YOUR_RECEIVER_APP_ID')
+
+Cast.isCasting()           // boolean — is playback currently on a Cast device
+Cast.getCastState()        // 'no_devices_available' | 'not_connected' | 'connecting' | 'connected'
+Cast.getCastDeviceName()   // string | null
+Cast.showCastPicker()      // present the native device chooser / disconnect dialog
+await Cast.endCastSession() // stop casting, resume locally
+
+// Low-level event listener (the hooks below wrap this)
+Cast.onCastStateChange((state, deviceName) => { /* ... */ })
+```
+
+> ℹ️ The receiver application ID is fixed for the process lifetime once Cast
+> initializes. Call `Cast.configure(id)` as early as possible; otherwise the change
+> applies on the next app launch. The **Default Media Receiver** works out of the box.
+
+### Hooks
+
+```tsx
+function NowPlaying() {
+  const isCasting = useIsCasting() // boolean
+
+  // Or the richer variant:
+  const { state, deviceName, isCasting, isReady } = useCastState()
+
+  return <Text>{isCasting ? `Casting to ${deviceName}` : 'Playing locally'}</Text>
+}
+```
+
+### `<CastButton />`
+
+A ready-to-use button that reflects the live connection state, hides itself when
+no devices are available, and opens the native Cast dialog on press.
+
+```tsx
+import { CastButton } from 'react-native-nitro-player'
+
+<CastButton size={28} color="#888" activeColor="#1DB954" />
+```
+
+Props: `size`, `color`, `activeColor`, `hideWhenNoDevices` (default `true`),
+`style`, `onPress` (override the default picker), and `renderIcon` (supply your own
+icon — receives `{ state, isCasting, size, color }`). Any other `Pressable` prop is
+forwarded. Prefer building your own button? Call `Cast.showCastPicker()` directly.
+
+### Setup
+
+Cast requires native configuration in your **app** (not just the library).
+
+**iOS** — add to `ios/<App>/Info.plist`:
+
+```xml
+<key>NSLocalNetworkUsageDescription</key>
+<string>${PRODUCT_NAME} uses the local network to discover Cast devices.</string>
+<key>NSBonjourServices</key>
+<array>
+  <string>_googlecast._tcp</string>
+  <!-- If using a custom receiver, also add _<RECEIVER_APP_ID>._googlecast._tcp -->
+</array>
+<!-- Only if you use Cast guest mode (full SDK): -->
+<key>NSBluetoothAlwaysUsageDescription</key>
+<string>${PRODUCT_NAME} uses Bluetooth to discover nearby Cast devices.</string>
+```
+
+The Google Cast SDK is pulled in automatically via the pod dependency — just run
+`pod install`. No `AppDelegate` code is required; the library initializes the Cast
+context on launch (with the Default Media Receiver, or your `Cast.configure` ID).
+
+**Android** — no app code required. The library declares the Cast `OptionsProvider`
+and discovery permissions in its manifest (merged automatically) and initializes the
+Cast framework from its playback service at launch. Cast device discovery requires
+Google Play services on the device (unavailable on most emulators).
+
+> Apps that also use another Cast `OptionsProvider` (e.g. `react-native-google-cast`)
+> must override the merged meta-data with `tools:replace`. To set a custom receiver
+> ID without `Cast.configure`, override the
+> `com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME` meta-data with
+> your own provider.
+
+### Notes & limitations
+
+- **Testing requires a real Cast device** on the same Wi-Fi network — there is no
+  simulator/emulator support.
+- The full effective queue (playlist + play-next + up-next) is mirrored to the
+  device, so skip / previous / seek work remotely.
+- On iOS, while casting the lock-screen Now Playing metadata is best-effort; the
+  transport buttons themselves control the Cast device.
+- If a device has no Google Play services (Android) or the SDK is otherwise
+  unavailable, Cast features degrade to inert no-ops (`isCasting` stays `false`).
 
 ## Equalizer
 
@@ -1121,6 +1233,7 @@ AndroidAutoMediaLibraryHelper.set({
 - ✅ **Notification Controls**: Show playback controls in notifications
 - ✅ **Progress Tracking**: Real-time playback progress updates
 - ✅ **Offline Downloads**: Download tracks and playlists for offline playback
+- ✅ **Google Cast**: Seamless casting to Chromecast / Google TV (iOS & Android)
 
 ## TypeScript Support
 

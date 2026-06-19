@@ -12,6 +12,16 @@ import Foundation
 extension TrackPlayerCore {
 
   func updatePlayerQueue(tracks: [TrackItem]) {
+    // While casting, mirror the new queue to the Cast device instead of building
+    // the local AVQueuePlayer (which would start local audio).
+    if isCasting {
+      currentTracks = tracks
+      currentTrackIndex = 0
+      if let first = tracks.first { emitCastTrackChange(first) }
+      loadCastQueue(autoplay: intendedToPlay, position: 0)
+      return
+    }
+
     NitroPlayerLogger.log("TrackPlayerCore", "\n" + String(repeating: "=", count: Constants.separatorLineLength))
     NitroPlayerLogger.log("TrackPlayerCore", "📋 UPDATE PLAYER QUEUE - Received \(tracks.count) tracks")
     NitroPlayerLogger.log("TrackPlayerCore", String(repeating: "=", count: Constants.separatorLineLength))
@@ -134,6 +144,17 @@ extension TrackPlayerCore {
     NitroPlayerLogger.log("TrackPlayerCore", "\n🎯 REBUILD QUEUE FROM PLAYLIST INDEX \(index)")
     NitroPlayerLogger.log("TrackPlayerCore", "   Total tracks in playlist: \(self.currentTracks.count)")
     NitroPlayerLogger.log("TrackPlayerCore", "   Current index: \(self.currentTrackIndex), target index: \(index)")
+
+    // While casting, jump on the Cast device instead of rebuilding the local queue.
+    if isCasting {
+      self.playNextStack.removeAll()
+      self.upNextQueue.removeAll()
+      self.currentTemporaryType = .none
+      self.currentTrackIndex = index
+      if let track = self.getCurrentTrack() { self.emitCastTrackChange(track) }
+      self.loadCastQueue(autoplay: self.intendedToPlay, position: 0)
+      return true
+    }
 
     // Preserve playback state — only resume if already playing.
     let wasPlaying = self.player?.rate ?? 0 > 0

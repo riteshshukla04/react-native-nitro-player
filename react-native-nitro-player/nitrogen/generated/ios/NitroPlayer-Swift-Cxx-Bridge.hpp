@@ -8,6 +8,8 @@
 #pragma once
 
 // Forward declarations of C++ defined types
+// Forward declaration of `CastState` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class CastState; }
 // Forward declaration of `CurrentPlayingType` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class CurrentPlayingType; }
 // Forward declaration of `DownloadConfig` to properly resolve imports.
@@ -40,6 +42,8 @@ namespace margelo::nitro::nitroplayer { struct EqualizerState; }
 namespace margelo::nitro::nitroplayer { struct GainRange; }
 // Forward declaration of `HybridAudioRoutePickerSpec` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { class HybridAudioRoutePickerSpec; }
+// Forward declaration of `HybridCastSpec` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { class HybridCastSpec; }
 // Forward declaration of `HybridDownloadManagerSpec` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { class HybridDownloadManagerSpec; }
 // Forward declaration of `HybridEqualizerSpec` to properly resolve imports.
@@ -72,6 +76,8 @@ namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 // Forward declarations of Swift defined types
 // Forward declaration of `HybridAudioRoutePickerSpec_cxx` to properly resolve imports.
 namespace NitroPlayer { class HybridAudioRoutePickerSpec_cxx; }
+// Forward declaration of `HybridCastSpec_cxx` to properly resolve imports.
+namespace NitroPlayer { class HybridCastSpec_cxx; }
 // Forward declaration of `HybridDownloadManagerSpec_cxx` to properly resolve imports.
 namespace NitroPlayer { class HybridDownloadManagerSpec_cxx; }
 // Forward declaration of `HybridEqualizerSpec_cxx` to properly resolve imports.
@@ -82,6 +88,7 @@ namespace NitroPlayer { class HybridPlayerQueueSpec_cxx; }
 namespace NitroPlayer { class HybridTrackPlayerSpec_cxx; }
 
 // Include C++ defined types
+#include "CastState.hpp"
 #include "CurrentPlayingType.hpp"
 #include "DownloadConfig.hpp"
 #include "DownloadError.hpp"
@@ -98,6 +105,7 @@ namespace NitroPlayer { class HybridTrackPlayerSpec_cxx; }
 #include "EqualizerState.hpp"
 #include "GainRange.hpp"
 #include "HybridAudioRoutePickerSpec.hpp"
+#include "HybridCastSpec.hpp"
 #include "HybridDownloadManagerSpec.hpp"
 #include "HybridEqualizerSpec.hpp"
 #include "HybridPlayerQueueSpec.hpp"
@@ -152,48 +160,74 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     return Result<void>::withError(error);
   }
   
-  // pragma MARK: std::optional<StorageLocation>
+  // pragma MARK: std::shared_ptr<Promise<void>>
   /**
-   * Specialized version of `std::optional<StorageLocation>`.
+   * Specialized version of `std::shared_ptr<Promise<void>>`.
    */
-  using std__optional_StorageLocation_ = std::optional<StorageLocation>;
-  inline std::optional<StorageLocation> create_std__optional_StorageLocation_(const StorageLocation& value) noexcept {
-    return std::optional<StorageLocation>(value);
+  using std__shared_ptr_Promise_void__ = std::shared_ptr<Promise<void>>;
+  inline std::shared_ptr<Promise<void>> create_std__shared_ptr_Promise_void__() noexcept {
+    return Promise<void>::create();
   }
-  inline bool has_value_std__optional_StorageLocation_(const std::optional<StorageLocation>& optional) noexcept {
-    return optional.has_value();
-  }
-  inline StorageLocation get_std__optional_StorageLocation_(const std::optional<StorageLocation>& optional) noexcept {
-    return optional.value();
+  inline PromiseHolder<void> wrap_std__shared_ptr_Promise_void__(std::shared_ptr<Promise<void>> promise) noexcept {
+    return PromiseHolder<void>(std::move(promise));
   }
   
-  // pragma MARK: std::optional<double>
+  // pragma MARK: std::function<void()>
   /**
-   * Specialized version of `std::optional<double>`.
+   * Specialized version of `std::function<void()>`.
    */
-  using std__optional_double_ = std::optional<double>;
-  inline std::optional<double> create_std__optional_double_(const double& value) noexcept {
-    return std::optional<double>(value);
-  }
-  inline bool has_value_std__optional_double_(const std::optional<double>& optional) noexcept {
-    return optional.has_value();
-  }
-  inline double get_std__optional_double_(const std::optional<double>& optional) noexcept {
-    return optional.value();
+  using Func_void = std::function<void()>;
+  /**
+   * Wrapper class for a `std::function<void()>`, this can be used from Swift.
+   */
+  class Func_void_Wrapper final {
+  public:
+    explicit Func_void_Wrapper(std::function<void()>&& func): _function(std::make_unique<std::function<void()>>(std::move(func))) {}
+    inline void call() const noexcept {
+      _function->operator()();
+    }
+  private:
+    std::unique_ptr<std::function<void()>> _function;
+  } SWIFT_NONCOPYABLE;
+  Func_void create_Func_void(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_Wrapper wrap_Func_void(Func_void value) noexcept {
+    return Func_void_Wrapper(std::move(value));
   }
   
-  // pragma MARK: std::optional<bool>
+  // pragma MARK: std::function<void(const std::exception_ptr& /* error */)>
   /**
-   * Specialized version of `std::optional<bool>`.
+   * Specialized version of `std::function<void(const std::exception_ptr&)>`.
    */
-  using std__optional_bool_ = std::optional<bool>;
-  inline std::optional<bool> create_std__optional_bool_(const bool& value) noexcept {
-    return std::optional<bool>(value);
+  using Func_void_std__exception_ptr = std::function<void(const std::exception_ptr& /* error */)>;
+  /**
+   * Wrapper class for a `std::function<void(const std::exception_ptr& / * error * /)>`, this can be used from Swift.
+   */
+  class Func_void_std__exception_ptr_Wrapper final {
+  public:
+    explicit Func_void_std__exception_ptr_Wrapper(std::function<void(const std::exception_ptr& /* error */)>&& func): _function(std::make_unique<std::function<void(const std::exception_ptr& /* error */)>>(std::move(func))) {}
+    inline void call(std::exception_ptr error) const noexcept {
+      _function->operator()(error);
+    }
+  private:
+    std::unique_ptr<std::function<void(const std::exception_ptr& /* error */)>> _function;
+  } SWIFT_NONCOPYABLE;
+  Func_void_std__exception_ptr create_Func_void_std__exception_ptr(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_std__exception_ptr_Wrapper wrap_Func_void_std__exception_ptr(Func_void_std__exception_ptr value) noexcept {
+    return Func_void_std__exception_ptr_Wrapper(std::move(value));
   }
-  inline bool has_value_std__optional_bool_(const std::optional<bool>& optional) noexcept {
+  
+  // pragma MARK: std::optional<std::string>
+  /**
+   * Specialized version of `std::optional<std::string>`.
+   */
+  using std__optional_std__string_ = std::optional<std::string>;
+  inline std::optional<std::string> create_std__optional_std__string_(const std::string& value) noexcept {
+    return std::optional<std::string>(value);
+  }
+  inline bool has_value_std__optional_std__string_(const std::optional<std::string>& optional) noexcept {
     return optional.has_value();
   }
-  inline bool get_std__optional_bool_(const std::optional<bool>& optional) noexcept {
+  inline std::string get_std__optional_std__string_(const std::optional<std::string>& optional) noexcept {
     return optional.value();
   }
   
@@ -241,6 +275,121 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     return optional.value();
   }
   
+  // pragma MARK: std::function<void(CastState /* state */, const std::optional<std::variant<nitro::NullType, std::string>>& /* deviceName */)>
+  /**
+   * Specialized version of `std::function<void(CastState, const std::optional<std::variant<nitro::NullType, std::string>>&)>`.
+   */
+  using Func_void_CastState_std__optional_std__variant_nitro__NullType__std__string__ = std::function<void(CastState /* state */, const std::optional<std::variant<nitro::NullType, std::string>>& /* deviceName */)>;
+  /**
+   * Wrapper class for a `std::function<void(CastState / * state * /, const std::optional<std::variant<nitro::NullType, std::string>>& / * deviceName * /)>`, this can be used from Swift.
+   */
+  class Func_void_CastState_std__optional_std__variant_nitro__NullType__std__string___Wrapper final {
+  public:
+    explicit Func_void_CastState_std__optional_std__variant_nitro__NullType__std__string___Wrapper(std::function<void(CastState /* state */, const std::optional<std::variant<nitro::NullType, std::string>>& /* deviceName */)>&& func): _function(std::make_unique<std::function<void(CastState /* state */, const std::optional<std::variant<nitro::NullType, std::string>>& /* deviceName */)>>(std::move(func))) {}
+    inline void call(int state, std::optional<std::variant<nitro::NullType, std::string>> deviceName) const noexcept {
+      _function->operator()(static_cast<CastState>(state), deviceName);
+    }
+  private:
+    std::unique_ptr<std::function<void(CastState /* state */, const std::optional<std::variant<nitro::NullType, std::string>>& /* deviceName */)>> _function;
+  } SWIFT_NONCOPYABLE;
+  Func_void_CastState_std__optional_std__variant_nitro__NullType__std__string__ create_Func_void_CastState_std__optional_std__variant_nitro__NullType__std__string__(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_CastState_std__optional_std__variant_nitro__NullType__std__string___Wrapper wrap_Func_void_CastState_std__optional_std__variant_nitro__NullType__std__string__(Func_void_CastState_std__optional_std__variant_nitro__NullType__std__string__ value) noexcept {
+    return Func_void_CastState_std__optional_std__variant_nitro__NullType__std__string___Wrapper(std::move(value));
+  }
+  
+  // pragma MARK: std::shared_ptr<HybridCastSpec>
+  /**
+   * Specialized version of `std::shared_ptr<HybridCastSpec>`.
+   */
+  using std__shared_ptr_HybridCastSpec_ = std::shared_ptr<HybridCastSpec>;
+  std::shared_ptr<HybridCastSpec> create_std__shared_ptr_HybridCastSpec_(void* NON_NULL swiftUnsafePointer) noexcept;
+  void* NON_NULL get_std__shared_ptr_HybridCastSpec_(std__shared_ptr_HybridCastSpec_ cppType);
+  
+  // pragma MARK: std::weak_ptr<HybridCastSpec>
+  using std__weak_ptr_HybridCastSpec_ = std::weak_ptr<HybridCastSpec>;
+  inline std__weak_ptr_HybridCastSpec_ weakify_std__shared_ptr_HybridCastSpec_(const std::shared_ptr<HybridCastSpec>& strong) noexcept { return strong; }
+  
+  // pragma MARK: Result<std::shared_ptr<Promise<void>>>
+  using Result_std__shared_ptr_Promise_void___ = Result<std::shared_ptr<Promise<void>>>;
+  inline Result_std__shared_ptr_Promise_void___ create_Result_std__shared_ptr_Promise_void___(const std::shared_ptr<Promise<void>>& value) noexcept {
+    return Result<std::shared_ptr<Promise<void>>>::withValue(value);
+  }
+  inline Result_std__shared_ptr_Promise_void___ create_Result_std__shared_ptr_Promise_void___(const std::exception_ptr& error) noexcept {
+    return Result<std::shared_ptr<Promise<void>>>::withError(error);
+  }
+  
+  // pragma MARK: Result<bool>
+  using Result_bool_ = Result<bool>;
+  inline Result_bool_ create_Result_bool_(bool value) noexcept {
+    return Result<bool>::withValue(std::move(value));
+  }
+  inline Result_bool_ create_Result_bool_(const std::exception_ptr& error) noexcept {
+    return Result<bool>::withError(error);
+  }
+  
+  // pragma MARK: Result<CastState>
+  using Result_CastState_ = Result<CastState>;
+  inline Result_CastState_ create_Result_CastState_(CastState value) noexcept {
+    return Result<CastState>::withValue(std::move(value));
+  }
+  inline Result_CastState_ create_Result_CastState_(const std::exception_ptr& error) noexcept {
+    return Result<CastState>::withError(error);
+  }
+  
+  // pragma MARK: Result<std::variant<nitro::NullType, std::string>>
+  using Result_std__variant_nitro__NullType__std__string__ = Result<std::variant<nitro::NullType, std::string>>;
+  inline Result_std__variant_nitro__NullType__std__string__ create_Result_std__variant_nitro__NullType__std__string__(const std::variant<nitro::NullType, std::string>& value) noexcept {
+    return Result<std::variant<nitro::NullType, std::string>>::withValue(value);
+  }
+  inline Result_std__variant_nitro__NullType__std__string__ create_Result_std__variant_nitro__NullType__std__string__(const std::exception_ptr& error) noexcept {
+    return Result<std::variant<nitro::NullType, std::string>>::withError(error);
+  }
+  
+  // pragma MARK: std::optional<StorageLocation>
+  /**
+   * Specialized version of `std::optional<StorageLocation>`.
+   */
+  using std__optional_StorageLocation_ = std::optional<StorageLocation>;
+  inline std::optional<StorageLocation> create_std__optional_StorageLocation_(const StorageLocation& value) noexcept {
+    return std::optional<StorageLocation>(value);
+  }
+  inline bool has_value_std__optional_StorageLocation_(const std::optional<StorageLocation>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline StorageLocation get_std__optional_StorageLocation_(const std::optional<StorageLocation>& optional) noexcept {
+    return optional.value();
+  }
+  
+  // pragma MARK: std::optional<double>
+  /**
+   * Specialized version of `std::optional<double>`.
+   */
+  using std__optional_double_ = std::optional<double>;
+  inline std::optional<double> create_std__optional_double_(const double& value) noexcept {
+    return std::optional<double>(value);
+  }
+  inline bool has_value_std__optional_double_(const std::optional<double>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline double get_std__optional_double_(const std::optional<double>& optional) noexcept {
+    return optional.value();
+  }
+  
+  // pragma MARK: std::optional<bool>
+  /**
+   * Specialized version of `std::optional<bool>`.
+   */
+  using std__optional_bool_ = std::optional<bool>;
+  inline std::optional<bool> create_std__optional_bool_(const bool& value) noexcept {
+    return std::optional<bool>(value);
+  }
+  inline bool has_value_std__optional_bool_(const std::optional<bool>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline bool get_std__optional_bool_(const std::optional<bool>& optional) noexcept {
+    return optional.value();
+  }
+  
   // pragma MARK: std::shared_ptr<Promise<std::string>>
   /**
    * Specialized version of `std::shared_ptr<Promise<std::string>>`.
@@ -275,28 +424,6 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     return Func_void_std__string_Wrapper(std::move(value));
   }
   
-  // pragma MARK: std::function<void(const std::exception_ptr& /* error */)>
-  /**
-   * Specialized version of `std::function<void(const std::exception_ptr&)>`.
-   */
-  using Func_void_std__exception_ptr = std::function<void(const std::exception_ptr& /* error */)>;
-  /**
-   * Wrapper class for a `std::function<void(const std::exception_ptr& / * error * /)>`, this can be used from Swift.
-   */
-  class Func_void_std__exception_ptr_Wrapper final {
-  public:
-    explicit Func_void_std__exception_ptr_Wrapper(std::function<void(const std::exception_ptr& /* error */)>&& func): _function(std::make_unique<std::function<void(const std::exception_ptr& /* error */)>>(std::move(func))) {}
-    inline void call(std::exception_ptr error) const noexcept {
-      _function->operator()(error);
-    }
-  private:
-    std::unique_ptr<std::function<void(const std::exception_ptr& /* error */)>> _function;
-  } SWIFT_NONCOPYABLE;
-  Func_void_std__exception_ptr create_Func_void_std__exception_ptr(void* NON_NULL swiftClosureWrapper) noexcept;
-  inline Func_void_std__exception_ptr_Wrapper wrap_Func_void_std__exception_ptr(Func_void_std__exception_ptr value) noexcept {
-    return Func_void_std__exception_ptr_Wrapper(std::move(value));
-  }
-  
   // pragma MARK: std::optional<std::shared_ptr<AnyMap>>
   /**
    * Specialized version of `std::optional<std::shared_ptr<AnyMap>>`.
@@ -309,21 +436,6 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     return optional.has_value();
   }
   inline std::shared_ptr<AnyMap> get_std__optional_std__shared_ptr_AnyMap__(const std::optional<std::shared_ptr<AnyMap>>& optional) noexcept {
-    return optional.value();
-  }
-  
-  // pragma MARK: std::optional<std::string>
-  /**
-   * Specialized version of `std::optional<std::string>`.
-   */
-  using std__optional_std__string_ = std::optional<std::string>;
-  inline std::optional<std::string> create_std__optional_std__string_(const std::string& value) noexcept {
-    return std::optional<std::string>(value);
-  }
-  inline bool has_value_std__optional_std__string_(const std::optional<std::string>& optional) noexcept {
-    return optional.has_value();
-  }
-  inline std::string get_std__optional_std__string_(const std::optional<std::string>& optional) noexcept {
     return optional.value();
   }
   
@@ -381,40 +493,6 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     std::vector<TrackItem> vector;
     vector.reserve(size);
     return vector;
-  }
-  
-  // pragma MARK: std::shared_ptr<Promise<void>>
-  /**
-   * Specialized version of `std::shared_ptr<Promise<void>>`.
-   */
-  using std__shared_ptr_Promise_void__ = std::shared_ptr<Promise<void>>;
-  inline std::shared_ptr<Promise<void>> create_std__shared_ptr_Promise_void__() noexcept {
-    return Promise<void>::create();
-  }
-  inline PromiseHolder<void> wrap_std__shared_ptr_Promise_void__(std::shared_ptr<Promise<void>> promise) noexcept {
-    return PromiseHolder<void>(std::move(promise));
-  }
-  
-  // pragma MARK: std::function<void()>
-  /**
-   * Specialized version of `std::function<void()>`.
-   */
-  using Func_void = std::function<void()>;
-  /**
-   * Wrapper class for a `std::function<void()>`, this can be used from Swift.
-   */
-  class Func_void_Wrapper final {
-  public:
-    explicit Func_void_Wrapper(std::function<void()>&& func): _function(std::make_unique<std::function<void()>>(std::move(func))) {}
-    inline void call() const noexcept {
-      _function->operator()();
-    }
-  private:
-    std::unique_ptr<std::function<void()>> _function;
-  } SWIFT_NONCOPYABLE;
-  Func_void create_Func_void(void* NON_NULL swiftClosureWrapper) noexcept;
-  inline Func_void_Wrapper wrap_Func_void(Func_void value) noexcept {
-    return Func_void_Wrapper(std::move(value));
   }
   
   // pragma MARK: std::variant<nitro::NullType, double>
@@ -1017,15 +1095,6 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     return Result<std::shared_ptr<Promise<std::vector<std::string>>>>::withError(error);
   }
   
-  // pragma MARK: Result<std::shared_ptr<Promise<void>>>
-  using Result_std__shared_ptr_Promise_void___ = Result<std::shared_ptr<Promise<void>>>;
-  inline Result_std__shared_ptr_Promise_void___ create_Result_std__shared_ptr_Promise_void___(const std::shared_ptr<Promise<void>>& value) noexcept {
-    return Result<std::shared_ptr<Promise<void>>>::withValue(value);
-  }
-  inline Result_std__shared_ptr_Promise_void___ create_Result_std__shared_ptr_Promise_void___(const std::exception_ptr& error) noexcept {
-    return Result<std::shared_ptr<Promise<void>>>::withError(error);
-  }
-  
   // pragma MARK: Result<std::variant<nitro::NullType, DownloadTask>>
   using Result_std__variant_nitro__NullType__DownloadTask__ = Result<std::variant<nitro::NullType, DownloadTask>>;
   inline Result_std__variant_nitro__NullType__DownloadTask__ create_Result_std__variant_nitro__NullType__DownloadTask__(const std::variant<nitro::NullType, DownloadTask>& value) noexcept {
@@ -1051,15 +1120,6 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
   }
   inline Result_DownloadQueueStatus_ create_Result_DownloadQueueStatus_(const std::exception_ptr& error) noexcept {
     return Result<DownloadQueueStatus>::withError(error);
-  }
-  
-  // pragma MARK: Result<bool>
-  using Result_bool_ = Result<bool>;
-  inline Result_bool_ create_Result_bool_(bool value) noexcept {
-    return Result<bool>::withValue(std::move(value));
-  }
-  inline Result_bool_ create_Result_bool_(const std::exception_ptr& error) noexcept {
-    return Result<bool>::withError(error);
   }
   
   // pragma MARK: Result<DownloadState>
@@ -1312,15 +1372,6 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
   }
   inline Result_std__vector_EqualizerPreset__ create_Result_std__vector_EqualizerPreset__(const std::exception_ptr& error) noexcept {
     return Result<std::vector<EqualizerPreset>>::withError(error);
-  }
-  
-  // pragma MARK: Result<std::variant<nitro::NullType, std::string>>
-  using Result_std__variant_nitro__NullType__std__string__ = Result<std::variant<nitro::NullType, std::string>>;
-  inline Result_std__variant_nitro__NullType__std__string__ create_Result_std__variant_nitro__NullType__std__string__(const std::variant<nitro::NullType, std::string>& value) noexcept {
-    return Result<std::variant<nitro::NullType, std::string>>::withValue(value);
-  }
-  inline Result_std__variant_nitro__NullType__std__string__ create_Result_std__variant_nitro__NullType__std__string__(const std::exception_ptr& error) noexcept {
-    return Result<std::variant<nitro::NullType, std::string>>::withError(error);
   }
   
   // pragma MARK: Result<std::shared_ptr<Promise<EqualizerState>>>

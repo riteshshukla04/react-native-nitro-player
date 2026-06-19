@@ -8,7 +8,12 @@ import {
   Platform,
   SafeAreaView,
 } from 'react-native';
-import { TrackPlayer, AudioDevices } from 'react-native-nitro-player';
+import {
+  TrackPlayer,
+  AudioDevices,
+  CastButton,
+  useCastState,
+} from 'react-native-nitro-player';
 import { colors, commonStyles, spacing, borderRadius } from '../styles/theme';
 
 const NOTIFICATION_ICONS = [
@@ -20,6 +25,16 @@ export default function MoreScreen() {
   const [volume, setVolume] = useState(50);
   const [audioDevices, setAudioDevices] = useState<any[]>([]);
   const [notificationIcon, setNotificationIcon] = useState('ic_notification');
+  const { state: castState, deviceName, isCasting } = useCastState();
+
+  const castStatusText =
+    castState === 'connected'
+      ? `Connected to ${deviceName ?? 'device'}`
+      : castState === 'connecting'
+        ? 'Connecting…'
+        : castState === 'no_devices_available'
+          ? 'No Cast devices found'
+          : 'Tap to cast';
 
   useEffect(() => {
     if (Platform.OS === 'ios') {
@@ -47,6 +62,23 @@ export default function MoreScreen() {
   return (
     <SafeAreaView style={commonStyles.container}>
       <ScrollView style={commonStyles.scrollView}>
+        {/* Google Cast */}
+        <View style={commonStyles.section}>
+          <Text style={commonStyles.sectionTitle}>Google Cast</Text>
+          <View style={styles.castRow}>
+            <CastButton
+              size={30}
+              color={colors.text}
+              activeColor={colors.primary}
+              hideWhenNoDevices={false}
+            />
+            <Text
+              style={[styles.castStatus, isCasting && styles.castStatusActive]}>
+              {castStatusText}
+            </Text>
+          </View>
+        </View>
+
         {/* Volume Control */}
         <View style={commonStyles.section}>
           <Text style={commonStyles.sectionTitle}>Volume: {volume}%</Text>
@@ -134,6 +166,19 @@ export default function MoreScreen() {
 }
 
 const styles = StyleSheet.create({
+  castRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  castStatus: {
+    fontSize: 15,
+    color: colors.textSecondary,
+  },
+  castStatusActive: {
+    color: colors.primary,
+    fontWeight: '600',
+  },
   volumeControls: {
     flexDirection: 'row',
     gap: spacing.sm,

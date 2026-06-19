@@ -28,6 +28,13 @@ internal fun TrackPlayerCore.initFromService(binder: NitroPlayerPlaybackService.
     playerListener = listener
     exo.addListener(listener)
 
+    // Wire Google Cast (if available on this device) so sessions can swap the
+    // active player to/from the CastPlayer.
+    binder.castController?.let { controller ->
+        castSessionController = controller
+        controller.attachCore(this)
+    }
+
     // The audio session ID is assigned during ExoPlayer construction (in
     // PlaybackService.onCreate), before our listener is attached.
     // onAudioSessionIdChanged only fires on *changes*, so we'd miss the

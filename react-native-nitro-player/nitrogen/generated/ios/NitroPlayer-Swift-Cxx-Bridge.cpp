@@ -9,6 +9,7 @@
 
 // Include C++ implementation defined types
 #include "HybridAudioRoutePickerSpecSwift.hpp"
+#include "HybridCastSpecSwift.hpp"
 #include "HybridDownloadManagerSpecSwift.hpp"
 #include "HybridEqualizerSpecSwift.hpp"
 #include "HybridPlayerQueueSpecSwift.hpp"
@@ -34,11 +35,11 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     return swiftPart.toUnsafe();
   }
   
-  // pragma MARK: std::function<void(const std::string& /* result */)>
-  Func_void_std__string create_Func_void_std__string(void* NON_NULL swiftClosureWrapper) noexcept {
-    auto swiftClosure = NitroPlayer::Func_void_std__string::fromUnsafe(swiftClosureWrapper);
-    return [swiftClosure = std::move(swiftClosure)](const std::string& result) mutable -> void {
-      swiftClosure.call(result);
+  // pragma MARK: std::function<void()>
+  Func_void create_Func_void(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)]() mutable -> void {
+      swiftClosure.call();
     };
   }
   
@@ -50,19 +51,43 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     };
   }
   
+  // pragma MARK: std::function<void(CastState /* state */, const std::optional<std::variant<nitro::NullType, std::string>>& /* deviceName */)>
+  Func_void_CastState_std__optional_std__variant_nitro__NullType__std__string__ create_Func_void_CastState_std__optional_std__variant_nitro__NullType__std__string__(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_CastState_std__optional_std__variant_nitro__NullType__std__string__::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](CastState state, const std::optional<std::variant<nitro::NullType, std::string>>& deviceName) mutable -> void {
+      swiftClosure.call(static_cast<int>(state), deviceName);
+    };
+  }
+  
+  // pragma MARK: std::shared_ptr<HybridCastSpec>
+  std::shared_ptr<HybridCastSpec> create_std__shared_ptr_HybridCastSpec_(void* NON_NULL swiftUnsafePointer) noexcept {
+    NitroPlayer::HybridCastSpec_cxx swiftPart = NitroPlayer::HybridCastSpec_cxx::fromUnsafe(swiftUnsafePointer);
+    return std::make_shared<margelo::nitro::nitroplayer::HybridCastSpecSwift>(swiftPart);
+  }
+  void* NON_NULL get_std__shared_ptr_HybridCastSpec_(std__shared_ptr_HybridCastSpec_ cppType) {
+    std::shared_ptr<margelo::nitro::nitroplayer::HybridCastSpecSwift> swiftWrapper = std::dynamic_pointer_cast<margelo::nitro::nitroplayer::HybridCastSpecSwift>(cppType);
+    #ifdef NITRO_DEBUG
+    if (swiftWrapper == nullptr) [[unlikely]] {
+      throw std::runtime_error("Class \"HybridCastSpec\" is not implemented in Swift!");
+    }
+    #endif
+    NitroPlayer::HybridCastSpec_cxx& swiftPart = swiftWrapper->getSwiftPart();
+    return swiftPart.toUnsafe();
+  }
+  
+  // pragma MARK: std::function<void(const std::string& /* result */)>
+  Func_void_std__string create_Func_void_std__string(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_std__string::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const std::string& result) mutable -> void {
+      swiftClosure.call(result);
+    };
+  }
+  
   // pragma MARK: std::function<void(const std::vector<std::string>& /* result */)>
   Func_void_std__vector_std__string_ create_Func_void_std__vector_std__string_(void* NON_NULL swiftClosureWrapper) noexcept {
     auto swiftClosure = NitroPlayer::Func_void_std__vector_std__string_::fromUnsafe(swiftClosureWrapper);
     return [swiftClosure = std::move(swiftClosure)](const std::vector<std::string>& result) mutable -> void {
       swiftClosure.call(result);
-    };
-  }
-  
-  // pragma MARK: std::function<void()>
-  Func_void create_Func_void(void* NON_NULL swiftClosureWrapper) noexcept {
-    auto swiftClosure = NitroPlayer::Func_void::fromUnsafe(swiftClosureWrapper);
-    return [swiftClosure = std::move(swiftClosure)]() mutable -> void {
-      swiftClosure.call();
     };
   }
   

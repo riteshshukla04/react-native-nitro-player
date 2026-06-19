@@ -19,7 +19,14 @@ extension TrackPlayerCore {
   }
 
   func skipToIndex(index: Int) async -> Bool {
-    await withPlayerQueueNoThrow { self.skipToIndexInternal(index: index) }
+    if isCasting {
+      return await withPlayerQueueNoThrow {
+        guard index >= 0 && index < self.getActualQueueInternal().count else { return false }
+        self.castManager?.jump(toQueueIndex: index)
+        return true
+      }
+    }
+    return await withPlayerQueueNoThrow { self.skipToIndexInternal(index: index) }
   }
 
   func playFromIndex(index: Int) async {

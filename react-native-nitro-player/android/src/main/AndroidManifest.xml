@@ -8,12 +8,23 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Google Cast device discovery (mDNS / Cast SDK) -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+
     <!-- Required so Android Auto / Assistant treat this as a media app. -->
     <uses-feature
         android:name="android.hardware.audio.output"
         android:required="false" />
 
     <application>
+        <!-- Google Cast: supplies CastOptions (receiver app ID) to the Cast SDK.
+             Apps shipping their own OptionsProvider must override with tools:replace. -->
+        <meta-data
+            android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME"
+            android:value="com.margelo.nitro.nitroplayer.media.NitroCastOptionsProvider" />
+
         <!-- PlaybackService keeps music alive when screen is locked / app backgrounded -->
         <service
             android:name="com.margelo.nitro.nitroplayer.media.NitroPlayerPlaybackService"

@@ -90,6 +90,15 @@ class TrackPlayerCore private constructor(
         ListenerRegistry<(List<TrackItem>, List<TrackItem>) -> Unit>()
     internal val onAndroidAutoConnectionListeners =
         ListenerRegistry<(Boolean) -> Unit>()
+    internal val onCastStateChangeListeners =
+        ListenerRegistry<(com.margelo.nitro.nitroplayer.CastState, String?) -> Unit>()
+
+    // ── Google Cast ──────────────────────────────────────────────────────────
+    /** Set once the playback service has a usable CastContext; null when Cast is unavailable. */
+    internal var castSessionController: com.margelo.nitro.nitroplayer.media.CastSessionController? = null
+
+    /** True while the active backend is the CastPlayer (audio routed to a remote device). */
+    @Volatile internal var isCastingField: Boolean = false
 
     // ── Progress & playlist-update runnables ───────────────────────────────
     internal val progressUpdateRunnable =
@@ -294,4 +303,8 @@ class TrackPlayerCore private constructor(
     fun addOnAndroidAutoConnectionListener(cb: (Boolean) -> Unit): Long = onAndroidAutoConnectionListeners.add(cb)
 
     fun removeOnAndroidAutoConnectionListener(id: Long): Boolean = onAndroidAutoConnectionListeners.remove(id)
+
+    fun addOnCastStateChangeListener(cb: (com.margelo.nitro.nitroplayer.CastState, String?) -> Unit): Long = onCastStateChangeListeners.add(cb)
+
+    fun removeOnCastStateChangeListener(id: Long): Boolean = onCastStateChangeListeners.remove(id)
 }

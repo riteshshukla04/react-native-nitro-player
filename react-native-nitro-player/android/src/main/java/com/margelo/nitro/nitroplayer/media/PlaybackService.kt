@@ -5,11 +5,13 @@ import android.os.Binder
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import androidx.media3.cast.CastPlayer
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import com.google.android.gms.cast.framework.CastContext
 import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
 import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
 import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
@@ -50,6 +52,9 @@ class NitroPlayerPlaybackService : MediaSessionService() {
     private var notificationProvider: DefaultMediaNotificationProvider? = null
     private val mainHandler = Handler(Looper.getMainLooper())
 
+    /** Owns the CastPlayer + Cast session lifecycle; null when Cast is unavailable. */
+    private var castSessionController: CastSessionController? = null
+
     @Volatile
     var trackPlayerCore: TrackPlayerCore? = null
 
@@ -59,6 +64,7 @@ class NitroPlayerPlaybackService : MediaSessionService() {
         val exoPlayer: ExoPlayer get() = player
         val session: MediaSession get() = mediaSession!!
         val handler: Handler get() = mainHandler
+        val castController: CastSessionController? get() = castSessionController
     }
 
     private val localBinder = lazy { LocalBinder() }
@@ -86,6 +92,31 @@ class NitroPlayerPlaybackService : MediaSessionService() {
         setMediaNotificationProvider(provider)
 
         addSession(mediaSession!!)
+
+        initCast()
+    }
+
+    /**
+     * Initialize Google Cast. Best-effort: when Google Play services or the Cast
+     * framework are unavailable (older devices, no Play services), the controller
+     * stays null and all Cast features become inert no-ops.
+     */
+    private fun initCast() {
+        try {
+            val castContext = CastContext.getSharedInstance(this)
+            val castPlayer = CastPlayer(castContext, NitroMediaItemConverter())
+            castSessionController =
+                CastSessionController(
+                    castContext = castContext,
+                    castPlayer = castPlayer,
+                    localPlayer = player,
+                    mediaSession = mediaSession!!,
+                    mainHandler = mainHandler,
+                )
+        } catch (e: Exception) {
+            NitroPlayerLogger.log("PlaybackService") { "Cast unavailable: ${e.message}" }
+            castSessionController = null
+        }
     }
 
     private fun applyNotificationSmallIcon() {
@@ -133,6 +164,8 @@ class NitroPlayerPlaybackService : MediaSessionService() {
         NitroPlayerLogger.log("PlaybackService") { "onDestroy" }
         if (instance === this) instance = null
         notificationProvider = null
+        castSessionController?.release()
+        castSessionController = null
         mediaSession?.release()
         mediaSession = null
         player.release()

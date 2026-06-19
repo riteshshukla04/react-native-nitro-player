@@ -17,6 +17,8 @@
 
 #include "JHybridAndroidAutoMediaLibrarySpec.hpp"
 #include "JHybridAudioDevicesSpec.hpp"
+#include "JHybridCastSpec.hpp"
+#include "JFunc_void_CastState_std__optional_std__variant_nitro__NullType__std__string__.hpp"
 #include "JHybridDownloadManagerSpec.hpp"
 #include "JFunc_void_DownloadProgress.hpp"
 #include "JFunc_void_std__string_std__string_DownloadState_std__optional_DownloadError_.hpp"
@@ -77,6 +79,14 @@ struct JHybridAudioDevicesSpecImpl: public jni::JavaClass<JHybridAudioDevicesSpe
     return javaPart->getJHybridAudioDevicesSpec();
   }
 };
+struct JHybridCastSpecImpl: public jni::JavaClass<JHybridCastSpecImpl, JHybridCastSpec::JavaPart> {
+  static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/HybridCast;";
+  static std::shared_ptr<JHybridCastSpec> create() {
+    static const auto constructorFn = javaClassStatic()->getConstructor<JHybridCastSpecImpl::javaobject()>();
+    jni::local_ref<JHybridCastSpec::JavaPart> javaPart = javaClassStatic()->newObject(constructorFn);
+    return javaPart->getJHybridCastSpec();
+  }
+};
 struct JHybridDownloadManagerSpecImpl: public jni::JavaClass<JHybridDownloadManagerSpecImpl, JHybridDownloadManagerSpec::JavaPart> {
   static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/nitroplayer/HybridDownloadManager;";
   static std::shared_ptr<JHybridDownloadManagerSpec> create() {
@@ -101,6 +111,8 @@ void registerAllNatives() {
   // Register native JNI methods
   margelo::nitro::nitroplayer::JHybridAndroidAutoMediaLibrarySpec::CxxPart::registerNatives();
   margelo::nitro::nitroplayer::JHybridAudioDevicesSpec::CxxPart::registerNatives();
+  margelo::nitro::nitroplayer::JHybridCastSpec::CxxPart::registerNatives();
+  margelo::nitro::nitroplayer::JFunc_void_CastState_std__optional_std__variant_nitro__NullType__std__string___cxx::registerNatives();
   margelo::nitro::nitroplayer::JHybridDownloadManagerSpec::CxxPart::registerNatives();
   margelo::nitro::nitroplayer::JFunc_void_DownloadProgress_cxx::registerNatives();
   margelo::nitro::nitroplayer::JFunc_void_std__string_std__string_DownloadState_std__optional_DownloadError__cxx::registerNatives();
@@ -143,6 +155,12 @@ void registerAllNatives() {
     "AudioDevices",
     []() -> std::shared_ptr<HybridObject> {
       return JHybridAudioDevicesSpecImpl::create();
+    }
+  );
+  HybridObjectRegistry::registerHybridObjectConstructor(
+    "Cast",
+    []() -> std::shared_ptr<HybridObject> {
+      return JHybridCastSpecImpl::create();
     }
   );
   HybridObjectRegistry::registerHybridObjectConstructor(
