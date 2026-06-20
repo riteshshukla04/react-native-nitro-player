@@ -49,7 +49,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - NitroPlayer (1.4.4-alpha.0):
+  - NitroPlayer (1.5.0-alpha.0):
     - google-cast-sdk (~> 4.8)
     - hermes-engine
     - NitroModules

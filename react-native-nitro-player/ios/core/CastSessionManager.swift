@@ -41,9 +41,15 @@ final class CastSessionManager: NSObject {
       let criteria = GCKDiscoveryCriteria(applicationID: appId)
       let options = GCKCastOptions(discoveryCriteria: criteria)
       options.suspendSessionsWhenBackgrounded = false
+      // We expose a custom Cast button (not GCKUICastButton), so device discovery
+      // must begin immediately instead of waiting for a tap on a GCKUICastButton —
+      // otherwise no devices are ever found.
+      options.startDiscoveryAfterFirstTapOnCastButton = false
       GCKCastContext.setSharedInstanceWith(options)
 
       let context = GCKCastContext.sharedInstance()
+      // Begin scanning right away so devices are available before the picker opens.
+      context.discoveryManager.startDiscovery()
       context.sessionManager.add(self)
       NotificationCenter.default.addObserver(
         self,
