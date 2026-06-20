@@ -677,7 +677,9 @@ Cast requires native configuration in your **app** (not just the library).
 <key>NSBonjourServices</key>
 <array>
   <string>_googlecast._tcp</string>
-  <!-- If using a custom receiver, also add _<RECEIVER_APP_ID>._googlecast._tcp -->
+  <!-- Receiver-specific service. Use _CC1AD845._googlecast._tcp for the Default
+       Media Receiver, or _<YOUR_RECEIVER_APP_ID>._googlecast._tcp for a custom one. -->
+  <string>_CC1AD845._googlecast._tcp</string>
 </array>
 <!-- Only if you use Cast guest mode (full SDK): -->
 <key>NSBluetoothAlwaysUsageDescription</key>

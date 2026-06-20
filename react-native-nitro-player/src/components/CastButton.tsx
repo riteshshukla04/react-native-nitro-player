@@ -1,7 +1,6 @@
 import React from 'react'
 import {
   Pressable,
-  StyleSheet,
   View,
   type PressableProps,
   type StyleProp,
@@ -104,8 +103,9 @@ export function CastButton({
 
 /**
  * Dependency-free rendition of the standard Cast glyph: a rounded "screen"
- * rectangle with a broadcast signal (dot + two arcs) in the bottom-left corner.
- * Drawn purely with `View`s so the library stays dependency-free.
+ * rectangle (with its bottom-left corner open) and a broadcast signal — a dot
+ * and two concentric arcs — radiating from the bottom-left. Drawn purely with
+ * `View`s so the library stays dependency-free.
  */
 function CastGlyph({
   size,
@@ -114,83 +114,120 @@ function CastGlyph({
   size: number
   color: string
 }): React.ReactElement {
-  const stroke = Math.max(1.5, Math.round(size * 0.083))
-  const inset = stroke
-  const dotSize = stroke * 1.7
-  const r1 = size * 0.28 // inner arc radius
-  const r2 = size * 0.46 // outer arc radius
+  const stroke = Math.max(1.5, Math.round(size / 13))
+  const inset = Math.round(size * 0.14)
+  const dotSize = stroke * 1.5
+  // Origin of the broadcast signal — the screen's bottom-left corner.
+  const cx = inset + stroke / 2
+  const cy = size - inset - stroke / 2
+  // Leave the screen's bottom-left corner open so the signal reads clearly.
+  const gap = size * 0.46
 
   return (
     <View style={{ width: size, height: size }}>
-      {/* Screen outline */}
-      <View
-        style={[
-          StyleSheet.absoluteFill,
-          {
-            borderWidth: stroke,
-            borderColor: color,
-            borderRadius: Math.max(2, size * 0.12),
-          },
-        ]}
-      />
-      {/* Broadcast dot */}
+      {/* Screen: top + right + most of bottom + most of left, leaving the
+          bottom-left corner open (composed from edges for a clean cast look). */}
+      {/* Top edge */}
       <View
         style={{
           position: 'absolute',
           left: inset,
+          top: inset,
+          right: inset,
+          height: stroke,
+          backgroundColor: color,
+          borderRadius: stroke,
+        }}
+      />
+      {/* Right edge */}
+      <View
+        style={{
+          position: 'absolute',
+          top: inset,
           bottom: inset,
+          right: inset,
+          width: stroke,
+          backgroundColor: color,
+          borderRadius: stroke,
+        }}
+      />
+      {/* Bottom edge (stops short of the bottom-left corner) */}
+      <View
+        style={{
+          position: 'absolute',
+          left: inset + gap,
+          bottom: inset,
+          right: inset,
+          height: stroke,
+          backgroundColor: color,
+          borderRadius: stroke,
+        }}
+      />
+      {/* Left edge (stops short of the bottom-left corner) */}
+      <View
+        style={{
+          position: 'absolute',
+          left: inset,
+          top: inset,
+          height: size - 2 * inset - gap,
+          width: stroke,
+          backgroundColor: color,
+          borderRadius: stroke,
+        }}
+      />
+      {/* Two concentric broadcast arcs radiating from the corner dot */}
+      <RippleArc cx={cx} cy={cy} radius={size * 0.2} stroke={stroke} color={color} />
+      <RippleArc cx={cx} cy={cy} radius={size * 0.34} stroke={stroke} color={color} />
+      {/* Broadcast dot */}
+      <View
+        style={{
+          position: 'absolute',
+          left: cx - dotSize / 2,
+          top: cy - dotSize / 2,
           width: dotSize,
           height: dotSize,
           borderRadius: dotSize / 2,
           backgroundColor: color,
         }}
       />
-      {/* Two concentric quarter arcs radiating from the dot */}
-      <Arc origin={inset + dotSize / 2} radius={r1} stroke={stroke} color={color} />
-      <Arc origin={inset + dotSize / 2} radius={r2} stroke={stroke} color={color} />
     </View>
   )
 }
 
 /**
- * A quarter-circle arc (the top-right quadrant) centered at the bottom-left
- * `origin` point. Produced by clipping a full bordered circle to one quadrant.
+ * A quarter-circle arc (the up-right quadrant) centered at (cx, cy). Rendered as
+ * a circle with only its top border colored, rotated 45° so the visible cap
+ * faces up-and-to-the-right — i.e. radiating from the bottom-left dot.
  */
-function Arc({
-  origin,
+function RippleArc({
+  cx,
+  cy,
   radius,
   stroke,
   color,
 }: {
-  origin: number
+  cx: number
+  cy: number
   radius: number
   stroke: number
   color: string
 }): React.ReactElement {
   return (
     <View
-      // Clip box reveals only the quadrant facing up-and-right from the origin.
       style={{
         position: 'absolute',
-        left: origin,
-        bottom: origin - radius,
-        width: radius,
-        height: radius,
-        overflow: 'hidden',
+        left: cx - radius,
+        top: cy - radius,
+        width: radius * 2,
+        height: radius * 2,
+        borderRadius: radius,
+        borderWidth: stroke,
+        borderTopColor: color,
+        borderRightColor: 'transparent',
+        borderBottomColor: 'transparent',
+        borderLeftColor: 'transparent',
+        transform: [{ rotate: '45deg' }],
       }}
-    >
-      <View
-        style={{
-          position: 'absolute',
-          left: -radius,
-          top: 0,
-          width: radius * 2,
-          height: radius * 2,
-          borderRadius: radius,
-          borderWidth: stroke,
-          borderColor: color,
-        }}
-      />
-    </View>
+    />
   )
 }
