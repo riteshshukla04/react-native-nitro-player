@@ -36,12 +36,15 @@ suspend fun TrackPlayerCore.updateTracks(tracks: List<TrackItem>) =
 
         val affectedPlaylists: Map<String, Int> = playlistManager.updateTracks(safeTracks)
 
-        // Replace current track's MediaItem if it was empty-URL and now has a URL
-        if (currentTrackUpdate != null && currentTrackIsEmpty && currentTrackUpdate.url.isNotEmpty()) {
+        // Replace current track's MediaItem if it was empty-URL and now has a URL.
+        // Local only — while casting the lazy current track was never enqueued on the
+        // receiver, so there is nothing to replace (the cast branch below reloads).
+        val currentTrackResolvedNow = currentTrackUpdate != null && currentTrackIsEmpty && currentTrackUpdate.url.isNotEmpty()
+        if (!isCastingField && currentTrackResolvedNow) {
             val exoIndex = exo.currentMediaItemIndex
             if (exoIndex >= 0) {
                 val playlistId = currentPlaylistId ?: ""
-                val mediaId = if (playlistId.isNotEmpty()) "$playlistId:${currentTrackUpdate.id}" else currentTrackUpdate.id
+                val mediaId = if (playlistId.isNotEmpty()) "$playlistId:${currentTrackUpdate!!.id}" else currentTrackUpdate!!.id
                 exo.replaceMediaItem(exoIndex, makeMediaItem(currentTrackUpdate, mediaId))
                 if (exo.playbackState == Player.STATE_IDLE) exo.prepare()
             }
@@ -55,6 +58,20 @@ suspend fun TrackPlayerCore.updateTracks(tracks: List<TrackItem>) =
                 playNextStack.forEachIndexed { i, t -> updatedById[t.id]?.let { if (it !== t) playNextStack[i] = it } }
                 upNextQueue.forEachIndexed { i, t -> updatedById[t.id]?.let { if (it !== t) upNextQueue[i] = it } }
             }
+
+            if (isCastingField) {
+                // The receiver holds only receiver-loadable tracks; a resolved current
+                // track (or an empty receiver queue) needs a fresh atomic queueLoad from
+                // the current index (the rebuild handles still-unresolved targets by
+                // waiting). Otherwise just resync the items after the current one.
+                if (currentTrackResolvedNow || exo.mediaItemCount == 0) {
+                    rebuildQueueAndPlayFromIndex(currentTrackIndex)
+                } else {
+                    rebuildQueueFromCurrentPosition()
+                }
+                return@withPlayerContext
+            }
+
             rebuildQueueFromCurrentPosition()
         }
     }

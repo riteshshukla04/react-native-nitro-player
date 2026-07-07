@@ -7,6 +7,11 @@
 //  `#if canImport(GoogleCast)` so the library still builds when the SDK is not
 //  linked — in that case every method is an inert no-op and casting is disabled.
 //
+//  Threading: the GoogleCast SDK is main-thread-affine, so every SDK call hops to
+//  main via `onMain`. Core state lives on `playerQueue` and Nitro sync getters run
+//  on the JS thread, so everything the core/JS reads back is served from small
+//  lock-guarded caches that the main-thread Cast callbacks keep fresh.
+//
 
 import Foundation
 import MediaPlayer
@@ -19,15 +24,69 @@ final class CastSessionManager: NSObject {
   weak var core: TrackPlayerCore?
 
   private var isConfigured = false
-  private var loadedTracks: [TrackItem] = []
-  private var lastCurrentTrackId: String?
-  // GoogleCast reads are main-thread-affine; Nitro sync getters run off-main, so
-  // serve them from a cache refreshed on the main thread by the Cast callbacks.
+  private var progressTimer: Timer?
+
+  // MARK: - Lock-guarded caches (written on main, read from playerQueue / JS thread)
+
+  private let stateLock = NSLock()
+  private var _lastCurrentTrackId: String?
+  private var _loadedTracks: [TrackItem] = []
+  private var _hasLoadedMedia = false
+  private var _cachedPlaybackState: TrackPlayerState = .stopped
+  private var _lastEmittedPlaybackState: TrackPlayerState?
+  private var _lastKnownRemotePosition: Double = 0
+  private var _lastKnownRemoteDuration: Double = 0
   private var cachedState: CastState = .noDevicesAvailable
   private var cachedDeviceName: String?
+
+  /// Track ID of the item currently playing on the receiver (or expected to be,
+  /// right after a locally-initiated jump).
+  var currentRemoteTrackId: String? {
+    stateLock.lock(); defer { stateLock.unlock() }
+    return _lastCurrentTrackId
+  }
+
+  /// IDs of the tracks last sent to the receiver, in queue order.
+  var loadedTrackIds: [String] {
+    stateLock.lock(); defer { stateLock.unlock() }
+    return _loadedTracks.map { $0.id }
+  }
+
+  /// Whether the receiver currently has media loaded.
+  var hasLoadedMedia: Bool {
+    stateLock.lock(); defer { stateLock.unlock() }
+    return _hasLoadedMedia
+  }
+
   /// Last position reported by the receiver, used to resume locally on disconnect.
-  private(set) var lastKnownRemotePosition: Double = 0
-  private var progressTimer: Timer?
+  var lastKnownRemotePosition: Double {
+    stateLock.lock(); defer { stateLock.unlock() }
+    return _lastKnownRemotePosition
+  }
+
+  /// Last duration reported by the receiver for the current item.
+  var lastKnownRemoteDuration: Double {
+    stateLock.lock(); defer { stateLock.unlock() }
+    return _lastKnownRemoteDuration
+  }
+
+  /// Last playback state reported by the receiver.
+  var cachedPlaybackState: TrackPlayerState {
+    stateLock.lock(); defer { stateLock.unlock() }
+    return _cachedPlaybackState
+  }
+
+  /// Pre-set the expected current track after a locally-initiated jump so the
+  /// receiver's own status echo doesn't produce a duplicate track-change event.
+  func setExpectedCurrentTrack(_ trackId: String?) {
+    stateLock.lock(); defer { stateLock.unlock() }
+    _lastCurrentTrackId = trackId
+  }
+
+  private func withState<T>(_ body: () -> T) -> T {
+    stateLock.lock(); defer { stateLock.unlock() }
+    return body()
+  }
 
   // MARK: - Configuration
 
@@ -66,17 +125,23 @@ final class CastSessionManager: NSObject {
 
   var isCasting: Bool {
     #if canImport(GoogleCast)
-    return isConfigured && GCKCastContext.sharedInstance().sessionManager.currentCastSession != nil
+    return currentCastState() == .connected
     #else
     return false
     #endif
   }
 
   /// Cached — safe to call from the JS thread.
-  func currentCastState() -> CastState { cachedState }
+  func currentCastState() -> CastState {
+    stateLock.lock(); defer { stateLock.unlock() }
+    return cachedState
+  }
 
   /// Cached — safe to call from the JS thread.
-  func deviceName() -> String? { cachedDeviceName }
+  func deviceName() -> String? {
+    stateLock.lock(); defer { stateLock.unlock() }
+    return cachedDeviceName
+  }
 
   // MARK: - UI / session control
 
@@ -128,12 +193,6 @@ final class CastSessionManager: NSObject {
     #endif
   }
 
-  func skipToPrevious() {
-    #if canImport(GoogleCast)
-    onMain { self.remoteClient?.queuePreviousItem() }
-    #endif
-  }
-
   func setVolume(_ volume0to1: Float) {
     #if canImport(GoogleCast)
     onMain { self.remoteClient?.setStreamVolume(volume0to1) }
@@ -146,34 +205,80 @@ final class CastSessionManager: NSObject {
     #endif
   }
 
-  func jump(toQueueIndex index: Int) {
+  func setQueueRepeatMode(_ mode: RepeatMode) {
     #if canImport(GoogleCast)
     onMain {
-      guard let client = self.remoteClient,
-            let status = client.mediaStatus,
-            index >= 0, index < Int(status.queueItemCount) else { return }
-      if let item = status.queueItem(at: UInt(index)) {
-        client.queueJumpToItem(withID: item.itemID)
+      let gckMode: GCKMediaRepeatMode
+      switch mode {
+      case .track: gckMode = .single
+      case .playlist: gckMode = .all
+      default: gckMode = .off
       }
+      self.remoteClient?.queueSetRepeatMode(gckMode)
     }
+    #endif
+  }
+
+  /// Stop and unload whatever the receiver is playing (used when jumping to a
+  /// track whose URL is not resolved yet — the load happens after updateTracks).
+  func stop() {
+    #if canImport(GoogleCast)
+    // No-op when nothing is loaded — avoids a pointless receiver RPC on every
+    // updateTracks re-entry while still waiting for the target's URL.
+    let hadMedia: Bool = withState {
+      let had = _hasLoadedMedia || !_loadedTracks.isEmpty
+      _hasLoadedMedia = false
+      _loadedTracks = []
+      return had
+    }
+    guard hadMedia else { return }
+    onMain { self.remoteClient?.stop() }
     #endif
   }
 
   // MARK: - Queue loading
 
-  func loadQueue(tracks: [TrackItem], startIndex: Int, position: Double, autoplay: Bool) {
+  /// Atomically replace the receiver queue. `tracks` must already be castable
+  /// (non-empty remote URLs) and start at the item that should play.
+  func loadQueue(tracks: [TrackItem], position: Double, autoplay: Bool, repeatMode: RepeatMode) {
     #if canImport(GoogleCast)
+    guard !tracks.isEmpty else { return }
+    withState {
+      _loadedTracks = tracks
+      _hasLoadedMedia = true // optimistic; corrected by the next media status
+      _lastCurrentTrackId = tracks.first?.id
+    }
     onMain {
-      guard let client = self.remoteClient, !tracks.isEmpty else { return }
-      self.loadedTracks = tracks
+      guard let client = self.remoteClient else { return }
       let items = tracks.compactMap { self.makeQueueItem(for: $0, autoplay: autoplay) }
       guard !items.isEmpty else { return }
 
       let options = GCKMediaQueueLoadOptions()
-      options.startIndex = UInt(max(0, min(startIndex, items.count - 1)))
-      options.playPosition = position.isFinite ? position : 0
-      options.repeatMode = .off
+      options.startIndex = 0
+      options.playPosition = position.isFinite ? max(0, position) : 0
+      switch repeatMode {
+      case .track: options.repeatMode = .single
+      case .playlist: options.repeatMode = .all
+      default: options.repeatMode = .off
+      }
       client.queueLoad(items, with: options)
+    }
+    #endif
+  }
+
+  /// Append tracks to the END of the receiver queue without touching playback.
+  func appendToQueue(tracks: [TrackItem]) {
+    #if canImport(GoogleCast)
+    guard !tracks.isEmpty else { return }
+    withState {
+      let known = Set(_loadedTracks.map { $0.id })
+      _loadedTracks.append(contentsOf: tracks.filter { !known.contains($0.id) })
+    }
+    onMain {
+      guard let client = self.remoteClient else { return }
+      let items = tracks.compactMap { self.makeQueueItem(for: $0, autoplay: true) }
+      guard !items.isEmpty else { return }
+      client.queueInsert(items, beforeItemWithID: kGCKMediaQueueInvalidItemID)
     }
     #endif
   }
@@ -191,8 +296,10 @@ final class CastSessionManager: NSObject {
   }
 
   private func makeQueueItem(for track: TrackItem, autoplay: Bool) -> GCKMediaQueueItem? {
-    let urlString = DownloadManagerCore.shared.getEffectiveUrl(track: track)
-    guard let contentURL = URL(string: urlString) else { return nil }
+    // The receiver fetches media itself: only a remote URL is playable there —
+    // never a downloaded file path. Callers pre-filter with isTrackCastable.
+    let urlString = track.url
+    guard !urlString.isEmpty, let contentURL = URL(string: urlString) else { return nil }
 
     let metadata = GCKMediaMetadata(metadataType: .musicTrack)
     metadata.setString(track.title, forKey: kGCKMetadataKeyTitle)
@@ -249,7 +356,10 @@ final class CastSessionManager: NSObject {
     let position = client.approximateStreamPosition()
     let duration = client.mediaStatus?.mediaInformation?.streamDuration ?? 0
     let safeDuration = (duration.isFinite && duration > 0) ? duration : 0
-    if position.isFinite { lastKnownRemotePosition = position }
+    withState {
+      if position.isFinite { _lastKnownRemotePosition = position }
+      _lastKnownRemoteDuration = safeDuration
+    }
     core?.emitCastProgress(position.isFinite ? position : 0, safeDuration)
     updateNowPlaying(position: position, duration: safeDuration)
   }
@@ -259,14 +369,10 @@ final class CastSessionManager: NSObject {
     guard let status else { return nil }
     let item = status.queueItem(withItemID: status.currentItemID)
     let info = item?.mediaInformation ?? status.mediaInformation
-    if let customData = info?.customData as? [String: Any],
-       let trackId = customData["trackId"] as? String {
-      return loadedTracks.first { $0.id == trackId }
-    }
-    if let url = info?.contentURL?.absoluteString {
-      return loadedTracks.first { DownloadManagerCore.shared.getEffectiveUrl(track: $0) == url }
-    }
-    return nil
+    guard let customData = info?.customData as? [String: Any],
+          let trackId = customData["trackId"] as? String
+    else { return nil }
+    return withState { _loadedTracks.first { $0.id == trackId } }
   }
 
   private func mapPlayerState(_ state: GCKMediaPlayerState) -> TrackPlayerState {
@@ -280,7 +386,8 @@ final class CastSessionManager: NSObject {
   }
 
   private func updateNowPlaying(position: Double, duration: Double) {
-    guard let track = lastCurrentTrackId.flatMap({ id in loadedTracks.first { $0.id == id } }) else { return }
+    let track = withState { _lastCurrentTrackId.flatMap { id in _loadedTracks.first { $0.id == id } } }
+    guard let track else { return }
     var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
     info[MPMediaItemPropertyTitle] = track.title
     info[MPMediaItemPropertyArtist] = track.artist
@@ -299,25 +406,32 @@ final class CastSessionManager: NSObject {
   /// Refreshes the cache from live Cast state and notifies listeners. Callers must be on the main thread.
   private func emitCastState() {
     refreshCacheOnMain()
-    core?.notifyCastStateChangeListeners(cachedState, cachedDeviceName)
+    core?.notifyCastStateChangeListeners(currentCastState(), deviceName())
   }
 
   /// Re-read live Cast state into the cache. MUST be called on the main thread.
   private func refreshCacheOnMain() {
     #if canImport(GoogleCast)
     guard isConfigured else {
-      cachedState = .noDevicesAvailable
-      cachedDeviceName = nil
+      withState {
+        cachedState = .noDevicesAvailable
+        cachedDeviceName = nil
+      }
       return
     }
+    let newState: CastState
     switch GCKCastContext.sharedInstance().castState {
-    case .noDevicesAvailable: cachedState = .noDevicesAvailable
-    case .notConnected: cachedState = .notConnected
-    case .connecting: cachedState = .connecting
-    case .connected: cachedState = .connected
-    @unknown default: cachedState = .notConnected
+    case .noDevicesAvailable: newState = .noDevicesAvailable
+    case .notConnected: newState = .notConnected
+    case .connecting: newState = .connecting
+    case .connected: newState = .connected
+    @unknown default: newState = .notConnected
     }
-    cachedDeviceName = GCKCastContext.sharedInstance().sessionManager.currentCastSession?.device.friendlyName
+    let name = GCKCastContext.sharedInstance().sessionManager.currentCastSession?.device.friendlyName
+    withState {
+      cachedState = newState
+      cachedDeviceName = name
+    }
     #endif
   }
 }
@@ -340,7 +454,13 @@ extension CastSessionManager: GCKSessionManagerListener {
 
   func sessionManager(_ sessionManager: GCKSessionManager, didEnd session: GCKSession, withError error: Error?) {
     stopProgressTimer()
-    lastCurrentTrackId = nil
+    withState {
+      _lastCurrentTrackId = nil
+      _loadedTracks = []
+      _hasLoadedMedia = false
+      _cachedPlaybackState = .stopped
+      _lastEmittedPlaybackState = nil
+    }
     core?.handleCastDisconnected()
     emitCastState()
   }
@@ -359,15 +479,39 @@ extension CastSessionManager: GCKRemoteMediaClientListener {
   func remoteMediaClient(_ client: GCKRemoteMediaClient, didUpdate mediaStatus: GCKMediaStatus?) {
     guard let core else { return }
 
-    // Track change
-    if let track = currentRemoteTrack(mediaStatus), track.id != lastCurrentTrackId {
-      lastCurrentTrackId = track.id
-      core.emitCastTrackChange(track)
+    let hasMedia = mediaStatus?.mediaInformation != nil
+    let state = mapPlayerState(mediaStatus?.playerState ?? .unknown)
+
+    // Track change — core state mutations must run on the player queue.
+    if let track = currentRemoteTrack(mediaStatus) {
+      let previousId: String? = withState {
+        let prev = _lastCurrentTrackId
+        _lastCurrentTrackId = track.id
+        _hasLoadedMedia = hasMedia
+        _cachedPlaybackState = state
+        return prev
+      }
+      if previousId != track.id {
+        core.playerQueue.async {
+          core.emitCastTrackChange(track, previousTrackId: previousId)
+        }
+      }
+    } else {
+      withState {
+        _hasLoadedMedia = hasMedia
+        _cachedPlaybackState = state
+      }
     }
 
-    // Playback state
-    let state = mapPlayerState(mediaStatus?.playerState ?? .unknown)
-    core.emitCastPlaybackState(state)
+    // Playback state — only forward actual changes (status updates are frequent).
+    let stateChanged: Bool = withState {
+      guard _lastEmittedPlaybackState != state else { return false }
+      _lastEmittedPlaybackState = state
+      return true
+    }
+    if stateChanged {
+      core.emitCastPlaybackState(state)
+    }
   }
 }
 #endif

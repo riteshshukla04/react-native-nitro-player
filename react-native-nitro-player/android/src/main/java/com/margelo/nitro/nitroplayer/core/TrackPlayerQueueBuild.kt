@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
+import com.margelo.nitro.nitroplayer.Reason
 import com.margelo.nitro.nitroplayer.TrackItem
 
 /**
@@ -13,7 +14,46 @@ import com.margelo.nitro.nitroplayer.TrackItem
  * Surgical rebuild (removeMediaItems + addMediaItems) preserves the current item
  * for gapless playback; full rebuild (clearMediaItems + setMediaItems) is used only
  * when jumping to a specific index.
+ *
+ * Cast mode: a Cast receiver auto-advances past items it fails to load (unlike
+ * ExoPlayer, which errors and waits — the behaviour the lazy-URL flow relies on).
+ * So while casting we only ever enqueue the contiguous prefix of *castable* tracks
+ * (non-empty remote URLs); unresolved tracks are requested via onTracksNeedUpdate
+ * and the cast queue is reloaded once updateTracks supplies their URLs.
  */
+
+// ── Cast-safety helpers ────────────────────────────────────────────────────
+
+/** A track the Cast receiver can actually load: non-empty remote (non-local) URL. */
+internal fun TrackPlayerCore.isTrackCastable(track: TrackItem): Boolean =
+    track.url.isNotEmpty() &&
+        !track.url.startsWith("/") &&
+        !track.url.startsWith("file:")
+
+/**
+ * The run of tracks safe to enqueue on the receiver:
+ * - castable tracks are kept;
+ * - local-only tracks (downloaded file paths — nothing will ever resolve them
+ *   remotely) are skipped, mirroring the receiver's own fail-and-advance;
+ * - the first lazy track (empty URL) STOPS the run — its URL resolution is coming
+ *   via onTracksNeedUpdate/updateTracks, which then extends/reloads the queue.
+ */
+internal fun TrackPlayerCore.castableUpcoming(tracks: List<TrackItem>): List<TrackItem> {
+    val result = ArrayList<TrackItem>(tracks.size)
+    for (track in tracks) {
+        when {
+            isTrackCastable(track) -> result.add(track)
+            track.url.isEmpty() -> break
+            // local-only → skip and keep scanning
+        }
+    }
+    return result
+}
+
+internal fun TrackPlayerCore.mediaIdFor(track: TrackItem): String {
+    val playlistId = currentPlaylistId ?: ""
+    return if (playlistId.isNotEmpty()) "$playlistId:${track.id}" else track.id
+}
 
 // ── Full rebuild (jump to index) ───────────────────────────────────────────
 
@@ -21,11 +61,33 @@ internal fun TrackPlayerCore.rebuildQueueAndPlayFromIndex(index: Int) {
     if (!isExoInitialized) return
     if (index < 0 || index >= currentTracks.size) return
 
-    val playlistId = currentPlaylistId ?: ""
+    if (isCastingField) {
+        currentTrackIndex = index
+        val target = currentTracks[index]
+        val castTracks = castableUpcoming(currentTracks.subList(index, currentTracks.size))
+        if (castTracks.isEmpty()) {
+            // Target's URL is not resolved yet (lazy). Silence the receiver and wait —
+            // updateTracks reloads once onTracksNeedUpdate supplies the URL. Dedup the
+            // announcement so re-entries while still unresolved don't spam JS.
+            if (exo.mediaItemCount > 0) exo.clearMediaItems()
+            if (lastCastWaitTrackId != target.id) {
+                lastCastWaitTrackId = target.id
+                notifyTrackChange(target, Reason.SKIP)
+            }
+            checkUpcomingTracksForUrls(lookaheadCount)
+            return
+        }
+        lastCastWaitTrackId = null
+        // Single atomic queueLoad — no separate clear (each queue op is a receiver RPC).
+        exo.setMediaItems(castTracks.map { makeMediaItem(it, mediaIdFor(it)) }, true)
+        exo.prepare()
+        checkUpcomingTracksForUrls(lookaheadCount)
+        return
+    }
+
     val mediaItems =
         currentTracks.subList(index, currentTracks.size).map { track ->
-            val mediaId = if (playlistId.isNotEmpty()) "$playlistId:${track.id}" else track.id
-            makeMediaItem(track, mediaId)
+            makeMediaItem(track, mediaIdFor(track))
         }
 
     currentTrackIndex = index
@@ -63,8 +125,44 @@ internal fun TrackPlayerCore.rebuildQueueFromCurrentPosition() {
         }
     }
 
-    val newQueueTracks = ArrayList<TrackItem>(playNextStack.size + upNextQueue.size + currentTracks.size)
     val currentId = exo.currentMediaItem?.mediaId?.let { extractTrackId(it) }
+    var newQueueTracks: List<TrackItem> = buildUpcomingQueueTracks(currentId)
+
+    if (isCastingField) {
+        // Only receiver-loadable tracks may follow the current item remotely.
+        newQueueTracks = castableUpcoming(newQueueTracks)
+
+        // Every queue edit is a receiver RPC — skip the rebuild entirely when the
+        // remote queue already matches the desired upcoming list.
+        val itemCount = exo.mediaItemCount
+        if (itemCount - currentIndex - 1 == newQueueTracks.size) {
+            var inSync = true
+            for (i in newQueueTracks.indices) {
+                val existingId = extractTrackId(exo.getMediaItemAt(currentIndex + 1 + i).mediaId)
+                if (existingId != newQueueTracks[i].id) {
+                    inSync = false
+                    break
+                }
+            }
+            if (inSync) return
+        }
+    }
+
+    val newMediaItems = newQueueTracks.map { makeMediaItem(it, mediaIdFor(it)) }
+
+    if (exo.mediaItemCount > currentIndex + 1) {
+        exo.removeMediaItems(currentIndex + 1, exo.mediaItemCount)
+    }
+    exo.addMediaItems(newMediaItems)
+}
+
+/**
+ * The desired upcoming track list after the currently playing track:
+ * [playNext stack] + [upNext queue] + [remaining original tracks], with the
+ * currently playing temp track (identified by [currentId]) skipped from its list.
+ */
+internal fun TrackPlayerCore.buildUpcomingQueueTracks(currentId: String?): List<TrackItem> {
+    val newQueueTracks = ArrayList<TrackItem>(playNextStack.size + upNextQueue.size + currentTracks.size)
 
     // playNext stack — skip the currently playing track by ID (not position)
     if (currentTemporaryType == TrackPlayerCore.TemporaryType.PLAY_NEXT && currentId != null) {
@@ -94,34 +192,40 @@ internal fun TrackPlayerCore.rebuildQueueFromCurrentPosition() {
         newQueueTracks.addAll(upNextQueue)
     }
 
-    // Remaining original tracks (after currentTrackIndex, not after ExoPlayer's currentIndex)
+    // Remaining original tracks (after currentTrackIndex, not after the player's currentIndex)
     if (currentTrackIndex + 1 < currentTracks.size) {
         newQueueTracks.addAll(currentTracks.subList(currentTrackIndex + 1, currentTracks.size))
     }
-
-    val playlistId = currentPlaylistId ?: ""
-    val newMediaItems =
-        newQueueTracks.map { track ->
-            val mediaId = if (playlistId.isNotEmpty()) "$playlistId:${track.id}" else track.id
-            makeMediaItem(track, mediaId)
-        }
-
-    if (exo.mediaItemCount > currentIndex + 1) {
-        exo.removeMediaItems(currentIndex + 1, exo.mediaItemCount)
-    }
-    exo.addMediaItems(newMediaItems)
+    return newQueueTracks
 }
 
 // ── Full queue set (initial load or no active item) ───────────────────────
 
 internal fun TrackPlayerCore.updatePlayerQueue(tracks: List<TrackItem>) {
     currentTracks = tracks
-    val playlistId = currentPlaylistId ?: ""
-    val mediaItems =
-        tracks.map { track ->
-            val mediaId = if (playlistId.isNotEmpty()) "$playlistId:${track.id}" else track.id
-            makeMediaItem(track, mediaId)
+
+    if (isCastingField) {
+        currentTrackIndex = 0
+        val castTracks = castableUpcoming(tracks)
+        if (castTracks.isEmpty()) {
+            // First track has no castable URL yet — silence the receiver and wait for
+            // updateTracks to supply URLs (JS is notified via onTracksNeedUpdate).
+            if (exo.mediaItemCount > 0) exo.clearMediaItems()
+            val first = tracks.firstOrNull()
+            if (first != null && lastCastWaitTrackId != first.id) {
+                lastCastWaitTrackId = first.id
+                notifyTrackChange(first, null)
+            }
+            checkUpcomingTracksForUrls(lookaheadCount)
+            return
         }
+        lastCastWaitTrackId = null
+        exo.setMediaItems(castTracks.map { makeMediaItem(it, mediaIdFor(it)) }, true)
+        exo.prepare()
+        return
+    }
+
+    val mediaItems = tracks.map { makeMediaItem(it, mediaIdFor(it)) }
     exo.setMediaItems(mediaItems, true)
     if (exo.playbackState == Player.STATE_IDLE && mediaItems.isNotEmpty()) {
         exo.prepare()
@@ -148,7 +252,9 @@ internal fun TrackPlayerCore.makeMediaItem(
         }
     }
 
-    val effectiveUrl = downloadManager.getEffectiveUrl(track)
+    // Cast: the receiver fetches the media itself, so a downloaded track's local
+    // path is unplayable there — always hand it the remote URL while casting.
+    val effectiveUrl = if (isCastingField) track.url else downloadManager.getEffectiveUrl(track)
 
     // Register custom HTTP headers (e.g. Authorization) from extraPayload.headers so they are
     // injected into the request for this URL. Applies to remote streams only — see ExoPlayerBuilder.

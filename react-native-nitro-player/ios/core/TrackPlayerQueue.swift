@@ -20,11 +20,7 @@ extension TrackPlayerCore {
 
   func skipToIndex(index: Int) async -> Bool {
     if isCasting {
-      return await withPlayerQueueNoThrow {
-        guard index >= 0 && index < self.getActualQueueInternal().count else { return false }
-        self.castManager?.jump(toQueueIndex: index)
-        return true
-      }
+      return await withPlayerQueueNoThrow { self.skipToIndexCastInternal(index: index) }
     }
     return await withPlayerQueueNoThrow { self.skipToIndexInternal(index: index) }
   }
@@ -40,6 +36,30 @@ extension TrackPlayerCore {
   // MARK: - Internal (run on playerQueue)
 
   func getStateInternal() -> PlayerState {
+    // While casting, the local AVQueuePlayer is paused/stale — report the
+    // receiver's cached state instead so getState() stays truthful.
+    if isCasting, let cast = castManager {
+      let currentTrack = getCurrentTrack()
+      let playingType: CurrentPlayingType
+      if currentTrack == nil { playingType = .notPlaying }
+      else {
+        switch currentTemporaryType {
+        case .none: playingType = .playlist
+        case .playNext: playingType = .playNext
+        case .upNext: playingType = .upNext
+        }
+      }
+      return PlayerState(
+        currentTrack: currentTrack.map { Variant_NullType_TrackItem.second($0) },
+        currentPosition: cast.lastKnownRemotePosition,
+        totalDuration: cast.lastKnownRemoteDuration,
+        currentState: cast.cachedPlaybackState,
+        currentPlaylistId: currentPlaylistId.map { Variant_NullType_String.second($0) },
+        currentIndex: currentTrackIndex >= 0 ? Double(currentTrackIndex) : -1.0,
+        currentPlayingType: playingType
+      )
+    }
+
     guard let player else {
       return PlayerState(
         currentTrack: nil, currentPosition: 0.0, totalDuration: 0.0,
@@ -96,7 +116,7 @@ extension TrackPlayerCore {
     if let current = getCurrentTrack() { queue.append(current) }
 
     // Add playNext stack — skip the currently playing track by ID (already added as current)
-    let currentId = player?.currentItem?.trackId
+    let currentId = activeCurrentTrackId
     if currentTemporaryType == .playNext, let currentId = currentId {
       var skipped = false
       for track in playNextStack {
@@ -126,10 +146,7 @@ extension TrackPlayerCore {
   }
 
   func getCurrentTrack() -> TrackItem? {
-    if currentTemporaryType != .none,
-      let currentItem = player?.currentItem,
-      let trackId = currentItem.trackId
-    {
+    if currentTemporaryType != .none, let trackId = activeCurrentTrackId {
       if currentTemporaryType == .playNext { return playNextStack.first(where: { $0.id == trackId }) }
       if currentTemporaryType == .upNext { return upNextQueue.first(where: { $0.id == trackId }) }
     }
@@ -222,7 +239,7 @@ extension TrackPlayerCore {
   }
 
   func determineCurrentTemporaryType() -> TemporaryType {
-    guard let trackId = player?.currentItem?.trackId else { return .none }
+    guard let trackId = activeCurrentTrackId else { return .none }
     if playNextStack.contains(where: { $0.id == trackId }) { return .playNext }
     if upNextQueue.contains(where: { $0.id == trackId }) { return .upNext }
     return .none
