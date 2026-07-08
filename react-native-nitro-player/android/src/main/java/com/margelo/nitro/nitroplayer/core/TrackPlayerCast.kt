@@ -21,11 +21,7 @@ import com.margelo.nitro.nitroplayer.media.NitroCastConfig
  */
 
 // ── Backend switching ──────────────────────────────────────────────────────
-//
-// The queue is REBUILT for the target backend rather than copying MediaItems:
-// local items may carry downloaded-file paths or empty lazy URLs that a Cast
-// receiver cannot load (it fails and auto-advances, cascading through the queue),
-// and cast items carry remote URLs where local playback should prefer downloads.
+// The queue is rebuilt for the target backend (not item-copied): cast needs remote URLs, local prefers download paths.
 
 internal fun TrackPlayerCore.switchToCastPlayer() {
     val controller = castSessionController ?: return
@@ -33,8 +29,7 @@ internal fun TrackPlayerCore.switchToCastPlayer() {
     val local = exo.player
     if (local === controller.castPlayer) return
 
-    // Capture playback context BEFORE swapping — the queue helpers read `exo`,
-    // and the cast player's timeline is still empty at this point.
+    // Capture context BEFORE swapping — the queue helpers read `exo`, and the cast timeline is still empty.
     val currentId = local.currentMediaItem?.mediaId?.let { extractTrackId(it) }
     val currentTrack = getCurrentTrack() ?: currentTracks.getOrNull(currentTrackIndex)
     val upcoming = buildUpcomingQueueTracks(currentId)
@@ -58,8 +53,7 @@ internal fun TrackPlayerCore.switchToCastPlayer() {
     if (playable.isNotEmpty()) {
         lastCastWaitTrackId = null
         val items = playable.map { makeMediaItem(it, mediaIdFor(it)) }
-        // Resume mid-track only when the receiver starts on the same track that was
-        // playing locally (a local-only current track gets skipped past instead).
+        // Resume mid-track only when the receiver starts on the locally playing track.
         val resumeFromCurrent = currentTrack != null && playable.first().id == currentTrack.id
         controller.castPlayer.setMediaItems(items, 0, if (resumeFromCurrent) positionMs else 0L)
         controller.castPlayer.repeatMode = repeat

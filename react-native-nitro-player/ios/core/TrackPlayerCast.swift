@@ -10,11 +10,7 @@
 //  to the receiver. The same queue model (currentTracks / temp queues) stays the
 //  single source of truth, so disconnect can restore local playback seamlessly.
 //
-//  Cast receivers auto-advance past items they fail to load (unlike AVPlayer,
-//  which errors and waits — the behaviour the lazy-URL flow relies on). So only
-//  the contiguous prefix of *castable* tracks (non-empty remote URLs) is ever
-//  sent to the receiver; unresolved tracks are requested via onTracksNeedUpdate
-//  and the cast queue is extended/reloaded when updateTracks supplies their URLs.
+//  Receivers auto-skip failed loads (AVPlayer waits), so only receiver-loadable tracks are ever enqueued remotely.
 //
 
 import AVFoundation
@@ -29,12 +25,7 @@ extension TrackPlayerCore {
     !track.url.isEmpty && !track.url.hasPrefix("/") && !track.url.hasPrefix("file:")
   }
 
-  /// The run of tracks safe to enqueue on the receiver:
-  /// - castable tracks are kept;
-  /// - local-only tracks (downloaded file paths — nothing will ever resolve them
-  ///   remotely) are skipped, mirroring the receiver's own fail-and-advance;
-  /// - the first lazy track (empty URL) STOPS the run — its URL resolution is
-  ///   coming via onTracksNeedUpdate/updateTracks, which then extends the queue.
+  /// Receiver-safe run: keeps castable tracks, skips local-only ones, stops at the first lazy (empty-URL) track whose resolution is pending.
   func castableUpcoming(_ tracks: [TrackItem]) -> [TrackItem] {
     var result: [TrackItem] = []
     for track in tracks {
@@ -48,9 +39,7 @@ extension TrackPlayerCore {
     return result
   }
 
-  /// Track ID of the item playing on the ACTIVE backend (receiver while casting,
-  /// local AVQueuePlayer otherwise). The shared queue-state readers use this so
-  /// temp-queue bookkeeping stays correct in both modes.
+  /// Track ID playing on the ACTIVE backend — receiver while casting, local AVQueuePlayer otherwise.
   var activeCurrentTrackId: String? {
     isCasting ? castManager?.currentRemoteTrackId : player?.currentItem?.trackId
   }
@@ -107,9 +96,7 @@ extension TrackPlayerCore {
     loadCastQueue(fromActualIndex: startIndex, autoplay: autoplay, position: position)
   }
 
-  /// Atomically (re)load the receiver queue from `index` in the actual queue.
-  /// Only the castable prefix is sent; when the target itself is not castable the
-  /// receiver is stopped and the load happens after updateTracks resolves URLs.
+  /// Atomically (re)load the receiver queue from `index` in the actual queue (lazy targets stop the receiver and wait for updateTracks).
   func loadCastQueue(fromActualIndex index: Int, autoplay: Bool, position: Double) {
     let queue = getActualQueueInternal()
     guard index >= 0, index < queue.count else { return }
@@ -117,15 +104,13 @@ extension TrackPlayerCore {
     let playable = castableUpcoming(slice)
 
     guard !playable.isEmpty else {
-      // Target's URL is not resolved yet (lazy). Silence the receiver and wait —
-      // updateTracks reloads once onTracksNeedUpdate supplies the URL.
+      // Lazy target — silence the receiver and wait for updateTracks to reload.
       castManager?.stop()
       checkUpcomingTracksForUrls(lookahead: lookaheadCount)
       return
     }
 
-    // Resume mid-track only when the receiver starts on the requested track
-    // (a local-only target gets skipped past instead).
+    // Resume mid-track only when the receiver starts on the requested track.
     let effectivePosition = playable[0].id == slice[0].id ? position : 0
 
     castManager?.setExpectedCurrentTrack(playable[0].id)
@@ -138,11 +123,7 @@ extension TrackPlayerCore {
     checkUpcomingTracksForUrls(lookahead: lookaheadCount)
   }
 
-  /// Bring the receiver's UPCOMING items in line with the desired queue while
-  /// leaving the currently playing item untouched whenever possible.
-  /// Append-only extensions are pushed without interrupting playback; anything
-  /// else (reorder, removal, URL refresh) does an atomic reload at the current
-  /// position. Must be called on `playerQueue`.
+  /// Sync the receiver's upcoming items: append-only extensions don't interrupt playback; anything else reloads at the current position.
   func syncCastQueueAfterCurrent() {
     guard let cast = castManager else { return }
     guard cast.hasLoadedMedia else {
@@ -186,8 +167,7 @@ extension TrackPlayerCore {
 
   // MARK: - Cast-mode navigation (mirrors the local skip logic, minus AVQueuePlayer)
 
-  /// skipToIndex while casting: apply the same temp-list/index mutations as the
-  /// local path, then reload the receiver at the target. Runs on playerQueue.
+  /// skipToIndex while casting: apply the local path's list/index mutations, then reload the receiver at the target.
   func skipToIndexCastInternal(index: Int) -> Bool {
     let actualQueue = getActualQueueInternal()
     guard index >= 0 && index < actualQueue.count else { return false }
@@ -209,8 +189,7 @@ extension TrackPlayerCore {
 
     let target = actualQueue[index]
 
-    // Skipping away from a playing temp track removes it from its list
-    // (mirrors the local transition handler).
+    // Skipping away from a playing temp track removes it from its list (mirrors the local handler).
     if currentTemporaryType != .none, let currentId = activeCurrentTrackId {
       if currentTemporaryType == .playNext,
         let i = playNextStack.firstIndex(where: { $0.id == currentId }) {
@@ -254,8 +233,7 @@ extension TrackPlayerCore {
     return true
   }
 
-  /// skipToPrevious while casting: same semantics as the local path — restart
-  /// after the threshold, otherwise step back through temp/original tracks.
+  /// skipToPrevious while casting: restart after the threshold, otherwise step back through temp/original tracks.
   func skipToPreviousCastInternal() {
     let position = castManager?.lastKnownRemotePosition ?? 0
     if position > Constants.skipToPreviousThreshold {
@@ -292,8 +270,7 @@ extension TrackPlayerCore {
 
   // MARK: - Emit (cast-derived events → JS listeners; run on playerQueue)
 
-  /// Handle a track change reported by (or expected on) the receiver: temp-list
-  /// bookkeeping, index/type classification, and the JS event.
+  /// Track change from the receiver: temp-list bookkeeping, index/type classification, and the JS event.
   func emitCastTrackChange(_ track: TrackItem, previousTrackId: String? = nil) {
     // Leaving a temp track removes it from its list (mirrors the local handler).
     if let prev = previousTrackId, prev != track.id {
@@ -306,8 +283,7 @@ extension TrackPlayerCore {
       }
     }
 
-    // Classify the new current track — temp lists take priority, matching
-    // determineCurrentTemporaryType.
+    // Classify the new current track — temp lists take priority (matches determineCurrentTemporaryType).
     if playNextStack.contains(where: { $0.id == track.id }) {
       currentTemporaryType = .playNext
     } else if upNextQueue.contains(where: { $0.id == track.id }) {

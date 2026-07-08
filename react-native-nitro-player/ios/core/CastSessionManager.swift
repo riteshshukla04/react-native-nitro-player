@@ -7,10 +7,7 @@
 //  `#if canImport(GoogleCast)` so the library still builds when the SDK is not
 //  linked — in that case every method is an inert no-op and casting is disabled.
 //
-//  Threading: the GoogleCast SDK is main-thread-affine, so every SDK call hops to
-//  main via `onMain`. Core state lives on `playerQueue` and Nitro sync getters run
-//  on the JS thread, so everything the core/JS reads back is served from small
-//  lock-guarded caches that the main-thread Cast callbacks keep fresh.
+//  Threading: the SDK is main-thread-affine, so SDK calls hop to main and reads are served from lock-guarded caches.
 //
 
 import Foundation
@@ -39,8 +36,7 @@ final class CastSessionManager: NSObject {
   private var cachedState: CastState = .noDevicesAvailable
   private var cachedDeviceName: String?
 
-  /// Track ID of the item currently playing on the receiver (or expected to be,
-  /// right after a locally-initiated jump).
+  /// Track ID playing on the receiver (or expected to, right after a locally-initiated jump).
   var currentRemoteTrackId: String? {
     stateLock.lock(); defer { stateLock.unlock() }
     return _lastCurrentTrackId
@@ -76,8 +72,7 @@ final class CastSessionManager: NSObject {
     return _cachedPlaybackState
   }
 
-  /// Pre-set the expected current track after a locally-initiated jump so the
-  /// receiver's own status echo doesn't produce a duplicate track-change event.
+  /// Pre-set the expected current track after a local jump so the receiver's status echo doesn't duplicate the track-change event.
   func setExpectedCurrentTrack(_ trackId: String?) {
     stateLock.lock(); defer { stateLock.unlock() }
     _lastCurrentTrackId = trackId
@@ -219,12 +214,10 @@ final class CastSessionManager: NSObject {
     #endif
   }
 
-  /// Stop and unload whatever the receiver is playing (used when jumping to a
-  /// track whose URL is not resolved yet — the load happens after updateTracks).
+  /// Stop and unload the receiver (used when jumping to a track whose URL hasn't resolved yet).
   func stop() {
     #if canImport(GoogleCast)
-    // No-op when nothing is loaded — avoids a pointless receiver RPC on every
-    // updateTracks re-entry while still waiting for the target's URL.
+    // No-op when nothing is loaded — avoids a pointless receiver RPC per updateTracks re-entry.
     let hadMedia: Bool = withState {
       let had = _hasLoadedMedia || !_loadedTracks.isEmpty
       _hasLoadedMedia = false
@@ -238,8 +231,7 @@ final class CastSessionManager: NSObject {
 
   // MARK: - Queue loading
 
-  /// Atomically replace the receiver queue. `tracks` must already be castable
-  /// (non-empty remote URLs) and start at the item that should play.
+  /// Atomically replace the receiver queue — `tracks` must be castable and start at the item that should play.
   func loadQueue(tracks: [TrackItem], position: Double, autoplay: Bool, repeatMode: RepeatMode) {
     #if canImport(GoogleCast)
     guard !tracks.isEmpty else { return }
@@ -296,8 +288,7 @@ final class CastSessionManager: NSObject {
   }
 
   private func makeQueueItem(for track: TrackItem, autoplay: Bool) -> GCKMediaQueueItem? {
-    // The receiver fetches media itself: only a remote URL is playable there —
-    // never a downloaded file path. Callers pre-filter with isTrackCastable.
+    // The receiver fetches media itself — only remote URLs are playable (callers pre-filter with isTrackCastable).
     let urlString = track.url
     guard !urlString.isEmpty, let contentURL = URL(string: urlString) else { return nil }
 

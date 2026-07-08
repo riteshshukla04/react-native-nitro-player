@@ -36,9 +36,7 @@ suspend fun TrackPlayerCore.updateTracks(tracks: List<TrackItem>) =
 
         val affectedPlaylists: Map<String, Int> = playlistManager.updateTracks(safeTracks)
 
-        // Replace current track's MediaItem if it was empty-URL and now has a URL.
-        // Local only — while casting the lazy current track was never enqueued on the
-        // receiver, so there is nothing to replace (the cast branch below reloads).
+        // Replace the current MediaItem when its URL just resolved (local only — the cast branch below reloads instead).
         val currentTrackResolvedNow = currentTrackUpdate != null && currentTrackIsEmpty && currentTrackUpdate.url.isNotEmpty()
         if (!isCastingField && currentTrackResolvedNow) {
             val exoIndex = exo.currentMediaItemIndex
@@ -60,10 +58,7 @@ suspend fun TrackPlayerCore.updateTracks(tracks: List<TrackItem>) =
             }
 
             if (isCastingField) {
-                // The receiver holds only receiver-loadable tracks; a resolved current
-                // track (or an empty receiver queue) needs a fresh atomic queueLoad from
-                // the current index (the rebuild handles still-unresolved targets by
-                // waiting). Otherwise just resync the items after the current one.
+                // Resolved current track (or empty receiver) → atomic reload from the current index; otherwise resync only the upcoming items.
                 if (currentTrackResolvedNow || exo.mediaItemCount == 0) {
                     rebuildQueueAndPlayFromIndex(currentTrackIndex)
                 } else {

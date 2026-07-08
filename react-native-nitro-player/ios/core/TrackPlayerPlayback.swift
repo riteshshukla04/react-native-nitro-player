@@ -47,9 +47,7 @@ extension TrackPlayerCore {
 
   func skipToPrevious() async {
     if isCasting {
-      // The receiver queue starts at the current track (castable prefix), so the
-      // SDK's queuePreviousItem has nothing to go back to — replicate the local
-      // semantics against core state instead.
+      // The receiver queue starts at the current track, so queuePreviousItem has nothing behind it — use core state instead.
       await withPlayerQueueNoThrow { self.skipToPreviousCastInternal() }
       return
     }

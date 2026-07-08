@@ -240,8 +240,7 @@ extension TrackPlayerCore {
   /// - Parameter changedTrackIds: When non-nil, performs a surgical update:
   ///   only AVPlayerItems whose track ID is in this set are removed and re-created.
   func rebuildAVQueueFromCurrentPosition(changedTrackIds: Set<String>? = nil) {
-    // While casting the local AVQueuePlayer is dormant — queue changes (playNext,
-    // upNext, reorder, …) are applied to the receiver instead.
+    // While casting, queue changes are applied to the receiver — the local AVQueuePlayer is dormant.
     if isCasting {
       syncCastQueueAfterCurrent()
       return

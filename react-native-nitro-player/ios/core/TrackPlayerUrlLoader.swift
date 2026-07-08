@@ -78,8 +78,7 @@ extension TrackPlayerCore {
     // Update in PlaylistManager
     let affectedPlaylists = self.playlistManager.updateTracks(tracks: safeTracks)
 
-    // If the current track had no URL and now has one, replace the current AVPlayerItem
-    // (local only — while casting the lazy current item was never enqueued remotely).
+    // Replace the current AVPlayerItem when its URL just resolved (local only — cast reloads below instead).
     if !self.isCasting, let update = currentTrack, currentTrackIsEmpty, !update.url.isEmpty {
       NitroPlayerLogger.log("TrackPlayerCore",
         "🔄 Replacing current AVPlayerItem for track with resolved URL: \(update.id)")
@@ -103,27 +102,23 @@ extension TrackPlayerCore {
       }
 
       if self.isCasting {
-        // The receiver holds only the castable prefix, so resolved URLs are applied
-        // by (re)loading or extending the remote queue — never by touching the local
-        // AVQueuePlayer (which must stay silent while casting).
+        // Resolved URLs are applied by (re)loading/extending the remote queue — never by touching the silent local player.
         let currentResolvedNow = currentTrackIsEmpty
           && currentTrackId.map { id in updatedTrackIds.contains(id) } ?? false
         let staleOnReceiver = !updatedTrackIds
           .isDisjoint(with: Set(self.castManager?.loadedTrackIds ?? []))
 
         if currentResolvedNow || !(self.castManager?.hasLoadedMedia ?? false) {
-          // The track we're parked on just became castable (or nothing is loaded) —
-          // atomic load from the current track.
+          // Parked track just became castable (or nothing loaded) — atomic load from current.
           self.loadCastQueue(autoplay: self.intendedToPlay, position: 0)
         } else if staleOnReceiver {
-          // URLs changed for items already on the receiver — reload at position so
-          // the receiver doesn't fail (and auto-skip) on the stale ones later.
+          // URLs changed for items already on the receiver — reload at position before stale ones fail.
           self.loadCastQueue(
             autoplay: self.intendedToPlay,
             position: self.castManager?.lastKnownRemotePosition ?? 0
           )
         } else {
-          // Newly castable tracks extend the receiver queue without interrupting.
+          // Newly castable tracks extend the receiver queue without interrupting playback.
           self.syncCastQueueAfterCurrent()
         }
         NitroPlayerLogger.log("TrackPlayerCore", "✅ Cast queue synced after track updates")

@@ -36,8 +36,7 @@ extension TrackPlayerCore {
   // MARK: - Internal (run on playerQueue)
 
   func getStateInternal() -> PlayerState {
-    // While casting, the local AVQueuePlayer is paused/stale — report the
-    // receiver's cached state instead so getState() stays truthful.
+    // While casting, report the receiver's cached state — the local AVQueuePlayer is paused/stale.
     if isCasting, let cast = castManager {
       let currentTrack = getCurrentTrack()
       let playingType: CurrentPlayingType
