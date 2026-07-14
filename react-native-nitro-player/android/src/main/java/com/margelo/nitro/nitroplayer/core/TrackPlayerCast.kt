@@ -3,9 +3,9 @@
 package com.margelo.nitro.nitroplayer.core
 
 import android.app.Activity
-import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import com.margelo.nitro.nitroplayer.CastState
+import com.margelo.nitro.nitroplayer.TrackItem
 import com.margelo.nitro.nitroplayer.media.NitroCastConfig
 
 /**
@@ -21,58 +21,96 @@ import com.margelo.nitro.nitroplayer.media.NitroCastConfig
  */
 
 // ── Backend switching ──────────────────────────────────────────────────────
+// The queue is rebuilt for the target backend (not item-copied): cast needs remote URLs, local prefers download paths.
 
 internal fun TrackPlayerCore.switchToCastPlayer() {
     val controller = castSessionController ?: return
-    switchToPlayer(controller.castPlayer)
-    isCastingField = true
+    if (!isExoInitialized) return
+    val local = exo.player
+    if (local === controller.castPlayer) return
+
+    // Capture context BEFORE swapping — the queue helpers read `exo`, and the cast timeline is still empty.
+    val currentId = local.currentMediaItem?.mediaId?.let { extractTrackId(it) }
+    val currentTrack = getCurrentTrack() ?: currentTracks.getOrNull(currentTrackIndex)
+    val upcoming = buildUpcomingQueueTracks(currentId)
+    val positionMs = local.currentPosition.coerceAtLeast(0L)
+    val wasPlaying = local.playWhenReady
+    val repeat = local.repeatMode
+
+    playerListener?.let { local.removeListener(it) }
+    local.playWhenReady = false // silence local output — audio now comes from the device
+
+    isCastingField = true // before building items so makeMediaItem picks remote URLs
+    exo = ExoPlayerCore(controller.castPlayer)
+    playerListener?.let { controller.castPlayer.addListener(it) }
+    setMediaSessionPlayer(controller.castPlayer)
+
+    val castList = ArrayList<TrackItem>()
+    currentTrack?.let { castList.add(it) }
+    castList.addAll(upcoming)
+    val playable = castableUpcoming(castList)
+
+    if (playable.isNotEmpty()) {
+        lastCastWaitTrackId = null
+        val items = playable.map { makeMediaItem(it, mediaIdFor(it)) }
+        // Resume mid-track only when the receiver starts on the locally playing track.
+        val resumeFromCurrent = currentTrack != null && playable.first().id == currentTrack.id
+        controller.castPlayer.setMediaItems(items, 0, if (resumeFromCurrent) positionMs else 0L)
+        controller.castPlayer.repeatMode = repeat
+        controller.castPlayer.playWhenReady = wasPlaying
+        controller.castPlayer.prepare()
+    } else {
+        // Nothing castable yet (lazy queue) — request URLs; updateTracks will load.
+        checkUpcomingTracksForUrls(lookaheadCount)
+    }
+
     notifyCastStateChange(CastState.CONNECTED, controller.currentDeviceName())
 }
 
 internal fun TrackPlayerCore.switchToLocalPlayer() {
     val controller = castSessionController ?: return
-    switchToPlayer(controller.localPlayer)
-    isCastingField = false
+    if (!isExoInitialized) return
+    val cast = exo.player
+    if (cast === controller.localPlayer) return
+
+    // Capture context before swapping (the cast timeline empties once the session ends).
+    val currentId = cast.currentMediaItem?.mediaId?.let { extractTrackId(it) }
+    val currentTrack = getCurrentTrack() ?: currentTracks.getOrNull(currentTrackIndex)
+    val upcoming = buildUpcomingQueueTracks(currentId)
+    val positionMs = cast.currentPosition.coerceAtLeast(0L)
+    val wasPlaying = cast.playWhenReady
+    val repeat = cast.repeatMode
+
+    playerListener?.let { cast.removeListener(it) }
+    cast.playWhenReady = false
+
+    isCastingField = false // before building items so makeMediaItem restores download paths
+    lastCastWaitTrackId = null
+    exo = ExoPlayerCore(controller.localPlayer)
+    playerListener?.let { controller.localPlayer.addListener(it) }
+    setMediaSessionPlayer(controller.localPlayer)
+
+    val localList = ArrayList<TrackItem>()
+    currentTrack?.let { localList.add(it) }
+    localList.addAll(upcoming)
+
+    if (localList.isNotEmpty()) {
+        val items = localList.map { makeMediaItem(it, mediaIdFor(it)) }
+        controller.localPlayer.setMediaItems(items, 0, positionMs)
+        controller.localPlayer.repeatMode = repeat
+        controller.localPlayer.playWhenReady = wasPlaying
+        controller.localPlayer.prepare()
+    }
+
     notifyCastStateChange(controller.getCastState(), controller.currentDeviceName())
 }
 
-private fun TrackPlayerCore.switchToPlayer(target: Player) {
-    if (!isExoInitialized) return
-    val current = exo.player
-    if (current === target) return
-
-    // Move listener, queue and position from the current player to the target,
-    // then make the target authoritative for the MediaSession & notification.
-    playerListener?.let { current.removeListener(it) }
-    transferPlaybackState(current, target)
-    current.playWhenReady = false // silence the player we're leaving
-
-    exo = ExoPlayerCore(target)
-    playerListener?.let { target.addListener(it) }
-
+private fun TrackPlayerCore.setMediaSessionPlayer(target: Player) {
     try {
         castSessionController?.let { it.mediaSession.player = target }
     } catch (e: Exception) {
         NitroPlayerLogger.log("TrackPlayerCast") { "setPlayer on MediaSession failed: ${e.message}" }
     }
-}
-
-/** Copy the queue, index, position, repeat mode and play-when-ready from one player to another. */
-private fun transferPlaybackState(
-    from: Player,
-    to: Player,
-) {
-    val count = from.mediaItemCount
-    if (count == 0) return
-    val items = ArrayList<MediaItem>(count)
-    for (i in 0 until count) items.add(from.getMediaItemAt(i))
-    val index = from.currentMediaItemIndex.coerceAtLeast(0)
-    val position = if (from.currentPosition >= 0) from.currentPosition else 0L
-
-    to.setMediaItems(items, index, position)
-    to.repeatMode = from.repeatMode
-    to.playWhenReady = from.playWhenReady
-    to.prepare()
 }
 
 // ── Notifications ──────────────────────────────────────────────────────────

@@ -47,7 +47,8 @@ extension TrackPlayerCore {
 
   func skipToPrevious() async {
     if isCasting {
-      castManager?.skipToPrevious()
+      // The receiver queue starts at the current track, so queuePreviousItem has nothing behind it — use core state instead.
+      await withPlayerQueueNoThrow { self.skipToPreviousCastInternal() }
       return
     }
     await withPlayerQueueNoThrow { self.skipToPreviousInternal() }
@@ -57,6 +58,7 @@ extension TrackPlayerCore {
     await withPlayerQueueNoThrow {
       self.currentRepeatMode = mode
       self.player?.actionAtItemEnd = (mode == .track) ? .none : .advance
+      if self.isCasting { self.castManager?.setQueueRepeatMode(mode) }
       NitroPlayerLogger.log("TrackPlayerCore", "🔁 setRepeatMode: \(mode)")
     }
   }

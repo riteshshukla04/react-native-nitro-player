@@ -80,6 +80,8 @@ class ExoPlayerCore(
         }
     val currentMediaItem: MediaItem? get() = player.currentMediaItem
     val currentMediaItemIndex: Int get() = player.currentMediaItemIndex
+
+    fun getMediaItemAt(index: Int): MediaItem = player.getMediaItemAt(index)
     val currentPosition: Long get() = player.currentPosition
     val duration: Long get() = player.duration
     val mediaItemCount: Int get() = player.mediaItemCount

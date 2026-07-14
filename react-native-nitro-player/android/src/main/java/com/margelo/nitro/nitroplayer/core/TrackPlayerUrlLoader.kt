@@ -36,12 +36,13 @@ suspend fun TrackPlayerCore.updateTracks(tracks: List<TrackItem>) =
 
         val affectedPlaylists: Map<String, Int> = playlistManager.updateTracks(safeTracks)
 
-        // Replace current track's MediaItem if it was empty-URL and now has a URL
-        if (currentTrackUpdate != null && currentTrackIsEmpty && currentTrackUpdate.url.isNotEmpty()) {
+        // Replace the current MediaItem when its URL just resolved (local only — the cast branch below reloads instead).
+        val currentTrackResolvedNow = currentTrackUpdate != null && currentTrackIsEmpty && currentTrackUpdate.url.isNotEmpty()
+        if (!isCastingField && currentTrackResolvedNow) {
             val exoIndex = exo.currentMediaItemIndex
             if (exoIndex >= 0) {
                 val playlistId = currentPlaylistId ?: ""
-                val mediaId = if (playlistId.isNotEmpty()) "$playlistId:${currentTrackUpdate.id}" else currentTrackUpdate.id
+                val mediaId = if (playlistId.isNotEmpty()) "$playlistId:${currentTrackUpdate!!.id}" else currentTrackUpdate!!.id
                 exo.replaceMediaItem(exoIndex, makeMediaItem(currentTrackUpdate, mediaId))
                 if (exo.playbackState == Player.STATE_IDLE) exo.prepare()
             }
@@ -55,6 +56,17 @@ suspend fun TrackPlayerCore.updateTracks(tracks: List<TrackItem>) =
                 playNextStack.forEachIndexed { i, t -> updatedById[t.id]?.let { if (it !== t) playNextStack[i] = it } }
                 upNextQueue.forEachIndexed { i, t -> updatedById[t.id]?.let { if (it !== t) upNextQueue[i] = it } }
             }
+
+            if (isCastingField) {
+                // Resolved current track (or empty receiver) → atomic reload from the current index; otherwise resync only the upcoming items.
+                if (currentTrackResolvedNow || exo.mediaItemCount == 0) {
+                    rebuildQueueAndPlayFromIndex(currentTrackIndex)
+                } else {
+                    rebuildQueueFromCurrentPosition()
+                }
+                return@withPlayerContext
+            }
+
             rebuildQueueFromCurrentPosition()
         }
     }

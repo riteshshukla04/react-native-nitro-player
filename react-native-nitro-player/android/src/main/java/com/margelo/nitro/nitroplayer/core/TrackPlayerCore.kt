@@ -100,6 +100,9 @@ class TrackPlayerCore private constructor(
     /** True while the active backend is the CastPlayer (audio routed to a remote device). */
     @Volatile internal var isCastingField: Boolean = false
 
+    /** Last track announced from a cast "waiting for URL" state — dedups onChangeTrack across updateTracks re-entries. */
+    internal var lastCastWaitTrackId: String? = null
+
     // ── Progress & playlist-update runnables ───────────────────────────────
     internal val progressUpdateRunnable =
         object : Runnable {
