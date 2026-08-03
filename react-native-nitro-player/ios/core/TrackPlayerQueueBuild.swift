@@ -11,6 +11,34 @@ import Foundation
 
 extension TrackPlayerCore {
 
+  /// Cancels an item's outstanding asset loading before it is released.
+  ///
+  /// `AVURLAsset.dealloc` blocks the deallocating thread inside `URLAssetFinalize`
+  /// until any in-flight `loadValuesAsynchronously` / resource-loader work finishes —
+  /// and AVPlayer tears removed items down on the MAIN thread. Dropping items without
+  /// cancelling first therefore stalls the main run loop (and with it RCTTiming, so
+  /// JS timers stop firing) for as long as the pending loads take.
+  /// `cancelLoading()` itself waits for in-flight work to unwind, so it is only worth
+  /// paying on a full teardown (playlist switch / jump), never on the incremental
+  /// window rebuild that runs on every playNext / addToUpNext.
+  ///
+  /// A cancelled asset must never be handed back out: `createGaplessPlayerItem` reuses
+  /// `preloadedAssets`, and reusing a cancelled one yields an item that fails and then
+  /// burns the failed-item retry budget. Evict it instead.
+  func cancelLoading(of item: AVPlayerItem) {
+    guard let asset = item.asset as? AVURLAsset else { return }
+    if let trackId = item.trackId, preloadedAssets[trackId] === asset {
+      preloadedAssets.removeValue(forKey: trackId)
+    }
+    asset.cancelLoading()
+  }
+
+  /// Removes every item from the player, cancelling their asset loads first.
+  func removeAllItemsCancellingLoads(_ player: AVQueuePlayer) {
+    for item in player.items() { cancelLoading(of: item) }
+    player.removeAllItems()
+  }
+
   func updatePlayerQueue(tracks: [TrackItem]) {
     // While casting, mirror the new queue to the Cast device instead of building
     // the local AVQueuePlayer (which would start local audio).
@@ -55,6 +83,7 @@ extension TrackPlayerCore {
     player?.automaticallyWaitsToMinimizeStalling = true
 
     // Clear old preloaded assets when loading new queue
+    preloadedAssets.values.forEach { $0.cancelLoading() }
     preloadedAssets.removeAll()
 
     guard let existingPlayer = self.player else {
@@ -63,7 +92,7 @@ extension TrackPlayerCore {
     }
 
     NitroPlayerLogger.log("TrackPlayerCore", "🔄 Removing \(existingPlayer.items().count) old items from player")
-    existingPlayer.removeAllItems()
+    removeAllItemsCancellingLoads(existingPlayer)
 
     // Lazy-load mode if the first track needs a URL. Tracks further in the queue with
     // empty URLs are dropped safely by compactMap below and resolved via onTracksNeedUpdate.
@@ -75,7 +104,9 @@ extension TrackPlayerCore {
       return
     }
 
-    let items = tracks.enumerated().compactMap { (index, track) -> AVPlayerItem? in
+    // Only materialize a window of items — the rest are added as playback advances.
+    let windowed = tracks.prefix(1 + Constants.queueWindowSize)
+    let items = windowed.enumerated().compactMap { (index, track) -> AVPlayerItem? in
       let isPreload = index < Constants.gaplessPreloadCount
       return createGaplessPlayerItem(for: track, isPreload: isPreload)
     }
@@ -182,7 +213,7 @@ extension TrackPlayerCore {
         player?.removeTimeObserver(boundaryObserver)
         self.boundaryTimeObserver = nil
       }
-      player?.removeAllItems()
+      if let p = player { removeAllItemsCancellingLoads(p) }
       self.currentTracks = fullPlaylist
       if let track = self.currentTracks[safe: index] {
         notifyTrackChange(track, .skip)
@@ -190,7 +221,8 @@ extension TrackPlayerCore {
       return true
     }
 
-    let tracksToPlay = Array(fullPlaylist[index...])
+    let windowEnd = min(index + 1 + Constants.queueWindowSize, fullPlaylist.count)
+    let tracksToPlay = Array(fullPlaylist[index..<windowEnd])
     NitroPlayerLogger.log("TrackPlayerCore", "   🔄 Creating gapless queue with \(tracksToPlay.count) tracks starting from index \(index)")
 
     let items = tracksToPlay.enumerated().compactMap { (offset, track) -> AVPlayerItem? in
@@ -212,7 +244,7 @@ extension TrackPlayerCore {
     // Re-enable stall waiting for the new first track
     player.automaticallyWaitsToMinimizeStalling = true
 
-    player.removeAllItems()
+    removeAllItemsCancellingLoads(player)
     var lastItem: AVPlayerItem? = nil
     for item in items {
       player.insert(item, after: lastItem)
@@ -308,6 +340,11 @@ extension TrackPlayerCore {
       newQueueTracks.append(contentsOf: currentTracks[(currentTrackIndex + 1)...])
     }
 
+    // Window the materialized queue — currentItemDidChange tops it up on every transition.
+    if newQueueTracks.count > Constants.queueWindowSize {
+      newQueueTracks.removeSubrange(Constants.queueWindowSize...)
+    }
+
     // Collect existing upcoming AVPlayerItems
     let upcomingItems: [AVPlayerItem]
     if let ci = currentItem, let ciIndex = playingItems.firstIndex(of: ci) {
@@ -370,19 +407,43 @@ extension TrackPlayerCore {
       return
     }
 
-    // Full rebuild path (no changedTrackIds — skip, reorder, etc.)
-    for item in playingItems where item != currentItem {
+    // Incremental path (no changedTrackIds — skip, reorder, window top-up).
+    // Keep the longest matching prefix of already-buffered items and only rebuild
+    // from the first divergence. A pure append (the common window top-up) therefore
+    // touches nothing that is already buffered, preserving gapless transitions.
+    var commonPrefix = 0
+    while commonPrefix < upcomingItems.count && commonPrefix < newQueueTracks.count
+      && upcomingItems[commonPrefix].trackId == newQueueTracks[commonPrefix].id {
+      commonPrefix += 1
+    }
+
+    for item in upcomingItems[commonPrefix...] {
       player.remove(item)
     }
 
-    var lastItem = currentItem
-    for (offset, track) in newQueueTracks.enumerated() {
+    var lastItem: AVPlayerItem? = commonPrefix > 0 ? upcomingItems[commonPrefix - 1] : currentItem
+    for offset in commonPrefix..<newQueueTracks.count {
       let isPreload = offset < Constants.gaplessPreloadCount
-      if let item = createGaplessPlayerItem(for: track, isPreload: isPreload) {
+      if let item = createGaplessPlayerItem(for: newQueueTracks[offset], isPreload: isPreload) {
         player.insert(item, after: lastItem)
         lastItem = item
       }
     }
+
+    NitroPlayerLogger.log("TrackPlayerCore",
+      "🔄 Incremental rebuild: kept \(commonPrefix) buffered items, created \(newQueueTracks.count - commonPrefix)")
+  }
+
+  /// True when the logical queue has a track after the current one, regardless of
+  /// how much of it is currently materialized into the AVQueuePlayer.
+  func hasUpcomingTrack() -> Bool {
+    let pendingPlayNext = currentTemporaryType == .playNext
+      ? max(0, playNextStack.count - 1) : playNextStack.count
+    if pendingPlayNext > 0 { return true }
+    let pendingUpNext = currentTemporaryType == .upNext
+      ? max(0, upNextQueue.count - 1) : upNextQueue.count
+    if pendingUpNext > 0 { return true }
+    return currentTrackIndex + 1 < currentTracks.count
   }
 
   /// Extracts custom HTTP headers (e.g. `Authorization`) from `extraPayload.headers`.
@@ -479,46 +540,40 @@ extension TrackPlayerCore {
     item.canUseNetworkResourcesForLiveStreamingWhilePaused = true
     item.trackId = track.id
 
-    if isPreload {
-      asset.loadValuesAsynchronously(forKeys: Constants.preloadAssetKeys) {
-        var allKeysLoaded = true
-        for key in Constants.preloadAssetKeys {
-          var error: NSError?
-          let status = asset.statusOfValue(forKey: key, error: &error)
-          if status == .failed {
-            NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Failed to load key '\(key)' for \(track.title): \(error?.localizedDescription ?? "unknown")")
-            allKeysLoaded = false
-          }
-        }
-        if allKeysLoaded {
-          NitroPlayerLogger.log("TrackPlayerCore", "✅ All asset keys preloaded for \(track.title)")
-        }
-        // "tracks" key is now loaded — EQ tap attaches synchronously
-        EqualizerCore.shared.applyAudioMix(to: item)
-      }
-    } else {
-      EqualizerCore.shared.applyAudioMix(to: item)
-    }
+    // Deliberately NOT calling loadValuesAsynchronously here.
+    //
+    // AVURLAsset.dealloc blocks its thread inside URLAssetFinalize until any in-flight
+    // key load finishes — and AVPlayer tears removed items down on the MAIN thread, so
+    // an item discarded mid-load stalls the main run loop (and RCTTiming with it, which
+    // stops JS timers). Asset warm-up still happens in preloadUpcomingTracks, which only
+    // publishes assets into `preloadedAssets` once every key has finished loading, so a
+    // reused preloaded asset has nothing in flight either.
+    //
+    // Caveat: with the equalizer ENABLED, applyAudioMix still loads the "tracks" key
+    // asynchronously for assets that don't have it yet, so a small window remains. That
+    // is unchanged from before (it was already the non-preload path) and is strictly
+    // less in-flight work than the previous 4-key preload on every queued item.
+    EqualizerCore.shared.applyAudioMix(to: item)
 
     return item
   }
 
   /// Preloads assets for upcoming tracks to enable gapless playback
   func preloadUpcomingTracks(from startIndex: Int) {
-    // Capture the set of track IDs that already have AVPlayerItems in the queue.
+    // Snapshot every piece of playerQueue-owned state HERE (we are on playerQueue).
+    // `preloadQueue` must never touch currentTracks / preloadedAssets directly —
+    // Swift Array/Dictionary are not safe for concurrent access.
     let queuedTrackIds = Set(player?.items().compactMap { $0.trackId } ?? [])
+    let alreadyPreloaded = Set(preloadedAssets.keys)
+    let endIndex = min(startIndex + Constants.gaplessPreloadCount, currentTracks.count)
+    guard startIndex >= 0, startIndex < endIndex else { return }
+    let candidates = Array(currentTracks[startIndex..<endIndex])
 
     preloadQueue.async { [weak self] in
       guard let self else { return }
 
-      let tracks = self.currentTracks
-      let endIndex = min(startIndex + Constants.gaplessPreloadCount, tracks.count)
-
-      for i in startIndex..<endIndex {
-        guard i < tracks.count else { break }
-        let track = tracks[i]
-
-        if self.preloadedAssets[track.id] != nil || queuedTrackIds.contains(track.id) {
+      for track in candidates {
+        if alreadyPreloaded.contains(track.id) || queuedTrackIds.contains(track.id) {
           continue
         }
 
@@ -567,7 +622,8 @@ extension TrackPlayerCore {
 
     let assetsToRemove = self.preloadedAssets.keys.filter { !keepIds.contains($0) }
     for id in assetsToRemove {
-      self.preloadedAssets.removeValue(forKey: id)
+      // Cancel before dropping the last reference — see cancelLoading(of:).
+      self.preloadedAssets.removeValue(forKey: id)?.cancelLoading()
     }
 
     if !assetsToRemove.isEmpty {

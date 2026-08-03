@@ -28,6 +28,39 @@ final class DownloadDatabase {
   private let queue = DispatchQueue(
     label: "com.nitroplayer.downloadDatabase", attributes: .concurrent)
 
+  /// Memoized `fileExists` verdicts, keyed by track ID.
+  ///
+  /// Queue building calls `isTrackDownloaded` / `getDownloadedTrack` once per track,
+  /// and each call used to stat() the file — O(playlist) syscalls per rebuild, on the
+  /// thread that also drives playback. Downloads only change through this class (or
+  /// through the user deleting files behind our back, which `syncDownloads()` handles),
+  /// so the verdict is cached and invalidated on every mutation.
+  /// Guarded by its own lock rather than `queue` so it can be filled from inside
+  /// concurrent read blocks (`queue.sync`) without a barrier.
+  private var existenceCache: [String: Bool] = [:]
+  private let existenceCacheLock = NSLock()
+
+  private func cachedFileExists(trackId: String, path: @autoclosure () -> String) -> Bool {
+    existenceCacheLock.lock()
+    let cached = existenceCache[trackId]
+    existenceCacheLock.unlock()
+    if let cached { return cached }
+
+    let exists = FileManager.default.fileExists(atPath: path())
+    existenceCacheLock.lock()
+    existenceCache[trackId] = exists
+    existenceCacheLock.unlock()
+    return exists
+  }
+
+  /// Drops every memoized verdict. Called on any record mutation, and safe to call
+  /// externally when files may have changed outside the app.
+  func invalidateExistenceCache() {
+    existenceCacheLock.lock()
+    existenceCache.removeAll()
+    existenceCacheLock.unlock()
+  }
+
   // MARK: - Initialization
 
   private init() {
@@ -70,22 +103,14 @@ final class DownloadDatabase {
         NitroPlayerLogger.log("DownloadDatabase", "🔍 Track \(trackId) NOT found in database")
         return false
       }
-      // Verify file still exists
-      let absolutePath = resolveAbsolutePath(for: record)
-      let exists = FileManager.default.fileExists(atPath: absolutePath)
-      if exists {
-        NitroPlayerLogger.log("DownloadDatabase", "✅ Track \(trackId) IS downloaded at \(absolutePath)")
-      } else {
-        NitroPlayerLogger.log("DownloadDatabase", "❌ Track \(trackId) record exists but file NOT found at \(absolutePath)")
-      }
-      return exists
+      // Verify file still exists (memoized — this runs once per track per queue rebuild)
+      return cachedFileExists(trackId: trackId, path: resolveAbsolutePath(for: record))
     }
   }
 
   private func _isTrackDownloadedUnsafe(trackId: String) -> Bool {
     guard let record = downloadedTracks[trackId] else { return false }
-    let absolutePath = resolveAbsolutePath(for: record)
-    return FileManager.default.fileExists(atPath: absolutePath)
+    return cachedFileExists(trackId: trackId, path: resolveAbsolutePath(for: record))
   }
 
   func isPlaylistDownloaded(playlistId: String) -> Bool {
@@ -137,8 +162,8 @@ final class DownloadDatabase {
       let absolutePath = resolveAbsolutePath(for: record)
       NitroPlayerLogger.log("DownloadDatabase", "   Found record, checking file at: \(absolutePath)")
 
-      // Verify file still exists
-      guard FileManager.default.fileExists(atPath: absolutePath) else {
+      // Verify file still exists (memoized)
+      guard cachedFileExists(trackId: trackId, path: absolutePath) else {
         NitroPlayerLogger.log("DownloadDatabase", "   ❌ File does NOT exist, cleaning up record")
         // File was deleted externally, clean up record
         queue.async(flags: .barrier) {
@@ -357,6 +382,9 @@ final class DownloadDatabase {
   // MARK: - Persistence
 
   private func saveToDisk() {
+    // Every record mutation funnels through here, so this is the one place that has
+    // to drop memoized fileExists verdicts.
+    invalidateExistenceCache()
     do {
       let tracksData = try JSONEncoder().encode(downloadedTracks)
       // Convert Set to Array for encoding

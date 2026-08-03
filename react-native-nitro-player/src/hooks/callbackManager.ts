@@ -1,4 +1,4 @@
-import { TrackPlayer } from '../index'
+import { PlayerQueue, TrackPlayer } from '../index'
 import type { TrackItem, TrackPlayerState, Reason } from '../types/PlayerQueue'
 
 type PlaybackStateCallback = (state: TrackPlayerState, reason?: Reason) => void
@@ -9,6 +9,10 @@ type PlaybackProgressCallback = (
   isManuallySeeked?: boolean
 ) => void
 type SeekCallback = (position: number, totalDuration: number) => void
+type TemporaryQueueCallback = (
+  playNextQueue: TrackItem[],
+  upNextQueue: TrackItem[]
+) => void
 
 /**
  * Internal subscription manager that allows multiple hooks to subscribe
@@ -20,10 +24,14 @@ class CallbackSubscriptionManager {
   private trackChangeSubscribers = new Set<TrackChangeCallback>()
   private playbackProgressSubscribers = new Set<PlaybackProgressCallback>()
   private seekSubscribers = new Set<SeekCallback>()
+  private temporaryQueueSubscribers = new Set<TemporaryQueueCallback>()
+  private playlistsChangedSubscribers = new Set<() => void>()
+  private isPlaylistsChangedRegistered = false
   private isPlaybackStateRegistered = false
   private isTrackChangeRegistered = false
   private isPlaybackProgressRegistered = false
   private isSeekRegistered = false
+  private isTemporaryQueueRegistered = false
 
   /**
    * Subscribe to playback state changes
@@ -151,6 +159,82 @@ class CallbackSubscriptionManager {
     } catch (error) {
       console.error(
         '[CallbackManager] Failed to register playback progress callback:',
+        error
+      )
+    }
+  }
+
+  /**
+   * Subscribe to playNext / upNext changes
+   * @returns Unsubscribe function
+   */
+  subscribeToTemporaryQueueChange(callback: TemporaryQueueCallback): () => void {
+    this.temporaryQueueSubscribers.add(callback)
+    this.ensureTemporaryQueueRegistered()
+
+    return () => {
+      this.temporaryQueueSubscribers.delete(callback)
+    }
+  }
+
+  /**
+   * Subscribe to playlist mutations (tracks added/removed/reordered).
+   * @returns Unsubscribe function
+   */
+  subscribeToPlaylistsChanged(callback: () => void): () => void {
+    this.playlistsChangedSubscribers.add(callback)
+    this.ensurePlaylistsChangedRegistered()
+
+    return () => {
+      this.playlistsChangedSubscribers.delete(callback)
+    }
+  }
+
+  private ensurePlaylistsChangedRegistered(): void {
+    if (this.isPlaylistsChangedRegistered) return
+
+    try {
+      PlayerQueue.onPlaylistsChanged(() => {
+        this.playlistsChangedSubscribers.forEach((subscriber) => {
+          try {
+            subscriber()
+          } catch (error) {
+            console.error(
+              '[CallbackManager] Error in playlists changed subscriber:',
+              error
+            )
+          }
+        })
+      })
+      this.isPlaylistsChangedRegistered = true
+    } catch (error) {
+      console.error(
+        '[CallbackManager] Failed to register playlists changed callback:',
+        error
+      )
+    }
+  }
+
+  private ensureTemporaryQueueRegistered(): void {
+    if (this.isTemporaryQueueRegistered) return
+
+    try {
+      TrackPlayer.onTemporaryQueueChange((playNextQueue, upNextQueue) => {
+        this.temporaryQueueSubscribers.forEach((subscriber) => {
+          try {
+            subscriber(playNextQueue, upNextQueue)
+          } catch (error) {
+            console.error(
+              '[CallbackManager] Error in temporary queue subscriber:',
+              error
+            )
+          }
+        })
+      })
+      this.isTemporaryQueueRegistered = true
+    } catch (error) {
+      console.error(
+        '[CallbackManager] Failed to register temporary queue callback:',
         error
       )
     }

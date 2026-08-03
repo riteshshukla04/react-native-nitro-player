@@ -71,7 +71,7 @@ extension TrackPlayerCore {
     for trackId in updatedTrackIds {
       if self.preloadedAssets[trackId] != nil {
         NitroPlayerLogger.log("TrackPlayerCore", "🗑️ Invalidating preloaded asset for track: \(trackId)")
-        self.preloadedAssets.removeValue(forKey: trackId)
+        self.preloadedAssets.removeValue(forKey: trackId)?.cancelLoading()
       }
     }
 
@@ -129,7 +129,7 @@ extension TrackPlayerCore {
         // No AVPlayerItem exists yet — lazy-load mode: URLs were empty when the queue first loaded.
         NitroPlayerLogger.log("TrackPlayerCore",
           "🔄 No current item — full queue rebuild from currentTrackIndex \(self.currentTrackIndex)")
-        player.removeAllItems()
+        self.removeAllItemsCancellingLoads(player)
         var lastItem: AVPlayerItem? = nil
         for (offset, track) in self.currentTracks[max(0, self.currentTrackIndex)...].enumerated() {
           let isPreload = offset < Constants.gaplessPreloadCount
@@ -164,17 +164,35 @@ extension TrackPlayerCore {
     }
   }
 
+  /// Walks the queue structure directly instead of materializing the whole queue —
+  /// this runs on every skip and on the periodic boundary observer, so it must not
+  /// be O(playlist) just to read the next few tracks.
   func getNextTracksInternal(count: Int) -> [TrackItem] {
-    let actualQueue = getActualQueueInternal()
-    guard !actualQueue.isEmpty else { return [] }
+    guard count > 0 else { return [] }
+    var out: [TrackItem] = []
+    out.reserveCapacity(count)
+    let currentId = activeCurrentTrackId
 
-    guard let currentTrack = getCurrentTrack(),
-      let currentIndex = actualQueue.firstIndex(where: { $0.id == currentTrack.id })
-    else { return [] }
+    var skippedPlayNext = currentTemporaryType != .playNext
+    for track in playNextStack {
+      if !skippedPlayNext && track.id == currentId { skippedPlayNext = true; continue }
+      out.append(track)
+      if out.count == count { return out }
+    }
 
-    let startIndex = currentIndex + 1
-    let endIndex = min(startIndex + count, actualQueue.count)
-    return startIndex < actualQueue.count ? Array(actualQueue[startIndex..<endIndex]) : []
+    var skippedUpNext = currentTemporaryType != .upNext
+    for track in upNextQueue {
+      if !skippedUpNext && track.id == currentId { skippedUpNext = true; continue }
+      out.append(track)
+      if out.count == count { return out }
+    }
+
+    var index = currentTrackIndex + 1
+    while index < currentTracks.count && out.count < count {
+      out.append(currentTracks[index])
+      index += 1
+    }
+    return out
   }
 
   func checkUpcomingTracksForUrls(lookahead: Int = 5) {

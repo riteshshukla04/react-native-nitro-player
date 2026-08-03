@@ -104,18 +104,22 @@ class TrackPlayerCore private constructor(
     internal var lastCastWaitTrackId: String? = null
 
     // ── Progress & playlist-update runnables ───────────────────────────────
+    /**
+     * Emits progress once per second while actually playing (matching iOS), instead of
+     * four times a second regardless of state. A paused player has nothing to report,
+     * and every tick is a JS callback that re-renders every `useNowPlaying` consumer.
+     * A seek still reports immediately via `onPositionDiscontinuity`.
+     */
     internal val progressUpdateRunnable =
         object : Runnable {
             override fun run() {
-                if (::exo.isInitialized &&
-                    exo.playbackState != androidx.media3.common.Player.STATE_IDLE
-                ) {
+                if (::exo.isInitialized && exo.isPlaying) {
                     val pos = exo.currentPosition / 1000.0
                     val dur = if (exo.duration > 0) exo.duration / 1000.0 else 0.0
                     notifyPlaybackProgress(pos, dur, if (isManuallySeeked) true else null)
                     isManuallySeeked = false
                 }
-                playerHandler.postDelayed(this, 250)
+                playerHandler.postDelayed(this, PROGRESS_INTERVAL_MS)
             }
         }
 
@@ -192,6 +196,8 @@ class TrackPlayerCore private constructor(
 
     // ── Singleton ──────────────────────────────────────────────────────────
     companion object {
+        internal const val PROGRESS_INTERVAL_MS = 1000L
+
         @Volatile
         @Suppress("ktlint:standard:property-naming")
         private var INSTANCE: TrackPlayerCore? = null
@@ -206,8 +212,18 @@ class TrackPlayerCore private constructor(
         // Defer service start/bind to the main thread so it doesn't run
         // synchronously on the JNI thread during HybridObject creation.
         handler.post {
-            val intent = Intent(context, NitroPlayerPlaybackService::class.java)
-            context.startService(intent)
+            // startService throws BackgroundServiceStartNotAllowedException on Android 12+
+            // when the process is in the background — which is exactly what happens when JS
+            // loads the module from a headless/backgrounded start. It is only here to keep
+            // the service alive across unbind; BIND_AUTO_CREATE below already creates it,
+            // and the service promotes itself to foreground once playback starts.
+            try {
+                context.startService(Intent(context, NitroPlayerPlaybackService::class.java))
+            } catch (e: Exception) {
+                NitroPlayerLogger.log("TrackPlayerCore") {
+                    "startService skipped (app in background): ${e.message}"
+                }
+            }
 
             val bindIntent =
                 Intent(context, NitroPlayerPlaybackService::class.java).apply {
@@ -218,6 +234,58 @@ class TrackPlayerCore private constructor(
     }
 
     // ── Coroutine bridge to player looper (main thread) ────────────────────
+
+    // ── Ordered command dispatch ───────────────────────────────────────────
+    //
+    // `Promise.async { … }` launches an unordered coroutine, so the hop onto the
+    // player looper used to happen at an arbitrary later point: two calls made in
+    // order from JS could reach the player in reverse order (play-then-pause landing
+    // as pause-then-play). `enqueue` appends to a queue synchronously, on the JS
+    // thread at call time, so execution order equals JS call order — including for
+    // commands issued before the playback service has bound.
+
+    private val pendingCommands = ArrayDeque<() -> Unit>()
+    private var commandsDraining = false
+
+    /**
+     * Runs [block] on the player looper, preserving the order in which callers
+     * enqueued. Safe to call before the service binds — commands buffer until then.
+     */
+    internal fun enqueue(block: () -> Unit) {
+        synchronized(pendingCommands) {
+            pendingCommands.addLast(block)
+            if (commandsDraining) return
+            if (!::playerHandler.isInitialized) return
+            commandsDraining = true
+        }
+        playerHandler.post { drainCommands() }
+    }
+
+    private fun drainCommands() {
+        while (true) {
+            val next =
+                synchronized(pendingCommands) {
+                    val head = pendingCommands.removeFirstOrNull()
+                    if (head == null) commandsDraining = false
+                    head
+                } ?: return
+            next()
+        }
+    }
+
+    /** Called once the player looper exists — flushes anything queued before binding. */
+    internal fun startCommandDraining() {
+        val shouldPost =
+            synchronized(pendingCommands) {
+                if (commandsDraining || pendingCommands.isEmpty()) {
+                    false
+                } else {
+                    commandsDraining = true
+                    true
+                }
+            }
+        if (shouldPost) playerHandler.post { drainCommands() }
+    }
 
     internal suspend fun <T> withPlayerContext(block: () -> T): T {
         // Wait until the service is bound and player is initialized

@@ -37,6 +37,14 @@ internal fun TrackPlayerCore.castableUpcoming(tracks: List<TrackItem>): List<Tra
     return result
 }
 
+/**
+ * Upcoming MediaItems kept materialized behind the current one. The logical queue
+ * (currentTracks + temp lists) stays complete; only ExoPlayer's timeline is windowed,
+ * and it is topped up on every item transition. Building a MediaItem is not free —
+ * each one resolves the effective URL, which used to stat() the download record.
+ */
+internal const val QUEUE_WINDOW_SIZE = 4
+
 internal fun TrackPlayerCore.mediaIdFor(track: TrackItem): String {
     val playlistId = currentPlaylistId ?: ""
     return if (playlistId.isNotEmpty()) "$playlistId:${track.id}" else track.id
@@ -70,8 +78,9 @@ internal fun TrackPlayerCore.rebuildQueueAndPlayFromIndex(index: Int) {
         return
     }
 
+    val windowEnd = minOf(index + 1 + QUEUE_WINDOW_SIZE, currentTracks.size)
     val mediaItems =
-        currentTracks.subList(index, currentTracks.size).map { track ->
+        currentTracks.subList(index, windowEnd).map { track ->
             makeMediaItem(track, mediaIdFor(track))
         }
 
@@ -131,12 +140,32 @@ internal fun TrackPlayerCore.rebuildQueueFromCurrentPosition() {
         }
     }
 
-    val newMediaItems = newQueueTracks.map { makeMediaItem(it, mediaIdFor(it)) }
-
-    if (exo.mediaItemCount > currentIndex + 1) {
-        exo.removeMediaItems(currentIndex + 1, exo.mediaItemCount)
+    // Window the materialized timeline; onMediaItemTransition tops it back up.
+    // NOT while casting: the receiver holds the whole queue (rebuildQueueAndPlayFromIndex
+    // loads it unwindowed), so truncating here would cut it down to the window size.
+    if (!isCastingField && newQueueTracks.size > QUEUE_WINDOW_SIZE) {
+        newQueueTracks = newQueueTracks.subList(0, QUEUE_WINDOW_SIZE)
     }
-    exo.addMediaItems(newMediaItems)
+
+    // Keep the longest matching prefix of already-buffered items and rebuild only from
+    // the first divergence. A pure append (the common window top-up) touches nothing
+    // ExoPlayer has already prepared, so gapless transitions survive.
+    val existingCount = exo.mediaItemCount - currentIndex - 1
+    var commonPrefix = 0
+    while (commonPrefix < existingCount && commonPrefix < newQueueTracks.size &&
+        extractTrackId(exo.getMediaItemAt(currentIndex + 1 + commonPrefix).mediaId) == newQueueTracks[commonPrefix].id
+    ) {
+        commonPrefix++
+    }
+
+    if (exo.mediaItemCount > currentIndex + 1 + commonPrefix) {
+        exo.removeMediaItems(currentIndex + 1 + commonPrefix, exo.mediaItemCount)
+    }
+    if (commonPrefix < newQueueTracks.size) {
+        exo.addMediaItems(
+            newQueueTracks.subList(commonPrefix, newQueueTracks.size).map { makeMediaItem(it, mediaIdFor(it)) },
+        )
+    }
 }
 
 /** Desired upcoming list after the current track: playNext + upNext + remaining originals, with the playing temp track ([currentId]) skipped. */
@@ -203,7 +232,8 @@ internal fun TrackPlayerCore.updatePlayerQueue(tracks: List<TrackItem>) {
         return
     }
 
-    val mediaItems = tracks.map { makeMediaItem(it, mediaIdFor(it)) }
+    currentTrackIndex = 0
+    val mediaItems = tracks.take(1 + QUEUE_WINDOW_SIZE).map { makeMediaItem(it, mediaIdFor(it)) }
     exo.setMediaItems(mediaItems, true)
     if (exo.playbackState == Player.STATE_IDLE && mediaItems.isNotEmpty()) {
         exo.prepare()

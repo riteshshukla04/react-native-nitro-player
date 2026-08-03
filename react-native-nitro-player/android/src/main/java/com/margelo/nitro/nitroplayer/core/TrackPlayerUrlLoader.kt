@@ -12,8 +12,10 @@ import com.margelo.nitro.nitroplayer.TrackItem
 
 // ── Track updates (URL resolution) ────────────────────────────────────────
 
-suspend fun TrackPlayerCore.updateTracks(tracks: List<TrackItem>) =
-    withPlayerContext {
+suspend fun TrackPlayerCore.updateTracks(tracks: List<TrackItem>) = withPlayerContext { updateTracksOnQueue(tracks) }
+
+internal fun TrackPlayerCore.updateTracksOnQueue(tracks: List<TrackItem>) {
+    run {
         val currentTrack = getCurrentTrack()
         val currentTrackId = currentTrack?.id
         val currentTrackIsEmpty = currentTrack?.url.isNullOrEmpty()
@@ -32,7 +34,7 @@ suspend fun TrackPlayerCore.updateTracks(tracks: List<TrackItem>) =
                     else -> true
                 }
             }
-        if (safeTracks.isEmpty()) return@withPlayerContext
+        if (safeTracks.isEmpty()) return@run
 
         val affectedPlaylists: Map<String, Int> = playlistManager.updateTracks(safeTracks)
 
@@ -64,12 +66,13 @@ suspend fun TrackPlayerCore.updateTracks(tracks: List<TrackItem>) =
                 } else {
                     rebuildQueueFromCurrentPosition()
                 }
-                return@withPlayerContext
+                return@run
             }
 
             rebuildQueueFromCurrentPosition()
         }
     }
+}
 
 // ── Track queries ─────────────────────────────────────────────────────────
 
@@ -84,14 +87,42 @@ internal fun TrackPlayerCore.getTracksNeedingUrlsInternal(): List<TrackItem> {
 
 suspend fun TrackPlayerCore.getNextTracks(count: Int): List<TrackItem> = withPlayerContext { getNextTracksInternal(count) }
 
+/**
+ * Walks the queue structure directly instead of materializing the whole queue — this
+ * runs on every skip and every progress tick, so it must not be O(playlist) just to
+ * read the next few tracks.
+ */
 internal fun TrackPlayerCore.getNextTracksInternal(count: Int): List<TrackItem> {
-    val actualQueue = getActualQueueInternal()
-    if (actualQueue.isEmpty()) return emptyList()
-    val currentIdx = actualQueue.indexOfFirst { it.id == getCurrentTrack()?.id }
-    if (currentIdx == -1) return emptyList()
-    val start = currentIdx + 1
-    val end = minOf(start + count, actualQueue.size)
-    return if (start < actualQueue.size) actualQueue.subList(start, end) else emptyList()
+    if (count <= 0) return emptyList()
+    val out = ArrayList<TrackItem>(count)
+    val currentId = if (isExoInitialized) exo.currentMediaItem?.mediaId?.let { extractTrackId(it) } else null
+
+    var skippedPlayNext = currentTemporaryType != TrackPlayerCore.TemporaryType.PLAY_NEXT
+    for (track in playNextStack) {
+        if (!skippedPlayNext && track.id == currentId) {
+            skippedPlayNext = true
+            continue
+        }
+        out.add(track)
+        if (out.size == count) return out
+    }
+
+    var skippedUpNext = currentTemporaryType != TrackPlayerCore.TemporaryType.UP_NEXT
+    for (track in upNextQueue) {
+        if (!skippedUpNext && track.id == currentId) {
+            skippedUpNext = true
+            continue
+        }
+        out.add(track)
+        if (out.size == count) return out
+    }
+
+    var index = currentTrackIndex + 1
+    while (index < currentTracks.size && out.size < count) {
+        out.add(currentTracks[index])
+        index++
+    }
+    return out
 }
 
 suspend fun TrackPlayerCore.getCurrentTrackIndex(): Int = withPlayerContext { currentTrackIndex }

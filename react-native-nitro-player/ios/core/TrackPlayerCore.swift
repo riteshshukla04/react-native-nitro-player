@@ -26,6 +26,10 @@ class TrackPlayerCore: NSObject {
     static let preferredForwardBufferDuration: Double = 30.0
     static let preloadAssetKeys: [String] = ["playable", "duration", "tracks", "preferredTransform"]
     static let gaplessPreloadCount: Int = 3
+    /// Upcoming AVPlayerItems kept materialized behind the current one. The logical
+    /// queue (currentTracks + temp lists) stays complete; only the AVQueuePlayer is
+    /// windowed, and it is topped up on every item transition.
+    static let queueWindowSize: Int = 4
     // Stall & failure recovery
     static let maxFailedItemRetries: Int = 3
     static let failedItemRetryDelay: TimeInterval = 2.0
@@ -44,7 +48,10 @@ class TrackPlayerCore: NSObject {
   internal var currentPlaylistId: String?
   internal var currentTrackIndex: Int = -1
   internal var currentTracks: [TrackItem] = []
-  internal var pendingPlaylistUpdateWorkItem: DispatchWorkItem?
+  // Bumped on every updatePlaylist request (playerQueue-owned). A queued rebuild
+  // whose generation is stale was superseded by a later request and is dropped,
+  // so a burst of playlist mutations collapses into a single rebuild.
+  internal var playlistUpdateGeneration: UInt64 = 0
   internal var isManuallySeeked = false
   internal var currentRepeatMode: RepeatMode = .off
   internal var currentPlaybackSpeed: Double = 1.0
@@ -239,6 +246,7 @@ class TrackPlayerCore: NSObject {
       NotificationCenter.default.removeObserver(self)
       self.pathMonitor?.cancel()
       self.pathMonitor = nil
+      self.preloadedAssets.values.forEach { $0.cancelLoading() }
       self.preloadedAssets.removeAll()
       self.failedItemRetryCounts.removeAll()
       self.redirectResolver.clear()

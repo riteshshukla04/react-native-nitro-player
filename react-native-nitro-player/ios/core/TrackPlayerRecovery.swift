@@ -64,7 +64,7 @@ extension TrackPlayerCore {
     notifyTracksNeedUpdate(tracks: [track], lookahead: lookaheadCount)
 
     // A preloaded asset for this track shares the same dead connection state.
-    preloadedAssets.removeValue(forKey: trackId)
+    preloadedAssets.removeValue(forKey: trackId)?.cancelLoading()
     // Surface a buffering state while the retry is pending.
     isRecoveringFromStall = true
     emitStateChange()

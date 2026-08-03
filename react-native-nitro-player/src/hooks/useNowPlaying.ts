@@ -88,12 +88,22 @@ export function useNowPlaying(): PlayerState {
     })
   }, [fetchFullState])
 
-  // Subscribe to progress changes — lightweight position/duration update
+  // Subscribe to progress changes — lightweight position/duration update.
+  // Bail out when neither value changed at whole-second resolution: the native tick
+  // is sub-second, and a new state object on every tick re-renders every consumer.
   useEffect(() => {
     return callbackManager.subscribeToPlaybackProgressChange(
       (currentPosition, totalDuration) => {
         if (!isMounted.current) return
-        setState((prev) => ({ ...prev, currentPosition, totalDuration }))
+        setState((prev) => {
+          if (
+            Math.floor(prev.currentPosition) === Math.floor(currentPosition) &&
+            prev.totalDuration === totalDuration
+          ) {
+            return prev
+          }
+          return { ...prev, currentPosition, totalDuration }
+        })
       }
     )
   }, [])
