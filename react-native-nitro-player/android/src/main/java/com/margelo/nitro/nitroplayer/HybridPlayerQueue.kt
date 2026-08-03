@@ -8,7 +8,7 @@ import com.margelo.nitro.NitroModules
 import com.margelo.nitro.core.NullType
 import com.margelo.nitro.core.Promise
 import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
-import com.margelo.nitro.nitroplayer.core.loadPlaylist
+import com.margelo.nitro.nitroplayer.core.loadPlaylistOnQueue
 import com.margelo.nitro.nitroplayer.core.updatePlaylist
 import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
 import java.util.UUID
@@ -109,13 +109,24 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
 
     // ── Playback control ──────────────────────────────────────────────────────
 
-    override fun loadPlaylist(playlistId: String, index: Double?): Promise<Unit> =
-        Promise.async {
-            val startIndex = index?.toInt()
-            val loaded = playlistManager.loadPlaylist(playlistId, startIndex)
-            if (!loaded) return@async
-            core.loadPlaylist(playlistId, startIndex)
+    /**
+     * Enqueued synchronously on the player looper so a `loadPlaylist()` followed by
+     * `play()` from JS cannot be reordered — see HybridTrackPlayer.enqueue.
+     */
+    override fun loadPlaylist(
+        playlistId: String,
+        index: Double?,
+    ): Promise<Unit> {
+        val startIndex = index?.toInt()
+        val promise = Promise<Unit>()
+        core.enqueue {
+            if (playlistManager.loadPlaylist(playlistId, startIndex)) {
+                core.loadPlaylistOnQueue(playlistId, startIndex)
+            }
+            promise.resolve(Unit)
         }
+        return promise
+    }
 
     override fun getCurrentPlaylistId(): Variant_NullType_String {
         val id = core.getCurrentPlaylistId()

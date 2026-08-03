@@ -57,6 +57,16 @@ internal class TrackPlayerEventListener(
                 if (newIdx >= 0 && newIdx != currentTrackIndex) currentTrackIndex = newIdx
             }
 
+            // Top up the windowed timeline — the item we just left freed a slot.
+            // Only when it is actually short: rebuildQueueFromCurrentPosition can fall
+            // into the substitute-jump path (setMediaItems), which re-enters this very
+            // callback. The length check makes any such re-entry a no-op and terminate.
+            if (mediaItem != null &&
+                exo.mediaItemCount - exo.currentMediaItemIndex - 1 < QUEUE_WINDOW_SIZE
+            ) {
+                rebuildQueueFromCurrentPosition()
+            }
+
             val track = getCurrentTrack() ?: return
             val r =
                 when (reason) {

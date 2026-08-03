@@ -39,6 +39,15 @@ class DownloadDatabase private constructor(
     }
 
     private val downloadedTracks = mutableMapOf<String, DownloadedTrackRecord>()
+
+    /**
+     * Memoized `File.exists()` verdicts, keyed by track ID.
+     *
+     * Queue building asks "is this downloaded?" once per track, and each answer used to
+     * cost a stat() — O(playlist) syscalls per rebuild, on the main looper. Records only
+     * change through this class, so the verdict is cached and dropped in [saveToDisk].
+     */
+    private val existenceCache = mutableMapOf<String, Boolean>()
     private val playlistTracks = mutableMapOf<String, MutableSet<String>>()
     private val fileManager = DownloadFileManager.getInstance(context)
     private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -82,9 +91,19 @@ class DownloadDatabase private constructor(
     fun isTrackDownloaded(trackId: String): Boolean {
         synchronized(this) {
             val record = downloadedTracks[trackId] ?: return false
-            // Verify file still exists
-            return File(record.localPath).exists()
+            return cachedFileExists(trackId, record.localPath)
         }
+    }
+
+    /** Caller must hold the monitor. */
+    private fun cachedFileExists(
+        trackId: String,
+        path: String,
+    ): Boolean = existenceCache.getOrPut(trackId) { File(path).exists() }
+
+    /** Drops every memoized verdict — files may have changed outside the app. */
+    fun invalidateExistenceCache() {
+        synchronized(this) { existenceCache.clear() }
     }
 
     fun isPlaylistDownloaded(playlistId: String): Boolean {
@@ -118,8 +137,8 @@ class DownloadDatabase private constructor(
         synchronized(this) {
             val record = downloadedTracks[trackId] ?: return null
 
-            // Verify file still exists
-            if (!File(record.localPath).exists()) {
+            // Verify file still exists (memoized)
+            if (!cachedFileExists(trackId, record.localPath)) {
                 // File was deleted externally, clean up record
                 downloadedTracks.remove(trackId)
                 saveToDisk()
@@ -302,6 +321,9 @@ class DownloadDatabase private constructor(
 
     // Persistence — called while holding synchronized(this); snapshots data then writes on IO.
     private fun saveToDisk() {
+        // Every record mutation funnels through here, so this is the one place that has
+        // to drop memoized File.exists() verdicts.
+        existenceCache.clear()
         val trackSnapshot = downloadedTracks.toMap()
         val playlistSnapshot = playlistTracks.mapValues { it.value.toSet() }
         ioScope.launch {

@@ -15,90 +15,103 @@ import com.margelo.nitro.nitroplayer.media.NitroPlayerPlaybackService
  * via withPlayerContext.
  */
 
-suspend fun TrackPlayerCore.play() = withPlayerContext { exo.play() }
+suspend fun TrackPlayerCore.play() = withPlayerContext { playOnQueue() }
 
-suspend fun TrackPlayerCore.pause() = withPlayerContext { exo.pause() }
+internal fun TrackPlayerCore.playOnQueue() = exo.play()
 
-suspend fun TrackPlayerCore.seek(position: Double) =
-    withPlayerContext {
-        isManuallySeeked = true
-        exo.seekTo((position * 1000).toLong())
-    }
+suspend fun TrackPlayerCore.pause() = withPlayerContext { pauseOnQueue() }
 
-suspend fun TrackPlayerCore.skipToNext() =
-    withPlayerContext {
-        if (exo.hasNextMediaItem()) {
-            exo.seekToNext()
-            checkUpcomingTracksForUrls(lookaheadCount)
-        }
-    }
+internal fun TrackPlayerCore.pauseOnQueue() = exo.pause()
 
-suspend fun TrackPlayerCore.skipToPrevious() =
-    withPlayerContext {
-        val currentPosition = exo.currentPosition
-        when {
-            currentPosition > 2000 -> {
-                exo.seekTo(0)
-            }
+suspend fun TrackPlayerCore.seek(position: Double) = withPlayerContext { seekOnQueue(position) }
 
-            currentTemporaryType != TrackPlayerCore.TemporaryType.NONE -> {
-                val trackId = exo.currentMediaItem?.mediaId?.let { extractTrackId(it) }
-                if (trackId != null) {
-                    when (currentTemporaryType) {
-                        TrackPlayerCore.TemporaryType.PLAY_NEXT -> {
-                            val idx = playNextStack.indexOfFirst { it.id == trackId }
-                            if (idx >= 0) playNextStack.removeAt(idx)
-                        }
+internal fun TrackPlayerCore.seekOnQueue(position: Double) {
+    isManuallySeeked = true
+    exo.seekTo((position * 1000).toLong())
+}
 
-                        TrackPlayerCore.TemporaryType.UP_NEXT -> {
-                            val idx = upNextQueue.indexOfFirst { it.id == trackId }
-                            if (idx >= 0) upNextQueue.removeAt(idx)
-                        }
+suspend fun TrackPlayerCore.skipToNext() = withPlayerContext { skipToNextOnQueue() }
 
-                        else -> {}
-                    }
-                }
-                currentTemporaryType = TrackPlayerCore.TemporaryType.NONE
-                playFromIndexInternal(currentTrackIndex)
-            }
-
-            currentTrackIndex > 0 -> {
-                playFromIndexInternal(currentTrackIndex - 1)
-            }
-
-            else -> {
-                exo.seekTo(0)
-            }
-        }
+internal fun TrackPlayerCore.skipToNextOnQueue() {
+    // The timeline is windowed, so hasNextMediaItem() is not the logical answer —
+    // top up first when more tracks remain in currentTracks / the temp queues.
+    if (!exo.hasNextMediaItem()) rebuildQueueFromCurrentPosition()
+    if (exo.hasNextMediaItem()) {
+        exo.seekToNext()
         checkUpcomingTracksForUrls(lookaheadCount)
     }
+}
 
-suspend fun TrackPlayerCore.setRepeatMode(mode: RepeatMode) =
-    withPlayerContext {
-        currentRepeatMode = mode
-        exo.setRepeatMode(
-            when (mode) {
-                RepeatMode.TRACK -> Player.REPEAT_MODE_ONE
-                else -> Player.REPEAT_MODE_OFF
-            },
-        )
+suspend fun TrackPlayerCore.skipToPrevious() = withPlayerContext { skipToPreviousOnQueue() }
+
+internal fun TrackPlayerCore.skipToPreviousOnQueue() {
+    val currentPosition = exo.currentPosition
+    when {
+        currentPosition > 2000 -> {
+            exo.seekTo(0)
+        }
+
+        currentTemporaryType != TrackPlayerCore.TemporaryType.NONE -> {
+            val trackId = exo.currentMediaItem?.mediaId?.let { extractTrackId(it) }
+            if (trackId != null) {
+                when (currentTemporaryType) {
+                    TrackPlayerCore.TemporaryType.PLAY_NEXT -> {
+                        val idx = playNextStack.indexOfFirst { it.id == trackId }
+                        if (idx >= 0) playNextStack.removeAt(idx)
+                    }
+
+                    TrackPlayerCore.TemporaryType.UP_NEXT -> {
+                        val idx = upNextQueue.indexOfFirst { it.id == trackId }
+                        if (idx >= 0) upNextQueue.removeAt(idx)
+                    }
+
+                    else -> {}
+                }
+            }
+            currentTemporaryType = TrackPlayerCore.TemporaryType.NONE
+            playFromIndexInternal(currentTrackIndex)
+        }
+
+        currentTrackIndex > 0 -> {
+            playFromIndexInternal(currentTrackIndex - 1)
+        }
+
+        else -> {
+            exo.seekTo(0)
+        }
     }
+    checkUpcomingTracksForUrls(lookaheadCount)
+}
+
+suspend fun TrackPlayerCore.setRepeatMode(mode: RepeatMode) = withPlayerContext { setRepeatModeOnQueue(mode) }
+
+internal fun TrackPlayerCore.setRepeatModeOnQueue(mode: RepeatMode) {
+    currentRepeatMode = mode
+    exo.setRepeatMode(
+        when (mode) {
+            RepeatMode.TRACK -> Player.REPEAT_MODE_ONE
+            else -> Player.REPEAT_MODE_OFF
+        },
+    )
+}
 
 fun TrackPlayerCore.getRepeatMode(): RepeatMode = currentRepeatMode
 
-suspend fun TrackPlayerCore.setVolume(volume: Double) =
-    withPlayerContext {
-        val clamped = volume.coerceIn(0.0, 100.0)
-        exo.setVolume((clamped / 100.0).toFloat())
-    }
+suspend fun TrackPlayerCore.setVolume(volume: Double) = withPlayerContext { setVolumeOnQueue(volume) }
 
-suspend fun TrackPlayerCore.configure(config: PlayerConfig) =
-    withPlayerContext {
-        config.androidAutoEnabled?.let { NitroPlayerMediaBrowserService.isAndroidAutoEnabled = it }
-        config.lookaheadCount?.let { lookaheadCount = it.toInt() }
-        config.androidNotificationIcon?.let { NitroPlayerPlaybackService.notificationSmallIconResName = it }
-        mediaSessionManager?.configure(config.androidAutoEnabled, config.carPlayEnabled, config.showInNotification)
-    }
+internal fun TrackPlayerCore.setVolumeOnQueue(volume: Double) {
+    val clamped = volume.coerceIn(0.0, 100.0)
+    exo.setVolume((clamped / 100.0).toFloat())
+}
+
+suspend fun TrackPlayerCore.configure(config: PlayerConfig) = withPlayerContext { configureOnQueue(config) }
+
+internal fun TrackPlayerCore.configureOnQueue(config: PlayerConfig) {
+    config.androidAutoEnabled?.let { NitroPlayerMediaBrowserService.isAndroidAutoEnabled = it }
+    config.lookaheadCount?.let { lookaheadCount = it.toInt() }
+    config.androidNotificationIcon?.let { NitroPlayerPlaybackService.notificationSmallIconResName = it }
+    mediaSessionManager?.configure(config.androidAutoEnabled, config.carPlayEnabled, config.showInNotification)
+}
 
 suspend fun TrackPlayerCore.playSong(
     songId: String,
@@ -181,11 +194,12 @@ internal fun TrackPlayerCore.emitStateChange(reason: Reason? = null) {
 
 // ── Playback speed ────────────────────────────────────────────────────────
 
-suspend fun TrackPlayerCore.setPlayBackSpeed(speed: Double) =
-    withPlayerContext {
-        if (speed <= 0.0) throw IllegalArgumentException("Speed must be greater than 0")
-        if (isExoInitialized) exo.setPlaybackSpeed(speed.toFloat())
-    }
+suspend fun TrackPlayerCore.setPlayBackSpeed(speed: Double) = withPlayerContext { setPlayBackSpeedOnQueue(speed) }
+
+internal fun TrackPlayerCore.setPlayBackSpeedOnQueue(speed: Double) {
+    if (speed <= 0.0) throw IllegalArgumentException("Speed must be greater than 0")
+    if (isExoInitialized) exo.setPlaybackSpeed(speed.toFloat())
+}
 
 suspend fun TrackPlayerCore.getPlayBackSpeed(): Double =
     withPlayerContext {

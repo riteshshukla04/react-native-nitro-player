@@ -31,7 +31,11 @@ class MediaSessionManager {
   // Cached values received from playerQueue — main-thread-only reads (no sync needed)
   private var cachedTrack: TrackItem?
   private var cachedState: PlayerState?
-  private var cachedQueue: [TrackItem] = []
+  // Only the queue length and the current track's position are needed — never the
+  // items themselves. Copying the whole queue on every state change was O(playlist)
+  // per event; these two Ints are computed on playerQueue instead.
+  private var cachedQueueCount: Int = 0
+  private var cachedPositionInQueue: Int = -1
 
   init() {
     setupRemoteCommandCenter()
@@ -56,10 +60,13 @@ class MediaSessionManager {
   //
   // Receives pre-computed values captured on playerQueue — no player access here.
 
-  func updateFromPlayerQueue(track: TrackItem, state: PlayerState, queue: [TrackItem]) {
+  func updateFromPlayerQueue(
+    track: TrackItem, state: PlayerState, queueCount: Int, positionInQueue: Int
+  ) {
     cachedTrack = track
     cachedState = state
-    cachedQueue = queue
+    cachedQueueCount = queueCount
+    cachedPositionInQueue = positionInQueue
     refreshInternal()
   }
 
@@ -88,11 +95,11 @@ class MediaSessionManager {
       return
     }
 
-    let queue = cachedQueue
-    let positionInQueue = queue.firstIndex(where: { $0.id == track.id }) ?? -1
-
-    updateNowPlayingInfoInternal(track: track, state: state, queue: queue, positionInQueue: positionInQueue)
-    updateCommandCenterState(state: state, queue: queue, positionInQueue: positionInQueue)
+    updateNowPlayingInfoInternal(
+      track: track, state: state,
+      queueCount: cachedQueueCount, positionInQueue: cachedPositionInQueue)
+    updateCommandCenterState(
+      state: state, queueCount: cachedQueueCount, positionInQueue: cachedPositionInQueue)
   }
 
   // MARK: - Now Playing Info
@@ -100,7 +107,7 @@ class MediaSessionManager {
   private func updateNowPlayingInfoInternal(
     track: TrackItem,
     state: PlayerState,
-    queue: [TrackItem],
+    queueCount: Int,
     positionInQueue: Int
   ) {
     let playerDuration = state.totalDuration
@@ -125,7 +132,7 @@ class MediaSessionManager {
       MPMediaItemPropertyPlaybackDuration: effectiveDuration,
       MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? 1.0 : 0.0,
       MPNowPlayingInfoPropertyDefaultPlaybackRate: 1.0,
-      MPNowPlayingInfoPropertyPlaybackQueueCount: max(1, queue.count),
+      MPNowPlayingInfoPropertyPlaybackQueueCount: max(1, queueCount),
       MPNowPlayingInfoPropertyPlaybackQueueIndex: max(0, positionInQueue),
     ]
 
@@ -238,12 +245,12 @@ class MediaSessionManager {
 
   private func updateCommandCenterState(
     state: PlayerState,
-    queue: [TrackItem],
+    queueCount: Int,
     positionInQueue: Int
   ) {
     let commandCenter = MPRemoteCommandCenter.shared()
     let hasCurrentTrack = positionInQueue >= 0
-    let isNotLast = positionInQueue < queue.count - 1
+    let isNotLast = positionInQueue < queueCount - 1
 
     let playerDuration = state.totalDuration
     let hasDuration = playerDuration > 0 && !playerDuration.isNaN && !playerDuration.isInfinite

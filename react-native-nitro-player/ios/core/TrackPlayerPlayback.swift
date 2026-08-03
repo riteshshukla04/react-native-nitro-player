@@ -11,78 +11,98 @@ import MediaPlayer
 
 extension TrackPlayerCore {
 
-  func play() async {
+  // MARK: - Public commands
+  //
+  // Each command has a `…OnQueue` form that MUST run on `playerQueue` and an `async`
+  // shim for callers that are not already there (media-session remote commands).
+  // HybridTrackPlayer dispatches the `…OnQueue` form directly from the JS thread so
+  // the serial queue's FIFO order equals the JS call order — see HybridTrackPlayer.
+  //
+  // Reading `isCasting` inside the queue block (not before it) keeps every cast-vs-local
+  // decision on the thread that owns that flag.
+
+  func playOnQueue() {
     if isCasting {
       intendedToPlay = true
       castManager?.play()
       return
     }
-    await withPlayerQueueNoThrow { self.playInternal() }
+    playInternal()
   }
+  func play() async { await withPlayerQueueNoThrow { self.playOnQueue() } }
 
-  func pause() async {
+  func pauseOnQueue() {
     if isCasting {
       intendedToPlay = false
       castManager?.pause()
       return
     }
-    await withPlayerQueueNoThrow { self.pauseInternal() }
+    pauseInternal()
   }
+  func pause() async { await withPlayerQueueNoThrow { self.pauseOnQueue() } }
 
-  func seek(position: Double) async {
+  func seekOnQueue(position: Double) {
     if isCasting {
       castManager?.seek(to: position)
       return
     }
-    await withPlayerQueueNoThrow { self.seekInternal(position: position) }
+    seekInternal(position: position)
+  }
+  func seek(position: Double) async {
+    await withPlayerQueueNoThrow { self.seekOnQueue(position: position) }
   }
 
-  func skipToNext() async {
+  func skipToNextOnQueue() {
     if isCasting {
       castManager?.skipToNext()
       return
     }
-    await withPlayerQueueNoThrow { self.skipToNextInternal() }
+    skipToNextInternal()
   }
+  func skipToNext() async { await withPlayerQueueNoThrow { self.skipToNextOnQueue() } }
 
-  func skipToPrevious() async {
+  func skipToPreviousOnQueue() {
     if isCasting {
       // The receiver queue starts at the current track, so queuePreviousItem has nothing behind it — use core state instead.
-      await withPlayerQueueNoThrow { self.skipToPreviousCastInternal() }
+      skipToPreviousCastInternal()
       return
     }
-    await withPlayerQueueNoThrow { self.skipToPreviousInternal() }
+    skipToPreviousInternal()
   }
+  func skipToPrevious() async { await withPlayerQueueNoThrow { self.skipToPreviousOnQueue() } }
 
+  func setRepeatModeOnQueue(mode: RepeatMode) {
+    currentRepeatMode = mode
+    player?.actionAtItemEnd = (mode == .track) ? .none : .advance
+    if isCasting { castManager?.setQueueRepeatMode(mode) }
+    NitroPlayerLogger.log("TrackPlayerCore", "🔁 setRepeatMode: \(mode)")
+  }
   func setRepeatMode(mode: RepeatMode) async {
-    await withPlayerQueueNoThrow {
-      self.currentRepeatMode = mode
-      self.player?.actionAtItemEnd = (mode == .track) ? .none : .advance
-      if self.isCasting { self.castManager?.setQueueRepeatMode(mode) }
-      NitroPlayerLogger.log("TrackPlayerCore", "🔁 setRepeatMode: \(mode)")
-    }
+    await withPlayerQueueNoThrow { self.setRepeatModeOnQueue(mode: mode) }
   }
 
-  func setVolume(volume: Double) async {
+  func setVolumeOnQueue(volume: Double) {
+    let clamped = max(0.0, min(100.0, volume))
     if isCasting {
-      let clamped = max(0.0, min(100.0, volume))
       castManager?.setVolume(Float(clamped / 100.0))
       return
     }
-    await withPlayerQueueNoThrow {
-      let clamped = max(0.0, min(100.0, volume))
-      let normalized = Float(clamped / 100.0)
-      self.player?.volume = normalized
-      NitroPlayerLogger.log("TrackPlayerCore", "🔊 Volume set to \(Int(clamped))% (normalized: \(normalized))")
-    }
+    let normalized = Float(clamped / 100.0)
+    player?.volume = normalized
+    NitroPlayerLogger.log(
+      "TrackPlayerCore", "🔊 Volume set to \(Int(clamped))% (normalized: \(normalized))")
+  }
+  func setVolume(volume: Double) async {
+    await withPlayerQueueNoThrow { self.setVolumeOnQueue(volume: volume) }
   }
 
-  func configure(androidAutoEnabled: Bool?, carPlayEnabled: Bool?, showInNotification: Bool?, lookaheadCount: Int?) async {
-    await withPlayerQueueNoThrow {
-      if let la = lookaheadCount {
-        self.lookaheadCount = la
-        NitroPlayerLogger.log("TrackPlayerCore", "🔄 Lookahead count set to: \(la)")
-      }
+  func configureOnQueue(
+    androidAutoEnabled: Bool?, carPlayEnabled: Bool?,
+    showInNotification: Bool?, lookaheadCount: Int?
+  ) {
+    if let la = lookaheadCount {
+      self.lookaheadCount = la
+      NitroPlayerLogger.log("TrackPlayerCore", "🔄 Lookahead count set to: \(la)")
     }
     DispatchQueue.main.async { [weak self] in
       self?.mediaSessionManager?.configure(
@@ -92,20 +112,30 @@ extension TrackPlayerCore {
       )
     }
   }
+  func configure(
+    androidAutoEnabled: Bool?, carPlayEnabled: Bool?,
+    showInNotification: Bool?, lookaheadCount: Int?
+  ) async {
+    await withPlayerQueueNoThrow {
+      self.configureOnQueue(
+        androidAutoEnabled: androidAutoEnabled, carPlayEnabled: carPlayEnabled,
+        showInNotification: showInNotification, lookaheadCount: lookaheadCount)
+    }
+  }
 
-  func setPlaybackSpeed(_ speed: Double) async {
+  func setPlaybackSpeedOnQueue(_ speed: Double) {
+    currentPlaybackSpeed = speed
     if isCasting {
-      currentPlaybackSpeed = speed
       castManager?.setPlaybackRate(Float(speed))
       return
     }
-    await withPlayerQueueNoThrow {
-      self.currentPlaybackSpeed = speed
-      // Only update rate if currently playing; pause keeps rate at 0 until play() is called
-      if let player = self.player, player.rate != 0 {
-        player.rate = Float(speed)
-      }
+    // Only update rate if currently playing; pause keeps rate at 0 until play() is called
+    if let player = self.player, player.rate != 0 {
+      player.rate = Float(speed)
     }
+  }
+  func setPlaybackSpeed(_ speed: Double) async {
+    await withPlayerQueueNoThrow { self.setPlaybackSpeedOnQueue(speed) }
   }
 
   func getPlaybackSpeed() async -> Double {
@@ -200,6 +230,12 @@ extension TrackPlayerCore {
           notifyTemporaryQueueChange()
         }
       }
+    }
+
+    // The AVQueuePlayer is windowed, so items().count is not the logical queue length.
+    // Top up first so there is always something to advance to while tracks remain.
+    if hasUpcomingTrack() {
+      if queuePlayer.items().count <= 1 { rebuildAVQueueFromCurrentPosition() }
     }
 
     if queuePlayer.items().count > 1 {

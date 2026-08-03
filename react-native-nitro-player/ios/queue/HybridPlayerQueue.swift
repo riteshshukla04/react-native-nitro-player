@@ -77,14 +77,19 @@ final class HybridPlayerQueue: HybridPlayerQueueSpec {
 
   // MARK: - Playback control
 
+  /// Enqueued synchronously on the player queue so a `loadPlaylist()` followed by
+  /// `play()` from JS cannot be reordered — see HybridTrackPlayer.enqueue.
   func loadPlaylist(playlistId: String, index: Double?) throws -> Promise<Void> {
-    Promise.async {
-      let startIndex = index.map { Int($0) }
+    let startIndex = index.map { Int($0) }
+    let promise = Promise<Void>()
+    core.playerQueue.async {
       // Update PlaylistManager.currentPlaylistId so getCurrentPlaylistId() returns correctly
-      let loaded = self.playlistManager.loadPlaylist(playlistId: playlistId, index: startIndex)
-      guard loaded else { return }
-      await self.core.loadPlaylist(playlistId: playlistId, startIndex: startIndex)
+      if self.playlistManager.loadPlaylist(playlistId: playlistId, index: startIndex) {
+        self.core.loadPlaylistOnQueue(playlistId: playlistId, startIndex: startIndex)
+      }
+      promise.resolve(withResult: ())
     }
+    return promise
   }
 
   func getCurrentPlaylistId() throws -> Variant_NullType_String {

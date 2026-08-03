@@ -7,35 +7,30 @@ import com.facebook.proguard.annotations.DoNotStrip
 import com.margelo.nitro.NitroModules
 import com.margelo.nitro.core.Promise
 import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
-import com.margelo.nitro.nitroplayer.core.addToUpNext
-import com.margelo.nitro.nitroplayer.core.clearPlayNext
-import com.margelo.nitro.nitroplayer.core.clearUpNext
-import com.margelo.nitro.nitroplayer.core.configure
-import com.margelo.nitro.nitroplayer.core.getActualQueue
-import com.margelo.nitro.nitroplayer.core.getCurrentTrackIndex
-import com.margelo.nitro.nitroplayer.core.getNextTracks
-import com.margelo.nitro.nitroplayer.core.getPlayBackSpeed
-import com.margelo.nitro.nitroplayer.core.getPlayNextQueue
+import com.margelo.nitro.nitroplayer.core.addToUpNextInternal
+import com.margelo.nitro.nitroplayer.core.clearPlayNextOnQueue
+import com.margelo.nitro.nitroplayer.core.clearUpNextOnQueue
+import com.margelo.nitro.nitroplayer.core.configureOnQueue
+import com.margelo.nitro.nitroplayer.core.getActualQueueInternal
+import com.margelo.nitro.nitroplayer.core.getNextTracksInternal
 import com.margelo.nitro.nitroplayer.core.getRepeatMode
-import com.margelo.nitro.nitroplayer.core.getState
-import com.margelo.nitro.nitroplayer.core.getTracksById
-import com.margelo.nitro.nitroplayer.core.getTracksNeedingUrls
-import com.margelo.nitro.nitroplayer.core.getUpNextQueue
-import com.margelo.nitro.nitroplayer.core.pause
-import com.margelo.nitro.nitroplayer.core.play
-import com.margelo.nitro.nitroplayer.core.playNext
-import com.margelo.nitro.nitroplayer.core.playSong
-import com.margelo.nitro.nitroplayer.core.removeFromPlayNext
-import com.margelo.nitro.nitroplayer.core.removeFromUpNext
-import com.margelo.nitro.nitroplayer.core.reorderTemporaryTrack
-import com.margelo.nitro.nitroplayer.core.seek
-import com.margelo.nitro.nitroplayer.core.setPlayBackSpeed
-import com.margelo.nitro.nitroplayer.core.setRepeatMode
-import com.margelo.nitro.nitroplayer.core.setVolume
-import com.margelo.nitro.nitroplayer.core.skipToIndex
-import com.margelo.nitro.nitroplayer.core.skipToNext
-import com.margelo.nitro.nitroplayer.core.skipToPrevious
-import com.margelo.nitro.nitroplayer.core.updateTracks
+import com.margelo.nitro.nitroplayer.core.getStateInternal
+import com.margelo.nitro.nitroplayer.core.getTracksNeedingUrlsInternal
+import com.margelo.nitro.nitroplayer.core.pauseOnQueue
+import com.margelo.nitro.nitroplayer.core.playNextInternal
+import com.margelo.nitro.nitroplayer.core.playOnQueue
+import com.margelo.nitro.nitroplayer.core.playSongInternal
+import com.margelo.nitro.nitroplayer.core.removeFromPlayNextOnQueue
+import com.margelo.nitro.nitroplayer.core.removeFromUpNextOnQueue
+import com.margelo.nitro.nitroplayer.core.reorderTemporaryTrackOnQueue
+import com.margelo.nitro.nitroplayer.core.seekOnQueue
+import com.margelo.nitro.nitroplayer.core.setPlayBackSpeedOnQueue
+import com.margelo.nitro.nitroplayer.core.setRepeatModeOnQueue
+import com.margelo.nitro.nitroplayer.core.setVolumeOnQueue
+import com.margelo.nitro.nitroplayer.core.skipToIndexInternal
+import com.margelo.nitro.nitroplayer.core.skipToNextOnQueue
+import com.margelo.nitro.nitroplayer.core.skipToPreviousOnQueue
+import com.margelo.nitro.nitroplayer.core.updateTracksOnQueue
 
 @DoNotStrip
 @Keep
@@ -52,79 +47,99 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
         core = TrackPlayerCore.getInstance(context)
     }
 
+    // ── Ordered dispatch ──────────────────────────────────────────────────────
+    //
+    // `Promise.async { … }` launches an unordered coroutine, so the hop onto the player
+    // looper happened at an arbitrary later point: two calls made in order from JS could
+    // reach the player in reverse order (play-then-pause landing as pause-then-play).
+    // `core.enqueue` appends synchronously, on the JS thread at call time, so execution
+    // order equals JS call order.
+
+    private fun <T> enqueue(block: () -> T): Promise<T> {
+        val promise = Promise<T>()
+        core.enqueue {
+            try {
+                promise.resolve(block())
+            } catch (e: Throwable) {
+                promise.reject(e)
+            }
+        }
+        return promise
+    }
+
     // ── Playback ─────────────────────────────────────────────────────────────
 
-    override fun play(): Promise<Unit> = Promise.async { core.play() }
+    override fun play(): Promise<Unit> = enqueue { core.playOnQueue() }
 
-    override fun pause(): Promise<Unit> = Promise.async { core.pause() }
+    override fun pause(): Promise<Unit> = enqueue { core.pauseOnQueue() }
 
-    override fun seek(position: Double): Promise<Unit> = Promise.async { core.seek(position) }
+    override fun seek(position: Double): Promise<Unit> = enqueue { core.seekOnQueue(position) }
 
-    override fun skipToNext(): Promise<Unit> = Promise.async { core.skipToNext() }
+    override fun skipToNext(): Promise<Unit> = enqueue { core.skipToNextOnQueue() }
 
-    override fun skipToPrevious(): Promise<Unit> = Promise.async { core.skipToPrevious() }
+    override fun skipToPrevious(): Promise<Unit> = enqueue { core.skipToPreviousOnQueue() }
 
     override fun playSong(
         songId: String,
         fromPlaylist: String?,
-    ): Promise<Unit> = Promise.async { core.playSong(songId, fromPlaylist) }
+    ): Promise<Unit> = enqueue { core.playSongInternal(songId, fromPlaylist) }
 
-    override fun skipToIndex(index: Double): Promise<Boolean> = Promise.async { core.skipToIndex(index.toInt()) }
+    override fun skipToIndex(index: Double): Promise<Boolean> = enqueue { core.skipToIndexInternal(index.toInt()) }
 
-    override fun setRepeatMode(mode: RepeatMode): Promise<Unit> = Promise.async { core.setRepeatMode(mode) }
+    override fun setRepeatMode(mode: RepeatMode): Promise<Unit> = enqueue { core.setRepeatModeOnQueue(mode) }
 
     override fun getRepeatMode(): RepeatMode = core.getRepeatMode()
 
-    override fun setVolume(volume: Double): Promise<Unit> = Promise.async { core.setVolume(volume) }
+    override fun setVolume(volume: Double): Promise<Unit> = enqueue { core.setVolumeOnQueue(volume) }
 
-    override fun configure(config: PlayerConfig): Promise<Unit> = Promise.async { core.configure(config) }
+    override fun configure(config: PlayerConfig): Promise<Unit> = enqueue { core.configureOnQueue(config) }
 
     // ── Queue / state reads ───────────────────────────────────────────────────
 
-    override fun getActualQueue(): Promise<Array<TrackItem>> = Promise.async { core.getActualQueue().toTypedArray() }
+    override fun getActualQueue(): Promise<Array<TrackItem>> = enqueue { core.getActualQueueInternal().toTypedArray() }
 
-    override fun getState(): Promise<PlayerState> = Promise.async { core.getState() }
+    override fun getState(): Promise<PlayerState> = enqueue { core.getStateInternal() }
 
-    override fun getTracksById(trackIds: Array<String>): Promise<Array<TrackItem>> = Promise.async { core.getTracksById(trackIds.toList()).toTypedArray() }
+    override fun getTracksById(trackIds: Array<String>): Promise<Array<TrackItem>> = enqueue { core.getPlaylistManager().getTracksById(trackIds.toList()).toTypedArray() }
 
-    override fun getTracksNeedingUrls(): Promise<Array<TrackItem>> = Promise.async { core.getTracksNeedingUrls().toTypedArray() }
+    override fun getTracksNeedingUrls(): Promise<Array<TrackItem>> = enqueue { core.getTracksNeedingUrlsInternal().toTypedArray() }
 
-    override fun getNextTracks(count: Double): Promise<Array<TrackItem>> = Promise.async { core.getNextTracks(count.toInt()).toTypedArray() }
+    override fun getNextTracks(count: Double): Promise<Array<TrackItem>> = enqueue { core.getNextTracksInternal(count.toInt()).toTypedArray() }
 
-    override fun getCurrentTrackIndex(): Promise<Double> = Promise.async { core.getCurrentTrackIndex().toDouble() }
+    override fun getCurrentTrackIndex(): Promise<Double> = enqueue { core.currentTrackIndex.toDouble() }
 
     // ── URL updates ───────────────────────────────────────────────────────────
 
-    override fun updateTracks(tracks: Array<TrackItem>): Promise<Unit> = Promise.async { core.updateTracks(tracks.toList()) }
+    override fun updateTracks(tracks: Array<TrackItem>): Promise<Unit> = enqueue { core.updateTracksOnQueue(tracks.toList()) }
 
     // ── Temporary queue ───────────────────────────────────────────────────────
 
-    override fun addToUpNext(trackId: String): Promise<Unit> = Promise.async { core.addToUpNext(trackId) }
+    override fun addToUpNext(trackId: String): Promise<Unit> = enqueue { core.addToUpNextInternal(trackId) }
 
-    override fun playNext(trackId: String): Promise<Unit> = Promise.async { core.playNext(trackId) }
+    override fun playNext(trackId: String): Promise<Unit> = enqueue { core.playNextInternal(trackId) }
 
-    override fun removeFromPlayNext(trackId: String): Promise<Boolean> = Promise.async { core.removeFromPlayNext(trackId) }
+    override fun removeFromPlayNext(trackId: String): Promise<Boolean> = enqueue { core.removeFromPlayNextOnQueue(trackId) }
 
-    override fun removeFromUpNext(trackId: String): Promise<Boolean> = Promise.async { core.removeFromUpNext(trackId) }
+    override fun removeFromUpNext(trackId: String): Promise<Boolean> = enqueue { core.removeFromUpNextOnQueue(trackId) }
 
-    override fun clearPlayNext(): Promise<Unit> = Promise.async { core.clearPlayNext() }
+    override fun clearPlayNext(): Promise<Unit> = enqueue { core.clearPlayNextOnQueue() }
 
-    override fun clearUpNext(): Promise<Unit> = Promise.async { core.clearUpNext() }
+    override fun clearUpNext(): Promise<Unit> = enqueue { core.clearUpNextOnQueue() }
 
     override fun reorderTemporaryTrack(
         trackId: String,
         newIndex: Double,
-    ): Promise<Boolean> = Promise.async { core.reorderTemporaryTrack(trackId, newIndex.toInt()) }
+    ): Promise<Boolean> = enqueue { core.reorderTemporaryTrackOnQueue(trackId, newIndex.toInt()) }
 
-    override fun getPlayNextQueue(): Promise<Array<TrackItem>> = Promise.async { core.getPlayNextQueue().toTypedArray() }
+    override fun getPlayNextQueue(): Promise<Array<TrackItem>> = enqueue { core.playNextStack.toTypedArray() }
 
-    override fun getUpNextQueue(): Promise<Array<TrackItem>> = Promise.async { core.getUpNextQueue().toTypedArray() }
+    override fun getUpNextQueue(): Promise<Array<TrackItem>> = enqueue { core.upNextQueue.toTypedArray() }
 
     // ── Playback speed ────────────────────────────────────────────────────────
 
-    override fun setPlaybackSpeed(speed: Double): Promise<Unit> = Promise.async { core.setPlayBackSpeed(speed) }
+    override fun setPlaybackSpeed(speed: Double): Promise<Unit> = enqueue { core.setPlayBackSpeedOnQueue(speed) }
 
-    override fun getPlaybackSpeed(): Promise<Double> = Promise.async { core.getPlayBackSpeed() }
+    override fun getPlaybackSpeed(): Promise<Double> = enqueue { if (core.isExoInitialized) core.exo.getPlaybackSpeed().toDouble() else 1.0 }
 
     // ── Android Auto ──────────────────────────────────────────────────────────
 

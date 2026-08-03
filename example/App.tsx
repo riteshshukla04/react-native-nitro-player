@@ -9,6 +9,9 @@ import React, { useEffect } from 'react';
 import { Platform, PermissionsAndroid, StatusBar } from 'react-native';
 import { TrackPlayer } from 'react-native-nitro-player';
 import AppNavigator from './src/navigation/AppNavigator';
+import BenchScreen from './src/screens/BenchScreen';
+
+const RUN_BENCH = false;
 
 void TrackPlayer.configure({
   androidAutoEnabled: true,
@@ -41,7 +44,7 @@ export default function App() {
   return (
     <>
       <StatusBar barStyle="dark-content" />
-      <AppNavigator />
+      {RUN_BENCH ? <BenchScreen /> : <AppNavigator />}
     </>
   );
 }

@@ -59,7 +59,9 @@ internal fun TrackPlayerCore.getStateInternal(): PlayerState {
         totalDuration = duration,
         currentState = state,
         currentPlaylistId = currentPlaylistId?.let { Variant_NullType_String.create(it) },
-        currentIndex = if (exo.currentMediaItemIndex >= 0) exo.currentMediaItemIndex.toDouble() else -1.0,
+        // Playlist index, not the index inside ExoPlayer's (windowed, rebuilt-from-N)
+        // timeline — that reads 0 after any jump. Matches iOS and the documented contract.
+        currentIndex = if (currentTrackIndex >= 0) currentTrackIndex.toDouble() else -1.0,
         currentPlayingType = playingType,
     )
 }
@@ -128,7 +130,7 @@ internal fun TrackPlayerCore.getActualQueueInternal(): List<TrackItem> {
 
 suspend fun TrackPlayerCore.skipToIndex(index: Int): Boolean = withPlayerContext { skipToIndexInternal(index) }
 
-private fun TrackPlayerCore.skipToIndexInternal(index: Int): Boolean {
+internal fun TrackPlayerCore.skipToIndexInternal(index: Int): Boolean {
     if (!isExoInitialized) return false
     val actualQueue = getActualQueueInternal()
     if (index < 0 || index >= actualQueue.size) return false
