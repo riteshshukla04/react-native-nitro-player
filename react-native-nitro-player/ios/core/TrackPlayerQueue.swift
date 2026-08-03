@@ -150,16 +150,19 @@ extension TrackPlayerCore {
   /// arithmetically. `getActualQueueInternal()` copies every TrackItem to answer the
   /// same two questions — too expensive to run on every playback-state change.
   func actualQueueMetrics() -> (count: Int, position: Int) {
-    let before = currentTemporaryType != .none
-      ? min(currentTrackIndex + 1, currentTracks.count)
-      : max(0, currentTrackIndex)
+    let before: Int
+    if currentTemporaryType != .none {
+      before = min(currentTrackIndex + 1, currentTracks.count)
+    } else {
+      before = max(0, currentTrackIndex)
+    }
     let hasCurrent = getCurrentTrack() != nil
-    let playNextCount = currentTemporaryType == .playNext
-      ? max(0, playNextStack.count - 1) : playNextStack.count
-    let upNextCount = currentTemporaryType == .upNext
-      ? max(0, upNextQueue.count - 1) : upNextQueue.count
-    let after = currentTrackIndex + 1 < currentTracks.count
-      ? currentTracks.count - (currentTrackIndex + 1) : 0
+    let playNextCount =
+      currentTemporaryType == .playNext ? max(0, playNextStack.count - 1) : playNextStack.count
+    let upNextCount =
+      currentTemporaryType == .upNext ? max(0, upNextQueue.count - 1) : upNextQueue.count
+    let after =
+      currentTrackIndex + 1 < currentTracks.count ? currentTracks.count - (currentTrackIndex + 1) : 0
 
     let count = before + (hasCurrent ? 1 : 0) + playNextCount + upNextCount + after
     return (count, hasCurrent ? before : -1)

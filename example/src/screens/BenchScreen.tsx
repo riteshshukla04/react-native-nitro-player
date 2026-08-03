@@ -1,5 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { PlayerQueue, TrackPlayer } from 'react-native-nitro-player';
 import type { TrackItem } from 'react-native-nitro-player';
 
@@ -100,9 +106,12 @@ export default function BenchScreen() {
         stateEvents.current++;
         if (off.stop) return;
         stormFetches++;
-        void TrackPlayer.getActualQueue().then((q) => {
-          stormTracks += q.length;
-        });
+        TrackPlayer.getActualQueue().then(
+          (q) => {
+            stormTracks += q.length;
+          },
+          () => {},
+        );
       });
       TrackPlayer.onChangeTrack(() => {
         trackEvents.current++;
@@ -136,23 +145,25 @@ export default function BenchScreen() {
   useEffect(() => {
     if (started.current) return;
     started.current = true;
-    const t = setTimeout(() => void run(), 3000);
+    const t = setTimeout(() => {
+      run();
+    }, 3000);
     return () => clearTimeout(t);
   }, [run]);
 
   return (
-    <View style={{ flex: 1, paddingTop: 60, paddingHorizontal: 12, backgroundColor: '#fff' }}>
+    <View style={styles.container}>
       <TouchableOpacity
         onPress={run}
         disabled={running}
-        style={{ padding: 14, backgroundColor: running ? '#999' : '#222', borderRadius: 8 }}>
-        <Text style={{ color: '#fff', textAlign: 'center', fontWeight: '600' }}>
+        style={[styles.button, running && styles.buttonDisabled]}>
+        <Text style={styles.buttonLabel}>
           {running ? 'Running…' : 'Run benchmark'}
         </Text>
       </TouchableOpacity>
-      <ScrollView style={{ marginTop: 16 }}>
+      <ScrollView style={styles.output}>
         {lines.map((l, i) => (
-          <Text key={i} style={{ fontFamily: 'Menlo', fontSize: 12, marginBottom: 3 }}>
+          <Text key={i} style={styles.line}>
             {l}
           </Text>
         ))}
@@ -160,3 +171,17 @@ export default function BenchScreen() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingTop: 60,
+    paddingHorizontal: 12,
+    backgroundColor: '#fff',
+  },
+  button: { padding: 14, backgroundColor: '#222', borderRadius: 8 },
+  buttonDisabled: { backgroundColor: '#999' },
+  buttonLabel: { color: '#fff', textAlign: 'center', fontWeight: '600' },
+  output: { marginTop: 16 },
+  line: { fontFamily: 'Menlo', fontSize: 12, marginBottom: 3 },
+});

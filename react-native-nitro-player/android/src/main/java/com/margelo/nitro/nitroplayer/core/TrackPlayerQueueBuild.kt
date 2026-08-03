@@ -101,7 +101,7 @@ internal fun TrackPlayerCore.rebuildQueueFromCurrentPosition() {
     val currentTrackId = exo.currentMediaItem?.mediaId?.let { extractTrackId(it) }
 
     if (
-        currentTrackId != null && 
+        currentTrackId != null &&
         currentTracks.none { it.id == currentTrackId } &&
         currentTemporaryType == TrackPlayerCore.TemporaryType.NONE
     ) {
@@ -269,15 +269,17 @@ internal fun TrackPlayerCore.makeMediaItem(
         try {
             val headersRaw = payload.toHashMap()["headers"]
             if (headersRaw is Map<*, *>) {
-                val headers = headersRaw
-                    .mapNotNull { (k, v) -> if (k is String && v is String) k to v else null }
-                    .toMap()
+                val headers =
+                    headersRaw
+                        .mapNotNull { (k, v) -> if (k is String && v is String) k to v else null }
+                        .toMap()
                 if (headers.isNotEmpty()) {
                     com.margelo.nitro.nitroplayer.media.AuthAwareHttpDataSourceFactory
                         .setHeadersForUrl(effectiveUrl, headers)
                 }
             }
-        } catch (_: Exception) {}
+        } catch (_: Exception) {
+        }
     }
 
     return MediaItem

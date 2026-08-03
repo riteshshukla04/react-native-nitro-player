@@ -13,53 +13,53 @@ extension TrackPlayerCore {
   }
 
   func loadPlaylistOnQueue(playlistId: String, startIndex: Int? = nil) {
-      self.playNextStack.removeAll()
-      self.upNextQueue.removeAll()
-      self.currentTemporaryType = .none
+    self.playNextStack.removeAll()
+    self.upNextQueue.removeAll()
+    self.currentTemporaryType = .none
 
-      NitroPlayerLogger.log("TrackPlayerCore", "\n" + String(repeating: "🎼", count: Constants.playlistSeparatorLength))
-      NitroPlayerLogger.log("TrackPlayerCore", "📂 LOAD PLAYLIST REQUEST")
-      NitroPlayerLogger.log("TrackPlayerCore", "   Playlist ID: \(playlistId)")
-      NitroPlayerLogger.log("TrackPlayerCore", "   🧹 Cleared temporary tracks")
+    NitroPlayerLogger.log("TrackPlayerCore", "\n" + String(repeating: "🎼", count: Constants.playlistSeparatorLength))
+    NitroPlayerLogger.log("TrackPlayerCore", "📂 LOAD PLAYLIST REQUEST")
+    NitroPlayerLogger.log("TrackPlayerCore", "   Playlist ID: \(playlistId)")
+    NitroPlayerLogger.log("TrackPlayerCore", "   🧹 Cleared temporary tracks")
 
-      guard let playlist = self.playlistManager.getPlaylist(playlistId: playlistId) else {
-        NitroPlayerLogger.log("TrackPlayerCore", "   ❌ Playlist NOT FOUND")
-        NitroPlayerLogger.log("TrackPlayerCore", String(repeating: "🎼", count: Constants.playlistSeparatorLength) + "\n")
+    guard let playlist = self.playlistManager.getPlaylist(playlistId: playlistId) else {
+      NitroPlayerLogger.log("TrackPlayerCore", "   ❌ Playlist NOT FOUND")
+      NitroPlayerLogger.log("TrackPlayerCore", String(repeating: "🎼", count: Constants.playlistSeparatorLength) + "\n")
+      return
+    }
+
+    NitroPlayerLogger.log("TrackPlayerCore", "   ✅ Found playlist: \(playlist.name)")
+    NitroPlayerLogger.log("TrackPlayerCore", "   📋 Contains \(playlist.tracks.count) tracks:")
+    for (index, track) in playlist.tracks.enumerated() {
+      NitroPlayerLogger.log("TrackPlayerCore", "      [\(index + 1)] \(track.title) - \(track.artist)")
+    }
+    NitroPlayerLogger.log("TrackPlayerCore", String(repeating: "🎼", count: Constants.playlistSeparatorLength) + "\n")
+
+    let targetIndex: Int
+    if let startIndex {
+      guard startIndex >= 0 && startIndex < playlist.tracks.count else {
+        NitroPlayerLogger.log("TrackPlayerCore", "   ❌ Invalid start index: \(startIndex) (track count: \(playlist.tracks.count))")
         return
       }
+      targetIndex = startIndex
+    } else {
+      targetIndex = 0
+    }
 
-      NitroPlayerLogger.log("TrackPlayerCore", "   ✅ Found playlist: \(playlist.name)")
-      NitroPlayerLogger.log("TrackPlayerCore", "   📋 Contains \(playlist.tracks.count) tracks:")
-      for (index, track) in playlist.tracks.enumerated() {
-        NitroPlayerLogger.log("TrackPlayerCore", "      [\(index + 1)] \(track.title) - \(track.artist)")
-      }
-      NitroPlayerLogger.log("TrackPlayerCore", String(repeating: "🎼", count: Constants.playlistSeparatorLength) + "\n")
-
-      let targetIndex: Int
-      if let startIndex {
-        guard startIndex >= 0 && startIndex < playlist.tracks.count else {
-          NitroPlayerLogger.log("TrackPlayerCore", "   ❌ Invalid start index: \(startIndex) (track count: \(playlist.tracks.count))")
-          return
-        }
-        targetIndex = startIndex
-      } else {
-        targetIndex = 0
-      }
-
-      self.currentPlaylistId = playlistId
-      if targetIndex == 0 {
-        self.updatePlayerQueue(tracks: playlist.tracks)
-      } else {
-        // Bypass updatePlayerQueue to avoid emitting a spurious onTrackChange for index 0.
-        // Set currentTracks directly so rebuildQueueFromPlaylistIndex can use them.
-        self.currentTracks = playlist.tracks
-        self.preloadedAssets.values.forEach { $0.cancelLoading() }
-        self.preloadedAssets.removeAll()
-        _ = self.rebuildQueueFromPlaylistIndex(index: targetIndex)
-      }
-      self.emitStateChange()
-      self.checkUpcomingTracksForUrls(lookahead: self.lookaheadCount)
-      self.notifyTemporaryQueueChange()
+    self.currentPlaylistId = playlistId
+    if targetIndex == 0 {
+      self.updatePlayerQueue(tracks: playlist.tracks)
+    } else {
+      // Bypass updatePlayerQueue to avoid emitting a spurious onTrackChange for index 0.
+      // Set currentTracks directly so rebuildQueueFromPlaylistIndex can use them.
+      self.currentTracks = playlist.tracks
+      for asset in self.preloadedAssets.values { asset.cancelLoading() }
+      self.preloadedAssets.removeAll()
+      _ = self.rebuildQueueFromPlaylistIndex(index: targetIndex)
+    }
+    self.emitStateChange()
+    self.checkUpcomingTracksForUrls(lookahead: self.lookaheadCount)
+    self.notifyTemporaryQueueChange()
   }
 
   /// Callable from any thread (PlaylistManager runs on its own queue) — all state

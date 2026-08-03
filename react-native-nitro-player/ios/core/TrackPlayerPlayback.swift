@@ -48,7 +48,9 @@ extension TrackPlayerCore {
     }
     seekInternal(position: position)
   }
-  func seek(position: Double) async { await withPlayerQueueNoThrow { self.seekOnQueue(position: position) } }
+  func seek(position: Double) async {
+    await withPlayerQueueNoThrow { self.seekOnQueue(position: position) }
+  }
 
   func skipToNextOnQueue() {
     if isCasting {
@@ -75,7 +77,9 @@ extension TrackPlayerCore {
     if isCasting { castManager?.setQueueRepeatMode(mode) }
     NitroPlayerLogger.log("TrackPlayerCore", "🔁 setRepeatMode: \(mode)")
   }
-  func setRepeatMode(mode: RepeatMode) async { await withPlayerQueueNoThrow { self.setRepeatModeOnQueue(mode: mode) } }
+  func setRepeatMode(mode: RepeatMode) async {
+    await withPlayerQueueNoThrow { self.setRepeatModeOnQueue(mode: mode) }
+  }
 
   func setVolumeOnQueue(volume: Double) {
     let clamped = max(0.0, min(100.0, volume))
@@ -85,11 +89,17 @@ extension TrackPlayerCore {
     }
     let normalized = Float(clamped / 100.0)
     player?.volume = normalized
-    NitroPlayerLogger.log("TrackPlayerCore", "🔊 Volume set to \(Int(clamped))% (normalized: \(normalized))")
+    NitroPlayerLogger.log(
+      "TrackPlayerCore", "🔊 Volume set to \(Int(clamped))% (normalized: \(normalized))")
   }
-  func setVolume(volume: Double) async { await withPlayerQueueNoThrow { self.setVolumeOnQueue(volume: volume) } }
+  func setVolume(volume: Double) async {
+    await withPlayerQueueNoThrow { self.setVolumeOnQueue(volume: volume) }
+  }
 
-  func configureOnQueue(androidAutoEnabled: Bool?, carPlayEnabled: Bool?, showInNotification: Bool?, lookaheadCount: Int?) {
+  func configureOnQueue(
+    androidAutoEnabled: Bool?, carPlayEnabled: Bool?,
+    showInNotification: Bool?, lookaheadCount: Int?
+  ) {
     if let la = lookaheadCount {
       self.lookaheadCount = la
       NitroPlayerLogger.log("TrackPlayerCore", "🔄 Lookahead count set to: \(la)")
@@ -102,7 +112,10 @@ extension TrackPlayerCore {
       )
     }
   }
-  func configure(androidAutoEnabled: Bool?, carPlayEnabled: Bool?, showInNotification: Bool?, lookaheadCount: Int?) async {
+  func configure(
+    androidAutoEnabled: Bool?, carPlayEnabled: Bool?,
+    showInNotification: Bool?, lookaheadCount: Int?
+  ) async {
     await withPlayerQueueNoThrow {
       self.configureOnQueue(
         androidAutoEnabled: androidAutoEnabled, carPlayEnabled: carPlayEnabled,
@@ -121,7 +134,9 @@ extension TrackPlayerCore {
       player.rate = Float(speed)
     }
   }
-  func setPlaybackSpeed(_ speed: Double) async { await withPlayerQueueNoThrow { self.setPlaybackSpeedOnQueue(speed) } }
+  func setPlaybackSpeed(_ speed: Double) async {
+    await withPlayerQueueNoThrow { self.setPlaybackSpeedOnQueue(speed) }
+  }
 
   func getPlaybackSpeed() async -> Double {
     await withPlayerQueueNoThrow { self.currentPlaybackSpeed }

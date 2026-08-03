@@ -83,7 +83,7 @@ extension TrackPlayerCore {
     player?.automaticallyWaitsToMinimizeStalling = true
 
     // Clear old preloaded assets when loading new queue
-    preloadedAssets.values.forEach { $0.cancelLoading() }
+    for asset in preloadedAssets.values { asset.cancelLoading() }
     preloadedAssets.removeAll()
 
     guard let existingPlayer = self.player else {
@@ -412,8 +412,10 @@ extension TrackPlayerCore {
     // from the first divergence. A pure append (the common window top-up) therefore
     // touches nothing that is already buffered, preserving gapless transitions.
     var commonPrefix = 0
-    while commonPrefix < upcomingItems.count && commonPrefix < newQueueTracks.count
-      && upcomingItems[commonPrefix].trackId == newQueueTracks[commonPrefix].id {
+    while commonPrefix < upcomingItems.count,
+      commonPrefix < newQueueTracks.count,
+      upcomingItems[commonPrefix].trackId == newQueueTracks[commonPrefix].id
+    {
       commonPrefix += 1
     }
 
@@ -430,18 +432,20 @@ extension TrackPlayerCore {
       }
     }
 
-    NitroPlayerLogger.log("TrackPlayerCore",
-      "🔄 Incremental rebuild: kept \(commonPrefix) buffered items, created \(newQueueTracks.count - commonPrefix)")
+    let created = newQueueTracks.count - commonPrefix
+    NitroPlayerLogger.log(
+      "TrackPlayerCore",
+      "🔄 Incremental rebuild: kept \(commonPrefix) buffered items, created \(created)")
   }
 
   /// True when the logical queue has a track after the current one, regardless of
   /// how much of it is currently materialized into the AVQueuePlayer.
   func hasUpcomingTrack() -> Bool {
-    let pendingPlayNext = currentTemporaryType == .playNext
-      ? max(0, playNextStack.count - 1) : playNextStack.count
+    let pendingPlayNext =
+      currentTemporaryType == .playNext ? max(0, playNextStack.count - 1) : playNextStack.count
     if pendingPlayNext > 0 { return true }
-    let pendingUpNext = currentTemporaryType == .upNext
-      ? max(0, upNextQueue.count - 1) : upNextQueue.count
+    let pendingUpNext =
+      currentTemporaryType == .upNext ? max(0, upNextQueue.count - 1) : upNextQueue.count
     if pendingUpNext > 0 { return true }
     return currentTrackIndex + 1 < currentTracks.count
   }

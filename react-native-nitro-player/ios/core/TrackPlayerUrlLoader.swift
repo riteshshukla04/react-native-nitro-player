@@ -175,14 +175,20 @@ extension TrackPlayerCore {
 
     var skippedPlayNext = currentTemporaryType != .playNext
     for track in playNextStack {
-      if !skippedPlayNext && track.id == currentId { skippedPlayNext = true; continue }
+      if !skippedPlayNext && track.id == currentId {
+        skippedPlayNext = true
+        continue
+      }
       out.append(track)
       if out.count == count { return out }
     }
 
     var skippedUpNext = currentTemporaryType != .upNext
     for track in upNextQueue {
-      if !skippedUpNext && track.id == currentId { skippedUpNext = true; continue }
+      if !skippedUpNext && track.id == currentId {
+        skippedUpNext = true
+        continue
+      }
       out.append(track)
       if out.count == count { return out }
     }

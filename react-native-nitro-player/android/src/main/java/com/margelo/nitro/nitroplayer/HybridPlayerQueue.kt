@@ -113,7 +113,10 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
      * Enqueued synchronously on the player looper so a `loadPlaylist()` followed by
      * `play()` from JS cannot be reordered — see HybridTrackPlayer.enqueue.
      */
-    override fun loadPlaylist(playlistId: String, index: Double?): Promise<Unit> {
+    override fun loadPlaylist(
+        playlistId: String,
+        index: Double?,
+    ): Promise<Unit> {
         val startIndex = index?.toInt()
         val promise = Promise<Unit>()
         core.enqueue {

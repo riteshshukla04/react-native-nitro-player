@@ -60,7 +60,9 @@ class MediaSessionManager {
   //
   // Receives pre-computed values captured on playerQueue — no player access here.
 
-  func updateFromPlayerQueue(track: TrackItem, state: PlayerState, queueCount: Int, positionInQueue: Int) {
+  func updateFromPlayerQueue(
+    track: TrackItem, state: PlayerState, queueCount: Int, positionInQueue: Int
+  ) {
     cachedTrack = track
     cachedState = state
     cachedQueueCount = queueCount
@@ -94,7 +96,8 @@ class MediaSessionManager {
     }
 
     updateNowPlayingInfoInternal(
-      track: track, state: state, queueCount: cachedQueueCount, positionInQueue: cachedPositionInQueue)
+      track: track, state: state,
+      queueCount: cachedQueueCount, positionInQueue: cachedPositionInQueue)
     updateCommandCenterState(
       state: state, queueCount: cachedQueueCount, positionInQueue: cachedPositionInQueue)
   }

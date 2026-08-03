@@ -168,7 +168,9 @@ class CallbackSubscriptionManager {
    * Subscribe to playNext / upNext changes
    * @returns Unsubscribe function
    */
-  subscribeToTemporaryQueueChange(callback: TemporaryQueueCallback): () => void {
+  subscribeToTemporaryQueueChange(
+    callback: TemporaryQueueCallback
+  ): () => void {
     this.temporaryQueueSubscribers.add(callback)
     this.ensureTemporaryQueueRegistered()
 

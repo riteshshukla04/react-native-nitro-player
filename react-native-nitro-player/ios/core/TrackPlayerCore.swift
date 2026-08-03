@@ -246,7 +246,7 @@ class TrackPlayerCore: NSObject {
       NotificationCenter.default.removeObserver(self)
       self.pathMonitor?.cancel()
       self.pathMonitor = nil
-      self.preloadedAssets.values.forEach { $0.cancelLoading() }
+      for asset in self.preloadedAssets.values { asset.cancelLoading() }
       self.preloadedAssets.removeAll()
       self.failedItemRetryCounts.removeAll()
       self.redirectResolver.clear()

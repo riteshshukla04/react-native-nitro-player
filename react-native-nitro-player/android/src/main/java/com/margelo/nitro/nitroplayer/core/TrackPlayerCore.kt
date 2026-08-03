@@ -94,6 +94,7 @@ class TrackPlayerCore private constructor(
         ListenerRegistry<(com.margelo.nitro.nitroplayer.CastState, String?) -> Unit>()
 
     // ── Google Cast ──────────────────────────────────────────────────────────
+
     /** Set once the playback service has a usable CastContext; null when Cast is unavailable. */
     internal var castSessionController: com.margelo.nitro.nitroplayer.media.CastSessionController? = null
 
@@ -104,6 +105,7 @@ class TrackPlayerCore private constructor(
     internal var lastCastWaitTrackId: String? = null
 
     // ── Progress & playlist-update runnables ───────────────────────────────
+
     /**
      * Emits progress once per second while actually playing (matching iOS), instead of
      * four times a second regardless of state. A paused player has nothing to report,
@@ -159,7 +161,8 @@ class TrackPlayerCore private constructor(
                     }
                     try {
                         context.unbindService(this)
-                    } catch (_: Exception) {}
+                    } catch (_: Exception) {
+                    }
                     serviceBound = false
                     if (rebindAttempts < 3) {
                         rebindAttempts++
@@ -324,13 +327,15 @@ class TrackPlayerCore private constructor(
             }
         }
         scope.cancel()
-        com.margelo.nitro.nitroplayer.media.AuthAwareHttpDataSourceFactory.clear()
+        com.margelo.nitro.nitroplayer.media.AuthAwareHttpDataSourceFactory
+            .clear()
         // Do NOT stop the service — it owns the player.
         // Unbind so Android can clean up if needed.
         if (serviceBound) {
             try {
                 context.unbindService(serviceConnection)
-            } catch (_: Exception) {}
+            } catch (_: Exception) {
+            }
             serviceBound = false
         }
     }

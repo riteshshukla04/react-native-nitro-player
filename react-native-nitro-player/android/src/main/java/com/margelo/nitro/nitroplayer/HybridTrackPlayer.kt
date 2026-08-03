@@ -100,8 +100,7 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
 
     override fun getState(): Promise<PlayerState> = enqueue { core.getStateInternal() }
 
-    override fun getTracksById(trackIds: Array<String>): Promise<Array<TrackItem>> =
-        enqueue { core.getPlaylistManager().getTracksById(trackIds.toList()).toTypedArray() }
+    override fun getTracksById(trackIds: Array<String>): Promise<Array<TrackItem>> = enqueue { core.getPlaylistManager().getTracksById(trackIds.toList()).toTypedArray() }
 
     override fun getTracksNeedingUrls(): Promise<Array<TrackItem>> = enqueue { core.getTracksNeedingUrlsInternal().toTypedArray() }
 

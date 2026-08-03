@@ -43,7 +43,8 @@ internal fun TrackPlayerCore.initFromService(binder: NitroPlayerPlaybackService.
     if (sessionId != 0) {
         try {
             EqualizerCore.getInstance(context).initialize(sessionId)
-        } catch (_: Exception) { }
+        } catch (_: Exception) {
+        }
     }
 
     // Start progress ticks on the main looper

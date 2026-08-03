@@ -45,42 +45,42 @@ internal fun TrackPlayerCore.skipToNextOnQueue() {
 suspend fun TrackPlayerCore.skipToPrevious() = withPlayerContext { skipToPreviousOnQueue() }
 
 internal fun TrackPlayerCore.skipToPreviousOnQueue() {
-        val currentPosition = exo.currentPosition
-        when {
-            currentPosition > 2000 -> {
-                exo.seekTo(0)
-            }
-
-            currentTemporaryType != TrackPlayerCore.TemporaryType.NONE -> {
-                val trackId = exo.currentMediaItem?.mediaId?.let { extractTrackId(it) }
-                if (trackId != null) {
-                    when (currentTemporaryType) {
-                        TrackPlayerCore.TemporaryType.PLAY_NEXT -> {
-                            val idx = playNextStack.indexOfFirst { it.id == trackId }
-                            if (idx >= 0) playNextStack.removeAt(idx)
-                        }
-
-                        TrackPlayerCore.TemporaryType.UP_NEXT -> {
-                            val idx = upNextQueue.indexOfFirst { it.id == trackId }
-                            if (idx >= 0) upNextQueue.removeAt(idx)
-                        }
-
-                        else -> {}
-                    }
-                }
-                currentTemporaryType = TrackPlayerCore.TemporaryType.NONE
-                playFromIndexInternal(currentTrackIndex)
-            }
-
-            currentTrackIndex > 0 -> {
-                playFromIndexInternal(currentTrackIndex - 1)
-            }
-
-            else -> {
-                exo.seekTo(0)
-            }
+    val currentPosition = exo.currentPosition
+    when {
+        currentPosition > 2000 -> {
+            exo.seekTo(0)
         }
-        checkUpcomingTracksForUrls(lookaheadCount)
+
+        currentTemporaryType != TrackPlayerCore.TemporaryType.NONE -> {
+            val trackId = exo.currentMediaItem?.mediaId?.let { extractTrackId(it) }
+            if (trackId != null) {
+                when (currentTemporaryType) {
+                    TrackPlayerCore.TemporaryType.PLAY_NEXT -> {
+                        val idx = playNextStack.indexOfFirst { it.id == trackId }
+                        if (idx >= 0) playNextStack.removeAt(idx)
+                    }
+
+                    TrackPlayerCore.TemporaryType.UP_NEXT -> {
+                        val idx = upNextQueue.indexOfFirst { it.id == trackId }
+                        if (idx >= 0) upNextQueue.removeAt(idx)
+                    }
+
+                    else -> {}
+                }
+            }
+            currentTemporaryType = TrackPlayerCore.TemporaryType.NONE
+            playFromIndexInternal(currentTrackIndex)
+        }
+
+        currentTrackIndex > 0 -> {
+            playFromIndexInternal(currentTrackIndex - 1)
+        }
+
+        else -> {
+            exo.seekTo(0)
+        }
+    }
+    checkUpcomingTracksForUrls(lookaheadCount)
 }
 
 suspend fun TrackPlayerCore.setRepeatMode(mode: RepeatMode) = withPlayerContext { setRepeatModeOnQueue(mode) }
