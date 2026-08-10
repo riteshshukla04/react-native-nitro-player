@@ -7,6 +7,7 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Metadata
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.extractor.metadata.icy.IcyInfo
 import com.margelo.nitro.nitroplayer.Reason
 import com.margelo.nitro.nitroplayer.RepeatMode
 import com.margelo.nitro.nitroplayer.TimedMetadata
@@ -90,16 +91,27 @@ internal class TrackPlayerEventListener(
     @UnstableApi
     override fun onMetadata(metadata: Metadata) {
         val builder = MediaMetadata.Builder()
+        var url: String? = null
         for (i in 0 until metadata.length()) {
-            metadata.get(i).populateMediaMetadata(builder)
+            val entry = metadata.get(i)
+            entry.populateMediaMetadata(builder)
+            // populateMediaMetadata drops IcyInfo.url — radio providers put the
+            // current track's artwork URL there, so read it off the entry directly.
+            if (entry is IcyInfo && !entry.url.isNullOrEmpty()) url = entry.url
         }
         val merged = builder.build()
-        val title = merged.title?.toString()
-        val artist = merged.artist?.toString()
+        var artist = merged.artist?.toString()
+        var title = merged.title?.toString()
+        // ICY streams pack both fields into one "Artist - Title" string
+        val separator = if (artist == null) title?.indexOf(" - ") ?: -1 else -1
+        if (separator > 0 && title != null && separator + 3 < title.length) {
+            artist = title.substring(0, separator)
+            title = title.substring(separator + 3)
+        }
         val album = merged.albumTitle?.toString()
         val artworkUrl = merged.artworkUri?.toString()
-        if (title == null && artist == null && album == null && artworkUrl == null) return
-        core.notifyTimedMetadata(TimedMetadata(title, artist, album, artworkUrl))
+        if (title == null && artist == null && album == null && url == null && artworkUrl == null) return
+        core.notifyTimedMetadata(TimedMetadata(title, artist, album, url, artworkUrl))
     }
 
     override fun onTimelineChanged(

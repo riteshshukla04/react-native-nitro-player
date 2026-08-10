@@ -43,8 +43,16 @@ export interface PlayerState {
 /** In-stream metadata emitted while a stream plays (ICY/Shoutcast StreamTitle, ID3 frames) */
 export interface TimedMetadata {
   title?: string
+  /** Split out of `title` when the stream sends only `"Artist - Title"` */
   artist?: string
   album?: string
+  /**
+   * ICY `StreamUrl` / ID3 webpage frame. Radio providers commonly put the
+   * current track's artwork URL here (Live365, StreamGuys), but some send a
+   * station or artist page instead — check the value before treating it as art.
+   */
+  url?: string
+  /** Artwork URL the stream tagged as artwork, when it sends one explicitly */
   artworkUrl?: string
 }
 
