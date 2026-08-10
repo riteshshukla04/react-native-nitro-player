@@ -7,6 +7,7 @@ import type {
   PlayerState,
   PlayerConfig,
   Playlist,
+  TimedMetadata,
 } from '../types/PlayerQueue'
 
 export interface PlayerQueue extends HybridObject<{
@@ -96,6 +97,11 @@ export interface TrackPlayer extends HybridObject<{
       isManuallySeeked?: boolean
     ) => void
   ): void
+  /**
+   * Register callback for in-stream (timed) metadata — ICY/Shoutcast StreamTitle
+   * updates and ID3 frames emitted while a live stream plays.
+   */
+  onTimedMetadata(callback: (metadata: TimedMetadata) => void): void
   onAndroidAutoConnectionChange(callback: (connected: boolean) => void): void
   isAndroidAutoConnected(): boolean
   setVolume(volume: number): Promise<void>

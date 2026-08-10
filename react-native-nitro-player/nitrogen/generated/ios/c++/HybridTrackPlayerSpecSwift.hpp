@@ -26,6 +26,8 @@ namespace margelo::nitro::nitroplayer { enum class RepeatMode; }
 namespace margelo::nitro::nitroplayer { struct PlayerConfig; }
 // Forward declaration of `Reason` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class Reason; }
+// Forward declaration of `TimedMetadata` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct TimedMetadata; }
 
 #include <NitroModules/Promise.hpp>
 #include <string>
@@ -42,6 +44,7 @@ namespace margelo::nitro::nitroplayer { enum class Reason; }
 #include "PlayerConfig.hpp"
 #include "Reason.hpp"
 #include <functional>
+#include "TimedMetadata.hpp"
 
 #include "NitroPlayer-Swift-Cxx-Umbrella.hpp"
 
@@ -225,6 +228,12 @@ namespace margelo::nitro::nitroplayer {
     }
     inline void onPlaybackProgressChange(const std::function<void(double /* position */, double /* totalDuration */, std::optional<bool> /* isManuallySeeked */)>& callback) override {
       auto __result = _swiftPart.onPlaybackProgressChange(callback);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+    }
+    inline void onTimedMetadata(const std::function<void(const TimedMetadata& /* metadata */)>& callback) override {
+      auto __result = _swiftPart.onTimedMetadata(callback);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }

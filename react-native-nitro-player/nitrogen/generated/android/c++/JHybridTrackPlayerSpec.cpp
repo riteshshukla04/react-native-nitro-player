@@ -21,6 +21,8 @@ namespace margelo::nitro::nitroplayer { enum class RepeatMode; }
 namespace margelo::nitro::nitroplayer { struct PlayerConfig; }
 // Forward declaration of `Reason` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class Reason; }
+// Forward declaration of `TimedMetadata` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct TimedMetadata; }
 
 #include <NitroModules/Promise.hpp>
 #include <NitroModules/JPromise.hpp>
@@ -55,6 +57,9 @@ namespace margelo::nitro::nitroplayer { enum class Reason; }
 #include "JFunc_void_TrackPlayerState_std__optional_Reason_.hpp"
 #include "JFunc_void_double_double.hpp"
 #include "JFunc_void_double_double_std__optional_bool_.hpp"
+#include "TimedMetadata.hpp"
+#include "JFunc_void_TimedMetadata.hpp"
+#include "JTimedMetadata.hpp"
 #include "JFunc_void_bool.hpp"
 #include "JFunc_void_std__vector_TrackItem__double.hpp"
 #include "JFunc_void_std__vector_TrackItem__std__vector_TrackItem_.hpp"
@@ -319,6 +324,10 @@ namespace margelo::nitro::nitroplayer {
   void JHybridTrackPlayerSpec::onPlaybackProgressChange(const std::function<void(double /* position */, double /* totalDuration */, std::optional<bool> /* isManuallySeeked */)>& callback) {
     static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_double_double_std__optional_bool_::javaobject> /* callback */)>("onPlaybackProgressChange_cxx");
     method(_javaPart, JFunc_void_double_double_std__optional_bool__cxx::fromCpp(callback));
+  }
+  void JHybridTrackPlayerSpec::onTimedMetadata(const std::function<void(const TimedMetadata& /* metadata */)>& callback) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_TimedMetadata::javaobject> /* callback */)>("onTimedMetadata_cxx");
+    method(_javaPart, JFunc_void_TimedMetadata_cxx::fromCpp(callback));
   }
   void JHybridTrackPlayerSpec::onAndroidAutoConnectionChange(const std::function<void(bool /* connected */)>& callback) {
     static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_bool::javaobject> /* callback */)>("onAndroidAutoConnectionChange_cxx");

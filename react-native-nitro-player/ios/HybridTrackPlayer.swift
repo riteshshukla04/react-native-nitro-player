@@ -196,6 +196,11 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
     listenerIds.append(("onTracksNeedUpdate", id))
   }
 
+  func onTimedMetadata(callback: @escaping (_ metadata: TimedMetadata) -> Void) throws {
+    let id = core.addOnTimedMetadataListener(callback)
+    listenerIds.append(("onTimedMetadata", id))
+  }
+
   func onTemporaryQueueChange(callback: @escaping (_ playNextQueue: [TrackItem], _ upNextQueue: [TrackItem]) -> Void) throws {
     let id = core.addOnTemporaryQueueChangeListener(callback)
     listenerIds.append(("onTemporaryQueueChange", id))
@@ -212,6 +217,7 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
       case "onPlaybackProgressChange":_ = core.removeOnProgressListener(id: id)
       case "onTracksNeedUpdate":      _ = core.removeOnTracksNeedUpdateListener(id: id)
       case "onTemporaryQueueChange":  _ = core.removeOnTemporaryQueueChangeListener(id: id)
+      case "onTimedMetadata":         _ = core.removeOnTimedMetadataListener(id: id)
       default: break
       }
     }

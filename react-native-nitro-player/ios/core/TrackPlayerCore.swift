@@ -52,6 +52,10 @@ class TrackPlayerCore: NSObject {
   internal var boundaryTimeObserver: Any?
   internal var currentItemObservers: [NSKeyValueObservation] = []
 
+  // In-stream (timed) metadata output, attached to the current item only.
+  internal var metadataOutput: AVPlayerItemMetadataOutput?
+  internal weak var metadataOutputItem: AVPlayerItem?
+
   // Gapless playback
   internal var preloadedAssets: [String: AVURLAsset] = [:]
   internal let preloadQueue = DispatchQueue(label: "com.nitroplayer.preload", qos: .utility)
@@ -103,6 +107,7 @@ class TrackPlayerCore: NSObject {
   internal let onProgressListeners            = ListenerRegistry<(Double, Double, Bool?) -> Void>()
   internal let onTracksNeedUpdateListeners    = ListenerRegistry<([TrackItem], Int) -> Void>()
   internal let onTemporaryQueueChangeListeners = ListenerRegistry<([TrackItem], [TrackItem]) -> Void>()
+  internal let onTimedMetadataListeners       = ListenerRegistry<(TimedMetadata) -> Void>()
   internal let onCastStateChangeListeners     = ListenerRegistry<(CastState, String?) -> Void>()
 
   // MARK: - Google Cast
@@ -207,6 +212,13 @@ class TrackPlayerCore: NSObject {
   }
   @discardableResult func removeOnTemporaryQueueChangeListener(id: Int64) -> Bool {
     onTemporaryQueueChangeListeners.remove(id: id)
+  }
+
+  @discardableResult func addOnTimedMetadataListener(_ cb: @escaping (TimedMetadata) -> Void) -> Int64 {
+    onTimedMetadataListeners.add(cb)
+  }
+  @discardableResult func removeOnTimedMetadataListener(id: Int64) -> Bool {
+    onTimedMetadataListeners.remove(id: id)
   }
 
   @discardableResult func addOnCastStateChangeListener(_ cb: @escaping (CastState, String?) -> Void) -> Int64 {

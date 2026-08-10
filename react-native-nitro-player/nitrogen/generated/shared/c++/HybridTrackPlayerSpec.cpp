@@ -32,6 +32,7 @@ namespace margelo::nitro::nitroplayer {
       prototype.registerHybridMethod("onPlaybackStateChange", &HybridTrackPlayerSpec::onPlaybackStateChange);
       prototype.registerHybridMethod("onSeek", &HybridTrackPlayerSpec::onSeek);
       prototype.registerHybridMethod("onPlaybackProgressChange", &HybridTrackPlayerSpec::onPlaybackProgressChange);
+      prototype.registerHybridMethod("onTimedMetadata", &HybridTrackPlayerSpec::onTimedMetadata);
       prototype.registerHybridMethod("onAndroidAutoConnectionChange", &HybridTrackPlayerSpec::onAndroidAutoConnectionChange);
       prototype.registerHybridMethod("isAndroidAutoConnected", &HybridTrackPlayerSpec::isAndroidAutoConnected);
       prototype.registerHybridMethod("setVolume", &HybridTrackPlayerSpec::setVolume);

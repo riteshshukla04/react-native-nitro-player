@@ -11,6 +11,7 @@ import android.os.IBinder
 import android.os.Looper
 import com.margelo.nitro.nitroplayer.Reason
 import com.margelo.nitro.nitroplayer.RepeatMode
+import com.margelo.nitro.nitroplayer.TimedMetadata
 import com.margelo.nitro.nitroplayer.TrackItem
 import com.margelo.nitro.nitroplayer.TrackPlayerState
 import com.margelo.nitro.nitroplayer.connection.AndroidAutoConnectionDetector
@@ -90,6 +91,8 @@ class TrackPlayerCore private constructor(
         ListenerRegistry<(List<TrackItem>, List<TrackItem>) -> Unit>()
     internal val onAndroidAutoConnectionListeners =
         ListenerRegistry<(Boolean) -> Unit>()
+    internal val onTimedMetadataListeners =
+        ListenerRegistry<(TimedMetadata) -> Unit>()
     internal val onCastStateChangeListeners =
         ListenerRegistry<(com.margelo.nitro.nitroplayer.CastState, String?) -> Unit>()
 
@@ -302,6 +305,10 @@ class TrackPlayerCore private constructor(
     fun addOnTemporaryQueueChangeListener(cb: (List<TrackItem>, List<TrackItem>) -> Unit): Long = onTemporaryQueueChangeListeners.add(cb)
 
     fun removeOnTemporaryQueueChangeListener(id: Long): Boolean = onTemporaryQueueChangeListeners.remove(id)
+
+    fun addOnTimedMetadataListener(cb: (TimedMetadata) -> Unit): Long = onTimedMetadataListeners.add(cb)
+
+    fun removeOnTimedMetadataListener(id: Long): Boolean = onTimedMetadataListeners.remove(id)
 
     fun addOnAndroidAutoConnectionListener(cb: (Boolean) -> Unit): Long = onAndroidAutoConnectionListeners.add(cb)
 
