@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Platform,
   SafeAreaView,
+  Image,
 } from 'react-native';
 import {
   TrackPlayer,
@@ -29,6 +30,7 @@ export default function PlayerScreen() {
   const { position: playbackPosition, totalDuration } =
     useOnPlaybackProgressChange();
   const streamMetadata = useTimedMetadata();
+  const streamArtwork = streamMetadata?.artworkUrl ?? streamMetadata?.url;
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -126,15 +128,15 @@ export default function PlayerScreen() {
           <View style={commonStyles.section}>
             <Text style={commonStyles.sectionTitle}>Stream Metadata</Text>
             <View style={commonStyles.card}>
+              {!!streamArtwork && (
+                <Image source={{uri: streamArtwork}} style={styles.streamArtwork} />
+              )}
               <Text style={styles.trackTitle}>{streamMetadata.title ?? '—'}</Text>
               {!!streamMetadata.artist && (
                 <Text style={styles.trackArtist}>{streamMetadata.artist}</Text>
               )}
               {!!streamMetadata.album && (
                 <Text style={styles.trackAlbum}>{streamMetadata.album}</Text>
-              )}
-              {!!streamMetadata.artworkUrl && (
-                <Text style={styles.trackAlbum}>{streamMetadata.artworkUrl}</Text>
               )}
             </View>
           </View>
@@ -331,6 +333,12 @@ const styles = StyleSheet.create({
   trackAlbum: {
     fontSize: 14,
     color: colors.textTertiary,
+  },
+  streamArtwork: {
+    width: 120,
+    height: 120,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.sm,
   },
   progressContainer: {
     flexDirection: 'row',

@@ -273,24 +273,28 @@ export const lazyLoadedTracks: TrackItem[] = [
     artwork: '',
   },
 ];
-/** Live radio streams — these emit ICY metadata, which drives `useTimedMetadata`. */
+/**
+ * Live radio streams — these emit ICY metadata, which drives `useTimedMetadata`.
+ * Hello Fred! sends per-track artwork in the ICY `StreamUrl` field; SomaFM sends
+ * only a `StreamTitle`, so it is a good check of the "Artist - Title" split.
+ */
 export const radioStreams: TrackItem[] = [
   {
     id: 'radio-1',
+    title: 'Hello Fred!',
+    artist: 'Live Radio',
+    album: 'Live365',
+    duration: 0,
+    url: 'https://das-edge11-live365-dal03.cdnstream.com/a28862_2',
+    artwork: '',
+  },
+  {
+    id: 'radio-2',
     title: 'SomaFM — Groove Salad',
     artist: 'Live Radio',
     album: 'SomaFM',
     duration: 0,
     url: 'https://ice2.somafm.com/groovesalad-128-mp3',
     artwork: 'https://somafm.com/img3/groovesalad-400.jpg',
-  },
-  {
-    id: 'radio-2',
-    title: 'SomaFM — Drone Zone',
-    artist: 'Live Radio',
-    album: 'SomaFM',
-    duration: 0,
-    url: 'https://ice2.somafm.com/dronezone-128-mp3',
-    artwork: 'https://somafm.com/img3/dronezone-400.jpg',
   },
 ];

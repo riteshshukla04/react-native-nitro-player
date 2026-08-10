@@ -38,12 +38,15 @@ namespace margelo::nitro::nitroplayer {
       jni::local_ref<jni::JString> artist = this->getFieldValue(fieldArtist);
       static const auto fieldAlbum = clazz->getField<jni::JString>("album");
       jni::local_ref<jni::JString> album = this->getFieldValue(fieldAlbum);
+      static const auto fieldUrl = clazz->getField<jni::JString>("url");
+      jni::local_ref<jni::JString> url = this->getFieldValue(fieldUrl);
       static const auto fieldArtworkUrl = clazz->getField<jni::JString>("artworkUrl");
       jni::local_ref<jni::JString> artworkUrl = this->getFieldValue(fieldArtworkUrl);
       return TimedMetadata(
         title != nullptr ? std::make_optional(title->toStdString()) : std::nullopt,
         artist != nullptr ? std::make_optional(artist->toStdString()) : std::nullopt,
         album != nullptr ? std::make_optional(album->toStdString()) : std::nullopt,
+        url != nullptr ? std::make_optional(url->toStdString()) : std::nullopt,
         artworkUrl != nullptr ? std::make_optional(artworkUrl->toStdString()) : std::nullopt
       );
     }
@@ -54,7 +57,7 @@ namespace margelo::nitro::nitroplayer {
      */
     [[maybe_unused]]
     static jni::local_ref<JTimedMetadata::javaobject> fromCpp(const TimedMetadata& value) {
-      using JSignature = JTimedMetadata(jni::alias_ref<jni::JString>, jni::alias_ref<jni::JString>, jni::alias_ref<jni::JString>, jni::alias_ref<jni::JString>);
+      using JSignature = JTimedMetadata(jni::alias_ref<jni::JString>, jni::alias_ref<jni::JString>, jni::alias_ref<jni::JString>, jni::alias_ref<jni::JString>, jni::alias_ref<jni::JString>);
       static const auto clazz = javaClassStatic();
       static const auto create = clazz->getStaticMethod<JSignature>("fromCpp");
       return create(
@@ -62,6 +65,7 @@ namespace margelo::nitro::nitroplayer {
         value.title.has_value() ? jni::make_jstring(value.title.value()) : nullptr,
         value.artist.has_value() ? jni::make_jstring(value.artist.value()) : nullptr,
         value.album.has_value() ? jni::make_jstring(value.album.value()) : nullptr,
+        value.url.has_value() ? jni::make_jstring(value.url.value()) : nullptr,
         value.artworkUrl.has_value() ? jni::make_jstring(value.artworkUrl.value()) : nullptr
       );
     }

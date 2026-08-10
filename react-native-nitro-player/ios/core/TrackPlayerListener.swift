@@ -510,6 +510,8 @@ extension TrackPlayerCore {
     var title: String?
     var artist: String?
     var album: String?
+    var url: String?
+    var artworkUrl: String?
 
     for group in groups {
       for item in group.items {
@@ -518,17 +520,40 @@ extension TrackPlayerCore {
         case .some(.commonKeyTitle): title = value
         case .some(.commonKeyArtist): artist = value
         case .some(.commonKeyAlbumName): album = value
+        case .some(.commonKeyArtwork): artworkUrl = value
         default:
-          // ICY/Shoutcast streams carry no common keys — match on the identifier
-          if item.identifier == .icyMetadataStreamTitle { title = value }
+          // ICY/Shoutcast streams carry no common keys — match on the identifier.
+          // StreamUrl is where radio providers put the current track's artwork.
+          switch item.identifier {
+          case .some(.icyMetadataStreamTitle): title = value
+          case .some(.icyMetadataStreamURL): url = value
+          case .some(.id3MetadataOfficialAudioSourceWebpage),
+               .some(.id3MetadataOfficialAudioFileWebpage):
+            if url == nil { url = value }
+          default: break
+          }
         }
       }
     }
 
-    guard title != nil || artist != nil || album != nil else { return }
+    (artist, title) = splitStreamTitle(artist: artist, title: title)
+
+    guard title != nil || artist != nil || album != nil || url != nil || artworkUrl != nil else { return }
     NitroPlayerLogger.log("TrackPlayerCore", "🏷️ Timed metadata - \(title ?? "-") / \(artist ?? "-")")
-    // artworkUrl is Android-only: iOS delivers embedded art as raw data, not a URL
-    notifyTimedMetadata(TimedMetadata(title: title, artist: artist, album: album, artworkUrl: nil))
+    notifyTimedMetadata(
+      TimedMetadata(title: title, artist: artist, album: album, url: url, artworkUrl: artworkUrl))
+  }
+
+  /// ICY streams pack both fields into one `"Artist - Title"` string. Split it when
+  /// the stream gave no separate artist, leaving an explicit artist untouched.
+  func splitStreamTitle(artist: String?, title: String?) -> (String?, String?) {
+    guard artist == nil, let title, let separator = title.range(of: " - ") else {
+      return (artist, title)
+    }
+    let left = String(title[title.startIndex..<separator.lowerBound])
+    let right = String(title[separator.upperBound...])
+    guard !left.isEmpty, !right.isEmpty else { return (artist, title) }
+    return (left, right)
   }
 
   func emitStateChange(reason: Reason? = nil) {

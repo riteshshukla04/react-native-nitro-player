@@ -43,11 +43,12 @@ namespace margelo::nitro::nitroplayer {
     std::optional<std::string> title     SWIFT_PRIVATE;
     std::optional<std::string> artist     SWIFT_PRIVATE;
     std::optional<std::string> album     SWIFT_PRIVATE;
+    std::optional<std::string> url     SWIFT_PRIVATE;
     std::optional<std::string> artworkUrl     SWIFT_PRIVATE;
 
   public:
     TimedMetadata() = default;
-    explicit TimedMetadata(std::optional<std::string> title, std::optional<std::string> artist, std::optional<std::string> album, std::optional<std::string> artworkUrl): title(title), artist(artist), album(album), artworkUrl(artworkUrl) {}
+    explicit TimedMetadata(std::optional<std::string> title, std::optional<std::string> artist, std::optional<std::string> album, std::optional<std::string> url, std::optional<std::string> artworkUrl): title(title), artist(artist), album(album), url(url), artworkUrl(artworkUrl) {}
 
   public:
     friend bool operator==(const TimedMetadata& lhs, const TimedMetadata& rhs) = default;
@@ -66,6 +67,7 @@ namespace margelo::nitro {
         JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "title"))),
         JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "artist"))),
         JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "album"))),
+        JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "url"))),
         JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "artworkUrl")))
       );
     }
@@ -74,6 +76,7 @@ namespace margelo::nitro {
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "title"), JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.title));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "artist"), JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.artist));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "album"), JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.album));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "url"), JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.url));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "artworkUrl"), JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.artworkUrl));
       return obj;
     }
@@ -88,6 +91,7 @@ namespace margelo::nitro {
       if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "title")))) return false;
       if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "artist")))) return false;
       if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "album")))) return false;
+      if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "url")))) return false;
       if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "artworkUrl")))) return false;
       return true;
     }
