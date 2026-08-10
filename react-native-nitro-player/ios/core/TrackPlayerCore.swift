@@ -249,11 +249,7 @@ class TrackPlayerCore: NSObject {
         p.removeTimeObserver(obs)
       }
       self.currentItemObservers.removeAll()
-      if let output = self.metadataOutput, let item = self.metadataOutputItem {
-        item.remove(output)
-      }
-      self.metadataOutput = nil
-      self.metadataOutputItem = nil
+      self.detachMetadataOutput()
       if let p = self.player {
         p.removeObserver(self, forKeyPath: "status")
         p.removeObserver(self, forKeyPath: "rate")

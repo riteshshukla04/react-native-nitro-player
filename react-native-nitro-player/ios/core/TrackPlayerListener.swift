@@ -285,6 +285,7 @@ extension TrackPlayerCore {
 
     guard let player, let currentItem = player.currentItem else {
       NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Current item changed to nil")
+      detachMetadataOutput()
       // Queue exhausted — handle PLAYLIST repeat
       if currentRepeatMode == .playlist && !currentTracks.isEmpty, let player = self.player {
         NitroPlayerLogger.log("TrackPlayerCore", "🔁 PLAYLIST repeat — rebuilding original queue and restarting")
@@ -418,14 +419,22 @@ extension TrackPlayerCore {
   /// metadata emitted mid-stream reaches JS. Detaches from the previous item first —
   /// an output may only be attached to one item at a time.
   func attachMetadataOutput(to item: AVPlayerItem) {
-    if let output = metadataOutput, let previous = metadataOutputItem {
-      previous.remove(output)
-    }
+    detachMetadataOutput()
     let output = AVPlayerItemMetadataOutput(identifiers: nil)
     output.setDelegate(self, queue: playerQueue)
     item.add(output)
     metadataOutput = output
     metadataOutputItem = item
+  }
+
+  /// Clears the metadata output so a detached one can no longer pass the identity
+  /// check in the delegate and emit metadata for an item that is no longer playing.
+  func detachMetadataOutput() {
+    if let output = metadataOutput, let item = metadataOutputItem {
+      item.remove(output)
+    }
+    metadataOutput = nil
+    metadataOutputItem = nil
   }
 
   func setupCurrentItemObservers(item: AVPlayerItem) {
