@@ -49,7 +49,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - NitroPlayer (1.5.0):
+  - NitroPlayer (1.5.1-alpha.0):
     - google-cast-sdk (~> 4.8)
     - hermes-engine
     - NitroModules
@@ -2268,7 +2268,7 @@ SPEC CHECKSUMS:
   google-cast-sdk: 32f65af50d164e3c475e79ad123db3cc26fbcd37
   hermes-engine: 1375d7766c778e7f5b4a987f0ac0e934aeac74de
   NitroModules: 2d92eeea80a5afdebe7b4fd2443b5bd4d7ba1a44
-  NitroPlayer: b14837f14b2c27335590e11c09021a8d91b04a39
+  NitroPlayer: e1ecde494729956694a29c80949bed14795cc19f
   RCTDeprecation: 2a74a2c57675e64419bd89078efde81f7c1de90b
   RCTRequired: 30451112e6fef4e6f31b4e7eee0845156e35e4b0
   RCTSwiftUI: 5aaf0b07e747ba749dc6acc94d8bd41eea4b570f
