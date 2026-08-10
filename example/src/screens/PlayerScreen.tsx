@@ -16,10 +16,11 @@ import {
   useOnPlaybackProgressChange,
   AudioRoutePicker,
   useNowPlaying,
+  useTimedMetadata,
 } from 'react-native-nitro-player';
 import type { RepeatMode } from 'react-native-nitro-player';
 import { colors, commonStyles, spacing, borderRadius } from '../styles/theme';
-import { sampleTracks1 } from '../data/sampleTracks';
+import { radioStreams, sampleTracks1 } from '../data/sampleTracks';
 
 export default function PlayerScreen() {
   const { track: currentTrack } = useOnChangeTrack();
@@ -27,6 +28,7 @@ export default function PlayerScreen() {
   const { state: playbackState } = useOnPlaybackStateChange();
   const { position: playbackPosition, totalDuration } =
     useOnPlaybackProgressChange();
+  const streamMetadata = useTimedMetadata();
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -58,6 +60,21 @@ export default function PlayerScreen() {
       console.error('Quick test failed:', e);
     } finally {
       setQuickLoading(false);
+    }
+  };
+
+  const [radioLoading, setRadioLoading] = useState(false);
+  const playRadio = async () => {
+    try {
+      setRadioLoading(true);
+      const playlistId = await PlayerQueue.createPlaylist('Live Radio', 'ICY metadata test');
+      await PlayerQueue.addTracksToPlaylist(playlistId, radioStreams);
+      await PlayerQueue.loadPlaylist(playlistId);
+      await TrackPlayer.play();
+    } catch (e) {
+      console.error('Radio test failed:', e);
+    } finally {
+      setRadioLoading(false);
     }
   };
 
@@ -93,6 +110,35 @@ export default function PlayerScreen() {
             {quickLoading ? '⏳ Loading...' : '🚀 Quick Test — Load & Play'}
           </Text>
         </TouchableOpacity>
+
+        {/* Live radio — exercises timed (ICY) metadata */}
+        <TouchableOpacity
+          style={[styles.quickTestButton, radioLoading && {opacity: 0.5}]}
+          onPress={playRadio}
+          disabled={radioLoading}>
+          <Text style={styles.quickTestText}>
+            {radioLoading ? '⏳ Loading...' : '📻 Play Live Radio (ICY metadata)'}
+          </Text>
+        </TouchableOpacity>
+
+        {/* Stream Metadata */}
+        {streamMetadata && (
+          <View style={commonStyles.section}>
+            <Text style={commonStyles.sectionTitle}>Stream Metadata</Text>
+            <View style={commonStyles.card}>
+              <Text style={styles.trackTitle}>{streamMetadata.title ?? '—'}</Text>
+              {!!streamMetadata.artist && (
+                <Text style={styles.trackArtist}>{streamMetadata.artist}</Text>
+              )}
+              {!!streamMetadata.album && (
+                <Text style={styles.trackAlbum}>{streamMetadata.album}</Text>
+              )}
+              {!!streamMetadata.artworkUrl && (
+                <Text style={styles.trackAlbum}>{streamMetadata.artworkUrl}</Text>
+              )}
+            </View>
+          </View>
+        )}
 
         {/* Now Playing */}
         <View style={commonStyles.section}>

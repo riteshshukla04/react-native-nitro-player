@@ -176,8 +176,20 @@ function CastGlyph({
         }}
       />
       {/* Two concentric broadcast arcs radiating from the corner dot */}
-      <RippleArc cx={cx} cy={cy} radius={size * 0.2} stroke={stroke} color={color} />
-      <RippleArc cx={cx} cy={cy} radius={size * 0.34} stroke={stroke} color={color} />
+      <RippleArc
+        cx={cx}
+        cy={cy}
+        radius={size * 0.2}
+        stroke={stroke}
+        color={color}
+      />
+      <RippleArc
+        cx={cx}
+        cy={cy}
+        radius={size * 0.34}
+        stroke={stroke}
+        color={color}
+      />
       {/* Broadcast dot */}
       <View
         style={{

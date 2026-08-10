@@ -534,6 +534,29 @@ TrackPlayer.onTemporaryQueueChange((playNextQueue, upNextQueue) => {
 
 ---
 
+### `onTimedMetadata(callback)`
+
+Called when a stream emits in-stream (timed) metadata — ICY/Shoutcast `StreamTitle`
+updates and ID3 frames sent mid-playback. Use it to refresh now-playing info and
+album art for live radio.
+
+```typescript
+TrackPlayer.onTimedMetadata((metadata) => {
+  console.log(metadata.title, metadata.artist);
+});
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `title` | `string?` | Track title, or the raw ICY `StreamTitle` (often `"Artist - Title"`) |
+| `artist` | `string?` | Artist, when the stream sends it as a separate field |
+| `album` | `string?` | Album name |
+| `artworkUrl` | `string?` | Artwork URL. **Android only** — iOS delivers embedded artwork as raw data, not a URL |
+
+Regular (non-streaming) tracks may never fire this event.
+
+---
+
 ### `onAndroidAutoConnectionChange(callback)`
 
 Called when Android Auto connection state changes. **Android only.**

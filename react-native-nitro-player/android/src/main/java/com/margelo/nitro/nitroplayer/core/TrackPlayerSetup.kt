@@ -43,12 +43,16 @@ internal fun TrackPlayerCore.initFromService(binder: NitroPlayerPlaybackService.
     if (sessionId != 0) {
         try {
             EqualizerCore.getInstance(context).initialize(sessionId)
-        } catch (_: Exception) { }
+        } catch (_: Exception) {
+        }
     }
 
     // Start progress ticks on the main looper
-    playerHandler.postDelayed(progressUpdateRunnable, 250)
+    playerHandler.postDelayed(progressUpdateRunnable, TrackPlayerCore.PROGRESS_INTERVAL_MS)
 
     // Signal that the player is ready — unblocks all withPlayerContext callers
     completeServiceReady()
+
+    // Flush any commands JS issued before the service bound, in their original order
+    startCommandDraining()
 }

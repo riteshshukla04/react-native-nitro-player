@@ -89,27 +89,32 @@ export function useActualQueue(): UseActualQueueResult {
     }
   }, [updateQueue])
 
-  // Update queue on track changes (with slight delay to ensure native side has updated)
+  // Update queue on track changes.
+  //
+  // Deliberately NOT subscribed to playback-state changes: those fire several times
+  // per second while buffering or seeking, and each one used to pull the entire queue
+  // across the bridge. A playback state change never alters queue membership — only
+  // track changes and temporary-queue edits do.
   useEffect(() => {
-    const unsubscribe = callbackManager.subscribeToTrackChange(() => {
-      // Small delay to ensure native queue is updated
-      setTimeout(updateQueue, 50)
-    })
-
-    return () => {
-      unsubscribe()
-    }
-  }, [updateQueue])
-
-  // Update queue on playback state changes
-  useEffect(() => {
-    const unsubscribe = callbackManager.subscribeToPlaybackState(() => {
+    return callbackManager.subscribeToTrackChange(() => {
       updateQueue()
     })
+  }, [updateQueue])
 
-    return () => {
-      unsubscribe()
-    }
+  // Update queue when playNext / upNext change (native pushes the new lists).
+  useEffect(() => {
+    return callbackManager.subscribeToTemporaryQueueChange(() => {
+      updateQueue()
+    })
+  }, [updateQueue])
+
+  // Update queue when the playlist itself is edited (track added / removed / reordered).
+  // Without this, a playlist mutation while paused would leave the queue stale until the
+  // next track change — playback-state changes used to paper over it.
+  useEffect(() => {
+    return callbackManager.subscribeToPlaylistsChanged(() => {
+      updateQueue()
+    })
   }, [updateQueue])
 
   return { queue, refreshQueue, isLoading }

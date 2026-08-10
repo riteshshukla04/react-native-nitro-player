@@ -292,7 +292,8 @@ extension TrackPlayerCore {
         upNextQueue.removeAll()
         currentTemporaryType = .none
 
-        let allItems = currentTracks.compactMap { createGaplessPlayerItem(for: $0, isPreload: false) }
+        let windowed = currentTracks.prefix(1 + Constants.queueWindowSize)
+        let allItems = windowed.compactMap { createGaplessPlayerItem(for: $0, isPreload: false) }
         var lastItem: AVPlayerItem? = nil
         for item in allItems {
           player.insert(item, after: lastItem)
@@ -399,6 +400,15 @@ extension TrackPlayerCore {
       setupBoundaryTimeObserver()
     }
 
+    // Top up the windowed AVQueuePlayer — the item we just consumed freed a slot.
+    // Only when it is actually short: rebuildAVQueueFromCurrentPosition can fall into
+    // rebuildQueueFromPlaylistIndex (current track no longer in the playlist), which
+    // replaces the current item and re-enters this callback. The length check makes any
+    // such re-entry a no-op and terminate.
+    if player.items().count - 1 < Constants.queueWindowSize {
+      rebuildAVQueueFromCurrentPosition()
+    }
+
     // Preload upcoming tracks for gapless playback
     preloadUpcomingTracks(from: currentTrackIndex + 1)
     cleanupPreloadedAssets(keepingFrom: currentTrackIndex)
@@ -437,11 +447,12 @@ extension TrackPlayerCore {
           self?.player?.automaticallyWaitsToMinimizeStalling = false
           // Update now playing info now that duration is available (capture on playerQueue first)
           let state = self?.getStateInternal()
-          let queue = self?.getActualQueueInternal() ?? []
+          let metrics = self?.actualQueueMetrics() ?? (count: 0, position: -1)
           let track = self?.getCurrentTrack()
           DispatchQueue.main.async {
             if let track = track, let state = state {
-              self?.mediaSessionManager?.updateFromPlayerQueue(track: track, state: state, queue: queue)
+              self?.mediaSessionManager?.updateFromPlayerQueue(
+                track: track, state: state, queueCount: metrics.count, positionInQueue: metrics.position)
             }
           }
         } else if item.status == .failed {
@@ -454,9 +465,13 @@ extension TrackPlayerCore {
     currentItemObservers.append(statusObserver)
 
     let bufferEmptyObserver = item.observe(\.isPlaybackBufferEmpty, options: [.new]) { [weak self] item, _ in
-      if item.isPlaybackBufferEmpty {
+      guard item.isPlaybackBufferEmpty else { return }
+      // KVO fires on an arbitrary thread — emitStateChange reads playerQueue-owned
+      // state (currentTracks, temp queues, isRecoveringFromStall), so hop first.
+      self?.playerQueue.async {
+        guard let self, self.player?.currentItem === item else { return }
         NitroPlayerLogger.log("TrackPlayerCore", "⏸️ Buffer empty (buffering)")
-        self?.emitStateChange()
+        self.emitStateChange()
       }
     }
     currentItemObservers.append(bufferEmptyObserver)
@@ -535,6 +550,9 @@ extension TrackPlayerCore: AVPlayerItemMetadataOutputPushDelegate {
     didOutputTimedMetadataGroups groups: [AVTimedMetadataGroup],
     from track: AVPlayerItemTrack?
   ) {
+    // A detached output can still flush metadata it had already buffered — ignore it,
+    // it belongs to an item that is no longer current.
+    guard output === metadataOutput else { return }
     handleTimedMetadataGroups(groups)
   }
 }

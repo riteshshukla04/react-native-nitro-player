@@ -146,3 +146,40 @@ function SeekLogger() {
 |---|---|---|
 | `position` | `number \| undefined` | Position seeked to (in seconds) |
 | `totalDuration` | `number \| undefined` | Total track duration |
+
+---
+
+## useTimedMetadata
+
+Fires when a stream emits in-stream (timed) metadata — ICY/Shoutcast `StreamTitle`
+updates and ID3 frames sent mid-playback. Use it to refresh now-playing text and
+album art for live radio, where the track behind a single URL keeps changing.
+
+```tsx
+import { useTimedMetadata } from 'react-native-nitro-player';
+
+function LiveNowPlaying() {
+  const metadata = useTimedMetadata();
+
+  return (
+    <View>
+      <Text>{metadata?.title ?? 'Live'}</Text>
+      <Text>{metadata?.artist}</Text>
+    </View>
+  );
+}
+```
+
+Returns `undefined` until the first metadata event arrives. Regular (non-streaming)
+tracks may never emit one — keep using `useNowPlaying` for static track info.
+
+### Return Type: `TimedMetadata | undefined`
+
+| Field | Type | Description |
+|---|---|---|
+| `title` | `string \| undefined` | Track title, or the raw ICY `StreamTitle` (often `"Artist - Title"`) |
+| `artist` | `string \| undefined` | Artist, when the stream sends it as a separate field |
+| `album` | `string \| undefined` | Album name |
+| `artworkUrl` | `string \| undefined` | Artwork URL. **Android only** — iOS delivers embedded artwork as raw data, not a URL |
+
+For a non-React subscription, use `TrackPlayer.onTimedMetadata(callback)` directly.

@@ -25,40 +25,63 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
     super.init()
   }
 
+  // MARK: - Ordered dispatch
+  //
+  // `Promise.async` starts an unordered Task, so the hop onto the player queue used
+  // to happen at an arbitrary later point: two calls made in order from JS could
+  // reach the player in reverse order (play-then-pause landing as pause-then-play).
+  // Enqueueing synchronously here — on the JS thread, at call time — makes the serial
+  // queue's FIFO order equal the JS call order.
+
+  private func enqueue<T>(_ block: @escaping () -> T) -> Promise<T> {
+    let promise = Promise<T>()
+    core.playerQueue.async { promise.resolve(withResult: block()) }
+    return promise
+  }
+
+  private func enqueueThrowing<T>(_ block: @escaping () throws -> T) -> Promise<T> {
+    let promise = Promise<T>()
+    core.playerQueue.async {
+      do { promise.resolve(withResult: try block()) }
+      catch { promise.reject(withError: error) }
+    }
+    return promise
+  }
+
   // MARK: - Playback Control (async Promise<Void>)
 
   func play() throws -> Promise<Void> {
-    Promise.async { await self.core.play() }
+    enqueue { self.core.playOnQueue() }
   }
 
   func pause() throws -> Promise<Void> {
-    Promise.async { await self.core.pause() }
+    enqueue { self.core.pauseOnQueue() }
   }
 
   func seek(position: Double) throws -> Promise<Void> {
-    Promise.async { await self.core.seek(position: position) }
+    enqueue { self.core.seekOnQueue(position: position) }
   }
 
   func skipToNext() throws -> Promise<Void> {
-    Promise.async { await self.core.skipToNext() }
+    enqueue { self.core.skipToNextOnQueue() }
   }
 
   func skipToPrevious() throws -> Promise<Void> {
-    Promise.async { await self.core.skipToPrevious() }
+    enqueue { self.core.skipToPreviousOnQueue() }
   }
 
   func playSong(songId: String, fromPlaylist: String?) throws -> Promise<Void> {
-    Promise.async { await self.core.playSong(songId: songId, fromPlaylist: fromPlaylist) }
+    enqueue { self.core.playSongInternal(songId: songId, fromPlaylist: fromPlaylist) }
   }
 
   func skipToIndex(index: Double) throws -> Promise<Bool> {
-    Promise.async { await self.core.skipToIndex(index: Int(index)) }
+    enqueue { self.core.skipToIndexOnQueue(index: Int(index)) }
   }
 
   // MARK: - Repeat / Volume / Config
 
   func setRepeatMode(mode: RepeatMode) throws -> Promise<Void> {
-    Promise.async { await self.core.setRepeatMode(mode: mode) }
+    enqueue { self.core.setRepeatModeOnQueue(mode: mode) }
   }
 
   func getRepeatMode() throws -> RepeatMode {
@@ -66,12 +89,12 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
   }
 
   func setVolume(volume: Double) throws -> Promise<Void> {
-    Promise.async { await self.core.setVolume(volume: volume) }
+    enqueue { self.core.setVolumeOnQueue(volume: volume) }
   }
 
   func configure(config: PlayerConfig) throws -> Promise<Void> {
-    Promise.async {
-      await self.core.configure(
+    enqueue {
+      self.core.configureOnQueue(
         androidAutoEnabled: config.androidAutoEnabled,
         carPlayEnabled: config.carPlayEnabled,
         showInNotification: config.showInNotification,
@@ -83,80 +106,80 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
   // MARK: - Queue / State reads
 
   func getActualQueue() throws -> Promise<[TrackItem]> {
-    Promise.async { await self.core.getActualQueue() }
+    enqueue { self.core.getActualQueueInternal() }
   }
 
   func getState() throws -> Promise<PlayerState> {
-    Promise.async { await self.core.getState() }
+    enqueue { self.core.getStateInternal() }
   }
 
   func getCurrentTrackIndex() throws -> Promise<Double> {
-    Promise.async { Double(await self.core.getCurrentTrackIndex()) }
+    enqueue { Double(self.core.currentTrackIndex) }
   }
 
   // MARK: - URL updates / lazy loading
 
   func updateTracks(tracks: [TrackItem]) throws -> Promise<Void> {
-    Promise.async { await self.core.updateTracks(tracks: tracks) }
+    enqueue { self.core.updateTracksInternal(tracks: tracks) }
   }
 
   func getTracksById(trackIds: [String]) throws -> Promise<[TrackItem]> {
-    Promise.async { await self.core.getTracksById(trackIds: trackIds) }
+    enqueue { self.core.getPlaylistManager().getTracksById(trackIds: trackIds) }
   }
 
   func getTracksNeedingUrls() throws -> Promise<[TrackItem]> {
-    Promise.async { await self.core.getTracksNeedingUrls() }
+    enqueue { self.core.getTracksNeedingUrlsInternal() }
   }
 
   func getNextTracks(count: Double) throws -> Promise<[TrackItem]> {
-    Promise.async { await self.core.getNextTracks(count: Int(count)) }
+    enqueue { self.core.getNextTracksInternal(count: Int(count)) }
   }
 
   // MARK: - Playback speed
   func setPlaybackSpeed(speed: Double) throws -> Promise<Void> {
-    Promise.async { await self.core.setPlaybackSpeed(speed) }
+    enqueue { self.core.setPlaybackSpeedOnQueue(speed) }
   }
 
   func getPlaybackSpeed() throws -> Promise<Double> {
-    Promise.async { await self.core.getPlaybackSpeed() }
+    enqueue { self.core.currentPlaybackSpeed }
   }
 
   // MARK: - Temporary queue v2
 
   func addToUpNext(trackId: String) throws -> Promise<Void> {
-    Promise.async { try await self.core.addToUpNext(trackId: trackId) }
+    enqueueThrowing { try self.core.addToUpNextOnQueue(trackId: trackId) }
   }
 
   func playNext(trackId: String) throws -> Promise<Void> {
-    Promise.async { try await self.core.playNext(trackId: trackId) }
+    enqueueThrowing { try self.core.playNextOnQueue(trackId: trackId) }
   }
 
   func removeFromPlayNext(trackId: String) throws -> Promise<Bool> {
-    Promise.async { await self.core.removeFromPlayNext(trackId: trackId) }
+    enqueue { self.core.removeFromPlayNextOnQueue(trackId: trackId) }
   }
 
   func removeFromUpNext(trackId: String) throws -> Promise<Bool> {
-    Promise.async { await self.core.removeFromUpNext(trackId: trackId) }
+    enqueue { self.core.removeFromUpNextOnQueue(trackId: trackId) }
   }
 
   func clearPlayNext() throws -> Promise<Void> {
-    Promise.async { await self.core.clearPlayNext() }
+    enqueue { self.core.clearPlayNextOnQueue() }
   }
 
   func clearUpNext() throws -> Promise<Void> {
-    Promise.async { await self.core.clearUpNext() }
+    enqueue { self.core.clearUpNextOnQueue() }
   }
 
   func reorderTemporaryTrack(trackId: String, newIndex: Double) throws -> Promise<Bool> {
-    Promise.async { await self.core.reorderTemporaryTrack(trackId: trackId, newIndex: Int(newIndex)) }
+    enqueue { self.core.reorderTemporaryTrackOnQueue(trackId: trackId, newIndex: Int(newIndex)) }
   }
 
   func getPlayNextQueue() throws -> Promise<[TrackItem]> {
-    Promise.async { await self.core.getPlayNextQueue() }
+    enqueue { self.core.playNextStack }
   }
 
   func getUpNextQueue() throws -> Promise<[TrackItem]> {
-    Promise.async { await self.core.getUpNextQueue() }
+    enqueue { self.core.upNextQueue }
   }
 
   // MARK: - Android Auto (iOS no-op)
