@@ -28,6 +28,9 @@ data class TimedMetadata(
   val album: String?,
   @DoNotStrip
   @Keep
+  val url: String?,
+  @DoNotStrip
+  @Keep
   val artworkUrl: String?
 ) {
   /* primary constructor */
@@ -40,8 +43,8 @@ data class TimedMetadata(
     @Keep
     @Suppress("unused")
     @JvmStatic
-    private fun fromCpp(title: String?, artist: String?, album: String?, artworkUrl: String?): TimedMetadata {
-      return TimedMetadata(title, artist, album, artworkUrl)
+    private fun fromCpp(title: String?, artist: String?, album: String?, url: String?, artworkUrl: String?): TimedMetadata {
+      return TimedMetadata(title, artist, album, url, artworkUrl)
     }
   }
 }

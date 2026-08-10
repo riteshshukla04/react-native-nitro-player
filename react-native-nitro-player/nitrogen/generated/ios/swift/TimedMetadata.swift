@@ -18,7 +18,7 @@ public extension TimedMetadata {
   /**
    * Create a new instance of `TimedMetadata`.
    */
-  init(title: String?, artist: String?, album: String?, artworkUrl: String?) {
+  init(title: String?, artist: String?, album: String?, url: String?, artworkUrl: String?) {
     self.init({ () -> bridge.std__optional_std__string_ in
       if let __unwrappedValue = title {
         return bridge.create_std__optional_std__string_(std.string(__unwrappedValue))
@@ -33,6 +33,12 @@ public extension TimedMetadata {
       }
     }(), { () -> bridge.std__optional_std__string_ in
       if let __unwrappedValue = album {
+        return bridge.create_std__optional_std__string_(std.string(__unwrappedValue))
+      } else {
+        return .init()
+      }
+    }(), { () -> bridge.std__optional_std__string_ in
+      if let __unwrappedValue = url {
         return bridge.create_std__optional_std__string_(std.string(__unwrappedValue))
       } else {
         return .init()
@@ -75,6 +81,18 @@ public extension TimedMetadata {
     return { () -> String? in
       if bridge.has_value_std__optional_std__string_(self.__album) {
         let __unwrapped = bridge.get_std__optional_std__string_(self.__album)
+        return String(__unwrapped)
+      } else {
+        return nil
+      }
+    }()
+  }
+  
+  @inline(__always)
+  var url: String? {
+    return { () -> String? in
+      if bridge.has_value_std__optional_std__string_(self.__url) {
+        let __unwrapped = bridge.get_std__optional_std__string_(self.__url)
         return String(__unwrapped)
       } else {
         return nil

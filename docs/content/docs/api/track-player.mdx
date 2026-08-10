@@ -543,17 +543,20 @@ album art for live radio.
 ```typescript
 TrackPlayer.onTimedMetadata((metadata) => {
   console.log(metadata.title, metadata.artist);
+  setArtwork(metadata.artworkUrl ?? metadata.url);
 });
 ```
 
 | Field | Type | Description |
 |---|---|---|
-| `title` | `string?` | Track title, or the raw ICY `StreamTitle` (often `"Artist - Title"`) |
-| `artist` | `string?` | Artist, when the stream sends it as a separate field |
+| `title` | `string?` | Track title |
+| `artist` | `string?` | Artist. ICY sends a single `"Artist - Title"` string — it is split for you when the stream gives no separate artist |
 | `album` | `string?` | Album name |
-| `artworkUrl` | `string?` | Artwork URL. **Android only** — iOS delivers embedded artwork as raw data, not a URL |
+| `url` | `string?` | ICY `StreamUrl` / ID3 webpage frame. Radio providers commonly put the current track's **artwork URL** here |
+| `artworkUrl` | `string?` | Artwork URL when the stream tags one explicitly |
 
-Regular (non-streaming) tracks may never fire this event.
+Each event is a snapshot, not a merge — a field present in one event can be absent
+in the next. Regular (non-streaming) tracks may never fire this event.
 
 ---
 

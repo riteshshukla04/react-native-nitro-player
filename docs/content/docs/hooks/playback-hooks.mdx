@@ -160,9 +160,11 @@ import { useTimedMetadata } from 'react-native-nitro-player';
 
 function LiveNowPlaying() {
   const metadata = useTimedMetadata();
+  const artwork = metadata?.artworkUrl ?? metadata?.url;
 
   return (
     <View>
+      {!!artwork && <Image source={{ uri: artwork }} style={{ width: 200, height: 200 }} />}
       <Text>{metadata?.title ?? 'Live'}</Text>
       <Text>{metadata?.artist}</Text>
     </View>
@@ -173,13 +175,19 @@ function LiveNowPlaying() {
 Returns `undefined` until the first metadata event arrives. Regular (non-streaming)
 tracks may never emit one — keep using `useNowPlaying` for static track info.
 
+Each event is a snapshot, not a merge: an ICY update carries only what the station
+sent, so a field present in one event can be absent in the next. Not every station
+puts artwork in `url` — some send a station or artist page — so validate before
+rendering it as an image.
+
 ### Return Type: `TimedMetadata | undefined`
 
 | Field | Type | Description |
 |---|---|---|
-| `title` | `string \| undefined` | Track title, or the raw ICY `StreamTitle` (often `"Artist - Title"`) |
-| `artist` | `string \| undefined` | Artist, when the stream sends it as a separate field |
+| `title` | `string \| undefined` | Track title |
+| `artist` | `string \| undefined` | Artist. ICY sends a single `"Artist - Title"` string — it is split for you when the stream gives no separate artist |
 | `album` | `string \| undefined` | Album name |
-| `artworkUrl` | `string \| undefined` | Artwork URL. **Android only** — iOS delivers embedded artwork as raw data, not a URL |
+| `url` | `string \| undefined` | ICY `StreamUrl` / ID3 webpage frame. Radio providers commonly put the current track's **artwork URL** here |
+| `artworkUrl` | `string \| undefined` | Artwork URL when the stream tags one explicitly |
 
 For a non-React subscription, use `TrackPlayer.onTimedMetadata(callback)` directly.
