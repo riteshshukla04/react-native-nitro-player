@@ -186,6 +186,11 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
         listenerIds += "onTracksNeedUpdate" to id
     }
 
+    override fun onTimedMetadata(callback: (metadata: TimedMetadata) -> Unit) {
+        val id = core.addOnTimedMetadataListener(callback)
+        listenerIds += "onTimedMetadata" to id
+    }
+
     override fun onTemporaryQueueChange(callback: (playNextQueue: Array<TrackItem>, upNextQueue: Array<TrackItem>) -> Unit) {
         val id =
             core.addOnTemporaryQueueChangeListener { pn, un ->
@@ -207,6 +212,7 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
                 "onAndroidAutoConnectionChange" -> core.removeOnAndroidAutoConnectionListener(id)
                 "onTracksNeedUpdate" -> core.removeOnTracksNeedUpdateListener(id)
                 "onTemporaryQueueChange" -> core.removeOnTemporaryQueueChangeListener(id)
+                "onTimedMetadata" -> core.removeOnTimedMetadataListener(id)
             }
         }
         listenerIds.clear()

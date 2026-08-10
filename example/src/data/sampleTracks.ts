@@ -273,3 +273,24 @@ export const lazyLoadedTracks: TrackItem[] = [
     artwork: '',
   },
 ];
+/** Live radio streams — these emit ICY metadata, which drives `useTimedMetadata`. */
+export const radioStreams: TrackItem[] = [
+  {
+    id: 'radio-1',
+    title: 'SomaFM — Groove Salad',
+    artist: 'Live Radio',
+    album: 'SomaFM',
+    duration: 0,
+    url: 'https://ice2.somafm.com/groovesalad-128-mp3',
+    artwork: 'https://somafm.com/img3/groovesalad-400.jpg',
+  },
+  {
+    id: 'radio-2',
+    title: 'SomaFM — Drone Zone',
+    artist: 'Live Radio',
+    album: 'SomaFM',
+    duration: 0,
+    url: 'https://ice2.somafm.com/dronezone-128-mp3',
+    artwork: 'https://somafm.com/img3/dronezone-400.jpg',
+  },
+];

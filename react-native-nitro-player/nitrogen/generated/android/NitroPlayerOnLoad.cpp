@@ -35,6 +35,7 @@
 #include "JFunc_void_TrackPlayerState_std__optional_Reason_.hpp"
 #include "JFunc_void_double_double.hpp"
 #include "JFunc_void_double_double_std__optional_bool_.hpp"
+#include "JFunc_void_TimedMetadata.hpp"
 #include "JFunc_void_std__vector_TrackItem__double.hpp"
 #include "JFunc_void_std__vector_TrackItem__std__vector_TrackItem_.hpp"
 #include <NitroModules/DefaultConstructableObject.hpp>
@@ -129,6 +130,7 @@ void registerAllNatives() {
   margelo::nitro::nitroplayer::JFunc_void_TrackPlayerState_std__optional_Reason__cxx::registerNatives();
   margelo::nitro::nitroplayer::JFunc_void_double_double_cxx::registerNatives();
   margelo::nitro::nitroplayer::JFunc_void_double_double_std__optional_bool__cxx::registerNatives();
+  margelo::nitro::nitroplayer::JFunc_void_TimedMetadata_cxx::registerNatives();
   margelo::nitro::nitroplayer::JFunc_void_std__vector_TrackItem__double_cxx::registerNatives();
   margelo::nitro::nitroplayer::JFunc_void_std__vector_TrackItem__std__vector_TrackItem__cxx::registerNatives();
 

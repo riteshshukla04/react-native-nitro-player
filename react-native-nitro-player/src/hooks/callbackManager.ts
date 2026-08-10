@@ -1,5 +1,10 @@
 import { PlayerQueue, TrackPlayer } from '../index'
-import type { TrackItem, TrackPlayerState, Reason } from '../types/PlayerQueue'
+import type {
+  TrackItem,
+  TrackPlayerState,
+  Reason,
+  TimedMetadata,
+} from '../types/PlayerQueue'
 
 type PlaybackStateCallback = (state: TrackPlayerState, reason?: Reason) => void
 type TrackChangeCallback = (track: TrackItem, reason?: Reason) => void
@@ -9,6 +14,7 @@ type PlaybackProgressCallback = (
   isManuallySeeked?: boolean
 ) => void
 type SeekCallback = (position: number, totalDuration: number) => void
+type TimedMetadataCallback = (metadata: TimedMetadata) => void
 type TemporaryQueueCallback = (
   playNextQueue: TrackItem[],
   upNextQueue: TrackItem[]
@@ -24,6 +30,7 @@ class CallbackSubscriptionManager {
   private trackChangeSubscribers = new Set<TrackChangeCallback>()
   private playbackProgressSubscribers = new Set<PlaybackProgressCallback>()
   private seekSubscribers = new Set<SeekCallback>()
+  private timedMetadataSubscribers = new Set<TimedMetadataCallback>()
   private temporaryQueueSubscribers = new Set<TemporaryQueueCallback>()
   private playlistsChangedSubscribers = new Set<() => void>()
   private isPlaylistsChangedRegistered = false
@@ -31,6 +38,7 @@ class CallbackSubscriptionManager {
   private isTrackChangeRegistered = false
   private isPlaybackProgressRegistered = false
   private isSeekRegistered = false
+  private isTimedMetadataRegistered = false
   private isTemporaryQueueRegistered = false
 
   /**
@@ -259,6 +267,44 @@ class CallbackSubscriptionManager {
     } catch (error) {
       console.error(
         '[CallbackManager] Failed to register seek callback:',
+        error
+      )
+    }
+  }
+
+  /**
+   * Subscribe to in-stream (timed) metadata events
+   * @returns Unsubscribe function
+   */
+  subscribeToTimedMetadata(callback: TimedMetadataCallback): () => void {
+    this.timedMetadataSubscribers.add(callback)
+    this.ensureTimedMetadataRegistered()
+
+    return () => {
+      this.timedMetadataSubscribers.delete(callback)
+    }
+  }
+
+  private ensureTimedMetadataRegistered(): void {
+    if (this.isTimedMetadataRegistered) return
+
+    try {
+      TrackPlayer.onTimedMetadata((metadata) => {
+        this.timedMetadataSubscribers.forEach((subscriber) => {
+          try {
+            subscriber(metadata)
+          } catch (error) {
+            console.error(
+              '[CallbackManager] Error in timed metadata subscriber:',
+              error
+            )
+          }
+        })
+      })
+      this.isTimedMetadataRegistered = true
+    } catch (error) {
+      console.error(
+        '[CallbackManager] Failed to register timed metadata callback:',
         error
       )
     }

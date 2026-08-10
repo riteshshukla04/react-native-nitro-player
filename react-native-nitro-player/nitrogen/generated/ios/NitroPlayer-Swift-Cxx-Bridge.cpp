@@ -315,6 +315,14 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     };
   }
   
+  // pragma MARK: std::function<void(const TimedMetadata& /* metadata */)>
+  Func_void_TimedMetadata create_Func_void_TimedMetadata(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_TimedMetadata::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const TimedMetadata& metadata) mutable -> void {
+      swiftClosure.call(metadata);
+    };
+  }
+  
   // pragma MARK: std::function<void(const std::vector<TrackItem>& /* tracks */, double /* lookahead */)>
   Func_void_std__vector_TrackItem__double create_Func_void_std__vector_TrackItem__double(void* NON_NULL swiftClosureWrapper) noexcept {
     auto swiftClosure = NitroPlayer::Func_void_std__vector_TrackItem__double::fromUnsafe(swiftClosureWrapper);

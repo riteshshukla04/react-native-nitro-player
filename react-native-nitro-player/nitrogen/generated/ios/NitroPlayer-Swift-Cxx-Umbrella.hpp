@@ -70,6 +70,8 @@ namespace margelo::nitro::nitroplayer { enum class Reason; }
 namespace margelo::nitro::nitroplayer { enum class RepeatMode; }
 // Forward declaration of `StorageLocation` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class StorageLocation; }
+// Forward declaration of `TimedMetadata` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct TimedMetadata; }
 // Forward declaration of `TrackItem` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct TrackItem; }
 // Forward declaration of `TrackPlayerState` to properly resolve imports.
@@ -107,6 +109,7 @@ namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 #include "Reason.hpp"
 #include "RepeatMode.hpp"
 #include "StorageLocation.hpp"
+#include "TimedMetadata.hpp"
 #include "TrackItem.hpp"
 #include "TrackPlayerState.hpp"
 #include <NitroModules/AnyMap.hpp>

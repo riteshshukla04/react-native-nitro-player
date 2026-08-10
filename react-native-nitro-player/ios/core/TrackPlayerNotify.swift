@@ -46,6 +46,10 @@ extension TrackPlayerCore {
     onTracksNeedUpdateListeners.forEach { $0(tracks, lookahead) }
   }
 
+  func notifyTimedMetadata(_ metadata: TimedMetadata) {
+    onTimedMetadataListeners.forEach { $0(metadata) }
+  }
+
   func notifyTemporaryQueueChange() {
     let pn = playNextStack
     let un = upNextQueue

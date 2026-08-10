@@ -40,6 +40,14 @@ export interface PlayerState {
   currentPlayingType: CurrentPlayingType
 }
 
+/** In-stream metadata emitted while a stream plays (ICY/Shoutcast StreamTitle, ID3 frames) */
+export interface TimedMetadata {
+  title?: string
+  artist?: string
+  album?: string
+  artworkUrl?: string
+}
+
 export interface PlayerConfig {
   androidAutoEnabled?: boolean
   carPlayEnabled?: boolean

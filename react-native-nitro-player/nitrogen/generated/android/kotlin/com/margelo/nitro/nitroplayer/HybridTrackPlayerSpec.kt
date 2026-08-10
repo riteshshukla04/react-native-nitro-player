@@ -121,6 +121,15 @@ abstract class HybridTrackPlayerSpec: HybridObject() {
     return __result
   }
   
+  abstract fun onTimedMetadata(callback: (metadata: TimedMetadata) -> Unit): Unit
+  
+  @DoNotStrip
+  @Keep
+  private fun onTimedMetadata_cxx(callback: Func_void_TimedMetadata): Unit {
+    val __result = onTimedMetadata(callback)
+    return __result
+  }
+  
   abstract fun onAndroidAutoConnectionChange(callback: (connected: Boolean) -> Unit): Unit
   
   @DoNotStrip

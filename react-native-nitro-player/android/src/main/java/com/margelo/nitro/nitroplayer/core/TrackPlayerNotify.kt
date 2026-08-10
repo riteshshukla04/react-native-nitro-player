@@ -1,6 +1,7 @@
 package com.margelo.nitro.nitroplayer.core
 
 import com.margelo.nitro.nitroplayer.Reason
+import com.margelo.nitro.nitroplayer.TimedMetadata
 import com.margelo.nitro.nitroplayer.TrackItem
 import com.margelo.nitro.nitroplayer.TrackPlayerState
 
@@ -43,6 +44,10 @@ internal fun TrackPlayerCore.notifyTracksNeedUpdate(
     lookahead: Int,
 ) {
     onTracksNeedUpdateListeners.forEach { it(tracks, lookahead) }
+}
+
+internal fun TrackPlayerCore.notifyTimedMetadata(metadata: TimedMetadata) {
+    onTimedMetadataListeners.forEach { it(metadata) }
 }
 
 internal fun TrackPlayerCore.notifyTemporaryQueueChange() {

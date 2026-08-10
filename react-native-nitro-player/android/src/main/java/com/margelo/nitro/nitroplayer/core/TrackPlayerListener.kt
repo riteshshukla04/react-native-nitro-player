@@ -3,9 +3,13 @@
 package com.margelo.nitro.nitroplayer.core
 
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Metadata
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import com.margelo.nitro.nitroplayer.Reason
 import com.margelo.nitro.nitroplayer.RepeatMode
+import com.margelo.nitro.nitroplayer.TimedMetadata
 import com.margelo.nitro.nitroplayer.equalizer.EqualizerCore
 import com.margelo.nitro.nitroplayer.media.NitroPlayerMediaBrowserService
 
@@ -80,6 +84,22 @@ internal class TrackPlayerEventListener(
             checkUpcomingTracksForUrls(lookaheadCount)
             notifyTemporaryQueueChange()
         }
+    }
+
+    /** In-stream metadata (ICY StreamTitle, ID3 frames) arriving mid-playback. */
+    @UnstableApi
+    override fun onMetadata(metadata: Metadata) {
+        val builder = MediaMetadata.Builder()
+        for (i in 0 until metadata.length()) {
+            metadata.get(i).populateMediaMetadata(builder)
+        }
+        val merged = builder.build()
+        val title = merged.title?.toString()
+        val artist = merged.artist?.toString()
+        val album = merged.albumTitle?.toString()
+        val artworkUrl = merged.artworkUri?.toString()
+        if (title == null && artist == null && album == null && artworkUrl == null) return
+        core.notifyTimedMetadata(TimedMetadata(title, artist, album, artworkUrl))
     }
 
     override fun onTimelineChanged(
