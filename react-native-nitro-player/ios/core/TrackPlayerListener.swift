@@ -454,16 +454,8 @@ extension TrackPlayerCore {
           self?.setupBoundaryTimeObserver()
           // First item is buffered and ready — disable stall waiting for gapless inter-track transitions
           self?.player?.automaticallyWaitsToMinimizeStalling = false
-          // Update now playing info now that duration is available (capture on playerQueue first)
-          let state = self?.getStateInternal()
-          let metrics = self?.actualQueueMetrics() ?? (count: 0, position: -1)
-          let track = self?.getCurrentTrack()
-          DispatchQueue.main.async {
-            if let track = track, let state = state {
-              self?.mediaSessionManager?.updateFromPlayerQueue(
-                track: track, state: state, queueCount: metrics.count, positionInQueue: metrics.position)
-            }
-          }
+          // Update now playing info now that duration is available (captured on playerQueue)
+          self?.refreshMediaSession()
         } else if item.status == .failed {
           NitroPlayerLogger.log("TrackPlayerCore",
             "❌ Item failed — \(item.error?.localizedDescription ?? "unknown error")")

@@ -38,6 +38,10 @@ namespace margelo::nitro::nitroplayer {
       jni::local_ref<jni::JBoolean> carPlayEnabled = this->getFieldValue(fieldCarPlayEnabled);
       static const auto fieldShowInNotification = clazz->getField<jni::JBoolean>("showInNotification");
       jni::local_ref<jni::JBoolean> showInNotification = this->getFieldValue(fieldShowInNotification);
+      static const auto fieldRemoteSkipForwardInterval = clazz->getField<jni::JDouble>("remoteSkipForwardInterval");
+      jni::local_ref<jni::JDouble> remoteSkipForwardInterval = this->getFieldValue(fieldRemoteSkipForwardInterval);
+      static const auto fieldRemoteSkipBackwardInterval = clazz->getField<jni::JDouble>("remoteSkipBackwardInterval");
+      jni::local_ref<jni::JDouble> remoteSkipBackwardInterval = this->getFieldValue(fieldRemoteSkipBackwardInterval);
       static const auto fieldLookaheadCount = clazz->getField<jni::JDouble>("lookaheadCount");
       jni::local_ref<jni::JDouble> lookaheadCount = this->getFieldValue(fieldLookaheadCount);
       static const auto fieldAndroidNotificationIcon = clazz->getField<jni::JString>("androidNotificationIcon");
@@ -46,6 +50,8 @@ namespace margelo::nitro::nitroplayer {
         androidAutoEnabled != nullptr ? std::make_optional(static_cast<bool>(androidAutoEnabled->value())) : std::nullopt,
         carPlayEnabled != nullptr ? std::make_optional(static_cast<bool>(carPlayEnabled->value())) : std::nullopt,
         showInNotification != nullptr ? std::make_optional(static_cast<bool>(showInNotification->value())) : std::nullopt,
+        remoteSkipForwardInterval != nullptr ? std::make_optional(remoteSkipForwardInterval->value()) : std::nullopt,
+        remoteSkipBackwardInterval != nullptr ? std::make_optional(remoteSkipBackwardInterval->value()) : std::nullopt,
         lookaheadCount != nullptr ? std::make_optional(lookaheadCount->value()) : std::nullopt,
         androidNotificationIcon != nullptr ? std::make_optional(androidNotificationIcon->toStdString()) : std::nullopt
       );
@@ -57,7 +63,7 @@ namespace margelo::nitro::nitroplayer {
      */
     [[maybe_unused]]
     static jni::local_ref<JPlayerConfig::javaobject> fromCpp(const PlayerConfig& value) {
-      using JSignature = JPlayerConfig(jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JDouble>, jni::alias_ref<jni::JString>);
+      using JSignature = JPlayerConfig(jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JDouble>, jni::alias_ref<jni::JDouble>, jni::alias_ref<jni::JDouble>, jni::alias_ref<jni::JString>);
       static const auto clazz = javaClassStatic();
       static const auto create = clazz->getStaticMethod<JSignature>("fromCpp");
       return create(
@@ -65,6 +71,8 @@ namespace margelo::nitro::nitroplayer {
         value.androidAutoEnabled.has_value() ? jni::JBoolean::valueOf(value.androidAutoEnabled.value()) : nullptr,
         value.carPlayEnabled.has_value() ? jni::JBoolean::valueOf(value.carPlayEnabled.value()) : nullptr,
         value.showInNotification.has_value() ? jni::JBoolean::valueOf(value.showInNotification.value()) : nullptr,
+        value.remoteSkipForwardInterval.has_value() ? jni::JDouble::valueOf(value.remoteSkipForwardInterval.value()) : nullptr,
+        value.remoteSkipBackwardInterval.has_value() ? jni::JDouble::valueOf(value.remoteSkipBackwardInterval.value()) : nullptr,
         value.lookaheadCount.has_value() ? jni::JDouble::valueOf(value.lookaheadCount.value()) : nullptr,
         value.androidNotificationIcon.has_value() ? jni::make_jstring(value.androidNotificationIcon.value()) : nullptr
       );

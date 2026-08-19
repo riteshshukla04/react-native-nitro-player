@@ -104,7 +104,15 @@ class NitroPlayerPlaybackService : MediaSessionService() {
     private fun initCast() {
         try {
             val castContext = CastContext.getSharedInstance(this)
-            val castPlayer = CastPlayer(castContext, NitroMediaItemConverter())
+            // CastPlayer's seek increments are constructor-only, so a later
+            // configure() cannot change them — the receiver always skips by the default.
+            val castPlayer =
+                CastPlayer(
+                    castContext,
+                    NitroMediaItemConverter(),
+                    ExoPlayerBuilder.DEFAULT_REMOTE_SKIP_INTERVAL_MS,
+                    ExoPlayerBuilder.DEFAULT_REMOTE_SKIP_INTERVAL_MS,
+                )
             castSessionController =
                 CastSessionController(
                     castContext = castContext,

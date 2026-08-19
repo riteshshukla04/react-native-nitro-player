@@ -113,10 +113,14 @@ interface PlayerConfig {
   androidAutoEnabled?: boolean;   // Default: false
   carPlayEnabled?: boolean;       // Default: false
   showInNotification?: boolean;   // Default: true
+  remoteSkipForwardInterval?: number;   // Default: 15 — seconds
+  remoteSkipBackwardInterval?: number;  // Default: 15 — seconds
   lookaheadCount?: number;        // Default: 5 — tracks to preload URLs for
   androidNotificationIcon?: string; // Android only — host-app drawable name for the notification small icon (white monochrome)
 }
 ```
+
+Invalid remote skip intervals (non-finite values or values `<= 0`) are ignored — the previous value stays in effect. iOS remote playback rates are `0.5, 1.0, 1.25, 1.5, 1.75, 2.0`; Android remote skip uses the Media3 seek back/forward notification buttons and exposes no playback-rate media button. Custom intervals apply to local playback; during a Google Cast session the receiver skips by a fixed 15 seconds.
 
 ---
 

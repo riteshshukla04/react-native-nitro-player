@@ -17,6 +17,8 @@ void TrackPlayer.configure({
   androidAutoEnabled: true,
   carPlayEnabled: false,
   showInNotification: true,
+  remoteSkipForwardInterval: 15,
+  remoteSkipBackwardInterval: 15,
   lookaheadCount: 3,
   androidNotificationIcon: 'ic_notification', // Android Only
 });
