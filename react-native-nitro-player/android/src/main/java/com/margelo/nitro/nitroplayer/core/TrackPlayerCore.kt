@@ -2,13 +2,17 @@
 
 package com.margelo.nitro.nitroplayer.core
 
+import android.app.Activity
+import android.app.Application
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import com.facebook.react.bridge.ReactApplicationContext
 import com.margelo.nitro.nitroplayer.Reason
 import com.margelo.nitro.nitroplayer.RepeatMode
 import com.margelo.nitro.nitroplayer.TimedMetadata
@@ -95,6 +99,8 @@ class TrackPlayerCore private constructor(
         ListenerRegistry<(TimedMetadata) -> Unit>()
     internal val onCastStateChangeListeners =
         ListenerRegistry<(com.margelo.nitro.nitroplayer.CastState, String?) -> Unit>()
+    internal val onNotificationLaunchListeners =
+        ListenerRegistry<(TrackItem) -> Unit>()
 
     // ── Google Cast ──────────────────────────────────────────────────────────
 
@@ -390,4 +396,57 @@ class TrackPlayerCore private constructor(
     fun addOnCastStateChangeListener(cb: (com.margelo.nitro.nitroplayer.CastState, String?) -> Unit): Long = onCastStateChangeListeners.add(cb)
 
     fun removeOnCastStateChangeListener(id: Long): Boolean = onCastStateChangeListeners.remove(id)
+
+    // ── Notification-launch detection ─────────────────────────────────────
+
+    private var notificationLaunchDetectionRegistered = false
+
+    fun addOnNotificationLaunchListener(cb: (TrackItem) -> Unit): Long {
+        val id = onNotificationLaunchListeners.add(cb)
+        handler.post {
+            registerNotificationLaunchDetection()
+            checkNotificationLaunch((context as? ReactApplicationContext)?.currentActivity)
+        }
+        return id
+    }
+
+    fun removeOnNotificationLaunchListener(id: Long): Boolean = onNotificationLaunchListeners.remove(id)
+
+    private fun registerNotificationLaunchDetection() {
+        if (notificationLaunchDetectionRegistered) return
+        notificationLaunchDetectionRegistered = true
+        val app = context.applicationContext as? Application ?: return
+        app.registerActivityLifecycleCallbacks(
+            object : Application.ActivityLifecycleCallbacks {
+                override fun onActivityResumed(activity: Activity) = checkNotificationLaunch(activity)
+
+                override fun onActivityCreated(
+                    activity: Activity,
+                    savedInstanceState: Bundle?,
+                ) {}
+
+                override fun onActivityStarted(activity: Activity) {}
+
+                override fun onActivityPaused(activity: Activity) {}
+
+                override fun onActivityStopped(activity: Activity) {}
+
+                override fun onActivitySaveInstanceState(
+                    activity: Activity,
+                    outState: Bundle,
+                ) {}
+
+                override fun onActivityDestroyed(activity: Activity) {}
+            },
+        )
+    }
+
+    // Must run on the main looper — reads the player and mutates the activity intent
+    internal fun checkNotificationLaunch(activity: Activity?) {
+        val intent = activity?.intent ?: return
+        if (!intent.getBooleanExtra(NitroPlayerPlaybackService.EXTRA_STARTED_FROM_NOTIFICATION, false)) return
+        val track = getCurrentTrack() ?: return
+        intent.removeExtra(NitroPlayerPlaybackService.EXTRA_STARTED_FROM_NOTIFICATION)
+        onNotificationLaunchListeners.forEach { it(track) }
+    }
 }

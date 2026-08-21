@@ -178,6 +178,11 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
         listenerIds += "onAndroidAutoConnectionChange" to id
     }
 
+    override fun appStartedWithNotification(callback: (track: TrackItem) -> Unit) {
+        val id = core.addOnNotificationLaunchListener(callback)
+        listenerIds += "appStartedWithNotification" to id
+    }
+
     override fun onTracksNeedUpdate(callback: (tracks: Array<TrackItem>, lookahead: Double) -> Unit) {
         val id =
             core.addOnTracksNeedUpdateListener { tracks, lookahead ->
@@ -213,6 +218,7 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
                 "onTracksNeedUpdate" -> core.removeOnTracksNeedUpdateListener(id)
                 "onTemporaryQueueChange" -> core.removeOnTemporaryQueueChangeListener(id)
                 "onTimedMetadata" -> core.removeOnTimedMetadataListener(id)
+                "appStartedWithNotification" -> core.removeOnNotificationLaunchListener(id)
             }
         }
         listenerIds.clear()

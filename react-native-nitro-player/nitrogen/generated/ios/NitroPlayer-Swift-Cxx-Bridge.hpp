@@ -1752,6 +1752,28 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     return Func_void_TimedMetadata_Wrapper(std::move(value));
   }
   
+  // pragma MARK: std::function<void(const TrackItem& /* track */)>
+  /**
+   * Specialized version of `std::function<void(const TrackItem&)>`.
+   */
+  using Func_void_TrackItem = std::function<void(const TrackItem& /* track */)>;
+  /**
+   * Wrapper class for a `std::function<void(const TrackItem& / * track * /)>`, this can be used from Swift.
+   */
+  class Func_void_TrackItem_Wrapper final {
+  public:
+    explicit Func_void_TrackItem_Wrapper(std::function<void(const TrackItem& /* track */)>&& func): _function(std::make_unique<std::function<void(const TrackItem& /* track */)>>(std::move(func))) {}
+    inline void call(TrackItem track) const noexcept {
+      _function->operator()(track);
+    }
+  private:
+    std::unique_ptr<std::function<void(const TrackItem& /* track */)>> _function;
+  } SWIFT_NONCOPYABLE;
+  Func_void_TrackItem create_Func_void_TrackItem(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_TrackItem_Wrapper wrap_Func_void_TrackItem(Func_void_TrackItem value) noexcept {
+    return Func_void_TrackItem_Wrapper(std::move(value));
+  }
+  
   // pragma MARK: std::function<void(const std::vector<TrackItem>& /* tracks */, double /* lookahead */)>
   /**
    * Specialized version of `std::function<void(const std::vector<TrackItem>&, double)>`.

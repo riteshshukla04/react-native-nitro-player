@@ -130,6 +130,15 @@ abstract class HybridTrackPlayerSpec: HybridObject() {
     return __result
   }
   
+  abstract fun appStartedWithNotification(callback: (track: TrackItem) -> Unit): Unit
+  
+  @DoNotStrip
+  @Keep
+  private fun appStartedWithNotification_cxx(callback: Func_void_TrackItem): Unit {
+    val __result = appStartedWithNotification(callback)
+    return __result
+  }
+  
   abstract fun onAndroidAutoConnectionChange(callback: (connected: Boolean) -> Unit): Unit
   
   @DoNotStrip
