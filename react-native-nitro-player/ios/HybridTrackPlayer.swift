@@ -188,6 +188,10 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
     // No-op on iOS
   }
 
+  func appStartedWithNotification(callback: @escaping (_ track: TrackItem) -> Void) throws {
+    // No-op on iOS — Now Playing controls never launch the app
+  }
+
   func isAndroidAutoConnected() throws -> Bool { false }
 
   // MARK: - Event listeners (v2 — store IDs for cleanup)

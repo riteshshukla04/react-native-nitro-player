@@ -60,6 +60,7 @@ namespace margelo::nitro::nitroplayer { struct TimedMetadata; }
 #include "TimedMetadata.hpp"
 #include "JFunc_void_TimedMetadata.hpp"
 #include "JTimedMetadata.hpp"
+#include "JFunc_void_TrackItem.hpp"
 #include "JFunc_void_bool.hpp"
 #include "JFunc_void_std__vector_TrackItem__double.hpp"
 #include "JFunc_void_std__vector_TrackItem__std__vector_TrackItem_.hpp"
@@ -328,6 +329,10 @@ namespace margelo::nitro::nitroplayer {
   void JHybridTrackPlayerSpec::onTimedMetadata(const std::function<void(const TimedMetadata& /* metadata */)>& callback) {
     static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_TimedMetadata::javaobject> /* callback */)>("onTimedMetadata_cxx");
     method(_javaPart, JFunc_void_TimedMetadata_cxx::fromCpp(callback));
+  }
+  void JHybridTrackPlayerSpec::appStartedWithNotification(const std::function<void(const TrackItem& /* track */)>& callback) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_TrackItem::javaobject> /* callback */)>("appStartedWithNotification_cxx");
+    method(_javaPart, JFunc_void_TrackItem_cxx::fromCpp(callback));
   }
   void JHybridTrackPlayerSpec::onAndroidAutoConnectionChange(const std::function<void(bool /* connected */)>& callback) {
     static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_bool::javaobject> /* callback */)>("onAndroidAutoConnectionChange_cxx");

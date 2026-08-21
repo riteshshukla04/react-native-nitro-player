@@ -238,6 +238,12 @@ namespace margelo::nitro::nitroplayer {
         std::rethrow_exception(__result.error());
       }
     }
+    inline void appStartedWithNotification(const std::function<void(const TrackItem& /* track */)>& callback) override {
+      auto __result = _swiftPart.appStartedWithNotification(callback);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+    }
     inline void onAndroidAutoConnectionChange(const std::function<void(bool /* connected */)>& callback) override {
       auto __result = _swiftPart.onAndroidAutoConnectionChange(callback);
       if (__result.hasError()) [[unlikely]] {

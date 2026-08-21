@@ -102,6 +102,11 @@ export interface TrackPlayer extends HybridObject<{
    * updates and ID3 frames emitted while a live stream plays.
    */
   onTimedMetadata(callback: (metadata: TimedMetadata) => void): void
+  /**
+   * Fires when the app was opened by tapping the playback notification,
+   * with the track that was playing at tap time. Android only — no-op on iOS.
+   */
+  appStartedWithNotification(callback: (track: TrackItem) => void): void
   onAndroidAutoConnectionChange(callback: (connected: boolean) => void): void
   isAndroidAutoConnected(): boolean
   setVolume(volume: number): Promise<void>
