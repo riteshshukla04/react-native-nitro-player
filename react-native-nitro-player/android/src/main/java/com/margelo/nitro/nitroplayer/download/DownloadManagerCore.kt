@@ -98,7 +98,34 @@ class DownloadManagerCore private constructor(
             )
         activeTasks[downloadId] = metadata
 
-        // Create WorkManager request
+        // Gate on maxConcurrentDownloads — excess requests wait in FIFO order
+        synchronized(launchGate) {
+            if (runningDownloads.size >= maxConcurrent()) {
+                pendingLaunchQueue.add(downloadId)
+            } else {
+                runningDownloads.add(downloadId)
+                enqueueDownloadWork(downloadId, track, playlistId)
+            }
+        }
+
+        // Update state
+        activeTasks[downloadId]?.state = DownloadState.PENDING
+        notifyStateChange(downloadId, track.id, DownloadState.PENDING, null)
+
+        return downloadId
+    }
+
+    private val launchGate = Any()
+    private val pendingLaunchQueue = ArrayDeque<String>()
+    private val runningDownloads = mutableSetOf<String>()
+
+    private fun maxConcurrent(): Int = (config.maxConcurrentDownloads?.toInt() ?: 3).coerceAtLeast(1)
+
+    private fun enqueueDownloadWork(
+        downloadId: String,
+        track: TrackItem,
+        playlistId: String?,
+    ) {
         val constraints =
             Constraints
                 .Builder()
@@ -127,12 +154,24 @@ class DownloadManagerCore private constructor(
                 .build()
 
         workManager.enqueueUniqueWork("download_$downloadId", ExistingWorkPolicy.KEEP, downloadRequest)
+    }
 
-        // Update state
-        activeTasks[downloadId]?.state = DownloadState.PENDING
-        notifyStateChange(downloadId, track.id, DownloadState.PENDING, null)
-
-        return downloadId
+    // Frees this download's concurrency slot and launches the next queued one
+    private fun releaseDownloadSlot(downloadId: String) {
+        var next: String? = null
+        synchronized(launchGate) {
+            runningDownloads.remove(downloadId)
+            pendingLaunchQueue.remove(downloadId)
+            if (runningDownloads.size < maxConcurrent()) {
+                next = pendingLaunchQueue.removeFirstOrNull()
+                next?.let { runningDownloads.add(it) }
+            }
+        }
+        next?.let { nextId ->
+            val meta = activeTasks[nextId] ?: return
+            val track = trackMetadata[meta.trackId] ?: return
+            enqueueDownloadWork(nextId, track, playlistAssociations[nextId])
+        }
     }
 
     fun downloadPlaylist(
@@ -151,6 +190,7 @@ class DownloadManagerCore private constructor(
             metadata.state = DownloadState.PAUSED
             notifyStateChange(downloadId, metadata.trackId, DownloadState.PAUSED, null)
         }
+        releaseDownloadSlot(downloadId)
     }
 
     fun resumeDownload(downloadId: String) {
@@ -158,35 +198,16 @@ class DownloadManagerCore private constructor(
             val track = trackMetadata[metadata.trackId] ?: return
             val playlistId = playlistAssociations[downloadId]
 
-            // Re-create work request
-            val constraints =
-                Constraints
-                    .Builder()
-                    .setRequiredNetworkType(
-                        if (config.wifiOnlyDownloads == true) NetworkType.UNMETERED else NetworkType.CONNECTED,
-                    ).setRequiresStorageNotLow(true)
-                    .build()
-
-            val inputData =
-                workDataOf(
-                    DownloadWorker.KEY_DOWNLOAD_ID to downloadId,
-                    DownloadWorker.KEY_TRACK_ID to track.id,
-                    DownloadWorker.KEY_TRACK_TITLE to track.title,
-                    DownloadWorker.KEY_URL to track.url,
-                    DownloadWorker.KEY_PLAYLIST_ID to (playlistId ?: ""),
-                    DownloadWorker.KEY_STORAGE_LOCATION to (config.storageLocation?.name ?: StorageLocation.PRIVATE.name),
-                    DownloadWorker.KEY_TRACK_JSON to TrackItemJson.toJson(track),
-                )
-
-            val downloadRequest =
-                OneTimeWorkRequestBuilder<DownloadWorker>()
-                    .setConstraints(constraints)
-                    .setInputData(inputData)
-                    .addTag("download_$downloadId")
-                    .addTag("track_${track.id}")
-                    .build()
-
-            workManager.enqueueUniqueWork("download_$downloadId", ExistingWorkPolicy.KEEP, downloadRequest)
+            synchronized(launchGate) {
+                if (runningDownloads.size >= maxConcurrent() && downloadId !in runningDownloads) {
+                    pendingLaunchQueue.add(downloadId)
+                    metadata.state = DownloadState.PENDING
+                    notifyStateChange(downloadId, metadata.trackId, DownloadState.PENDING, null)
+                    return
+                }
+                runningDownloads.add(downloadId)
+            }
+            enqueueDownloadWork(downloadId, track, playlistId)
 
             metadata.state = DownloadState.DOWNLOADING
             notifyStateChange(downloadId, metadata.trackId, DownloadState.DOWNLOADING, null)
@@ -200,6 +221,7 @@ class DownloadManagerCore private constructor(
             notifyStateChange(downloadId, metadata.trackId, DownloadState.CANCELLED, null)
             activeTasks.remove(downloadId)
         }
+        releaseDownloadSlot(downloadId)
     }
 
     fun retryDownload(downloadId: String) {
@@ -404,6 +426,7 @@ class DownloadManagerCore private constructor(
             metadata.completedAt = System.currentTimeMillis().toDouble()
         }
         activeTasks.remove(downloadId)
+        releaseDownloadSlot(downloadId)
 
         notifyStateChange(downloadId, trackId, DownloadState.COMPLETED, null)
 
@@ -429,6 +452,7 @@ class DownloadManagerCore private constructor(
             } else {
                 metadata.state = DownloadState.FAILED
                 notifyStateChange(downloadId, trackId, DownloadState.FAILED, error)
+                releaseDownloadSlot(downloadId)
             }
         }
     }
