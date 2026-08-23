@@ -7,6 +7,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import com.margelo.nitro.nitroplayer.Reason
+import com.margelo.nitro.nitroplayer.RepeatMode
 import com.margelo.nitro.nitroplayer.TrackItem
 
 /**
@@ -120,6 +121,12 @@ internal fun TrackPlayerCore.rebuildQueueFromCurrentPosition() {
 
     val currentId = exo.currentMediaItem?.mediaId?.let { extractTrackId(it) }
     var newQueueTracks: List<TrackItem> = buildUpcomingQueueTracks(currentId)
+
+    if (!isCastingField && currentRepeatMode == RepeatMode.PLAYLIST &&
+        currentTrackIndex > 0 && currentTrackIndex <= currentTracks.size
+    ) {
+        newQueueTracks = newQueueTracks + currentTracks.subList(0, currentTrackIndex)
+    }
 
     if (isCastingField) {
         newQueueTracks = castableUpcoming(newQueueTracks)

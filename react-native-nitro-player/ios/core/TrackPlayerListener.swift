@@ -387,7 +387,9 @@ extension TrackPlayerCore {
           NitroPlayerLogger.log("TrackPlayerCore", "   🎵 Track: \(track.title) - \(track.artist)")
           if oldIndex != index {
             NitroPlayerLogger.log("TrackPlayerCore", "   📢 Emitting onChangeTrack (index changed from \(oldIndex) to \(index))")
-            notifyTrackChange(track, .skip)
+            let wrappedToStart =
+              currentRepeatMode == .playlist && index == 0 && oldIndex == currentTracks.count - 1
+            notifyTrackChange(track, wrappedToStart ? .repeat : .skip)
           } else {
             NitroPlayerLogger.log("TrackPlayerCore", "   ⏭️ Skipping onChangeTrack emission (index unchanged)")
           }
