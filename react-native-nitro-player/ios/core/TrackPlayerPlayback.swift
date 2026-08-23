@@ -74,11 +74,9 @@ extension TrackPlayerCore {
   func setRepeatModeOnQueue(mode: RepeatMode) {
     let previousMode = currentRepeatMode
     currentRepeatMode = mode
-    player?.actionAtItemEnd = (mode == .track) ? .none : .advance
+    player?.actionAtItemEnd = .advance
     if isCasting { castManager?.setQueueRepeatMode(mode) }
-    if !isCasting, previousMode != mode, previousMode == .playlist || mode == .playlist,
-      player?.currentItem != nil
-    {
+    if !isCasting, previousMode != mode, player?.currentItem != nil {
       rebuildAVQueueFromCurrentPosition()
     }
     NitroPlayerLogger.log("TrackPlayerCore", "🔁 setRepeatMode: \(mode)")
@@ -258,6 +256,14 @@ extension TrackPlayerCore {
       }
       checkUpcomingTracksForUrls(lookahead: lookaheadCount)
       return
+    }
+
+    if currentRepeatMode == .track {
+      let items = queuePlayer.items()
+      if items.count > 1, let copyId = items[1].trackId, copyId == items[0].trackId {
+        queuePlayer.remove(items[1])
+      }
+      rebuildAVQueueFromCurrentPosition(skipRepeatCopy: true)
     }
 
     // Remove current temp track from its list before advancing

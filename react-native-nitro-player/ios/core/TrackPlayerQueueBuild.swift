@@ -272,7 +272,9 @@ extension TrackPlayerCore {
   ///
   /// - Parameter changedTrackIds: When non-nil, performs a surgical update:
   ///   only AVPlayerItems whose track ID is in this set are removed and re-created.
-  func rebuildAVQueueFromCurrentPosition(changedTrackIds: Set<String>? = nil) {
+  func rebuildAVQueueFromCurrentPosition(
+    changedTrackIds: Set<String>? = nil, skipRepeatCopy: Bool = false
+  ) {
     // While casting, queue changes are applied to the receiver — the local AVQueuePlayer is dormant.
     if isCasting {
       syncCastQueueAfterCurrent()
@@ -343,6 +345,14 @@ extension TrackPlayerCore {
 
     if currentRepeatMode == .playlist, currentTrackIndex > 0, currentTrackIndex <= currentTracks.count {
       newQueueTracks.append(contentsOf: currentTracks[0..<currentTrackIndex])
+    }
+
+    if currentRepeatMode == .track, !skipRepeatCopy {
+      let repeated =
+        playNextStack.first(where: { $0.id == playingTrackId })
+        ?? upNextQueue.first(where: { $0.id == playingTrackId })
+        ?? currentTracks.first(where: { $0.id == playingTrackId })
+      if let repeated = repeated { newQueueTracks = [repeated] }
     }
 
     // Window the materialized queue — currentItemDidChange tops it up on every transition.
@@ -534,7 +544,10 @@ extension TrackPlayerCore {
     }
 
     let asset: AVURLAsset
-    if let preloadedAsset = preloadedAssets[track.id] {
+    let preloaded = preloadedAssets[track.id]
+    let preloadedInUse =
+      preloaded != nil && (player?.items().contains { ($0.asset as? AVURLAsset) === preloaded } ?? false)
+    if let preloadedAsset = preloaded, !preloadedInUse {
       asset = preloadedAsset
       NitroPlayerLogger.log("TrackPlayerCore", "🚀 Using preloaded asset for \(track.title)")
     } else {

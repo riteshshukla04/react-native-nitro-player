@@ -91,6 +91,7 @@ class TrackPlayerCore: NSObject {
   // track, not a real track change — so it must not emit onChangeTrack or reset
   // per-track state. Consumed (cleared) by the next `currentItemDidChange`.
   internal var suppressTrackChangeEmit = false
+  internal var lastCurrentItemTrackId: String?
   // Last observed playback position, used to resume after recreating a failed item.
   internal var lastKnownPosition: Double = 0
   // Per-track retry budget for recreating AVPlayerItems that hit status == .failed.
