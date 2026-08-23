@@ -12,7 +12,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
-import com.facebook.react.bridge.ReactApplicationContext
+import com.margelo.nitro.NitroModules
 import com.margelo.nitro.nitroplayer.Reason
 import com.margelo.nitro.nitroplayer.RepeatMode
 import com.margelo.nitro.nitroplayer.TimedMetadata
@@ -220,9 +220,11 @@ class TrackPlayerCore private constructor(
         @Suppress("ktlint:standard:property-naming")
         private var INSTANCE: TrackPlayerCore? = null
 
+        // applicationContext: the process-lifetime singleton must not pin the
+        // ReactApplicationContext (and its whole JS runtime) across reloads
         fun getInstance(context: Context): TrackPlayerCore =
             INSTANCE ?: synchronized(this) {
-                INSTANCE ?: TrackPlayerCore(context).also { INSTANCE = it }
+                INSTANCE ?: TrackPlayerCore(context.applicationContext).also { INSTANCE = it }
             }
     }
 
@@ -411,7 +413,7 @@ class TrackPlayerCore private constructor(
         val id = onNotificationLaunchListeners.add(cb)
         handler.post {
             registerNotificationLaunchDetection()
-            checkNotificationLaunch((context as? ReactApplicationContext)?.currentActivity)
+            checkNotificationLaunch(NitroModules.applicationContext?.currentActivity)
         }
         return id
     }
