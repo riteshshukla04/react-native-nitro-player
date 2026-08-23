@@ -28,6 +28,27 @@ class EqualizerCore {
 
   // Current gains storage - internal so TapContext can access
   private(set) var currentGains: [Double] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  // Guards currentGains/gainsDirty between the JS thread (slider writes) and the
+  // MTAudioProcessingTap render thread — unsynchronized Swift Array access is a
+  // CoW data race (torn coefficients, loud glitches, rare crashes)
+  private var gainsLock = os_unfair_lock_s()
+
+  func withGainsLock<T>(_ body: () -> T) -> T {
+    os_unfair_lock_lock(&gainsLock)
+    defer { os_unfair_lock_unlock(&gainsLock) }
+    return body()
+  }
+
+  /// Render-thread accessor: returns a snapshot of the gains and clears the dirty
+  /// flag atomically, or nil when nothing changed.
+  func consumeDirtyGains() -> [Double]? {
+    return withGainsLock {
+      guard gainsDirty else { return nil }
+      gainsDirty = false
+      return currentGains
+    }
+  }
   private var cachedBands: [EqualizerBand]?
   private var cachedCustomPresets: [EqualizerPreset]?
 
@@ -209,9 +230,11 @@ class EqualizerCore {
     guard bandIndex >= 0 && bandIndex < 10 else { return false }
 
     let clampedGain = max(-12.0, min(12.0, gainDb))
-    currentGains[bandIndex] = clampedGain
+    withGainsLock {
+      currentGains[bandIndex] = clampedGain
+      gainsDirty = true
+    }
     cachedBands = nil
-    gainsDirty = true
 
     currentPresetName = nil
     notifyBandChange(getBands())
@@ -226,11 +249,13 @@ class EqualizerCore {
   func setAllBandGains(_ gains: [Double]) -> Bool {
     guard gains.count == 10 else { return false }
 
-    for i in 0..<10 {
-      currentGains[i] = max(-12.0, min(12.0, gains[i]))
+    withGainsLock {
+      for i in 0..<10 {
+        currentGains[i] = max(-12.0, min(12.0, gains[i]))
+      }
+      gainsDirty = true
     }
     cachedBands = nil
-    gainsDirty = true
 
     notifyBandChange(getBands())
     saveBandGains(currentGains)
@@ -406,7 +431,10 @@ class EqualizerCore {
       let gains = try? JSONDecoder().decode([Double].self, from: data),
       gains.count == 10
     {
-      currentGains = gains
+      withGainsLock {
+        currentGains = gains
+        gainsDirty = true
+      }
     }
     // else: migration from 5-band or fresh install — start at flat (currentGains already zeroed)
 
@@ -478,9 +506,10 @@ private class TapContext {
   }
 
   func updateCoefficients() {
-    guard let eqCore = eqCore else { return }
+    // Snapshot + dirty-clear happen atomically under the gains lock; nil means
+    // another consumer already took this change
+    guard let gains = eqCore?.consumeDirtyGains() else { return }
     let frequencies: [Float] = [31, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]
-    let gains = eqCore.currentGains
 
     for i in 0..<10 {
       filterCoeffs[i] = calculatePeakingEQCoefficients(
@@ -490,7 +519,6 @@ private class TapContext {
         sampleRate: Double(sampleRate)
       )
     }
-    eqCore.gainsDirty = false
   }
 
   /// Calculate biquad coefficients for a peaking EQ filter
