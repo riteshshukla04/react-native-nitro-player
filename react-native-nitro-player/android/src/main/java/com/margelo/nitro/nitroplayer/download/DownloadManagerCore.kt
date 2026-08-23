@@ -125,7 +125,7 @@ class DownloadManagerCore private constructor(
                 .addTag("track_${track.id}")
                 .build()
 
-        workManager.enqueue(downloadRequest)
+        workManager.enqueueUniqueWork("download_$downloadId", ExistingWorkPolicy.KEEP, downloadRequest)
 
         // Update state
         activeTasks[downloadId]?.state = DownloadState.PENDING
@@ -184,7 +184,7 @@ class DownloadManagerCore private constructor(
                     .addTag("track_${track.id}")
                     .build()
 
-            workManager.enqueue(downloadRequest)
+            workManager.enqueueUniqueWork("download_$downloadId", ExistingWorkPolicy.KEEP, downloadRequest)
 
             metadata.state = DownloadState.DOWNLOADING
             notifyStateChange(downloadId, metadata.trackId, DownloadState.DOWNLOADING, null)
@@ -407,25 +407,29 @@ class DownloadManagerCore private constructor(
         }
     }
 
+    // Retries are owned by WorkManager (Result.retry in DownloadWorker); this
+    // only records state so a second, competing worker is never scheduled here.
     internal fun onError(
         downloadId: String,
         trackId: String,
         error: DownloadError,
+        willRetry: Boolean = false,
     ) {
         activeTasks[downloadId]?.let { metadata ->
-            metadata.state = DownloadState.FAILED
             metadata.error = error
 
-            // Auto-retry if enabled
-            if (config.autoRetry == true && error.isRetryable && metadata.retryCount < (config.maxRetryAttempts?.toInt() ?: 3)) {
-                mainHandler.postDelayed({
-                    retryDownload(downloadId)
-                }, 2000)
+            if (willRetry) {
+                metadata.retryCount++
+                metadata.state = DownloadState.PENDING
             } else {
+                metadata.state = DownloadState.FAILED
                 notifyStateChange(downloadId, trackId, DownloadState.FAILED, error)
             }
         }
     }
+
+    internal fun maxWorkerRetryAttempts(): Int =
+        if (config.autoRetry == true) (config.maxRetryAttempts?.toInt() ?: 3) else 0
 
     private fun notifyStateChange(
         downloadId: String,
