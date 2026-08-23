@@ -187,7 +187,7 @@ extension TrackPlayerCore {
     guard let player = self.player else { return }
     self.isManuallySeeked = true
     let time = CMTime(seconds: position, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
-    player.seek(to: time) { [weak self] completed in
+    player.seek(to: time) { _ in
        // HackFix I dont know how to fix this, but it works.
       let rate = Double(player.rate)
       DispatchQueue.main.async {
@@ -197,10 +197,8 @@ extension TrackPlayerCore {
           MPNowPlayingInfoCenter.default().nowPlayingInfo = info
         }
       }
-      if completed {
-        let duration = player.currentItem?.duration.seconds ?? 0.0
-        self?.notifySeek(position, duration)
-      }
+      // No notifySeek here — the same seek fires AVPlayerItemTimeJumped,
+      // whose handler already emits it; calling both doubled every onSeek.
     }
   }
 
