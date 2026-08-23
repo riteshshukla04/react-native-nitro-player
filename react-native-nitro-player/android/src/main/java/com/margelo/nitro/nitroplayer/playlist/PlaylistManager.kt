@@ -347,6 +347,14 @@ class PlaylistManager private constructor(
         return { playlistListeners.remove(listener) }
     }
 
+    private val anyPlaylistListeners = CopyOnWriteArrayList<(Playlist, QueueOperation?) -> Unit>()
+
+    /** Fires for changes to ANY playlist, including ones created after registration. */
+    fun addAnyPlaylistChangeListener(listener: (Playlist, QueueOperation?) -> Unit): () -> Unit {
+        anyPlaylistListeners.add(listener)
+        return { anyPlaylistListeners.remove(listener) }
+    }
+
     private fun notifyPlaylistsChanged(operation: QueueOperation?) {
         listeners.forEach { it(playlists.values.toList(), operation) }
     }
@@ -357,6 +365,7 @@ class PlaylistManager private constructor(
     ) {
         val playlist = playlists[playlistId] ?: return
         playlistListeners[playlistId]?.forEach { it(playlist, operation) }
+        anyPlaylistListeners.forEach { it(playlist, operation) }
     }
 
     // MARK: - Persistence

@@ -11,7 +11,6 @@ import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
 import com.margelo.nitro.nitroplayer.core.loadPlaylistOnQueue
 import com.margelo.nitro.nitroplayer.core.updatePlaylist
 import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
-import java.util.UUID
 import com.margelo.nitro.nitroplayer.playlist.Playlist as InternalPlaylist
 
 @DoNotStrip
@@ -29,7 +28,6 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
     }
 
     private val playlistsChangeListeners = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
-    private val playlistChangeListeners = java.util.concurrent.ConcurrentHashMap<String, () -> Unit>()
 
     // ── Playlist CRUD ─────────────────────────────────────────────────────────
 
@@ -148,14 +146,19 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
     }
 
     override fun onPlaylistChanged(callback: (playlistId: String, playlist: Playlist, operation: QueueOperation?) -> Unit) {
-        val listenerId = UUID.randomUUID().toString()
-        playlistManager.getAllPlaylists().forEach { internalPlaylist ->
-            val removeListener =
-                playlistManager.addPlaylistChangeListener(internalPlaylist.id) { playlist, operation ->
-                    callback(playlist.id, playlist.toPlaylist(), operation)
-                }
-            playlistChangeListeners[listenerId] = removeListener
-        }
+        // Manager-level listener: covers playlists created after registration,
+        // and one remover per callback instead of one per playlist
+        val removeListener =
+            playlistManager.addAnyPlaylistChangeListener { playlist, operation ->
+                callback(playlist.id, playlist.toPlaylist(), operation)
+            }
+        playlistsChangeListeners.add(removeListener)
+    }
+
+    override fun dispose() {
+        super.dispose()
+        playlistsChangeListeners.forEach { it() }
+        playlistsChangeListeners.clear()
     }
 
     // ── Helper ────────────────────────────────────────────────────────────────
