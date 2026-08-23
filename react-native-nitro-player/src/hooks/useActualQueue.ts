@@ -73,6 +73,18 @@ export function useActualQueue(): UseActualQueueResult {
     }
   }, [])
 
+  // Skips involving temp tracks fire track-change and temporary-queue-change
+  // together; the gate collapses the burst into one getActualQueue() fetch
+  const fetchScheduled = useRef(false)
+  const scheduleUpdate = useCallback(() => {
+    if (fetchScheduled.current) return
+    fetchScheduled.current = true
+    queueMicrotask(() => {
+      fetchScheduled.current = false
+      updateQueue()
+    })
+  }, [updateQueue])
+
   const refreshQueue = useCallback(() => {
     if (!isMounted.current) return
     setIsLoading(true)
@@ -97,25 +109,25 @@ export function useActualQueue(): UseActualQueueResult {
   // track changes and temporary-queue edits do.
   useEffect(() => {
     return callbackManager.subscribeToTrackChange(() => {
-      updateQueue()
+      scheduleUpdate()
     })
-  }, [updateQueue])
+  }, [scheduleUpdate])
 
   // Update queue when playNext / upNext change (native pushes the new lists).
   useEffect(() => {
     return callbackManager.subscribeToTemporaryQueueChange(() => {
-      updateQueue()
+      scheduleUpdate()
     })
-  }, [updateQueue])
+  }, [scheduleUpdate])
 
   // Update queue when the playlist itself is edited (track added / removed / reordered).
   // Without this, a playlist mutation while paused would leave the queue stale until the
   // next track change — playback-state changes used to paper over it.
   useEffect(() => {
     return callbackManager.subscribeToPlaylistsChanged(() => {
-      updateQueue()
+      scheduleUpdate()
     })
-  }, [updateQueue])
+  }, [scheduleUpdate])
 
   return { queue, refreshQueue, isLoading }
 }
