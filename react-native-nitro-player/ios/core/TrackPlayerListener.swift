@@ -169,9 +169,11 @@ extension TrackPlayerCore {
   func playerItemDidPlayToEndTimeInternal(_ notification: Notification) {
     NitroPlayerLogger.log("TrackPlayerCore", "\n🏁 Track finished playing")
     guard let finishedItem = notification.object as? AVPlayerItem else { return }
+    // Items without our trackId belong to another AVPlayer in the host app
+    guard finishedItem.trackId != nil else { return }
 
     // 1. TRACK repeat — handle FIRST, before any temp-track removal
-    if currentRepeatMode == .track {
+    if currentRepeatMode == .track, finishedItem === player?.currentItem {
       NitroPlayerLogger.log("TrackPlayerCore", "🔁 TRACK repeat — seeking to zero and replaying")
       player?.seek(to: .zero)
       player?.play()
@@ -201,14 +203,18 @@ extension TrackPlayerCore {
   }
 
   @objc func playerItemFailedToPlayToEndTime(_ notification: Notification) {
-    if let error = notification.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error {
+    guard (notification.object as? AVPlayerItem)?.trackId != nil else { return }
+    guard let error = notification.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error
+    else { return }
+    playerQueue.async { [weak self] in
       NitroPlayerLogger.log("TrackPlayerCore", "❌ Playback failed - \(error)")
-      notifyPlaybackStateChange(.stopped, .error)
+      self?.notifyPlaybackStateChange(.stopped, .error)
     }
   }
 
   @objc func playerItemNewErrorLogEntry(_ notification: Notification) {
-    guard let item = notification.object as? AVPlayerItem, let errorLog = item.errorLog() else { return }
+    guard let item = notification.object as? AVPlayerItem, item.trackId != nil,
+      let errorLog = item.errorLog() else { return }
     for event in errorLog.events ?? [] {
       NitroPlayerLogger.log("TrackPlayerCore", "❌ Error log - \(event.errorComment ?? "Unknown error") - Code: \(event.errorStatusCode)")
     }
@@ -220,6 +226,7 @@ extension TrackPlayerCore {
   @objc func playerItemTimeJumped(_ notification: Notification) {
     playerQueue.async { [weak self] in
       guard let self, let player = self.player, let currentItem = player.currentItem else { return }
+      guard (notification.object as? AVPlayerItem) === currentItem else { return }
       let position = currentItem.currentTime().seconds
       let duration = currentItem.duration.seconds
       NitroPlayerLogger.log("TrackPlayerCore", "🎯 Time jumped (seek detected) - position: \(Int(position))s")
