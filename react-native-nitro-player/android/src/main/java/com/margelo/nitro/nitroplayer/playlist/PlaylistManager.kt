@@ -268,7 +268,7 @@ class PlaylistManager private constructor(
                     }
                 if (updateCount > 0) {
                     affectedPlaylists[playlistId] = updateCount
-                    playlist.copy(tracks = newTracks)
+                    playlist.copy(tracks = newTracks.toMutableList())
                 } else {
                     playlist
                 }

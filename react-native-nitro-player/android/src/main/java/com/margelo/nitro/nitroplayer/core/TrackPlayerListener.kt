@@ -176,7 +176,7 @@ internal class TrackPlayerEventListener(
             // A source error leaves ExoPlayer in IDLE; skip the dead item and
             // re-prepare so the rest of the queue keeps playing.
             if (exo.hasNextMediaItem()) {
-                exo.seekToNextMediaItem()
+                exo.seekToNext()
                 exo.prepare()
             }
         }
