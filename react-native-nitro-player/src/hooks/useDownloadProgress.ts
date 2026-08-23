@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { DownloadManager } from '../index'
 import { downloadCallbackManager } from './downloadCallbackManager'
 import type { DownloadProgress } from '../types/DownloadTypes'
@@ -37,20 +37,19 @@ export function useDownloadProgress(
   )
   const isMounted = useRef(true)
 
+  // Content keys: callers pass inline arrays, so identity-based deps would
+  // resubscribe (and re-fetch over the bridge) on every parent render
+  const trackIdsKey = JSON.stringify(trackIds ?? [])
+  const downloadIdsKey = JSON.stringify(downloadIds ?? [])
+
   const shouldTrack = useCallback(
     (progress: DownloadProgress): boolean => {
-      if (
-        trackIds &&
-        trackIds.length > 0 &&
-        !trackIds.includes(progress.trackId)
-      ) {
+      const ids: string[] = JSON.parse(trackIdsKey)
+      const dlIds: string[] = JSON.parse(downloadIdsKey)
+      if (ids.length > 0 && !ids.includes(progress.trackId)) {
         return false
       }
-      if (
-        downloadIds &&
-        downloadIds.length > 0 &&
-        !downloadIds.includes(progress.downloadId)
-      ) {
+      if (dlIds.length > 0 && !dlIds.includes(progress.downloadId)) {
         return false
       }
       if (activeOnly && progress.state !== 'downloading') {
@@ -58,7 +57,7 @@ export function useDownloadProgress(
       }
       return true
     },
-    [trackIds, downloadIds, activeOnly]
+    [trackIdsKey, downloadIdsKey, activeOnly]
   )
 
   useEffect(() => {
@@ -113,13 +112,17 @@ export function useDownloadProgress(
     }
   }, [shouldTrack])
 
-  const progressList = Array.from(progressMap.values())
-  const overallProgress =
-    progressList.length > 0
-      ? progressList.reduce((sum, p) => sum + p.progress, 0) /
-        progressList.length
-      : 0
-  const isDownloading = progressList.some((p) => p.state === 'downloading')
+  const { progressList, overallProgress, isDownloading } = useMemo(() => {
+    const list = Array.from(progressMap.values())
+    return {
+      progressList: list,
+      overallProgress:
+        list.length > 0
+          ? list.reduce((sum, p) => sum + p.progress, 0) / list.length
+          : 0,
+      isDownloading: list.some((p) => p.state === 'downloading'),
+    }
+  }, [progressMap])
   const getProgress = useCallback(
     (trackId: string) => progressMap.get(trackId),
     [progressMap]
