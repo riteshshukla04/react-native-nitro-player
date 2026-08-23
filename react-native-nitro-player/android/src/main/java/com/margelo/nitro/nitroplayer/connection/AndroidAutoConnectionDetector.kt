@@ -144,29 +144,29 @@ class AndroidAutoConnectionDetector(
                 return
             }
 
-            val carConnectionTypeColumn = response.getColumnIndex(CAR_CONNECTION_STATE)
-            if (carConnectionTypeColumn < 0) {
-                NitroPlayerLogger.log("AndroidAutoConnection", "⚠️ Connection type column missing, treating as disconnected")
-                notifyCarDisconnected()
-                return
+            response.use { cursor ->
+                val carConnectionTypeColumn = cursor.getColumnIndex(CAR_CONNECTION_STATE)
+                if (carConnectionTypeColumn < 0) {
+                    NitroPlayerLogger.log("AndroidAutoConnection", "⚠️ Connection type column missing, treating as disconnected")
+                    notifyCarDisconnected()
+                    return
+                }
+
+                if (!cursor.moveToNext()) {
+                    NitroPlayerLogger.log("AndroidAutoConnection", "⚠️ Empty response, treating as disconnected")
+                    notifyCarDisconnected()
+                    return
+                }
+
+                val connectionState = cursor.getInt(carConnectionTypeColumn)
+                NitroPlayerLogger.log("AndroidAutoConnection", "📊 Connection state queried: $connectionState")
+
+                if (connectionState == CONNECTION_TYPE_NOT_CONNECTED) {
+                    notifyCarDisconnected()
+                } else {
+                    notifyCarConnected(connectionState)
+                }
             }
-
-            if (!response.moveToNext()) {
-                NitroPlayerLogger.log("AndroidAutoConnection", "⚠️ Empty response, treating as disconnected")
-                notifyCarDisconnected()
-                return
-            }
-
-            val connectionState = response.getInt(carConnectionTypeColumn)
-            NitroPlayerLogger.log("AndroidAutoConnection", "📊 Connection state queried: $connectionState")
-
-            if (connectionState == CONNECTION_TYPE_NOT_CONNECTED) {
-                notifyCarDisconnected()
-            } else {
-                notifyCarConnected(connectionState)
-            }
-
-            response.close()
         }
     }
 }
