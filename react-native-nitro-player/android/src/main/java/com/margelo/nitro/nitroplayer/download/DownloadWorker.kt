@@ -10,11 +10,14 @@ import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import com.margelo.nitro.nitroplayer.*
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import java.io.BufferedInputStream
+import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
@@ -112,6 +115,10 @@ class DownloadWorker(
                         isRetryable = true,
                     )
                 handleError(downloadId, trackId, trackTitle, error)
+            } catch (e: CancellationException) {
+                // Worker stopped (pause/cancel) — state was already set by the
+                // manager; don't overwrite it with FAILED.
+                throw e
             } catch (e: Exception) {
                 val errorReason =
                     when {
@@ -157,6 +164,7 @@ class DownloadWorker(
             var connection: HttpURLConnection? = null
             var inputStream: BufferedInputStream? = null
             var outputStream: FileOutputStream? = null
+            var destinationFile: File? = null
 
             try {
                 val url = URL(urlString)
@@ -196,7 +204,7 @@ class DownloadWorker(
                 val finalExtension = if (extension.isNullOrEmpty()) "mp3" else extension
 
                 // Create destination file
-                val destinationFile = fileManager.createDownloadFile(trackId, storageLocation, finalExtension)
+                destinationFile = fileManager.createDownloadFile(trackId, storageLocation, finalExtension)
 
                 inputStream = BufferedInputStream(connection.inputStream)
                 outputStream = FileOutputStream(destinationFile)
@@ -209,6 +217,9 @@ class DownloadWorker(
                 var lastProgressUpdate = System.currentTimeMillis()
 
                 while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                    // Blocking reads never suspend, so cancellation (pause/cancel,
+                    // withTimeout, worker stop) must be checked explicitly here.
+                    coroutineContext.ensureActive()
                     outputStream.write(buffer, 0, bytesRead)
                     bytesDownloaded += bytesRead
 
@@ -228,6 +239,9 @@ class DownloadWorker(
                 downloadManager.onProgress(downloadId, trackId, bytesDownloaded, totalBytes)
 
                 destinationFile.absolutePath
+            } catch (e: CancellationException) {
+                destinationFile?.delete()
+                throw e
             } catch (e: Exception) {
                 throw e
             } finally {
