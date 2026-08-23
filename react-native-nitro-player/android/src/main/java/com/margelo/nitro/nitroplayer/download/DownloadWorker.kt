@@ -101,9 +101,7 @@ class DownloadWorker(
                             reason = DownloadErrorReason.UNKNOWN,
                             isRetryable = true,
                         )
-                    downloadManager.onError(downloadId, trackId, error)
-                    showErrorNotification(trackTitle)
-                    Result.retry()
+                    handleError(downloadId, trackId, trackTitle, error)
                 }
             } catch (e: TimeoutCancellationException) {
                 val error =
@@ -113,9 +111,7 @@ class DownloadWorker(
                         reason = DownloadErrorReason.TIMEOUT,
                         isRetryable = true,
                     )
-                downloadManager.onError(downloadId, trackId, error)
-                showErrorNotification(trackTitle)
-                Result.retry()
+                handleError(downloadId, trackId, trackTitle, error)
             } catch (e: Exception) {
                 val errorReason =
                     when {
@@ -132,16 +128,23 @@ class DownloadWorker(
                         reason = errorReason,
                         isRetryable = errorReason in listOf(DownloadErrorReason.NETWORK_ERROR, DownloadErrorReason.TIMEOUT),
                     )
-                downloadManager.onError(downloadId, trackId, error)
-                showErrorNotification(trackTitle)
-
-                if (error.isRetryable) {
-                    Result.retry()
-                } else {
-                    Result.failure()
-                }
+                handleError(downloadId, trackId, trackTitle, error)
             }
         }
+
+    // Single retry owner: WorkManager reschedules via Result.retry(); the manager
+    // only records state, never enqueues a competing request.
+    private fun handleError(
+        downloadId: String,
+        trackId: String,
+        trackTitle: String,
+        error: DownloadError,
+    ): Result {
+        val willRetry = error.isRetryable && runAttemptCount < downloadManager.maxWorkerRetryAttempts()
+        downloadManager.onError(downloadId, trackId, error, willRetry)
+        showErrorNotification(trackTitle)
+        return if (willRetry) Result.retry() else Result.failure()
+    }
 
     private suspend fun downloadFile(
         downloadId: String,
