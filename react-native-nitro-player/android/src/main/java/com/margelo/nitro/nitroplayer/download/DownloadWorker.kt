@@ -36,6 +36,7 @@ class DownloadWorker(
         const val KEY_URL = "url"
         const val KEY_PLAYLIST_ID = "playlist_id"
         const val KEY_STORAGE_LOCATION = "storage_location"
+        const val KEY_TRACK_JSON = "track_json"
 
         private const val NOTIFICATION_CHANNEL_ID = "nitro_player_downloads"
         private const val BASE_NOTIFICATION_ID = 2001
@@ -93,7 +94,8 @@ class DownloadWorker(
                     }
 
                 if (localPath != null) {
-                    downloadManager.onComplete(downloadId, trackId, localPath)
+                    val fallbackTrack = inputData.getString(KEY_TRACK_JSON)?.let { TrackItemJson.fromJson(it) }
+                    downloadManager.onComplete(downloadId, trackId, localPath, fallbackTrack)
                     showCompletionNotification(trackTitle)
                     Result.success()
                 } else {
