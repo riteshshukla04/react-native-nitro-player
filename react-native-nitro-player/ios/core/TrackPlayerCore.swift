@@ -65,6 +65,9 @@ class TrackPlayerCore: NSObject {
 
   // Gapless playback
   internal var preloadedAssets: [String: AVURLAsset] = [:]
+  // playerQueue-owned; bumped on every teardown so in-flight async preloads
+  // can't republish a stale asset into the cache after a queue switch
+  internal var preloadGeneration: Int = 0
   internal let preloadQueue = DispatchQueue(label: "com.nitroplayer.preload", qos: .utility)
   internal var didRequestUrlsForCurrentItem = false
 
@@ -273,6 +276,7 @@ class TrackPlayerCore: NSObject {
       self.pathMonitor = nil
       for asset in self.preloadedAssets.values { asset.cancelLoading() }
       self.preloadedAssets.removeAll()
+      self.preloadGeneration += 1
       self.failedItemRetryCounts.removeAll()
       self.redirectResolver.clear()
     }
