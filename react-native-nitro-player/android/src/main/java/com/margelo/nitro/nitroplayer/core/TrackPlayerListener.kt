@@ -5,12 +5,14 @@ package com.margelo.nitro.nitroplayer.core
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Metadata
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.extractor.metadata.icy.IcyInfo
 import com.margelo.nitro.nitroplayer.Reason
 import com.margelo.nitro.nitroplayer.RepeatMode
 import com.margelo.nitro.nitroplayer.TimedMetadata
+import com.margelo.nitro.nitroplayer.TrackPlayerState
 import com.margelo.nitro.nitroplayer.equalizer.EqualizerCore
 import com.margelo.nitro.nitroplayer.media.NitroPlayerMediaBrowserService
 
@@ -160,6 +162,22 @@ internal class TrackPlayerEventListener(
             val pos = core.exo.currentPosition / 1000.0
             val dur = if (core.exo.duration > 0) core.exo.duration / 1000.0 else 0.0
             core.notifySeek(pos, dur)
+        }
+    }
+
+    override fun onPlayerError(error: PlaybackException) {
+        with(core) {
+            NitroPlayerLogger.log(
+                "TrackPlayer",
+                "Player error: ${error.errorCodeName} - ${error.message}",
+            )
+            notifyPlaybackStateChange(TrackPlayerState.STOPPED, Reason.ERROR)
+            // A source error leaves ExoPlayer in IDLE; skip the dead item and
+            // re-prepare so the rest of the queue keeps playing.
+            if (exo.hasNextMediaItem()) {
+                exo.seekToNextMediaItem()
+                exo.prepare()
+            }
         }
     }
 
