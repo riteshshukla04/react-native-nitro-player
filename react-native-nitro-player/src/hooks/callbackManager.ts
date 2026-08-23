@@ -19,6 +19,7 @@ type TemporaryQueueCallback = (
   playNextQueue: TrackItem[],
   upNextQueue: TrackItem[]
 ) => void
+type AndroidAutoConnectionCallback = (connected: boolean) => void
 
 /**
  * Internal subscription manager that allows multiple hooks to subscribe
@@ -33,7 +34,10 @@ class CallbackSubscriptionManager {
   private timedMetadataSubscribers = new Set<TimedMetadataCallback>()
   private temporaryQueueSubscribers = new Set<TemporaryQueueCallback>()
   private playlistsChangedSubscribers = new Set<() => void>()
+  private androidAutoConnectionSubscribers =
+    new Set<AndroidAutoConnectionCallback>()
   private isPlaylistsChangedRegistered = false
+  private isAndroidAutoConnectionRegistered = false
   private isPlaybackStateRegistered = false
   private isTrackChangeRegistered = false
   private isPlaybackProgressRegistered = false
@@ -267,6 +271,46 @@ class CallbackSubscriptionManager {
     } catch (error) {
       console.error(
         '[CallbackManager] Failed to register seek callback:',
+        error
+      )
+    }
+  }
+
+  /**
+   * Subscribe to Android Auto connection changes
+   * @returns Unsubscribe function
+   */
+  subscribeToAndroidAutoConnection(
+    callback: AndroidAutoConnectionCallback
+  ): () => void {
+    this.androidAutoConnectionSubscribers.add(callback)
+    this.ensureAndroidAutoConnectionRegistered()
+
+    return () => {
+      this.androidAutoConnectionSubscribers.delete(callback)
+    }
+  }
+
+  private ensureAndroidAutoConnectionRegistered(): void {
+    if (this.isAndroidAutoConnectionRegistered) return
+
+    try {
+      TrackPlayer.onAndroidAutoConnectionChange((connected) => {
+        this.androidAutoConnectionSubscribers.forEach((subscriber) => {
+          try {
+            subscriber(connected)
+          } catch (error) {
+            console.error(
+              '[CallbackManager] Error in Android Auto connection subscriber:',
+              error
+            )
+          }
+        })
+      })
+      this.isAndroidAutoConnectionRegistered = true
+    } catch (error) {
+      console.error(
+        '[CallbackManager] Failed to register Android Auto connection callback:',
         error
       )
     }

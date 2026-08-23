@@ -8,6 +8,7 @@ import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
 import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
 import com.margelo.nitro.nitroplayer.storage.NitroPlayerStorage
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
@@ -50,7 +51,9 @@ class DownloadDatabase private constructor(
     private val existenceCache = mutableMapOf<String, Boolean>()
     private val playlistTracks = mutableMapOf<String, MutableSet<String>>()
     private val fileManager = DownloadFileManager.getInstance(context)
-    private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    // Single-threaded so rapid saves cannot land out of order and persist a stale snapshot
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val ioScope = CoroutineScope(Dispatchers.IO.limitedParallelism(1) + SupervisorJob())
 
     init {
         loadFromDisk()
@@ -101,10 +104,11 @@ class DownloadDatabase private constructor(
         path: String,
     ): Boolean = existenceCache.getOrPut(trackId) { File(path).exists() }
 
-    /** Drops every memoized verdict — files may have changed outside the app. */
-    fun invalidateExistenceCache() {
-        synchronized(this) { existenceCache.clear() }
-    }
+    /** Count via the memoized existence cache — no per-record stat() on the caller's thread. */
+    fun countDownloadedTracks(): Int =
+        synchronized(this) {
+            downloadedTracks.count { (trackId, record) -> cachedFileExists(trackId, record.localPath) }
+        }
 
     fun isPlaylistDownloaded(playlistId: String): Boolean {
         synchronized(this) {

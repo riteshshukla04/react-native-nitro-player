@@ -1,5 +1,6 @@
 package com.margelo.nitro.nitroplayer.media
 
+import android.app.PendingIntent
 import android.content.Intent
 import android.os.Binder
 import android.os.Handler
@@ -32,6 +33,7 @@ class NitroPlayerPlaybackService : MediaSessionService() {
 
     companion object {
         const val ACTION_LOCAL_BIND = "com.margelo.nitro.nitroplayer.LOCAL_BIND"
+        const val EXTRA_STARTED_FROM_NOTIFICATION = "com.margelo.nitro.nitroplayer.STARTED_FROM_NOTIFICATION"
 
         @Volatile
         var notificationSmallIconResName: String? = null
@@ -84,6 +86,7 @@ class NitroPlayerPlaybackService : MediaSessionService() {
         mediaSession = MediaSession
             .Builder(this, player)
             .setCallback(MediaSessionCallbackFactory.create(this, playlistManager))
+            .apply { buildSessionActivity()?.let { setSessionActivity(it) } }
             .build()
 
         val provider = DefaultMediaNotificationProvider.Builder(this).build()
@@ -125,6 +128,18 @@ class NitroPlayerPlaybackService : MediaSessionService() {
             NitroPlayerLogger.log("PlaybackService") { "Cast unavailable: ${e.message}" }
             castSessionController = null
         }
+    }
+
+    // Content intent for the notification tap — newer Android has no fallback without it
+    private fun buildSessionActivity(): PendingIntent? {
+        val launch = packageManager.getLaunchIntentForPackage(packageName) ?: return null
+        launch.putExtra(EXTRA_STARTED_FROM_NOTIFICATION, true)
+        return PendingIntent.getActivity(
+            this,
+            0,
+            launch,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
     }
 
     private fun applyNotificationSmallIcon() {

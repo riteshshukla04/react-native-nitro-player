@@ -1,8 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Platform } from 'react-native'
-import { NitroModules } from 'react-native-nitro-modules'
-import type { AudioDevices as AudioDevicesType } from '../specs/AudioDevices.nitro'
+import { AudioDevices } from '../index'
 import type { TAudioDevice } from '../specs/AudioDevices.nitro'
+
+function devicesEqual(a: TAudioDevice[], b: TAudioDevice[]): boolean {
+  if (a.length !== b.length) return false
+  return a.every(
+    (d, i) => d.id === b[i]!.id && d.isActive === b[i]!.isActive
+  )
+}
 
 /**
  * Hook to get audio devices (Android only)
@@ -30,34 +35,28 @@ export function useAudioDevices() {
   const [devices, setDevices] = useState<TAudioDevice[]>([])
 
   useEffect(() => {
-    if (Platform.OS !== 'android') {
+    if (!AudioDevices) {
       return undefined
     }
 
-    try {
-      const AudioDevices =
-        NitroModules.createHybridObject<AudioDevicesType>('AudioDevices')
-
-      // Get initial devices
-      const updateDevices = () => {
-        try {
-          const currentDevices = AudioDevices.getAudioDevices()
-          setDevices(currentDevices)
-        } catch (error) {
-          console.error('Error getting audio devices:', error)
-        }
+    const updateDevices = () => {
+      try {
+        const currentDevices = AudioDevices!.getAudioDevices()
+        // Bail when nothing changed — the bridge returns a fresh array identity
+        // every tick, which would otherwise re-render every consumer at 0.5Hz
+        setDevices((prev) =>
+          devicesEqual(prev, currentDevices) ? prev : currentDevices
+        )
+      } catch (error) {
+        console.error('Error getting audio devices:', error)
       }
-
-      updateDevices()
-
-      // Poll for changes every 2 seconds
-      const interval = setInterval(updateDevices, 2000)
-
-      return () => clearInterval(interval)
-    } catch (error) {
-      console.error('Error setting up audio devices polling:', error)
-      return undefined
     }
+
+    updateDevices()
+
+    const interval = setInterval(updateDevices, 2000)
+
+    return () => clearInterval(interval)
   }, [])
 
   return { devices }

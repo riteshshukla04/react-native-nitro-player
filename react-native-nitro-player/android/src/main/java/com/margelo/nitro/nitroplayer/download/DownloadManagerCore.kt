@@ -7,6 +7,7 @@ import android.util.Log
 import androidx.work.*
 import com.margelo.nitro.core.NullType
 import com.margelo.nitro.nitroplayer.*
+import com.margelo.nitro.nitroplayer.core.ListenerRegistry
 import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
@@ -52,10 +53,11 @@ class DownloadManagerCore private constructor(
     private val trackMetadata = ConcurrentHashMap<String, TrackItem>()
     private val playlistAssociations = ConcurrentHashMap<String, String>()
 
-    // Callbacks
-    private val progressCallbacks = CopyOnWriteArrayList<(DownloadProgress) -> Unit>()
-    private val stateChangeCallbacks = CopyOnWriteArrayList<(String, String, DownloadState, DownloadError?) -> Unit>()
-    private val completeCallbacks = CopyOnWriteArrayList<(DownloadedTrack) -> Unit>()
+    // Callbacks — ListenerRegistry so HybridDownloadManager.dispose can remove
+    // them instead of leaking closures into dead JS runtimes across reloads
+    private val progressCallbacks = ListenerRegistry<(DownloadProgress) -> Unit>()
+    private val stateChangeCallbacks = ListenerRegistry<(String, String, DownloadState, DownloadError?) -> Unit>()
+    private val completeCallbacks = ListenerRegistry<(DownloadedTrack) -> Unit>()
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private val database = DownloadDatabase.getInstance(context)
@@ -98,7 +100,34 @@ class DownloadManagerCore private constructor(
             )
         activeTasks[downloadId] = metadata
 
-        // Create WorkManager request
+        // Gate on maxConcurrentDownloads — excess requests wait in FIFO order
+        synchronized(launchGate) {
+            if (runningDownloads.size >= maxConcurrent()) {
+                pendingLaunchQueue.add(downloadId)
+            } else {
+                runningDownloads.add(downloadId)
+                enqueueDownloadWork(downloadId, track, playlistId)
+            }
+        }
+
+        // Update state
+        activeTasks[downloadId]?.state = DownloadState.PENDING
+        notifyStateChange(downloadId, track.id, DownloadState.PENDING, null)
+
+        return downloadId
+    }
+
+    private val launchGate = Any()
+    private val pendingLaunchQueue = ArrayDeque<String>()
+    private val runningDownloads = mutableSetOf<String>()
+
+    private fun maxConcurrent(): Int = (config.maxConcurrentDownloads?.toInt() ?: 3).coerceAtLeast(1)
+
+    private fun enqueueDownloadWork(
+        downloadId: String,
+        track: TrackItem,
+        playlistId: String?,
+    ) {
         val constraints =
             Constraints
                 .Builder()
@@ -115,6 +144,7 @@ class DownloadManagerCore private constructor(
                 DownloadWorker.KEY_URL to track.url,
                 DownloadWorker.KEY_PLAYLIST_ID to (playlistId ?: ""),
                 DownloadWorker.KEY_STORAGE_LOCATION to (config.storageLocation?.name ?: StorageLocation.PRIVATE.name),
+                DownloadWorker.KEY_TRACK_JSON to TrackItemJson.toJson(track),
             )
 
         val downloadRequest =
@@ -125,13 +155,25 @@ class DownloadManagerCore private constructor(
                 .addTag("track_${track.id}")
                 .build()
 
-        workManager.enqueue(downloadRequest)
+        workManager.enqueueUniqueWork("download_$downloadId", ExistingWorkPolicy.KEEP, downloadRequest)
+    }
 
-        // Update state
-        activeTasks[downloadId]?.state = DownloadState.PENDING
-        notifyStateChange(downloadId, track.id, DownloadState.PENDING, null)
-
-        return downloadId
+    // Frees this download's concurrency slot and launches the next queued one
+    private fun releaseDownloadSlot(downloadId: String) {
+        var next: String? = null
+        synchronized(launchGate) {
+            runningDownloads.remove(downloadId)
+            pendingLaunchQueue.remove(downloadId)
+            if (runningDownloads.size < maxConcurrent()) {
+                next = pendingLaunchQueue.removeFirstOrNull()
+                next?.let { runningDownloads.add(it) }
+            }
+        }
+        next?.let { nextId ->
+            val meta = activeTasks[nextId] ?: return
+            val track = trackMetadata[meta.trackId] ?: return
+            enqueueDownloadWork(nextId, track, playlistAssociations[nextId])
+        }
     }
 
     fun downloadPlaylist(
@@ -150,6 +192,7 @@ class DownloadManagerCore private constructor(
             metadata.state = DownloadState.PAUSED
             notifyStateChange(downloadId, metadata.trackId, DownloadState.PAUSED, null)
         }
+        releaseDownloadSlot(downloadId)
     }
 
     fun resumeDownload(downloadId: String) {
@@ -157,34 +200,16 @@ class DownloadManagerCore private constructor(
             val track = trackMetadata[metadata.trackId] ?: return
             val playlistId = playlistAssociations[downloadId]
 
-            // Re-create work request
-            val constraints =
-                Constraints
-                    .Builder()
-                    .setRequiredNetworkType(
-                        if (config.wifiOnlyDownloads == true) NetworkType.UNMETERED else NetworkType.CONNECTED,
-                    ).setRequiresStorageNotLow(true)
-                    .build()
-
-            val inputData =
-                workDataOf(
-                    DownloadWorker.KEY_DOWNLOAD_ID to downloadId,
-                    DownloadWorker.KEY_TRACK_ID to track.id,
-                    DownloadWorker.KEY_TRACK_TITLE to track.title,
-                    DownloadWorker.KEY_URL to track.url,
-                    DownloadWorker.KEY_PLAYLIST_ID to (playlistId ?: ""),
-                    DownloadWorker.KEY_STORAGE_LOCATION to (config.storageLocation?.name ?: StorageLocation.PRIVATE.name),
-                )
-
-            val downloadRequest =
-                OneTimeWorkRequestBuilder<DownloadWorker>()
-                    .setConstraints(constraints)
-                    .setInputData(inputData)
-                    .addTag("download_$downloadId")
-                    .addTag("track_${track.id}")
-                    .build()
-
-            workManager.enqueue(downloadRequest)
+            synchronized(launchGate) {
+                if (runningDownloads.size >= maxConcurrent() && downloadId !in runningDownloads) {
+                    pendingLaunchQueue.add(downloadId)
+                    metadata.state = DownloadState.PENDING
+                    notifyStateChange(downloadId, metadata.trackId, DownloadState.PENDING, null)
+                    return
+                }
+                runningDownloads.add(downloadId)
+            }
+            enqueueDownloadWork(downloadId, track, playlistId)
 
             metadata.state = DownloadState.DOWNLOADING
             notifyStateChange(downloadId, metadata.trackId, DownloadState.DOWNLOADING, null)
@@ -197,7 +222,13 @@ class DownloadManagerCore private constructor(
             metadata.state = DownloadState.CANCELLED
             notifyStateChange(downloadId, metadata.trackId, DownloadState.CANCELLED, null)
             activeTasks.remove(downloadId)
+            // Drop the partial file (pause keeps it for Range resume), but never
+            // a previously completed download's file
+            if (!database.isTrackDownloaded(metadata.trackId)) {
+                fileManager.getLocalPath(metadata.trackId)?.let { fileManager.deleteFile(it) }
+            }
         }
+        releaseDownloadSlot(downloadId)
     }
 
     fun retryDownload(downloadId: String) {
@@ -256,7 +287,7 @@ class DownloadManagerCore private constructor(
             downloadedBytes += m.bytesDownloaded
         }
 
-        val completedCount = database.getAllDownloadedTracks().size
+        val completedCount = database.countDownloadedTracks()
 
         return DownloadQueueStatus(
             pendingCount = pendingCount.toDouble(),
@@ -331,17 +362,17 @@ class DownloadManagerCore private constructor(
         }
 
     // Callbacks
-    fun addProgressCallback(callback: (DownloadProgress) -> Unit) {
-        progressCallbacks.add(callback)
-    }
+    fun addProgressCallback(callback: (DownloadProgress) -> Unit): Long = progressCallbacks.add(callback)
 
-    fun addStateChangeCallback(callback: (String, String, DownloadState, DownloadError?) -> Unit) {
-        stateChangeCallbacks.add(callback)
-    }
+    fun removeProgressCallback(id: Long): Boolean = progressCallbacks.remove(id)
 
-    fun addCompleteCallback(callback: (DownloadedTrack) -> Unit) {
-        completeCallbacks.add(callback)
-    }
+    fun addStateChangeCallback(callback: (String, String, DownloadState, DownloadError?) -> Unit): Long = stateChangeCallbacks.add(callback)
+
+    fun removeStateChangeCallback(id: Long): Boolean = stateChangeCallbacks.remove(id)
+
+    fun addCompleteCallback(callback: (DownloadedTrack) -> Unit): Long = completeCallbacks.add(callback)
+
+    fun removeCompleteCallback(id: Long): Boolean = completeCallbacks.remove(id)
 
     // Internal callbacks from DownloadWorker
     internal fun onProgress(
@@ -375,8 +406,11 @@ class DownloadManagerCore private constructor(
         downloadId: String,
         trackId: String,
         localPath: String,
+        fallbackTrack: TrackItem? = null,
     ) {
-        val track = trackMetadata[trackId] ?: return
+        // fallbackTrack comes from the worker's persisted inputData — the
+        // in-memory maps are empty when the worker completes in a fresh process.
+        val track = trackMetadata[trackId] ?: fallbackTrack ?: return
         val playlistId = playlistAssociations[downloadId]
         val storageLocation = config.storageLocation ?: StorageLocation.PRIVATE
         val fileSize = fileManager.getFileSize(localPath)
@@ -399,6 +433,7 @@ class DownloadManagerCore private constructor(
             metadata.completedAt = System.currentTimeMillis().toDouble()
         }
         activeTasks.remove(downloadId)
+        releaseDownloadSlot(downloadId)
 
         notifyStateChange(downloadId, trackId, DownloadState.COMPLETED, null)
 
@@ -407,25 +442,30 @@ class DownloadManagerCore private constructor(
         }
     }
 
+    // Retries are owned by WorkManager (Result.retry in DownloadWorker); this
+    // only records state so a second, competing worker is never scheduled here.
     internal fun onError(
         downloadId: String,
         trackId: String,
         error: DownloadError,
+        willRetry: Boolean = false,
     ) {
         activeTasks[downloadId]?.let { metadata ->
-            metadata.state = DownloadState.FAILED
             metadata.error = error
 
-            // Auto-retry if enabled
-            if (config.autoRetry == true && error.isRetryable && metadata.retryCount < (config.maxRetryAttempts?.toInt() ?: 3)) {
-                mainHandler.postDelayed({
-                    retryDownload(downloadId)
-                }, 2000)
+            if (willRetry) {
+                metadata.retryCount++
+                metadata.state = DownloadState.PENDING
             } else {
+                metadata.state = DownloadState.FAILED
                 notifyStateChange(downloadId, trackId, DownloadState.FAILED, error)
+                releaseDownloadSlot(downloadId)
             }
         }
     }
+
+    internal fun maxWorkerRetryAttempts(): Int =
+        if (config.autoRetry == true) (config.maxRetryAttempts?.toInt() ?: 3) else 0
 
     private fun notifyStateChange(
         downloadId: String,

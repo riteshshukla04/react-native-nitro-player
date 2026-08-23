@@ -14,7 +14,13 @@ class PlaylistManager {
   private var listeners: [(String, ([PlaylistModel], QueueOperation?) -> Void)] = []
   private var playlistListeners: [String: [(String, (PlaylistModel, QueueOperation?) -> Void)]] =
     [:]
-  private var currentPlaylistId: String?
+  // Backing store must only be touched inside `queue`; every current use of the
+  // computed property is outside a queue.sync block, so the accessors can sync.
+  private var _currentPlaylistId: String?
+  private var currentPlaylistId: String? {
+    get { queue.sync { _currentPlaylistId } }
+    set { queue.sync { _currentPlaylistId = newValue } }
+  }
   private let queue = DispatchQueue(label: "com.margelo.nitro.nitroplayer.playlist")
   private var saveDebounceWorkItem: DispatchWorkItem?
 
@@ -45,15 +51,16 @@ class PlaylistManager {
    * Delete a playlist
    */
   func deletePlaylist(playlistId: String) -> Bool {
-    let removed = queue.sync {
-      return playlists.removeValue(forKey: playlistId) != nil
+    let removed = queue.sync { () -> Bool in
+      guard playlists.removeValue(forKey: playlistId) != nil else { return false }
+      if _currentPlaylistId == playlistId {
+        _currentPlaylistId = nil
+      }
+      playlistListeners.removeValue(forKey: playlistId)
+      return true
     }
 
     if removed {
-      if currentPlaylistId == playlistId {
-        currentPlaylistId = nil
-      }
-      playlistListeners.removeValue(forKey: playlistId)
       scheduleSave()
       notifyPlaylistsChanged(.remove)
       return true
@@ -68,11 +75,9 @@ class PlaylistManager {
   func updatePlaylist(
     playlistId: String, name: String? = nil, description: String? = nil, artwork: String? = nil
   ) -> Bool {
-    guard let playlist = queue.sync(execute: { playlists[playlistId] }) else {
-      return false
-    }
-
-    queue.sync {
+    // Single sync: a separate fetch-then-store loses one of two concurrent edits
+    let updated = queue.sync { () -> Bool in
+      guard let playlist = playlists[playlistId] else { return false }
       playlists[playlistId] = PlaylistModel(
         id: playlist.id,
         name: name ?? playlist.name,
@@ -80,7 +85,9 @@ class PlaylistManager {
         artwork: artwork ?? playlist.artwork,
         tracks: playlist.tracks
       )
+      return true
     }
+    guard updated else { return false }
 
     scheduleSave()
     notifyPlaylistChanged(playlistId, .update)
@@ -111,11 +118,8 @@ class PlaylistManager {
    * Add a track to a playlist
    */
   func addTrackToPlaylist(playlistId: String, track: TrackItem, index: Int? = nil) -> Bool {
-    guard let playlist = queue.sync(execute: { playlists[playlistId] }) else {
-      return false
-    }
-
-    queue.sync {
+    let added = queue.sync { () -> Bool in
+      guard let playlist = playlists[playlistId] else { return false }
       var tracks = playlist.tracks
       if let index = index, index >= 0 && index <= tracks.count {
         tracks.insert(track, at: index)
@@ -129,7 +133,9 @@ class PlaylistManager {
         artwork: playlist.artwork,
         tracks: tracks
       )
+      return true
     }
+    guard added else { return false }
 
     scheduleSave()
     notifyPlaylistChanged(playlistId, .add)
@@ -146,11 +152,8 @@ class PlaylistManager {
    * Add multiple tracks to a playlist at once
    */
   func addTracksToPlaylist(playlistId: String, tracks: [TrackItem], index: Int? = nil) -> Bool {
-    guard let playlist = queue.sync(execute: { playlists[playlistId] }) else {
-      return false
-    }
-
-    queue.sync {
+    let added = queue.sync { () -> Bool in
+      guard let playlist = playlists[playlistId] else { return false }
       var currentTracks = playlist.tracks
       if let index = index, index >= 0 && index <= currentTracks.count {
         currentTracks.insert(contentsOf: tracks, at: index)
@@ -164,7 +167,9 @@ class PlaylistManager {
         artwork: playlist.artwork,
         tracks: currentTracks
       )
+      return true
     }
+    guard added else { return false }
 
     scheduleSave()
     notifyPlaylistChanged(playlistId, .add)
@@ -182,11 +187,8 @@ class PlaylistManager {
    * Remove a track from a playlist
    */
   func removeTrackFromPlaylist(playlistId: String, trackId: String) -> Bool {
-    guard let playlist = queue.sync(execute: { playlists[playlistId] }) else {
-      return false
-    }
-
-    let removed = queue.sync {
+    let removed = queue.sync { () -> Bool in
+      guard let playlist = playlists[playlistId] else { return false }
       var tracks = playlist.tracks
       let initialCount = tracks.count
       tracks.removeAll { $0.id == trackId }
@@ -222,30 +224,27 @@ class PlaylistManager {
    * Reorder a track in a playlist
    */
   func reorderTrackInPlaylist(playlistId: String, trackId: String, newIndex: Int) -> Bool {
-    guard let playlist = queue.sync(execute: { playlists[playlistId] }) else {
-      return false
-    }
-
-    let tracks = playlist.tracks
-    guard let oldIndex = tracks.firstIndex(where: { $0.id == trackId }),
-      newIndex >= 0 && newIndex < tracks.count
-    else {
-      return false
-    }
-
-    queue.sync {
-      var reorderedTracks = tracks
-      let track = reorderedTracks.remove(at: oldIndex)
-      reorderedTracks.insert(track, at: newIndex)
+    let reordered = queue.sync { () -> Bool in
+      guard let playlist = playlists[playlistId] else { return false }
+      var tracks = playlist.tracks
+      guard let oldIndex = tracks.firstIndex(where: { $0.id == trackId }),
+        newIndex >= 0 && newIndex < tracks.count
+      else {
+        return false
+      }
+      let track = tracks.remove(at: oldIndex)
+      tracks.insert(track, at: newIndex)
 
       playlists[playlistId] = PlaylistModel(
         id: playlist.id,
         name: playlist.name,
         description: playlist.description,
         artwork: playlist.artwork,
-        tracks: reorderedTracks
+        tracks: tracks
       )
+      return true
     }
+    guard reordered else { return false }
 
     scheduleSave()
     notifyPlaylistChanged(playlistId, .update)
@@ -417,9 +416,11 @@ class PlaylistManager {
   }
 
   private func scheduleSave() {
-    saveDebounceWorkItem?.cancel()
     let work = DispatchWorkItem { [weak self] in self?.saveToFile() }
-    saveDebounceWorkItem = work
+    queue.sync {
+      saveDebounceWorkItem?.cancel()
+      saveDebounceWorkItem = work
+    }
     // Use global background queue — saveToFile calls queue.sync internally,
     // which would deadlock if scheduled on queue itself.
     DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 0.3, execute: work)
@@ -459,7 +460,7 @@ class PlaylistManager {
       }
       let wrapper: [String: Any] = [
         "playlists": playlistsData,
-        "currentPlaylistId": currentPlaylistId as Any,
+        "currentPlaylistId": queue.sync { _currentPlaylistId } as Any,
       ]
       let data = try JSONSerialization.data(withJSONObject: wrapper, options: [])
       try NitroPlayerStorage.write(filename: "playlists.json", data: data)

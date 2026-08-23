@@ -65,6 +65,9 @@ class TrackPlayerCore: NSObject {
 
   // Gapless playback
   internal var preloadedAssets: [String: AVURLAsset] = [:]
+  // playerQueue-owned; bumped on every teardown so in-flight async preloads
+  // can't republish a stale asset into the cache after a queue switch
+  internal var preloadGeneration: Int = 0
   internal let preloadQueue = DispatchQueue(label: "com.nitroplayer.preload", qos: .utility)
   internal var didRequestUrlsForCurrentItem = false
 
@@ -149,11 +152,23 @@ class TrackPlayerCore: NSObject {
 
   internal func setupAudioSession() {
     do {
-      let audioSession = AVAudioSession.sharedInstance()
-      try audioSession.setCategory(.playback, mode: .default, options: [])
-      try audioSession.setActive(true)
+      // Category only — setActive(true) is deferred to first play so merely
+      // loading the module doesn't silence other apps' audio.
+      try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [])
     } catch {
       NitroPlayerLogger.log("TrackPlayerCore", "❌ Failed to setup audio session - \(error)")
+    }
+  }
+
+  private var audioSessionActivated = false
+
+  internal func activateAudioSessionIfNeeded() {
+    guard !audioSessionActivated else { return }
+    do {
+      try AVAudioSession.sharedInstance().setActive(true)
+      audioSessionActivated = true
+    } catch {
+      NitroPlayerLogger.log("TrackPlayerCore", "❌ Failed to activate audio session - \(error)")
     }
   }
 
@@ -261,6 +276,7 @@ class TrackPlayerCore: NSObject {
       self.pathMonitor = nil
       for asset in self.preloadedAssets.values { asset.cancelLoading() }
       self.preloadedAssets.removeAll()
+      self.preloadGeneration += 1
       self.failedItemRetryCounts.removeAll()
       self.redirectResolver.clear()
     }

@@ -564,6 +564,23 @@ in the next. Regular (non-streaming) tracks may never fire this event.
 
 ---
 
+### `appStartedWithNotification(callback)`
+
+Called when the app was opened by tapping the playback notification, with the
+track that was playing at tap time. Use it to navigate straight to your player
+screen. **Android only** — iOS Now Playing controls never launch the app.
+
+```typescript
+TrackPlayer.appStartedWithNotification((track) => {
+  navigation.navigate('Player', { trackId: track.id });
+});
+```
+
+Fires on cold start (register early, e.g. at app root) and again if the
+activity is relaunched from a notification tap while the app process is alive.
+
+---
+
 ### `onAndroidAutoConnectionChange(callback)`
 
 Called when Android Auto connection state changes. **Android only.**

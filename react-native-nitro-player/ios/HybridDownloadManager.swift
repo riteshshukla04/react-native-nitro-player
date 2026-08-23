@@ -213,20 +213,30 @@ final class HybridDownloadManager: HybridDownloadManagerSpec {
 
   // MARK: - Event Callbacks
 
+  private var progressCallbackIds: [UUID] = []
+  private var stateChangeCallbackIds: [UUID] = []
+  private var completeCallbackIds: [UUID] = []
+
   func onDownloadProgress(callback: @escaping (DownloadProgress) -> Void) throws {
     NitroPlayerLogger.log("HybridDownloadManager", "onDownloadProgress callback registered")
-    core.addProgressCallback(callback)
+    progressCallbackIds.append(core.addProgressCallback(callback))
   }
 
   func onDownloadStateChange(
     callback: @escaping (String, String, DownloadState, DownloadError?) -> Void
   ) throws {
     NitroPlayerLogger.log("HybridDownloadManager", "onDownloadStateChange callback registered")
-    core.addStateChangeCallback(callback)
+    stateChangeCallbackIds.append(core.addStateChangeCallback(callback))
   }
 
   func onDownloadComplete(callback: @escaping (DownloadedTrack) -> Void) throws {
     NitroPlayerLogger.log("HybridDownloadManager", "onDownloadComplete callback registered")
-    core.addCompleteCallback(callback)
+    completeCallbackIds.append(core.addCompleteCallback(callback))
+  }
+
+  deinit {
+    progressCallbackIds.forEach { core.removeProgressCallback(id: $0) }
+    stateChangeCallbackIds.forEach { core.removeStateChangeCallback(id: $0) }
+    completeCallbackIds.forEach { core.removeCompleteCallback(id: $0) }
   }
 }

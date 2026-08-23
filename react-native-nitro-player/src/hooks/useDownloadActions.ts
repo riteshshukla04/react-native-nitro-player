@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { DownloadManager } from '../index'
 import type { DownloadConfig, PlaybackSource } from '../types/DownloadTypes'
 import type { TrackItem } from '../types/PlayerQueue'
@@ -45,10 +45,34 @@ export function useDownloadActions(): UseDownloadActionsResult {
   const [isDownloading, setIsDownloading] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState<Error | null>(null)
+  // Pending counts: overlapping calls otherwise clear the flag while a
+  // second request is still in flight
+  const downloadingCount = useRef(0)
+  const deletingCount = useRef(0)
+
+  const beginDownloading = useCallback(() => {
+    downloadingCount.current += 1
+    setIsDownloading(true)
+  }, [])
+
+  const endDownloading = useCallback(() => {
+    downloadingCount.current = Math.max(0, downloadingCount.current - 1)
+    if (downloadingCount.current === 0) setIsDownloading(false)
+  }, [])
+
+  const beginDeleting = useCallback(() => {
+    deletingCount.current += 1
+    setIsDeleting(true)
+  }, [])
+
+  const endDeleting = useCallback(() => {
+    deletingCount.current = Math.max(0, deletingCount.current - 1)
+    if (deletingCount.current === 0) setIsDeleting(false)
+  }, [])
 
   const downloadTrack = useCallback(
     async (track: TrackItem, playlistId?: string) => {
-      setIsDownloading(true)
+      beginDownloading()
       setError(null)
       try {
         const downloadId = await DownloadManager.downloadTrack(
@@ -60,7 +84,7 @@ export function useDownloadActions(): UseDownloadActionsResult {
         setError(e as Error)
         throw e
       } finally {
-        setIsDownloading(false)
+        endDownloading()
       }
     },
     []
@@ -68,7 +92,7 @@ export function useDownloadActions(): UseDownloadActionsResult {
 
   const downloadPlaylist = useCallback(
     async (playlistId: string, tracks: TrackItem[]) => {
-      setIsDownloading(true)
+      beginDownloading()
       setError(null)
       try {
         const downloadIds = await DownloadManager.downloadPlaylist(
@@ -80,7 +104,7 @@ export function useDownloadActions(): UseDownloadActionsResult {
         setError(e as Error)
         throw e
       } finally {
-        setIsDownloading(false)
+        endDownloading()
       }
     },
     []
@@ -115,29 +139,29 @@ export function useDownloadActions(): UseDownloadActionsResult {
   }, [])
 
   const deleteTrack = useCallback(async (trackId: string) => {
-    setIsDeleting(true)
+    beginDeleting()
     try {
       await DownloadManager.deleteDownloadedTrack(trackId)
     } finally {
-      setIsDeleting(false)
+      endDeleting()
     }
   }, [])
 
   const deletePlaylist = useCallback(async (playlistId: string) => {
-    setIsDeleting(true)
+    beginDeleting()
     try {
       await DownloadManager.deleteDownloadedPlaylist(playlistId)
     } finally {
-      setIsDeleting(false)
+      endDeleting()
     }
   }, [])
 
   const deleteAll = useCallback(async () => {
-    setIsDeleting(true)
+    beginDeleting()
     try {
       await DownloadManager.deleteAllDownloads()
     } finally {
-      setIsDeleting(false)
+      endDeleting()
     }
   }, [])
 

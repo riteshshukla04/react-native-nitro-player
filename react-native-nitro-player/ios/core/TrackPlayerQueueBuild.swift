@@ -85,6 +85,7 @@ extension TrackPlayerCore {
     // Clear old preloaded assets when loading new queue
     for asset in preloadedAssets.values { asset.cancelLoading() }
     preloadedAssets.removeAll()
+    preloadGeneration += 1
 
     guard let existingPlayer = self.player else {
       NitroPlayerLogger.log("TrackPlayerCore", "❌ No player available")
@@ -262,7 +263,7 @@ extension TrackPlayerCore {
 
     self.preloadUpcomingTracks(from: index + 1)
 
-    if wasPlaying { player.play() }
+    if wasPlaying { player.rate = Float(currentPlaybackSpeed) }
     return true
   }
 
@@ -569,6 +570,7 @@ extension TrackPlayerCore {
     // Swift Array/Dictionary are not safe for concurrent access.
     let queuedTrackIds = Set(player?.items().compactMap { $0.trackId } ?? [])
     let alreadyPreloaded = Set(preloadedAssets.keys)
+    let generation = preloadGeneration
     let endIndex = min(startIndex + Constants.gaplessPreloadCount, currentTracks.count)
     guard startIndex >= 0, startIndex < endIndex else { return }
     let candidates = Array(currentTracks[startIndex..<endIndex])
@@ -607,7 +609,17 @@ extension TrackPlayerCore {
 
           if allKeysLoaded {
             self?.playerQueue.async {
-              self?.preloadedAssets[track.id] = asset
+              guard let self else { return }
+              // Stale completion: the queue was torn down (or this track left it)
+              // while the asset was still loading — publishing would hand a dead
+              // or wrong-URL asset to createGaplessPlayerItem
+              guard self.preloadGeneration == generation,
+                self.currentTracks.contains(where: { $0.id == track.id })
+              else {
+                asset.cancelLoading()
+                return
+              }
+              self.preloadedAssets[track.id] = asset
               NitroPlayerLogger.log("TrackPlayerCore", "🎯 Preloaded asset for upcoming track: \(track.title)")
             }
           }

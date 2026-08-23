@@ -129,9 +129,29 @@ class HybridDownloadManager : HybridDownloadManagerSpec() {
     override fun getPlaybackSourcePreference(): PlaybackSource = core.getPlaybackSourcePreference()
 
     // ── Events ────────────────────────────────────────────────────────────────
-    override fun onDownloadProgress(callback: (progress: DownloadProgress) -> Unit) = core.addProgressCallback(callback)
+    private val listenerIds = java.util.concurrent.CopyOnWriteArrayList<Pair<String, Long>>()
 
-    override fun onDownloadStateChange(callback: (downloadId: String, trackId: String, state: DownloadState, error: DownloadError?) -> Unit) = core.addStateChangeCallback(callback)
+    override fun onDownloadProgress(callback: (progress: DownloadProgress) -> Unit) {
+        listenerIds.add("progress" to core.addProgressCallback(callback))
+    }
 
-    override fun onDownloadComplete(callback: (downloadedTrack: DownloadedTrack) -> Unit) = core.addCompleteCallback(callback)
+    override fun onDownloadStateChange(callback: (downloadId: String, trackId: String, state: DownloadState, error: DownloadError?) -> Unit) {
+        listenerIds.add("state" to core.addStateChangeCallback(callback))
+    }
+
+    override fun onDownloadComplete(callback: (downloadedTrack: DownloadedTrack) -> Unit) {
+        listenerIds.add("complete" to core.addCompleteCallback(callback))
+    }
+
+    override fun dispose() {
+        super.dispose()
+        listenerIds.forEach { (type, id) ->
+            when (type) {
+                "progress" -> core.removeProgressCallback(id)
+                "state" -> core.removeStateChangeCallback(id)
+                "complete" -> core.removeCompleteCallback(id)
+            }
+        }
+        listenerIds.clear()
+    }
 }

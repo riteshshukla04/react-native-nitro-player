@@ -495,6 +495,22 @@ open class HybridTrackPlayerSpec_cxx {
   }
   
   @inline(__always)
+  public final func appStartedWithNotification(callback: bridge.Func_void_TrackItem) -> bridge.Result_void_ {
+    do {
+      try self.__implementation.appStartedWithNotification(callback: { () -> (TrackItem) -> Void in
+        let __wrappedFunction = bridge.wrap_Func_void_TrackItem(callback)
+        return { (__track: TrackItem) -> Void in
+          __wrappedFunction.call(__track)
+        }
+      }())
+      return bridge.create_Result_void_()
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_void_(__exceptionPtr)
+    }
+  }
+  
+  @inline(__always)
   public final func onAndroidAutoConnectionChange(callback: bridge.Func_void_bool) -> bridge.Result_void_ {
     do {
       try self.__implementation.onAndroidAutoConnectionChange(callback: { () -> (Bool) -> Void in

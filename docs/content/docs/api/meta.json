@@ -5,6 +5,7 @@
     "player-queue",
     "download-manager",
     "equalizer",
+    "cast",
     "platform-specific"
   ]
 }

@@ -150,6 +150,13 @@ final class DownloadDatabase {
 
   func getDownloadedTrack(trackId: String) -> DownloadedTrack? {
     return queue.sync {
+      _getDownloadedTrackUnsafe(trackId: trackId)
+    }
+  }
+
+  /// Must be called from within `queue` — a nested `queue.sync` here would
+  /// deadlock against pending barrier writers on this concurrent queue.
+  private func _getDownloadedTrackUnsafe(trackId: String) -> DownloadedTrack? {
       NitroPlayerLogger.log("DownloadDatabase", "🔍 DownloadDatabase.getDownloadedTrack() for trackId: \(trackId)")
       NitroPlayerLogger.log("DownloadDatabase", "   Total records in memory: \(downloadedTracks.count)")
       NitroPlayerLogger.log("DownloadDatabase", "   Available trackIds: \(Array(downloadedTracks.keys))")
@@ -175,7 +182,6 @@ final class DownloadDatabase {
 
       NitroPlayerLogger.log("DownloadDatabase", "   ✅ File exists, returning track")
       return recordToDownloadedTrack(record)
-    }
   }
 
   func getAllDownloadedTracks() -> [DownloadedTrack] {
@@ -214,7 +220,13 @@ final class DownloadDatabase {
   }
 
   func getDownloadedPlaylist(playlistId: String) -> DownloadedPlaylist? {
-    return queue.sync { () -> DownloadedPlaylist? in
+    return queue.sync {
+      _getDownloadedPlaylistUnsafe(playlistId: playlistId)
+    }
+  }
+
+  /// Must be called from within `queue` — see `_getDownloadedTrackUnsafe`.
+  private func _getDownloadedPlaylistUnsafe(playlistId: String) -> DownloadedPlaylist? {
       guard let trackIds = playlistTracks[playlistId], !trackIds.isEmpty else { return nil }
       guard let playlistModel = PlaylistManager.shared.getPlaylist(playlistId: playlistId) else {
         return nil
@@ -224,7 +236,7 @@ final class DownloadDatabase {
       var totalSize: Double = 0
 
       for trackId in trackIds {
-        if let track = getDownloadedTrack(trackId: trackId) {
+        if let track = _getDownloadedTrackUnsafe(trackId: trackId) {
           downloadedTracks.append(track)
           totalSize += track.fileSize
         }
@@ -243,7 +255,6 @@ final class DownloadDatabase {
           ?? Date().timeIntervalSince1970,
         isComplete: isComplete
       )
-    }
   }
 
   func getAllDownloadedPlaylists() -> [DownloadedPlaylist] {
@@ -251,7 +262,7 @@ final class DownloadDatabase {
       var playlists: [DownloadedPlaylist] = []
 
       for playlistId in playlistTracks.keys {
-        if let playlist = getDownloadedPlaylist(playlistId: playlistId) {
+        if let playlist = _getDownloadedPlaylistUnsafe(playlistId: playlistId) {
           playlists.append(playlist)
         }
       }

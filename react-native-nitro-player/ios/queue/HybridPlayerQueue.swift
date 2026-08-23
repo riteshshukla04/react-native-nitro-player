@@ -22,13 +22,20 @@ final class HybridPlayerQueue: HybridPlayerQueueSpec {
   }
 
   func deletePlaylist(playlistId: String) throws -> Promise<Void> {
-    Promise.async { _ = self.playlistManager.deletePlaylist(playlistId: playlistId) }
+    Promise.async {
+      guard self.playlistManager.deletePlaylist(playlistId: playlistId) else {
+        throw RuntimeError.error(withMessage: "Playlist not found: \(playlistId)")
+      }
+    }
   }
 
   func updatePlaylist(playlistId: String, name: String?, description: String?, artwork: String?) throws -> Promise<Void> {
     Promise.async {
-      _ = self.playlistManager.updatePlaylist(
+      guard self.playlistManager.updatePlaylist(
         playlistId: playlistId, name: name, description: description, artwork: artwork)
+      else {
+        throw RuntimeError.error(withMessage: "Playlist not found: \(playlistId)")
+      }
       self.core.updatePlaylist(playlistId: playlistId)
     }
   }
@@ -48,29 +55,41 @@ final class HybridPlayerQueue: HybridPlayerQueueSpec {
 
   func addTrackToPlaylist(playlistId: String, track: TrackItem, index: Double?) throws -> Promise<Void> {
     Promise.async {
-      _ = self.playlistManager.addTrackToPlaylist(playlistId: playlistId, track: track, index: index.map { Int($0) })
+      guard self.playlistManager.addTrackToPlaylist(playlistId: playlistId, track: track, index: index.map { Int($0) })
+      else {
+        throw RuntimeError.error(withMessage: "Playlist not found: \(playlistId)")
+      }
       self.core.updatePlaylist(playlistId: playlistId)
     }
   }
 
   func addTracksToPlaylist(playlistId: String, tracks: [TrackItem], index: Double?) throws -> Promise<Void> {
     Promise.async {
-      _ = self.playlistManager.addTracksToPlaylist(playlistId: playlistId, tracks: tracks, index: index.map { Int($0) })
+      guard self.playlistManager.addTracksToPlaylist(playlistId: playlistId, tracks: tracks, index: index.map { Int($0) })
+      else {
+        throw RuntimeError.error(withMessage: "Playlist not found: \(playlistId)")
+      }
       self.core.updatePlaylist(playlistId: playlistId)
     }
   }
 
   func removeTrackFromPlaylist(playlistId: String, trackId: String) throws -> Promise<Void> {
     Promise.async {
-      _ = self.playlistManager.removeTrackFromPlaylist(playlistId: playlistId, trackId: trackId)
+      guard self.playlistManager.removeTrackFromPlaylist(playlistId: playlistId, trackId: trackId)
+      else {
+        throw RuntimeError.error(withMessage: "Track \(trackId) not found in playlist \(playlistId)")
+      }
       self.core.updatePlaylist(playlistId: playlistId)
     }
   }
 
   func reorderTrackInPlaylist(playlistId: String, trackId: String, newIndex: Double) throws -> Promise<Void> {
     Promise.async {
-      _ = self.playlistManager.reorderTrackInPlaylist(
+      guard self.playlistManager.reorderTrackInPlaylist(
         playlistId: playlistId, trackId: trackId, newIndex: Int(newIndex))
+      else {
+        throw RuntimeError.error(withMessage: "Invalid reorder for track \(trackId) in playlist \(playlistId)")
+      }
       self.core.updatePlaylist(playlistId: playlistId)
     }
   }
@@ -86,8 +105,10 @@ final class HybridPlayerQueue: HybridPlayerQueueSpec {
       // Update PlaylistManager.currentPlaylistId so getCurrentPlaylistId() returns correctly
       if self.playlistManager.loadPlaylist(playlistId: playlistId, index: startIndex) {
         self.core.loadPlaylistOnQueue(playlistId: playlistId, startIndex: startIndex)
+        promise.resolve(withResult: ())
+      } else {
+        promise.reject(withError: RuntimeError.error(withMessage: "Invalid playlist or index: \(playlistId)"))
       }
-      promise.resolve(withResult: ())
     }
     return promise
   }

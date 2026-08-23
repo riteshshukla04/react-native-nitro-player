@@ -79,7 +79,9 @@ extension TrackPlayerCore {
     let affectedPlaylists = self.playlistManager.updateTracks(tracks: safeTracks)
 
     // Replace the current AVPlayerItem when its URL just resolved (local only — cast reloads below instead).
-    if !self.isCasting, let update = currentTrack, currentTrackIsEmpty, !update.url.isEmpty {
+    // Look up the FRESH track — the pre-update snapshot's URL is empty by definition here.
+    if !self.isCasting, currentTrackIsEmpty,
+      let update = safeTracks.first(where: { $0.id == currentTrackId }), !update.url.isEmpty {
       NitroPlayerLogger.log("TrackPlayerCore",
         "🔄 Replacing current AVPlayerItem for track with resolved URL: \(update.id)")
       if let newItem = self.createGaplessPlayerItem(for: update, isPreload: false) {
@@ -131,14 +133,20 @@ extension TrackPlayerCore {
           "🔄 No current item — full queue rebuild from currentTrackIndex \(self.currentTrackIndex)")
         self.removeAllItemsCancellingLoads(player)
         var lastItem: AVPlayerItem? = nil
-        for (offset, track) in self.currentTracks[max(0, self.currentTrackIndex)...].enumerated() {
+        // Window like every other rebuild path — materializing the whole remaining
+        // playlist builds thousands of AVPlayerItems on playerQueue at once.
+        let windowed = self.currentTracks[max(0, self.currentTrackIndex)...]
+          .prefix(1 + Constants.queueWindowSize)
+        for (offset, track) in windowed.enumerated() {
           let isPreload = offset < Constants.gaplessPreloadCount
           if let newItem = self.createGaplessPlayerItem(for: track, isPreload: isPreload) {
             player.insert(newItem, after: lastItem)
             lastItem = newItem
           }
         }
-        player.play()
+        if self.intendedToPlay {
+          player.rate = Float(self.currentPlaybackSpeed)
+        }
         self.preloadUpcomingTracks(from: self.currentTrackIndex + 1)
       } else {
         // A current AVPlayerItem already exists — preserve it and only rebuild upcoming items.

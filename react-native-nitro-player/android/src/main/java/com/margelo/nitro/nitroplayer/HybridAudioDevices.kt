@@ -67,9 +67,17 @@ class HybridAudioDevices : HybridAudioDevicesSpec() {
                     audioManager.setCommunicationDevice(device)
                 } else {
                     when (device.type) {
-                        AudioDeviceInfo.TYPE_BLUETOOTH_SCO, AudioDeviceInfo.TYPE_BLUETOOTH_A2DP -> {
+                        AudioDeviceInfo.TYPE_BLUETOOTH_SCO -> {
                             audioManager.startBluetoothSco()
                             audioManager.isBluetoothScoOn = true
+                        }
+
+                        // A2DP is the default media route — routing it through SCO
+                        // would drop music to narrowband call quality
+                        AudioDeviceInfo.TYPE_BLUETOOTH_A2DP -> {
+                            audioManager.stopBluetoothSco()
+                            audioManager.isBluetoothScoOn = false
+                            audioManager.isSpeakerphoneOn = false
                         }
 
                         AudioDeviceInfo.TYPE_BUILTIN_SPEAKER -> {

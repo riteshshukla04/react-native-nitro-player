@@ -23,6 +23,10 @@ void TrackPlayer.configure({
   androidNotificationIcon: 'ic_notification', // Android Only
 });
 
+TrackPlayer.appStartedWithNotification((track) => {
+  console.info(`🔔 appStartedWithNotification fired! track: ${track.id} - ${track.title}`);
+});
+
 TrackPlayer.onTracksNeedUpdate(async (tracks, lookahead) => {
   console.info(`🔄 onTracksNeedUpdate fired! ${tracks.length} tracks need URLs (lookahead: ${lookahead})`);
   console.info('Tracks:', tracks.map((t) => ({ id: t.id, title: t.title })));

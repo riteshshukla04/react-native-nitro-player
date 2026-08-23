@@ -85,7 +85,6 @@ internal fun TrackPlayerCore.rebuildQueueAndPlayFromIndex(index: Int) {
         }
 
     currentTrackIndex = index
-    exo.clearMediaItems()
     exo.setMediaItems(mediaItems, true)
     exo.prepare()
 }

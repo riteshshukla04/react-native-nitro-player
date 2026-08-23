@@ -69,9 +69,10 @@ export function useDownloadStorage(): UseDownloadStorageResult {
     ? formatBytes(storageInfo.availableSpace)
     : '0 B'
 
-  const usagePercentage = storageInfo
-    ? (storageInfo.totalDownloadedSize / storageInfo.totalSpace) * 100
-    : 0
+  const usagePercentage =
+    storageInfo && storageInfo.totalSpace > 0
+      ? (storageInfo.totalDownloadedSize / storageInfo.totalSpace) * 100
+      : 0
 
   return {
     storageInfo,

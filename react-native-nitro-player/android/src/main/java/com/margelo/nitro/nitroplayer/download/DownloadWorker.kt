@@ -10,11 +10,14 @@ import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import com.margelo.nitro.nitroplayer.*
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import java.io.BufferedInputStream
+import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
@@ -33,6 +36,7 @@ class DownloadWorker(
         const val KEY_URL = "url"
         const val KEY_PLAYLIST_ID = "playlist_id"
         const val KEY_STORAGE_LOCATION = "storage_location"
+        const val KEY_TRACK_JSON = "track_json"
 
         private const val NOTIFICATION_CHANNEL_ID = "nitro_player_downloads"
         private const val BASE_NOTIFICATION_ID = 2001
@@ -63,7 +67,7 @@ class DownloadWorker(
             val urlString = inputData.getString(KEY_URL) ?: return@withContext Result.failure()
             val storageLocationStr = inputData.getString(KEY_STORAGE_LOCATION) ?: StorageLocation.PRIVATE.name
 
-            notificationId = BASE_NOTIFICATION_ID + trackId.hashCode().and(0xFFFF)
+            notificationId = BASE_NOTIFICATION_ID + trackId.hashCode().and(0x7FFFFF)
 
             val storageLocation =
                 try {
@@ -90,7 +94,8 @@ class DownloadWorker(
                     }
 
                 if (localPath != null) {
-                    downloadManager.onComplete(downloadId, trackId, localPath)
+                    val fallbackTrack = inputData.getString(KEY_TRACK_JSON)?.let { TrackItemJson.fromJson(it) }
+                    downloadManager.onComplete(downloadId, trackId, localPath, fallbackTrack)
                     showCompletionNotification(trackTitle)
                     Result.success()
                 } else {
@@ -101,9 +106,7 @@ class DownloadWorker(
                             reason = DownloadErrorReason.UNKNOWN,
                             isRetryable = true,
                         )
-                    downloadManager.onError(downloadId, trackId, error)
-                    showErrorNotification(trackTitle)
-                    Result.retry()
+                    handleError(downloadId, trackId, trackTitle, error)
                 }
             } catch (e: TimeoutCancellationException) {
                 val error =
@@ -113,9 +116,11 @@ class DownloadWorker(
                         reason = DownloadErrorReason.TIMEOUT,
                         isRetryable = true,
                     )
-                downloadManager.onError(downloadId, trackId, error)
-                showErrorNotification(trackTitle)
-                Result.retry()
+                handleError(downloadId, trackId, trackTitle, error)
+            } catch (e: CancellationException) {
+                // Worker stopped (pause/cancel) — state was already set by the
+                // manager; don't overwrite it with FAILED.
+                throw e
             } catch (e: Exception) {
                 val errorReason =
                     when {
@@ -132,16 +137,23 @@ class DownloadWorker(
                         reason = errorReason,
                         isRetryable = errorReason in listOf(DownloadErrorReason.NETWORK_ERROR, DownloadErrorReason.TIMEOUT),
                     )
-                downloadManager.onError(downloadId, trackId, error)
-                showErrorNotification(trackTitle)
-
-                if (error.isRetryable) {
-                    Result.retry()
-                } else {
-                    Result.failure()
-                }
+                handleError(downloadId, trackId, trackTitle, error)
             }
         }
+
+    // Single retry owner: WorkManager reschedules via Result.retry(); the manager
+    // only records state, never enqueues a competing request.
+    private fun handleError(
+        downloadId: String,
+        trackId: String,
+        trackTitle: String,
+        error: DownloadError,
+    ): Result {
+        val willRetry = error.isRetryable && runAttemptCount < downloadManager.maxWorkerRetryAttempts()
+        downloadManager.onError(downloadId, trackId, error, willRetry)
+        showErrorNotification(trackTitle)
+        return if (willRetry) Result.retry() else Result.failure()
+    }
 
     private suspend fun downloadFile(
         downloadId: String,
@@ -154,18 +166,31 @@ class DownloadWorker(
             var connection: HttpURLConnection? = null
             var inputStream: BufferedInputStream? = null
             var outputStream: FileOutputStream? = null
+            var destinationFile: File? = null
 
             try {
+                val partialPath = fileManager.getLocalPath(trackId)
+                val existingBytes = partialPath?.let { File(it).length() } ?: 0L
+
                 val url = URL(urlString)
                 connection = url.openConnection() as HttpURLConnection
                 connection.connectTimeout = 30000
                 connection.readTimeout = 30000
+                if (existingBytes > 0) {
+                    connection.setRequestProperty("Range", "bytes=$existingBytes-")
+                }
                 connection.connect()
 
                 val responseCode = connection.responseCode
-                if (responseCode != HttpURLConnection.HTTP_OK) {
+                if (responseCode == 416) {
+                    // Partial file is at or past the server's length — start clean next attempt
+                    partialPath?.let { File(it).delete() }
+                    throw Exception("Server returned HTTP 416 for resume, restarting download")
+                }
+                if (responseCode != HttpURLConnection.HTTP_OK && responseCode != HttpURLConnection.HTTP_PARTIAL) {
                     throw Exception("Server returned HTTP $responseCode")
                 }
+                val resuming = responseCode == HttpURLConnection.HTTP_PARTIAL && existingBytes > 0 && partialPath != null
                 // Determine extension
                 var extension = MimeTypeMap.getFileExtensionFromUrl(urlString)
 
@@ -192,20 +217,31 @@ class DownloadWorker(
 
                 val finalExtension = if (extension.isNullOrEmpty()) "mp3" else extension
 
-                // Create destination file
-                val destinationFile = fileManager.createDownloadFile(trackId, storageLocation, finalExtension)
+                // Create destination file — appending to the partial file when the
+                // server honored the Range request, truncating otherwise
+                destinationFile =
+                    if (resuming) {
+                        File(partialPath!!)
+                    } else {
+                        fileManager.createDownloadFile(trackId, storageLocation, finalExtension)
+                    }
 
                 inputStream = BufferedInputStream(connection.inputStream)
-                outputStream = FileOutputStream(destinationFile)
+                outputStream = FileOutputStream(destinationFile, resuming)
 
-                val totalBytes = connection.contentLengthLong
-                var bytesDownloaded: Long = 0
+                val startOffset = if (resuming) existingBytes else 0L
+                val totalBytes =
+                    if (connection.contentLengthLong > 0) connection.contentLengthLong + startOffset else -1L
+                var bytesDownloaded: Long = startOffset
 
                 val buffer = ByteArray(BUFFER_SIZE)
                 var bytesRead: Int
                 var lastProgressUpdate = System.currentTimeMillis()
 
                 while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                    // Blocking reads never suspend, so cancellation (pause/cancel,
+                    // withTimeout, worker stop) must be checked explicitly here.
+                    coroutineContext.ensureActive()
                     outputStream.write(buffer, 0, bytesRead)
                     bytesDownloaded += bytesRead
 
@@ -225,6 +261,10 @@ class DownloadWorker(
                 downloadManager.onProgress(downloadId, trackId, bytesDownloaded, totalBytes)
 
                 destinationFile.absolutePath
+            } catch (e: CancellationException) {
+                // Keep the partial file — pause resumes from this offset via Range;
+                // an explicit cancel deletes it in DownloadManagerCore.cancelDownload
+                throw e
             } catch (e: Exception) {
                 throw e
             } finally {

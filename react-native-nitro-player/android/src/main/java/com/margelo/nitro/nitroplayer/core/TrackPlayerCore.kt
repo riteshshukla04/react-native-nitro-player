@@ -2,13 +2,17 @@
 
 package com.margelo.nitro.nitroplayer.core
 
+import android.app.Activity
+import android.app.Application
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import com.margelo.nitro.NitroModules
 import com.margelo.nitro.nitroplayer.Reason
 import com.margelo.nitro.nitroplayer.RepeatMode
 import com.margelo.nitro.nitroplayer.TimedMetadata
@@ -101,6 +105,8 @@ class TrackPlayerCore private constructor(
         ListenerRegistry<(TimedMetadata) -> Unit>()
     internal val onCastStateChangeListeners =
         ListenerRegistry<(com.margelo.nitro.nitroplayer.CastState, String?) -> Unit>()
+    internal val onNotificationLaunchListeners =
+        ListenerRegistry<(TrackItem) -> Unit>()
 
     // ── Google Cast ──────────────────────────────────────────────────────────
 
@@ -124,15 +130,21 @@ class TrackPlayerCore private constructor(
     internal val progressUpdateRunnable =
         object : Runnable {
             override fun run() {
-                if (::exo.isInitialized && exo.isPlaying) {
-                    val pos = exo.currentPosition / 1000.0
-                    val dur = if (exo.duration > 0) exo.duration / 1000.0 else 0.0
-                    notifyPlaybackProgress(pos, dur, if (isManuallySeeked) true else null)
-                    isManuallySeeked = false
-                }
+                // Stop ticking while paused/idle — onIsPlayingChanged restarts it,
+                // so the main looper isn't woken every second for the process lifetime
+                if (!::exo.isInitialized || !exo.isPlaying) return
+                val pos = exo.currentPosition / 1000.0
+                val dur = if (exo.duration > 0) exo.duration / 1000.0 else 0.0
+                notifyPlaybackProgress(pos, dur, if (isManuallySeeked) true else null)
+                isManuallySeeked = false
                 playerHandler.postDelayed(this, PROGRESS_INTERVAL_MS)
             }
         }
+
+    internal fun startProgressTicks() {
+        playerHandler.removeCallbacks(progressUpdateRunnable)
+        playerHandler.postDelayed(progressUpdateRunnable, PROGRESS_INTERVAL_MS)
+    }
 
     internal val updateCurrentPlaylistRunnable =
         Runnable {
@@ -214,9 +226,11 @@ class TrackPlayerCore private constructor(
         @Suppress("ktlint:standard:property-naming")
         private var INSTANCE: TrackPlayerCore? = null
 
+        // applicationContext: the process-lifetime singleton must not pin the
+        // ReactApplicationContext (and its whole JS runtime) across reloads
         fun getInstance(context: Context): TrackPlayerCore =
             INSTANCE ?: synchronized(this) {
-                INSTANCE ?: TrackPlayerCore(context).also { INSTANCE = it }
+                INSTANCE ?: TrackPlayerCore(context.applicationContext).also { INSTANCE = it }
             }
     }
 
@@ -396,4 +410,57 @@ class TrackPlayerCore private constructor(
     fun addOnCastStateChangeListener(cb: (com.margelo.nitro.nitroplayer.CastState, String?) -> Unit): Long = onCastStateChangeListeners.add(cb)
 
     fun removeOnCastStateChangeListener(id: Long): Boolean = onCastStateChangeListeners.remove(id)
+
+    // ── Notification-launch detection ─────────────────────────────────────
+
+    private var notificationLaunchDetectionRegistered = false
+
+    fun addOnNotificationLaunchListener(cb: (TrackItem) -> Unit): Long {
+        val id = onNotificationLaunchListeners.add(cb)
+        handler.post {
+            registerNotificationLaunchDetection()
+            checkNotificationLaunch(NitroModules.applicationContext?.currentActivity)
+        }
+        return id
+    }
+
+    fun removeOnNotificationLaunchListener(id: Long): Boolean = onNotificationLaunchListeners.remove(id)
+
+    private fun registerNotificationLaunchDetection() {
+        if (notificationLaunchDetectionRegistered) return
+        notificationLaunchDetectionRegistered = true
+        val app = context.applicationContext as? Application ?: return
+        app.registerActivityLifecycleCallbacks(
+            object : Application.ActivityLifecycleCallbacks {
+                override fun onActivityResumed(activity: Activity) = checkNotificationLaunch(activity)
+
+                override fun onActivityCreated(
+                    activity: Activity,
+                    savedInstanceState: Bundle?,
+                ) {}
+
+                override fun onActivityStarted(activity: Activity) {}
+
+                override fun onActivityPaused(activity: Activity) {}
+
+                override fun onActivityStopped(activity: Activity) {}
+
+                override fun onActivitySaveInstanceState(
+                    activity: Activity,
+                    outState: Bundle,
+                ) {}
+
+                override fun onActivityDestroyed(activity: Activity) {}
+            },
+        )
+    }
+
+    // Must run on the main looper — reads the player and mutates the activity intent
+    internal fun checkNotificationLaunch(activity: Activity?) {
+        val intent = activity?.intent ?: return
+        if (!intent.getBooleanExtra(NitroPlayerPlaybackService.EXTRA_STARTED_FROM_NOTIFICATION, false)) return
+        val track = getCurrentTrack() ?: return
+        intent.removeExtra(NitroPlayerPlaybackService.EXTRA_STARTED_FROM_NOTIFICATION)
+        onNotificationLaunchListeners.forEach { it(track) }
+    }
 }

@@ -1,0 +1,223 @@
+---
+title: Google Cast
+description: Cast playback to Chromecast devices with the Cast API, CastButton component, and cast hooks
+---
+
+Import:
+
+```typescript
+import { Cast, CastButton, useCastState, useIsCasting } from 'react-native-nitro-player';
+```
+
+Casting is a playback backend swap inside the native player core: when a session is
+`connected`, every playback operation (play, pause, seek, skip, queue) is routed to
+the remote Cast device and local audio is suppressed automatically. The entire
+[TrackPlayer](/docs/api/track-player) API keeps working unchanged — `Cast` only
+exposes the Cast-specific surface.
+
+---
+
+## Setup
+
+No app code is required to initialize the Cast framework — it initializes
+automatically on both platforms. The only required app configuration is on iOS:
+
+**iOS `Info.plist`:**
+
+```xml
+<key>NSLocalNetworkUsageDescription</key>
+<string>Used to discover Cast devices on your network</string>
+<key>NSBonjourServices</key>
+<array>
+  <string>_googlecast._tcp</string>
+</array>
+```
+
+Android needs nothing — the library ships the Cast SDK dependencies and registers
+its own `OptionsProvider`. If your app already ships its own Cast
+`OptionsProvider`, override the library's manifest entry with `tools:replace`.
+
+Cast has no simulator/emulator support — testing needs a real Chromecast device
+on the same network.
+
+---
+
+## Cast API
+
+### `configure(receiverApplicationId?)`
+
+Optionally set a custom Web Receiver application ID (from the Google Cast
+Developer Console). Call once, early in app startup, before the first Cast
+interaction. When never called, the platform **Default Media Receiver**
+(`CC1AD845`) is used, which supports audio, metadata, and queues out of the box.
+
+```typescript
+await Cast.configure('YOUR_RECEIVER_APP_ID');
+```
+
+**Returns:** `Promise<void>`
+
+The receiver ID is fixed per process once the framework initializes — call this
+before any other Cast interaction or not at all.
+
+---
+
+### `isCasting()`
+
+Whether playback is currently routed to a Cast device. **Synchronous.**
+Equivalent to `getCastState() === 'connected'`.
+
+```typescript
+const casting = Cast.isCasting();
+```
+
+**Returns:** `boolean`
+
+---
+
+### `getCastState()`
+
+The current Cast connection state. **Synchronous.**
+
+```typescript
+const state = Cast.getCastState();
+```
+
+**Returns:** `CastState`
+
+| Value | Meaning |
+|---|---|
+| `no_devices_available` | No Cast devices discoverable on the network. The Cast button is typically hidden |
+| `not_connected` | Devices available, none connected |
+| `connecting` | A session is being established |
+| `connected` | Session active — playback routed to the device |
+
+---
+
+### `getCastDeviceName()`
+
+Friendly name of the connected device. **Synchronous.**
+
+```typescript
+const name = Cast.getCastDeviceName(); // "Living Room TV" or null
+```
+
+**Returns:** `string | null` — `null` when not connected
+
+---
+
+### `showCastPicker()`
+
+Present the native Cast dialog: the device chooser when not connected, or the
+cast controls / disconnect dialog when already connected. Mirrors the standard
+platform Cast button behaviour.
+
+```typescript
+Cast.showCastPicker();
+```
+
+---
+
+### `endCastSession()`
+
+End the current Cast session and resume local playback. No-op when not connected.
+
+```typescript
+await Cast.endCastSession();
+```
+
+**Returns:** `Promise<void>`
+
+---
+
+### `onCastStateChange(callback)`
+
+Called whenever the Cast connection state changes.
+
+```typescript
+Cast.onCastStateChange((state, deviceName) => {
+  console.log(`Cast: ${state}`, deviceName);
+});
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `state` | `CastState` | The new connection state |
+| `deviceName` | `string \| null` | Connected device name, `null` when not connected |
+
+Prefer the [hooks](#hooks) in React components — they manage subscriptions for you.
+
+---
+
+## CastButton
+
+A ready-to-use Cast button. Reflects the live connection state, hides itself when
+no devices are available (configurable), and presents the native Cast dialog on
+press. Drawn with plain `View`s — no icon dependencies.
+
+```tsx
+import { CastButton } from 'react-native-nitro-player';
+
+<CastButton size={28} activeColor="#1DB954" />
+```
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `size` | `number` | `24` | Icon size in points |
+| `color` | `string` | `#000000` | Glyph color when not connected |
+| `activeColor` | `string` | `#1E88E5` | Glyph color while connecting / connected |
+| `hideWhenNoDevices` | `boolean` | `true` | Hide entirely when no devices are on the network |
+| `style` | `StyleProp<ViewStyle>` | — | Container style |
+| `renderIcon` | `(info) => ReactNode` | — | Custom icon; receives `{ state, isCasting, size, color }` |
+| `onPress` | `PressableProps['onPress']` | opens Cast picker | Custom press handler |
+
+All other `Pressable` props pass through.
+
+---
+
+## Hooks
+
+### `useIsCasting()`
+
+Boolean flag that updates in real time as Cast sessions start and end.
+
+```tsx
+function NowPlaying() {
+  const isCasting = useIsCasting();
+  return <Text>{isCasting ? 'Casting' : 'Playing locally'}</Text>;
+}
+```
+
+**Returns:** `boolean`
+
+---
+
+### `useCastState()`
+
+Full connection state for richer UI.
+
+```tsx
+function CastStatus() {
+  const { state, deviceName, isCasting } = useCastState();
+  if (!isCasting) return null;
+  return <Text>Casting to {deviceName}</Text>;
+}
+```
+
+**Returns:** `UseCastStateResult`
+
+| Field | Type | Description |
+|---|---|---|
+| `state` | `CastState` | Current connection state |
+| `deviceName` | `string \| null` | Connected device name |
+| `isCasting` | `boolean` | Convenience flag, `state === 'connected'` |
+| `isReady` | `boolean` | Whether the initial state has been read from native |
+
+---
+
+## Notes
+
+- Queue, repeat mode, and track-change events keep flowing while casting — UI
+  built on [playback hooks](/docs/hooks/playback-hooks) needs no cast-specific code.
+- On iOS, lock-screen Now Playing during a cast session is best-effort; transport
+  controls still drive the Cast device.
