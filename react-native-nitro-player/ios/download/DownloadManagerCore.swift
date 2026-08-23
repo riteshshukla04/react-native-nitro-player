@@ -180,8 +180,10 @@ final class DownloadManagerCore: NSObject {
       guard let task = self.activeTasks[downloadId] else { return }
 
       task.cancel(byProducingResumeData: { resumeData in
-        // Store resume data for later
-        self.taskMetadata[downloadId]?.resumeData = resumeData
+        // Runs on the URLSession delegate queue — hop back for the shared dict
+        self.queue.async(flags: .barrier) {
+          self.taskMetadata[downloadId]?.resumeData = resumeData
+        }
       })
 
       self.taskMetadata[downloadId]?.state = .paused
@@ -264,7 +266,9 @@ final class DownloadManagerCore: NSObject {
   private func _pauseDownloadUnsafe(downloadId: String) {
     guard let task = self.activeTasks[downloadId] else { return }
     task.cancel(byProducingResumeData: { resumeData in
-      self.taskMetadata[downloadId]?.resumeData = resumeData
+      self.queue.async(flags: .barrier) {
+        self.taskMetadata[downloadId]?.resumeData = resumeData
+      }
     })
     self.taskMetadata[downloadId]?.state = .paused
     if let trackId = self.taskMetadata[downloadId]?.trackId {
