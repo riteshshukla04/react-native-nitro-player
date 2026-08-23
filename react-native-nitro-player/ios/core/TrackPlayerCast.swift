@@ -67,13 +67,44 @@ extension TrackPlayerCore {
       guard let self else { return }
       guard self.isCasting else { return }
       let resumePosition = self.castManager?.lastKnownRemotePosition ?? 0
+      let remoteTrackId = self.castManager?.currentRemoteTrackId
       self.isCasting = false
 
       let index = self.currentTrackIndex
       guard index >= 0 && index < self.currentTracks.count else { return }
 
+      // rebuildQueueFromPlaylistIndex wipes the temp lists — preserve them
+      let savedPlayNext = self.playNextStack
+      let savedUpNext = self.upNextQueue
+
       _ = self.rebuildQueueFromPlaylistIndex(index: index)
-      if resumePosition.isFinite && resumePosition > 0 {
+
+      if !savedPlayNext.isEmpty || !savedUpNext.isEmpty {
+        self.playNextStack = savedPlayNext
+        self.upNextQueue = savedUpNext
+        self.rebuildAVQueueFromCurrentPosition()
+        self.notifyTemporaryQueueChange()
+      }
+
+      // If the receiver was playing the head temp track, make it current again
+      // (mirrors skipToNext: remove from its list before it becomes current)
+      if let target = remoteTrackId, target != self.player?.currentItem?.trackId {
+        if self.playNextStack.first?.id == target {
+          self.playNextStack.removeFirst()
+          self.player?.advanceToNextItem()
+          self.currentTemporaryType = .playNext
+          self.notifyTemporaryQueueChange()
+        } else if self.playNextStack.isEmpty, self.upNextQueue.first?.id == target {
+          self.upNextQueue.removeFirst()
+          self.player?.advanceToNextItem()
+          self.currentTemporaryType = .upNext
+          self.notifyTemporaryQueueChange()
+        }
+      }
+
+      // Only seek when the local current track is the one that was playing remotely
+      if resumePosition.isFinite && resumePosition > 0,
+        remoteTrackId != nil, self.player?.currentItem?.trackId == remoteTrackId {
         let time = CMTime(seconds: resumePosition, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
         self.player?.seek(to: time)
       }
