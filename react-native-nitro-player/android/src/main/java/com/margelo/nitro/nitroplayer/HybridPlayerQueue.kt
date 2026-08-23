@@ -39,7 +39,9 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
 
     override fun deletePlaylist(playlistId: String): Promise<Unit> =
         Promise.async {
-            playlistManager.deletePlaylist(playlistId)
+            if (!playlistManager.deletePlaylist(playlistId)) {
+                throw IllegalArgumentException("Playlist not found: $playlistId")
+            }
         }
 
     override fun updatePlaylist(
@@ -49,7 +51,9 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
         artwork: String?,
     ): Promise<Unit> =
         Promise.async {
-            playlistManager.updatePlaylist(playlistId, name, description, artwork)
+            if (!playlistManager.updatePlaylist(playlistId, name, description, artwork)) {
+                throw IllegalArgumentException("Playlist not found: $playlistId")
+            }
             core.updatePlaylist(playlistId)
         }
 
@@ -72,7 +76,9 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
         index: Double?,
     ): Promise<Unit> =
         Promise.async {
-            playlistManager.addTrackToPlaylist(playlistId, track, index?.toInt())
+            if (!playlistManager.addTrackToPlaylist(playlistId, track, index?.toInt())) {
+                throw IllegalArgumentException("Playlist not found: $playlistId")
+            }
             core.updatePlaylist(playlistId)
         }
 
@@ -82,7 +88,9 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
         index: Double?,
     ): Promise<Unit> =
         Promise.async {
-            playlistManager.addTracksToPlaylist(playlistId, tracks.toList(), index?.toInt())
+            if (!playlistManager.addTracksToPlaylist(playlistId, tracks.toList(), index?.toInt())) {
+                throw IllegalArgumentException("Playlist not found: $playlistId")
+            }
             core.updatePlaylist(playlistId)
         }
 
@@ -91,7 +99,9 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
         trackId: String,
     ): Promise<Unit> =
         Promise.async {
-            playlistManager.removeTrackFromPlaylist(playlistId, trackId)
+            if (!playlistManager.removeTrackFromPlaylist(playlistId, trackId)) {
+                throw IllegalArgumentException("Track $trackId not found in playlist $playlistId")
+            }
             core.updatePlaylist(playlistId)
         }
 
@@ -101,7 +111,9 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
         newIndex: Double,
     ): Promise<Unit> =
         Promise.async {
-            playlistManager.reorderTrackInPlaylist(playlistId, trackId, newIndex.toInt())
+            if (!playlistManager.reorderTrackInPlaylist(playlistId, trackId, newIndex.toInt())) {
+                throw IllegalArgumentException("Invalid reorder for track $trackId in playlist $playlistId")
+            }
             core.updatePlaylist(playlistId)
         }
 
@@ -120,8 +132,10 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
         core.enqueue {
             if (playlistManager.loadPlaylist(playlistId, startIndex)) {
                 core.loadPlaylistOnQueue(playlistId, startIndex)
+                promise.resolve(Unit)
+            } else {
+                promise.reject(IllegalArgumentException("Invalid playlist or index: $playlistId"))
             }
-            promise.resolve(Unit)
         }
         return promise
     }
