@@ -104,11 +104,6 @@ class DownloadDatabase private constructor(
         path: String,
     ): Boolean = existenceCache.getOrPut(trackId) { File(path).exists() }
 
-    /** Drops every memoized verdict — files may have changed outside the app. */
-    fun invalidateExistenceCache() {
-        synchronized(this) { existenceCache.clear() }
-    }
-
     /** Count via the memoized existence cache — no per-record stat() on the caller's thread. */
     fun countDownloadedTracks(): Int =
         synchronized(this) {
