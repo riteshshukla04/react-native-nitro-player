@@ -12,7 +12,7 @@ import androidx.media3.datasource.ResolvingDataSource
  * Headers are registered per effective URL via [setHeadersForUrl] during MediaItem
  * construction and applied through a [ResolvingDataSource] just before each request opens.
  *
- * The registry is a [ConcurrentHashMap] because it is written on the player thread but
+ * The registry is a synchronized LRU map because it is written on the player thread but
  * read on ExoPlayer's loader threads.
  */
 @UnstableApi
