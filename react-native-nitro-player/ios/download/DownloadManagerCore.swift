@@ -911,6 +911,14 @@ extension DownloadManagerCore: URLSessionDownloadDelegate {
       self.taskMetadata[downloadId]?.totalBytes =
         totalBytesExpectedToWrite > 0 ? Double(totalBytesExpectedToWrite) : nil
 
+      // ~4 Hz per download — didWriteData fires many times per second per task
+      // and every emission is a main-queue hop plus a JS event
+      let now = Date().timeIntervalSince1970
+      if let last = self.taskMetadata[downloadId]?.lastProgressEmitAt, now - last < 0.25 {
+        return
+      }
+      self.taskMetadata[downloadId]?.lastProgressEmitAt = now
+
       let progress = DownloadProgress(
         trackId: trackId,
         downloadId: downloadId,
@@ -1014,6 +1022,7 @@ private struct DownloadTaskMetadata {
   var bytesDownloaded: Double = 0
   var totalBytes: Double?
   var error: DownloadError?
+  var lastProgressEmitAt: TimeInterval = 0
 
   func toDownloadTask() -> DownloadTask {
     let progress = DownloadProgress(
