@@ -16,7 +16,6 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
  */
 @UnstableApi
 object ExoPlayerBuilder {
-    /** Matches `PlayerConfig.remoteSkip*Interval`'s documented default. */
     const val DEFAULT_REMOTE_SKIP_INTERVAL_MS = 15_000L
 
     fun build(context: Context): ExoPlayer {

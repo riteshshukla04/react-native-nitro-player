@@ -71,8 +71,6 @@ class TrackPlayerCore private constructor(
     @Volatile internal var currentRepeatMode: RepeatMode = RepeatMode.OFF
     internal var lookaheadCount: Int = 5
 
-    // Held on the core (not just the player) so the configured intervals survive a
-    // local <-> cast backend swap, which replaces the ExoPlayerCore wrapper.
     internal var remoteSkipForwardIntervalMs: Long = ExoPlayerBuilder.DEFAULT_REMOTE_SKIP_INTERVAL_MS
     internal var remoteSkipBackwardIntervalMs: Long = ExoPlayerBuilder.DEFAULT_REMOTE_SKIP_INTERVAL_MS
     internal var playerListener: androidx.media3.common.Player.Listener? = null

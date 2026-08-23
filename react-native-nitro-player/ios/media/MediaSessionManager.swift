@@ -17,7 +17,6 @@ class MediaSessionManager {
   private enum Constants {
     static let artworkSize: CGFloat = 500.0
     static let defaultRemoteSkipInterval: Double = 15.0
-    /// Offered in the Control Center rate menu. iOS renders exactly this list.
     static let supportedPlaybackRates: [Float] = [0.5, 1.0, 1.25, 1.5, 1.75, 2.0]
   }
 
@@ -65,8 +64,6 @@ class MediaSessionManager {
     if let playbackSpeed = sanitizedPositive(playbackSpeed) {
       cachedPlaybackSpeed = playbackSpeed
     }
-    // Invalid intervals (non-finite, <= 0) are ignored rather than clearing the
-    // current value — configure() is partial, an absent field means "unchanged".
     if let interval = sanitizedPositive(remoteSkipForwardInterval) {
       self.remoteSkipForwardInterval = interval
     }
@@ -155,7 +152,7 @@ class MediaSessionManager {
       MPNowPlayingInfoPropertyElapsedPlaybackTime: safePosition,
       MPMediaItemPropertyPlaybackDuration: effectiveDuration,
       MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? playbackSpeed : 0.0,
-      MPNowPlayingInfoPropertyDefaultPlaybackRate: 1.0,
+      MPNowPlayingInfoPropertyDefaultPlaybackRate: playbackSpeed,
       MPNowPlayingInfoPropertyPlaybackQueueCount: max(1, queueCount),
       MPNowPlayingInfoPropertyPlaybackQueueIndex: max(0, positionInQueue),
     ]
@@ -252,8 +249,6 @@ class MediaSessionManager {
       return .success
     }
 
-    // Fixed-interval skip (AirPods double/triple tap, lock screen, Control Center).
-    // `preferredIntervals` is a hint — honour the interval iOS actually sends.
     commandCenter.skipForwardCommand.isEnabled = false
     commandCenter.skipForwardCommand.addTarget { [weak self] event in
       guard let self = self, let core = self.trackPlayerCore else { return .commandFailed }
@@ -270,12 +265,9 @@ class MediaSessionManager {
       return .success
     }
 
-    // Press-and-hold continuous seek is not implemented — leaving these disabled
-    // makes iOS fall back to the fixed skip commands above.
     commandCenter.seekForwardCommand.isEnabled = false
     commandCenter.seekBackwardCommand.isEnabled = false
 
-    // Playback rate (Control Center rate menu)
     commandCenter.changePlaybackRateCommand.isEnabled = false
     commandCenter.changePlaybackRateCommand.addTarget { [weak self] event in
       guard let core = self?.trackPlayerCore,
@@ -347,8 +339,6 @@ class MediaSessionManager {
 
   // MARK: - Helpers
 
-  /// Returns the value only when it is a usable positive number, so a caller can
-  /// `??` its way to a sane fallback instead of propagating NaN into MediaPlayer.
   private func sanitizedPositive(_ value: Double?) -> Double? {
     guard let value = value, value.isFinite, value > 0 else { return nil }
     return value

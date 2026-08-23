@@ -77,18 +77,28 @@ class MediaSessionManager(
         mediaSession = null
     }
 
-    // ── Remote skip buttons ────────────────────────────────────────────────
-    //
-    // Declared as media button preferences rather than custom commands so
-    // DefaultMediaNotificationProvider renders them and Media3 dispatches
-    // COMMAND_SEEK_BACK/FORWARD straight to the session's player — which is the
-    // CastPlayer while casting, so the buttons keep working there too.
-
     private fun updateMediaButtonPreferences() {
         val session = mediaSession ?: return
-        val preserved = session.mediaButtonPreferences.filterNot { it.isRemoteSkipButton() }
-        session.setMediaButtonPreferences(listOf(skipBackButton(), skipForwardButton()) + preserved)
+        // Preferences replace Media3's default layout — prev/next must be declared or they vanish
+        val preserved = session.mediaButtonPreferences.filterNot { it.isManagedButton() }
+        session.setMediaButtonPreferences(
+            listOf(previousTrackButton(), skipBackButton(), skipForwardButton(), nextTrackButton()) + preserved,
+        )
     }
+
+    private fun previousTrackButton(): CommandButton =
+        CommandButton
+            .Builder(CommandButton.ICON_PREVIOUS)
+            .setPlayerCommand(Player.COMMAND_SEEK_TO_PREVIOUS)
+            .setDisplayName(context.getString(R.string.nitro_player_previous_track))
+            .build()
+
+    private fun nextTrackButton(): CommandButton =
+        CommandButton
+            .Builder(CommandButton.ICON_NEXT)
+            .setPlayerCommand(Player.COMMAND_SEEK_TO_NEXT)
+            .setDisplayName(context.getString(R.string.nitro_player_next_track))
+            .build()
 
     private fun skipBackButton(): CommandButton =
         CommandButton
@@ -112,11 +122,12 @@ class MediaSessionManager(
                 ),
             ).build()
 
-    private fun CommandButton.isRemoteSkipButton(): Boolean =
-        playerCommand == Player.COMMAND_SEEK_BACK || playerCommand == Player.COMMAND_SEEK_FORWARD
+    private fun CommandButton.isManagedButton(): Boolean =
+        playerCommand == Player.COMMAND_SEEK_BACK ||
+            playerCommand == Player.COMMAND_SEEK_FORWARD ||
+            playerCommand == Player.COMMAND_SEEK_TO_PREVIOUS ||
+            playerCommand == Player.COMMAND_SEEK_TO_NEXT
 
-    // Media3 ships numbered icons only for these intervals; anything else falls
-    // back to the unnumbered glyph.
     private fun skipBackIcon(intervalMs: Long): Int =
         when (intervalMs) {
             5_000L -> CommandButton.ICON_SKIP_BACK_5

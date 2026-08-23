@@ -140,8 +140,6 @@ extension TrackPlayerCore {
       )
     }
     currentPlaybackSpeed = speed
-    // Control Center renders the rate from the now-playing info, so it has to be
-    // refreshed whichever backend is playing.
     defer { refreshMediaSession() }
     if isCasting {
       castManager?.setPlaybackRate(Float(speed))
@@ -156,8 +154,6 @@ extension TrackPlayerCore {
     try await withPlayerQueue { try self.setPlaybackSpeedOnQueue(speed) }
   }
 
-  /// Fixed-interval remote skip (lock screen, AirPods, Control Center). A positive
-  /// `offset` seeks forward, negative back; the target is clamped to the track.
   func seekByOnQueue(offset: Double) {
     if isCasting {
       let position = castManager?.lastKnownRemotePosition ?? 0

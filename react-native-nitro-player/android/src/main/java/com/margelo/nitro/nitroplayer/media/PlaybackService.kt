@@ -107,8 +107,6 @@ class NitroPlayerPlaybackService : MediaSessionService() {
     private fun initCast() {
         try {
             val castContext = CastContext.getSharedInstance(this)
-            // CastPlayer's seek increments are constructor-only, so a later
-            // configure() cannot change them — the receiver always skips by the default.
             val castPlayer =
                 CastPlayer(
                     castContext,

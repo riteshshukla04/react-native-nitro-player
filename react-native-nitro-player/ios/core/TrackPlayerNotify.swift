@@ -21,10 +21,7 @@ extension TrackPlayerCore {
     refreshMediaSession()
   }
 
-  /// Pushes the current track, state and playback rate to the media session.
-  /// MUST run on playerQueue: every value is captured here and handed to main
-  /// pre-computed, so the session never touches player-queue-owned state. Metrics,
-  /// not the queue itself — the media session only needs count and position.
+  /// Must run on playerQueue — values are captured here and handed to main pre-computed
   func refreshMediaSession(track providedTrack: TrackItem? = nil) {
     guard let track = providedTrack ?? getCurrentTrack() else { return }
     let state = getStateInternal()

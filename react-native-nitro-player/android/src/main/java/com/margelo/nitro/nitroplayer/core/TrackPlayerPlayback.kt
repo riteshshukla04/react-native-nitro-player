@@ -110,13 +110,7 @@ internal fun TrackPlayerCore.configureOnQueue(config: PlayerConfig) {
     )
 }
 
-/**
- * Pushes the configured skip intervals onto the **local** ExoPlayer.
- *
- * Resolved from the cast controller rather than `exo` so a configure() arriving
- * mid-cast still lands: `exo` points at the CastPlayer then, whose increments are
- * fixed at construction and cannot be changed.
- */
+// Resolved from the cast controller: mid-cast `exo` is the CastPlayer, whose increments are fixed
 @OptIn(UnstableApi::class)
 internal fun TrackPlayerCore.applyRemoteSkipIntervals() {
     val local = castSessionController?.localPlayer ?: if (isExoInitialized) exo.player else null
@@ -126,7 +120,6 @@ internal fun TrackPlayerCore.applyRemoteSkipIntervals() {
     }
 }
 
-/** Seconds -> ms, rejecting values that cannot produce a usable increment. */
 private fun remoteSkipIntervalMs(intervalSeconds: Double?): Long? {
     if (intervalSeconds == null || !intervalSeconds.isFinite() || intervalSeconds <= 0.0) return null
     return (intervalSeconds * 1000.0).toLong().coerceAtLeast(1L)
