@@ -115,6 +115,7 @@ class DownloadManagerCore private constructor(
                 DownloadWorker.KEY_URL to track.url,
                 DownloadWorker.KEY_PLAYLIST_ID to (playlistId ?: ""),
                 DownloadWorker.KEY_STORAGE_LOCATION to (config.storageLocation?.name ?: StorageLocation.PRIVATE.name),
+                DownloadWorker.KEY_TRACK_JSON to TrackItemJson.toJson(track),
             )
 
         val downloadRequest =
@@ -375,8 +376,11 @@ class DownloadManagerCore private constructor(
         downloadId: String,
         trackId: String,
         localPath: String,
+        fallbackTrack: TrackItem? = null,
     ) {
-        val track = trackMetadata[trackId] ?: return
+        // fallbackTrack comes from the worker's persisted inputData — the
+        // in-memory maps are empty when the worker completes in a fresh process.
+        val track = trackMetadata[trackId] ?: fallbackTrack ?: return
         val playlistId = playlistAssociations[downloadId]
         val storageLocation = config.storageLocation ?: StorageLocation.PRIVATE
         val fileSize = fileManager.getFileSize(localPath)
