@@ -165,7 +165,7 @@ class DownloadManagerCore private constructor(
             runningDownloads.remove(downloadId)
             pendingLaunchQueue.remove(downloadId)
             if (runningDownloads.size < maxConcurrent()) {
-                next = pendingLaunchQueue.removeFirstOrNull()
+                next = pendingLaunchQueue.pollFirst()
                 next?.let { runningDownloads.add(it) }
             }
         }
