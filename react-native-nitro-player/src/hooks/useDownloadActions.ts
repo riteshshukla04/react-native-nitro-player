@@ -87,7 +87,7 @@ export function useDownloadActions(): UseDownloadActionsResult {
         endDownloading()
       }
     },
-    []
+    [beginDownloading, endDownloading]
   )
 
   const downloadPlaylist = useCallback(
@@ -107,7 +107,7 @@ export function useDownloadActions(): UseDownloadActionsResult {
         endDownloading()
       }
     },
-    []
+    [beginDownloading, endDownloading]
   )
 
   const pauseDownload = useCallback(async (downloadId: string) => {
@@ -138,23 +138,29 @@ export function useDownloadActions(): UseDownloadActionsResult {
     await DownloadManager.cancelAllDownloads()
   }, [])
 
-  const deleteTrack = useCallback(async (trackId: string) => {
-    beginDeleting()
-    try {
-      await DownloadManager.deleteDownloadedTrack(trackId)
-    } finally {
-      endDeleting()
-    }
-  }, [])
+  const deleteTrack = useCallback(
+    async (trackId: string) => {
+      beginDeleting()
+      try {
+        await DownloadManager.deleteDownloadedTrack(trackId)
+      } finally {
+        endDeleting()
+      }
+    },
+    [beginDeleting, endDeleting]
+  )
 
-  const deletePlaylist = useCallback(async (playlistId: string) => {
-    beginDeleting()
-    try {
-      await DownloadManager.deleteDownloadedPlaylist(playlistId)
-    } finally {
-      endDeleting()
-    }
-  }, [])
+  const deletePlaylist = useCallback(
+    async (playlistId: string) => {
+      beginDeleting()
+      try {
+        await DownloadManager.deleteDownloadedPlaylist(playlistId)
+      } finally {
+        endDeleting()
+      }
+    },
+    [beginDeleting, endDeleting]
+  )
 
   const deleteAll = useCallback(async () => {
     beginDeleting()
@@ -163,7 +169,7 @@ export function useDownloadActions(): UseDownloadActionsResult {
     } finally {
       endDeleting()
     }
-  }, [])
+  }, [beginDeleting, endDeleting])
 
   const configure = useCallback((config: DownloadConfig) => {
     DownloadManager.configure(config)

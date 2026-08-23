@@ -4,9 +4,7 @@ import type { TAudioDevice } from '../specs/AudioDevices.nitro'
 
 function devicesEqual(a: TAudioDevice[], b: TAudioDevice[]): boolean {
   if (a.length !== b.length) return false
-  return a.every(
-    (d, i) => d.id === b[i]!.id && d.isActive === b[i]!.isActive
-  )
+  return a.every((d, i) => d.id === b[i]!.id && d.isActive === b[i]!.isActive)
 }
 
 /**
