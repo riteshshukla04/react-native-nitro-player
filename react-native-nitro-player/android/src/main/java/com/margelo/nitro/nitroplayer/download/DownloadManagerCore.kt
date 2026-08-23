@@ -175,6 +175,7 @@ class DownloadManagerCore private constructor(
                     DownloadWorker.KEY_URL to track.url,
                     DownloadWorker.KEY_PLAYLIST_ID to (playlistId ?: ""),
                     DownloadWorker.KEY_STORAGE_LOCATION to (config.storageLocation?.name ?: StorageLocation.PRIVATE.name),
+                    DownloadWorker.KEY_TRACK_JSON to TrackItemJson.toJson(track),
                 )
 
             val downloadRequest =
