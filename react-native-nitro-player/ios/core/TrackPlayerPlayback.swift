@@ -72,9 +72,15 @@ extension TrackPlayerCore {
   func skipToPrevious() async { await withPlayerQueueNoThrow { self.skipToPreviousOnQueue() } }
 
   func setRepeatModeOnQueue(mode: RepeatMode) {
+    let previousMode = currentRepeatMode
     currentRepeatMode = mode
     player?.actionAtItemEnd = (mode == .track) ? .none : .advance
     if isCasting { castManager?.setQueueRepeatMode(mode) }
+    if !isCasting, previousMode != mode, previousMode == .playlist || mode == .playlist,
+      player?.currentItem != nil
+    {
+      rebuildAVQueueFromCurrentPosition()
+    }
     NitroPlayerLogger.log("TrackPlayerCore", "🔁 setRepeatMode: \(mode)")
   }
   func setRepeatMode(mode: RepeatMode) async {
