@@ -475,17 +475,17 @@ class EqualizerCore private constructor(
 
     // === Callback management ===
 
-    fun addOnEnabledChangeListener(callback: (Boolean) -> Unit) {
-        onEnabledChangeListeners.add(callback)
-    }
+    fun addOnEnabledChangeListener(callback: (Boolean) -> Unit): Long = onEnabledChangeListeners.add(callback)
 
-    fun addOnBandChangeListener(callback: (Array<EqualizerBand>) -> Unit) {
-        onBandChangeListeners.add(callback)
-    }
+    fun removeOnEnabledChangeListener(id: Long): Boolean = onEnabledChangeListeners.remove(id)
 
-    fun addOnPresetChangeListener(callback: (Variant_NullType_String?) -> Unit) {
-        onPresetChangeListeners.add(callback)
-    }
+    fun addOnBandChangeListener(callback: (Array<EqualizerBand>) -> Unit): Long = onBandChangeListeners.add(callback)
+
+    fun removeOnBandChangeListener(id: Long): Boolean = onBandChangeListeners.remove(id)
+
+    fun addOnPresetChangeListener(callback: (Variant_NullType_String?) -> Unit): Long = onPresetChangeListeners.add(callback)
+
+    fun removeOnPresetChangeListener(id: Long): Boolean = onPresetChangeListeners.remove(id)
 
     private fun notifyEnabledChange(enabled: Boolean) {
         onEnabledChangeListeners.forEach { it(enabled) }

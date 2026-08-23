@@ -63,9 +63,29 @@ class HybridEqualizer : HybridEqualizerSpec() {
     override fun reset(): Promise<Unit> = Promise.async { core.reset() }
 
     // ── Events ────────────────────────────────────────────────────────────────
-    override fun onEnabledChange(callback: (enabled: Boolean) -> Unit) = core.addOnEnabledChangeListener(callback)
+    private val listenerIds = java.util.concurrent.CopyOnWriteArrayList<Pair<String, Long>>()
 
-    override fun onBandChange(callback: (bands: Array<EqualizerBand>) -> Unit) = core.addOnBandChangeListener(callback)
+    override fun onEnabledChange(callback: (enabled: Boolean) -> Unit) {
+        listenerIds.add("enabled" to core.addOnEnabledChangeListener(callback))
+    }
 
-    override fun onPresetChange(callback: (presetName: Variant_NullType_String?) -> Unit) = core.addOnPresetChangeListener(callback)
+    override fun onBandChange(callback: (bands: Array<EqualizerBand>) -> Unit) {
+        listenerIds.add("band" to core.addOnBandChangeListener(callback))
+    }
+
+    override fun onPresetChange(callback: (presetName: Variant_NullType_String?) -> Unit) {
+        listenerIds.add("preset" to core.addOnPresetChangeListener(callback))
+    }
+
+    override fun dispose() {
+        super.dispose()
+        listenerIds.forEach { (type, id) ->
+            when (type) {
+                "enabled" -> core.removeOnEnabledChangeListener(id)
+                "band" -> core.removeOnBandChangeListener(id)
+                "preset" -> core.removeOnPresetChangeListener(id)
+            }
+        }
+        listenerIds.clear()
+    }
 }

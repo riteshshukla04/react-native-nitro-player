@@ -7,6 +7,7 @@ import android.util.Log
 import androidx.work.*
 import com.margelo.nitro.core.NullType
 import com.margelo.nitro.nitroplayer.*
+import com.margelo.nitro.nitroplayer.core.ListenerRegistry
 import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
@@ -52,10 +53,11 @@ class DownloadManagerCore private constructor(
     private val trackMetadata = ConcurrentHashMap<String, TrackItem>()
     private val playlistAssociations = ConcurrentHashMap<String, String>()
 
-    // Callbacks
-    private val progressCallbacks = CopyOnWriteArrayList<(DownloadProgress) -> Unit>()
-    private val stateChangeCallbacks = CopyOnWriteArrayList<(String, String, DownloadState, DownloadError?) -> Unit>()
-    private val completeCallbacks = CopyOnWriteArrayList<(DownloadedTrack) -> Unit>()
+    // Callbacks — ListenerRegistry so HybridDownloadManager.dispose can remove
+    // them instead of leaking closures into dead JS runtimes across reloads
+    private val progressCallbacks = ListenerRegistry<(DownloadProgress) -> Unit>()
+    private val stateChangeCallbacks = ListenerRegistry<(String, String, DownloadState, DownloadError?) -> Unit>()
+    private val completeCallbacks = ListenerRegistry<(DownloadedTrack) -> Unit>()
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private val database = DownloadDatabase.getInstance(context)
@@ -360,17 +362,17 @@ class DownloadManagerCore private constructor(
         }
 
     // Callbacks
-    fun addProgressCallback(callback: (DownloadProgress) -> Unit) {
-        progressCallbacks.add(callback)
-    }
+    fun addProgressCallback(callback: (DownloadProgress) -> Unit): Long = progressCallbacks.add(callback)
 
-    fun addStateChangeCallback(callback: (String, String, DownloadState, DownloadError?) -> Unit) {
-        stateChangeCallbacks.add(callback)
-    }
+    fun removeProgressCallback(id: Long): Boolean = progressCallbacks.remove(id)
 
-    fun addCompleteCallback(callback: (DownloadedTrack) -> Unit) {
-        completeCallbacks.add(callback)
-    }
+    fun addStateChangeCallback(callback: (String, String, DownloadState, DownloadError?) -> Unit): Long = stateChangeCallbacks.add(callback)
+
+    fun removeStateChangeCallback(id: Long): Boolean = stateChangeCallbacks.remove(id)
+
+    fun addCompleteCallback(callback: (DownloadedTrack) -> Unit): Long = completeCallbacks.add(callback)
+
+    fun removeCompleteCallback(id: Long): Boolean = completeCallbacks.remove(id)
 
     // Internal callbacks from DownloadWorker
     internal fun onProgress(
