@@ -124,15 +124,21 @@ class TrackPlayerCore private constructor(
     internal val progressUpdateRunnable =
         object : Runnable {
             override fun run() {
-                if (::exo.isInitialized && exo.isPlaying) {
-                    val pos = exo.currentPosition / 1000.0
-                    val dur = if (exo.duration > 0) exo.duration / 1000.0 else 0.0
-                    notifyPlaybackProgress(pos, dur, if (isManuallySeeked) true else null)
-                    isManuallySeeked = false
-                }
+                // Stop ticking while paused/idle — onIsPlayingChanged restarts it,
+                // so the main looper isn't woken every second for the process lifetime
+                if (!::exo.isInitialized || !exo.isPlaying) return
+                val pos = exo.currentPosition / 1000.0
+                val dur = if (exo.duration > 0) exo.duration / 1000.0 else 0.0
+                notifyPlaybackProgress(pos, dur, if (isManuallySeeked) true else null)
+                isManuallySeeked = false
                 playerHandler.postDelayed(this, PROGRESS_INTERVAL_MS)
             }
         }
+
+    internal fun startProgressTicks() {
+        playerHandler.removeCallbacks(progressUpdateRunnable)
+        playerHandler.postDelayed(progressUpdateRunnable, PROGRESS_INTERVAL_MS)
+    }
 
     internal val updateCurrentPlaylistRunnable =
         Runnable {

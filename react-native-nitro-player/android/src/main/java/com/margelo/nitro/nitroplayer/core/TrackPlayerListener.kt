@@ -149,6 +149,7 @@ internal class TrackPlayerEventListener(
     }
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
+        if (isPlaying) core.startProgressTicks()
         core.emitStateChange()
     }
 
