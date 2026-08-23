@@ -150,6 +150,7 @@ extension TrackPlayerCore {
 
   func playInternal() {
     NitroPlayerLogger.log("TrackPlayerCore", "▶️ play() called")
+    activateAudioSessionIfNeeded()
     self.intendedToPlay = true
     // An explicit play() is the ground truth for intent — clear any stale
     // interruption flag so a missed AVAudioSession `.ended` can't permanently

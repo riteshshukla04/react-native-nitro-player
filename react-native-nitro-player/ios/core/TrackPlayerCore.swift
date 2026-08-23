@@ -149,11 +149,23 @@ class TrackPlayerCore: NSObject {
 
   internal func setupAudioSession() {
     do {
-      let audioSession = AVAudioSession.sharedInstance()
-      try audioSession.setCategory(.playback, mode: .default, options: [])
-      try audioSession.setActive(true)
+      // Category only — setActive(true) is deferred to first play so merely
+      // loading the module doesn't silence other apps' audio.
+      try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [])
     } catch {
       NitroPlayerLogger.log("TrackPlayerCore", "❌ Failed to setup audio session - \(error)")
+    }
+  }
+
+  private var audioSessionActivated = false
+
+  internal func activateAudioSessionIfNeeded() {
+    guard !audioSessionActivated else { return }
+    do {
+      try AVAudioSession.sharedInstance().setActive(true)
+      audioSessionActivated = true
+    } catch {
+      NitroPlayerLogger.log("TrackPlayerCore", "❌ Failed to activate audio session - \(error)")
     }
   }
 
