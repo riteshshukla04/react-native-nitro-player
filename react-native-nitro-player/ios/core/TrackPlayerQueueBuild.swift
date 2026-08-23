@@ -272,7 +272,9 @@ extension TrackPlayerCore {
   ///
   /// - Parameter changedTrackIds: When non-nil, performs a surgical update:
   ///   only AVPlayerItems whose track ID is in this set are removed and re-created.
-  func rebuildAVQueueFromCurrentPosition(changedTrackIds: Set<String>? = nil) {
+  func rebuildAVQueueFromCurrentPosition(
+    changedTrackIds: Set<String>? = nil, skipRepeatCopy: Bool = false
+  ) {
     // While casting, queue changes are applied to the receiver — the local AVQueuePlayer is dormant.
     if isCasting {
       syncCastQueueAfterCurrent()
@@ -339,6 +341,18 @@ extension TrackPlayerCore {
 
     if currentTrackIndex + 1 < currentTracks.count {
       newQueueTracks.append(contentsOf: currentTracks[(currentTrackIndex + 1)...])
+    }
+
+    if currentRepeatMode == .playlist, currentTrackIndex > 0, currentTrackIndex <= currentTracks.count {
+      newQueueTracks.append(contentsOf: currentTracks[0..<currentTrackIndex])
+    }
+
+    if currentRepeatMode == .track, !skipRepeatCopy {
+      let repeated =
+        playNextStack.first(where: { $0.id == playingTrackId })
+        ?? upNextQueue.first(where: { $0.id == playingTrackId })
+        ?? currentTracks.first(where: { $0.id == playingTrackId })
+      if let repeated = repeated { newQueueTracks = [repeated] }
     }
 
     // Window the materialized queue — currentItemDidChange tops it up on every transition.
@@ -530,7 +544,10 @@ extension TrackPlayerCore {
     }
 
     let asset: AVURLAsset
-    if let preloadedAsset = preloadedAssets[track.id] {
+    let preloaded = preloadedAssets[track.id]
+    let preloadedInUse =
+      preloaded != nil && (player?.items().contains { ($0.asset as? AVURLAsset) === preloaded } ?? false)
+    if let preloadedAsset = preloaded, !preloadedInUse {
       asset = preloadedAsset
       NitroPlayerLogger.log("TrackPlayerCore", "🚀 Using preloaded asset for \(track.title)")
     } else {
@@ -571,9 +588,13 @@ extension TrackPlayerCore {
     let queuedTrackIds = Set(player?.items().compactMap { $0.trackId } ?? [])
     let alreadyPreloaded = Set(preloadedAssets.keys)
     let generation = preloadGeneration
-    let endIndex = min(startIndex + Constants.gaplessPreloadCount, currentTracks.count)
-    guard startIndex >= 0, startIndex < endIndex else { return }
-    let candidates = Array(currentTracks[startIndex..<endIndex])
+    let wraps = currentRepeatMode == .playlist && !currentTracks.isEmpty
+    let available =
+      wraps
+      ? min(Constants.gaplessPreloadCount, currentTracks.count)
+      : max(0, min(startIndex + Constants.gaplessPreloadCount, currentTracks.count) - startIndex)
+    guard startIndex >= 0, available > 0 else { return }
+    let candidates = (0..<available).map { currentTracks[(startIndex + $0) % currentTracks.count] }
 
     preloadQueue.async { [weak self] in
       guard let self else { return }
@@ -631,10 +652,20 @@ extension TrackPlayerCore {
   /// Clears preloaded assets that are no longer needed
   func cleanupPreloadedAssets(keepingFrom currentIndex: Int) {
     // Already on playerQueue — access preloadedAssets directly
-    let keepRange =
-      currentIndex..<min(
-        currentIndex + Constants.gaplessPreloadCount + 1, self.currentTracks.count)
-    let keepIds = Set(keepRange.compactMap { self.currentTracks[safe: $0]?.id })
+    let keepIds: Set<String>
+    if currentRepeatMode == .playlist, !self.currentTracks.isEmpty {
+      let start = max(0, currentIndex)
+      let keepCount = min(Constants.gaplessPreloadCount + 1, self.currentTracks.count)
+      keepIds = Set(
+        (0..<keepCount).compactMap {
+          self.currentTracks[safe: (start + $0) % self.currentTracks.count]?.id
+        })
+    } else {
+      let keepRange =
+        currentIndex..<min(
+          currentIndex + Constants.gaplessPreloadCount + 1, self.currentTracks.count)
+      keepIds = Set(keepRange.compactMap { self.currentTracks[safe: $0]?.id })
+    }
 
     let assetsToRemove = self.preloadedAssets.keys.filter { !keepIds.contains($0) }
     for id in assetsToRemove {

@@ -173,10 +173,12 @@ extension TrackPlayerCore {
     guard finishedItem.trackId != nil else { return }
 
     // 1. TRACK repeat — handle FIRST, before any temp-track removal
-    if currentRepeatMode == .track, finishedItem === player?.currentItem {
-      NitroPlayerLogger.log("TrackPlayerCore", "🔁 TRACK repeat — seeking to zero and replaying")
-      player?.seek(to: .zero)
-      player?.rate = Float(currentPlaybackSpeed)
+    if currentRepeatMode == .track {
+      if player?.currentItem == nil || player?.currentItem === finishedItem {
+        NitroPlayerLogger.log("TrackPlayerCore", "🔁 TRACK repeat — no queued copy, seeking to zero")
+        player?.seek(to: .zero)
+        player?.rate = Float(currentPlaybackSpeed)
+      }
       return  // do not remove temp tracks, do not notify track change (same track looping)
     }
 
@@ -293,6 +295,7 @@ extension TrackPlayerCore {
     guard let player, let currentItem = player.currentItem else {
       NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Current item changed to nil")
       detachMetadataOutput()
+      lastCurrentItemTrackId = nil
       // Queue exhausted — handle PLAYLIST repeat
       if currentRepeatMode == .playlist && !currentTracks.isEmpty, let player = self.player {
         NitroPlayerLogger.log("TrackPlayerCore", "🔁 PLAYLIST repeat — rebuilding original queue and restarting")
@@ -317,6 +320,11 @@ extension TrackPlayerCore {
       }
       return
     }
+
+    let isRepeatLoop =
+      currentRepeatMode == .track && currentItem.trackId != nil
+      && currentItem.trackId == lastCurrentItemTrackId
+    lastCurrentItemTrackId = currentItem.trackId
 
     #if DEBUG
     NitroPlayerLogger.log("TrackPlayerCore", "\n" + String(repeating: "▶", count: Constants.separatorLineLength))
@@ -367,9 +375,9 @@ extension TrackPlayerCore {
         if currentTemporaryType == .playNext { tempTrack = playNextStack.first(where: { $0.id == trackId }) }
         else if currentTemporaryType == .upNext { tempTrack = upNextQueue.first(where: { $0.id == trackId }) }
         if let track = tempTrack {
-          if isRecoveryReplace {
+          if isRecoveryReplace || isRepeatLoop {
             NitroPlayerLogger.log("TrackPlayerCore",
-              "   ♻️ Recovery replace of temporary track '\(track.title)' — suppressing onChangeTrack")
+              "   ♻️ Same-track transition for '\(track.title)' — suppressing onChangeTrack")
           } else {
             NitroPlayerLogger.log("TrackPlayerCore", "   🎵 Temporary track: \(track.title) - \(track.artist)")
             NitroPlayerLogger.log("TrackPlayerCore", "   📢 Emitting onChangeTrack for temporary track")
@@ -387,7 +395,9 @@ extension TrackPlayerCore {
           NitroPlayerLogger.log("TrackPlayerCore", "   🎵 Track: \(track.title) - \(track.artist)")
           if oldIndex != index {
             NitroPlayerLogger.log("TrackPlayerCore", "   📢 Emitting onChangeTrack (index changed from \(oldIndex) to \(index))")
-            notifyTrackChange(track, .skip)
+            let wrappedToStart =
+              currentRepeatMode == .playlist && index == 0 && oldIndex == currentTracks.count - 1
+            notifyTrackChange(track, wrappedToStart ? .repeat : .skip)
           } else {
             NitroPlayerLogger.log("TrackPlayerCore", "   ⏭️ Skipping onChangeTrack emission (index unchanged)")
           }
@@ -413,7 +423,7 @@ extension TrackPlayerCore {
     // rebuildQueueFromPlaylistIndex (current track no longer in the playlist), which
     // replaces the current item and re-enters this callback. The length check makes any
     // such re-entry a no-op and terminate.
-    if player.items().count - 1 < Constants.queueWindowSize {
+    if currentRepeatMode == .track || player.items().count - 1 < Constants.queueWindowSize {
       rebuildAVQueueFromCurrentPosition()
     }
 

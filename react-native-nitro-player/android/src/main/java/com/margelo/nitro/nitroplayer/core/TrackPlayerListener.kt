@@ -58,11 +58,15 @@ internal class TrackPlayerEventListener(
             currentTemporaryType = determineCurrentTemporaryType()
 
             // Update currentTrackIndex when landing on an original playlist track
+            val previousTrackIndex = currentTrackIndex
             if (currentTemporaryType == TrackPlayerCore.TemporaryType.NONE && mediaItem != null) {
                 val trackId = extractTrackId(mediaItem.mediaId)
                 val newIdx = currentTracks.indexOfFirst { it.id == trackId }
                 if (newIdx >= 0 && newIdx != currentTrackIndex) currentTrackIndex = newIdx
             }
+
+            val wrappedToStart = currentRepeatMode == RepeatMode.PLAYLIST &&
+                currentTrackIndex == 0 && previousTrackIndex == currentTracks.size - 1
 
             // Top up the windowed timeline — the item we just left freed a slot.
             // Only when it is actually short: rebuildQueueFromCurrentPosition can fall
@@ -77,7 +81,8 @@ internal class TrackPlayerEventListener(
             val track = getCurrentTrack() ?: return
             val r =
                 when (reason) {
-                    Player.MEDIA_ITEM_TRANSITION_REASON_AUTO -> Reason.END
+                    Player.MEDIA_ITEM_TRANSITION_REASON_AUTO ->
+                        if (wrappedToStart) Reason.REPEAT else Reason.END
                     Player.MEDIA_ITEM_TRANSITION_REASON_SEEK -> Reason.USER_ACTION
                     Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED -> Reason.USER_ACTION
                     else -> null

@@ -74,6 +74,7 @@ internal fun TrackPlayerCore.skipToPreviousOnQueue() {
 suspend fun TrackPlayerCore.setRepeatMode(mode: RepeatMode) = withPlayerContext { setRepeatModeOnQueue(mode) }
 
 internal fun TrackPlayerCore.setRepeatModeOnQueue(mode: RepeatMode) {
+    val previousMode = currentRepeatMode
     currentRepeatMode = mode
     exo.setRepeatMode(
         when (mode) {
@@ -81,6 +82,11 @@ internal fun TrackPlayerCore.setRepeatModeOnQueue(mode: RepeatMode) {
             else -> Player.REPEAT_MODE_OFF
         },
     )
+    if (!isCastingField && previousMode != mode &&
+        (previousMode == RepeatMode.PLAYLIST || mode == RepeatMode.PLAYLIST)
+    ) {
+        rebuildQueueFromCurrentPosition()
+    }
 }
 
 fun TrackPlayerCore.getRepeatMode(): RepeatMode = currentRepeatMode
