@@ -220,6 +220,11 @@ class DownloadManagerCore private constructor(
             metadata.state = DownloadState.CANCELLED
             notifyStateChange(downloadId, metadata.trackId, DownloadState.CANCELLED, null)
             activeTasks.remove(downloadId)
+            // Drop the partial file (pause keeps it for Range resume), but never
+            // a previously completed download's file
+            if (!database.isTrackDownloaded(metadata.trackId)) {
+                fileManager.getLocalPath(metadata.trackId)?.let { fileManager.deleteFile(it) }
+            }
         }
         releaseDownloadSlot(downloadId)
     }

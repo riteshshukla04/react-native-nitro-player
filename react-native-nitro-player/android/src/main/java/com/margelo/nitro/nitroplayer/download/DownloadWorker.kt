@@ -169,16 +169,28 @@ class DownloadWorker(
             var destinationFile: File? = null
 
             try {
+                val partialPath = fileManager.getLocalPath(trackId)
+                val existingBytes = partialPath?.let { File(it).length() } ?: 0L
+
                 val url = URL(urlString)
                 connection = url.openConnection() as HttpURLConnection
                 connection.connectTimeout = 30000
                 connection.readTimeout = 30000
+                if (existingBytes > 0) {
+                    connection.setRequestProperty("Range", "bytes=$existingBytes-")
+                }
                 connection.connect()
 
                 val responseCode = connection.responseCode
-                if (responseCode != HttpURLConnection.HTTP_OK) {
+                if (responseCode == 416) {
+                    // Partial file is at or past the server's length — start clean next attempt
+                    partialPath?.let { File(it).delete() }
+                    throw Exception("Server returned HTTP 416 for resume, restarting download")
+                }
+                if (responseCode != HttpURLConnection.HTTP_OK && responseCode != HttpURLConnection.HTTP_PARTIAL) {
                     throw Exception("Server returned HTTP $responseCode")
                 }
+                val resuming = responseCode == HttpURLConnection.HTTP_PARTIAL && existingBytes > 0 && partialPath != null
                 // Determine extension
                 var extension = MimeTypeMap.getFileExtensionFromUrl(urlString)
 
@@ -205,14 +217,22 @@ class DownloadWorker(
 
                 val finalExtension = if (extension.isNullOrEmpty()) "mp3" else extension
 
-                // Create destination file
-                destinationFile = fileManager.createDownloadFile(trackId, storageLocation, finalExtension)
+                // Create destination file — appending to the partial file when the
+                // server honored the Range request, truncating otherwise
+                destinationFile =
+                    if (resuming) {
+                        File(partialPath!!)
+                    } else {
+                        fileManager.createDownloadFile(trackId, storageLocation, finalExtension)
+                    }
 
                 inputStream = BufferedInputStream(connection.inputStream)
-                outputStream = FileOutputStream(destinationFile)
+                outputStream = FileOutputStream(destinationFile, resuming)
 
-                val totalBytes = connection.contentLengthLong
-                var bytesDownloaded: Long = 0
+                val startOffset = if (resuming) existingBytes else 0L
+                val totalBytes =
+                    if (connection.contentLengthLong > 0) connection.contentLengthLong + startOffset else -1L
+                var bytesDownloaded: Long = startOffset
 
                 val buffer = ByteArray(BUFFER_SIZE)
                 var bytesRead: Int
@@ -242,7 +262,8 @@ class DownloadWorker(
 
                 destinationFile.absolutePath
             } catch (e: CancellationException) {
-                destinationFile?.delete()
+                // Keep the partial file — pause resumes from this offset via Range;
+                // an explicit cancel deletes it in DownloadManagerCore.cancelDownload
                 throw e
             } catch (e: Exception) {
                 throw e
