@@ -138,7 +138,7 @@ extension TrackPlayerCore {
             lastItem = newItem
           }
         }
-        player.play()
+        player.rate = Float(self.currentPlaybackSpeed)
         self.preloadUpcomingTracks(from: self.currentTrackIndex + 1)
       } else {
         // A current AVPlayerItem already exists — preserve it and only rebuild upcoming items.

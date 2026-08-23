@@ -176,7 +176,7 @@ extension TrackPlayerCore {
     if currentRepeatMode == .track, finishedItem === player?.currentItem {
       NitroPlayerLogger.log("TrackPlayerCore", "🔁 TRACK repeat — seeking to zero and replaying")
       player?.seek(to: .zero)
-      player?.play()
+      player?.rate = Float(currentPlaybackSpeed)
       return  // do not remove temp tracks, do not notify track change (same track looping)
     }
 
@@ -308,7 +308,7 @@ extension TrackPlayerCore {
           lastItem = item
         }
         currentTrackIndex = 0
-        player.play()
+        player.rate = Float(currentPlaybackSpeed)
 
         if let firstTrack = currentTracks.first {
           notifyTrackChange(firstTrack, .repeat)
