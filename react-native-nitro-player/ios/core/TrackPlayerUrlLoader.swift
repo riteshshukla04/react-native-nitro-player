@@ -79,7 +79,9 @@ extension TrackPlayerCore {
     let affectedPlaylists = self.playlistManager.updateTracks(tracks: safeTracks)
 
     // Replace the current AVPlayerItem when its URL just resolved (local only — cast reloads below instead).
-    if !self.isCasting, let update = currentTrack, currentTrackIsEmpty, !update.url.isEmpty {
+    // Look up the FRESH track — the pre-update snapshot's URL is empty by definition here.
+    if !self.isCasting, currentTrackIsEmpty,
+      let update = safeTracks.first(where: { $0.id == currentTrackId }), !update.url.isEmpty {
       NitroPlayerLogger.log("TrackPlayerCore",
         "🔄 Replacing current AVPlayerItem for track with resolved URL: \(update.id)")
       if let newItem = self.createGaplessPlayerItem(for: update, isPreload: false) {
