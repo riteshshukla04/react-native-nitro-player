@@ -238,11 +238,12 @@ extension TrackPlayerCore {
 
     if queuePlayer.items().count > 1 {
       queuePlayer.advanceToNextItem()
+    } else if currentRepeatMode == .playlist, !currentTracks.isEmpty {
+      // Manual skip at the last track wraps, matching natural-end behavior
+      _ = skipToIndexInternal(index: 0)
     } else {
-      queuePlayer.pause()
-      self.intendedToPlay = false
-      self.isRecoveringFromStall = false
-      self.notifyPlaybackStateChange(.stopped, .end)
+      // No next track — no-op and keep playing, matching Android
+      NitroPlayerLogger.log("TrackPlayerCore", "⏭️ skipToNext at last track — nothing to advance to")
     }
 
     checkUpcomingTracksForUrls(lookahead: lookaheadCount)
