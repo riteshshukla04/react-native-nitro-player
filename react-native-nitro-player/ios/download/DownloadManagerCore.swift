@@ -42,7 +42,7 @@ final class DownloadManagerCore: NSObject {
       withIdentifier: Self.backgroundSessionIdentifier)
     configuration.isDiscretionary = false
     configuration.sessionSendsLaunchEvents = true
-    configuration.allowsCellularAccess = !config.wifiOnlyDownloads!
+    configuration.allowsCellularAccess = !(config.wifiOnlyDownloads ?? false)
     return URLSession(configuration: configuration, delegate: self, delegateQueue: nil)
   }()
 
