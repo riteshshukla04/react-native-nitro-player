@@ -55,6 +55,7 @@ extension TrackPlayerCore {
       self.currentTracks = playlist.tracks
       for asset in self.preloadedAssets.values { asset.cancelLoading() }
       self.preloadedAssets.removeAll()
+      self.preloadGeneration += 1
       _ = self.rebuildQueueFromPlaylistIndex(index: targetIndex)
     }
     self.emitStateChange()
