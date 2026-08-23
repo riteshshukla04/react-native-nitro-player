@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { TrackPlayer } from '../index'
+import { callbackManager } from './callbackManager'
 
 /**
  * Hook to get the last seek event information
@@ -15,7 +15,7 @@ export function useOnSeek(): {
   )
 
   useEffect(() => {
-    TrackPlayer.onSeek((newPosition, newTotalDuration) => {
+    return callbackManager.subscribeToSeek((newPosition, newTotalDuration) => {
       setPosition(newPosition)
       setTotalDuration(newTotalDuration)
     })

@@ -59,7 +59,6 @@ export function usePlaylist(): UsePlaylistResult {
   const [allTracks, setAllTracks] = useState<TrackItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const isMounted = useRef(true)
-  const hasSubscribed = useRef(false)
   // Tracks the last fetched playlist ID so track-change events can skip
   // a full refresh when the playlist itself hasn't changed.
   const lastPlaylistIdRef = useRef<string | null | undefined>(undefined)
@@ -143,20 +142,13 @@ export function usePlaylist(): UsePlaylistResult {
     }
   }, [refreshPlaylists])
 
-  // Subscribe to native playlist changes (only once)
+  // Subscribe to native playlist changes via the shared manager
   useEffect(() => {
-    if (hasSubscribed.current) return
-    hasSubscribed.current = true
-
-    try {
-      PlayerQueue.onPlaylistsChanged(() => {
-        if (isMounted.current) {
-          refreshPlaylists()
-        }
-      })
-    } catch (error) {
-      console.error('[usePlaylist] Error setting up playlist listener:', error)
-    }
+    return callbackManager.subscribeToPlaylistsChanged(() => {
+      if (isMounted.current) {
+        refreshPlaylists()
+      }
+    })
   }, [refreshPlaylists])
 
   // Refresh on track change only if the active playlist ID changed.

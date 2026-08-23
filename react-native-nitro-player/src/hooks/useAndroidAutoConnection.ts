@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { TrackPlayer } from '../index'
+import { callbackManager } from './callbackManager'
 
 /**
  * Hook to detect Android Auto connection status using the official Android for Cars API
@@ -15,15 +16,14 @@ export function useAndroidAutoConnection() {
   const [isConnected, setIsConnected] = useState<boolean>(false)
 
   useEffect(() => {
-    // Set initial state
     const initialState = TrackPlayer.isAndroidAutoConnected()
     setIsConnected(initialState)
 
-    // Listen for connection changes
-    TrackPlayer.onAndroidAutoConnectionChange((connected: boolean) => {
-      setIsConnected(connected)
-      console.log('🚗 Android Auto connection changed:', connected)
-    })
+    return callbackManager.subscribeToAndroidAutoConnection(
+      (connected: boolean) => {
+        setIsConnected(connected)
+      }
+    )
   }, [])
 
   return { isConnected }
