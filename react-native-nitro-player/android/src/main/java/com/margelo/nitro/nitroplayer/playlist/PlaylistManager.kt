@@ -59,7 +59,8 @@ class PlaylistManager private constructor(
     }
 
     init {
-        // Don't load from file on init - only load when Android Auto needs it
+        // Synchronous so no mutation can race a late async load and be clobbered
+        loadPlaylistsFromFile()
     }
 
     /**
@@ -75,10 +76,7 @@ class PlaylistManager private constructor(
 
         playlists[id] = playlist
 
-        // Only cache for Android Auto if connected
-        if (NitroPlayerMediaBrowserService.isAndroidAutoConnected) {
-            scheduleSave()
-        }
+        scheduleSave()
         notifyPlaylistsChanged(QueueOperation.ADD)
         NitroPlayerMediaBrowserService.getInstance()?.onPlaylistsUpdated()
 
@@ -96,10 +94,7 @@ class PlaylistManager private constructor(
                 currentPlaylistId = null
             }
             playlistListeners.remove(playlistId)
-            // Only cache for Android Auto if connected
-            if (NitroPlayerMediaBrowserService.isAndroidAutoConnected) {
-                scheduleSave()
-            }
+            scheduleSave()
             notifyPlaylistsChanged(QueueOperation.REMOVE)
             NitroPlayerMediaBrowserService.getInstance()?.onPlaylistsUpdated()
             return true
@@ -125,10 +120,7 @@ class PlaylistManager private constructor(
                 artwork = artwork ?: playlist.artwork,
             )
 
-        // Only cache for Android Auto if connected
-        if (NitroPlayerMediaBrowserService.isAndroidAutoConnected) {
-            scheduleSave()
-        }
+        scheduleSave()
         notifyPlaylistChanged(playlistId, QueueOperation.UPDATE)
         notifyPlaylistsChanged(QueueOperation.UPDATE)
         NitroPlayerMediaBrowserService.getInstance()?.onPlaylistsUpdated()
@@ -163,10 +155,7 @@ class PlaylistManager private constructor(
         }
         playlists[playlistId] = playlist.copy(tracks = tracks)
 
-        // Only cache for Android Auto if connected
-        if (NitroPlayerMediaBrowserService.isAndroidAutoConnected) {
-            scheduleSave()
-        }
+        scheduleSave()
         notifyPlaylistChanged(playlistId, QueueOperation.ADD)
         NitroPlayerMediaBrowserService.getInstance()?.onPlaylistUpdated(playlistId)
         return true
@@ -189,10 +178,7 @@ class PlaylistManager private constructor(
         }
         playlists[playlistId] = playlist.copy(tracks = currentTracks)
 
-        // Only cache for Android Auto if connected
-        if (NitroPlayerMediaBrowserService.isAndroidAutoConnected) {
-            scheduleSave()
-        }
+        scheduleSave()
         notifyPlaylistChanged(playlistId, QueueOperation.ADD)
         NitroPlayerMediaBrowserService.getInstance()?.onPlaylistUpdated(playlistId)
         return true
