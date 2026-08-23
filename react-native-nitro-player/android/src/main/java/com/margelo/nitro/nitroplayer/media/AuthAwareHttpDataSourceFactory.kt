@@ -4,7 +4,6 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.ResolvingDataSource
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * HTTP [DataSource.Factory] that injects per-URL request headers (e.g. `Authorization`)
@@ -34,7 +33,17 @@ class AuthAwareHttpDataSourceFactory : DataSource.Factory {
     override fun createDataSource(): DataSource = factory.createDataSource()
 
     companion object {
-        private val headersMap = ConcurrentHashMap<String, Map<String, String>>()
+        // LRU-bounded: rotating signed URLs would otherwise add an entry per
+        // playback for the process lifetime (destroy() has no callers today)
+        private const val MAX_HEADER_ENTRIES = 500
+
+        private val headersMap: MutableMap<String, Map<String, String>> =
+            java.util.Collections.synchronizedMap(
+                object : LinkedHashMap<String, Map<String, String>>(16, 0.75f, true) {
+                    override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Map<String, String>>) =
+                        size > MAX_HEADER_ENTRIES
+                },
+            )
 
         fun setHeadersForUrl(url: String, headers: Map<String, String>) {
             headersMap[url] = headers
