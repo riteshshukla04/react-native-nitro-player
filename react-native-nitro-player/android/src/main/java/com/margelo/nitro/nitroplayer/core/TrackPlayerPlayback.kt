@@ -52,23 +52,8 @@ internal fun TrackPlayerCore.skipToPreviousOnQueue() {
         }
 
         currentTemporaryType != TrackPlayerCore.TemporaryType.NONE -> {
-            val trackId = exo.currentMediaItem?.mediaId?.let { extractTrackId(it) }
-            if (trackId != null) {
-                when (currentTemporaryType) {
-                    TrackPlayerCore.TemporaryType.PLAY_NEXT -> {
-                        val idx = playNextStack.indexOfFirst { it.id == trackId }
-                        if (idx >= 0) playNextStack.removeAt(idx)
-                    }
-
-                    TrackPlayerCore.TemporaryType.UP_NEXT -> {
-                        val idx = upNextQueue.indexOfFirst { it.id == trackId }
-                        if (idx >= 0) upNextQueue.removeAt(idx)
-                    }
-
-                    else -> {}
-                }
-            }
-            currentTemporaryType = TrackPlayerCore.TemporaryType.NONE
+            // playFromIndexInternal clears both temp lists (matching iOS behavior),
+            // so no per-track removal is needed here
             playFromIndexInternal(currentTrackIndex)
         }
 

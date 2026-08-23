@@ -67,7 +67,7 @@ class DownloadWorker(
             val urlString = inputData.getString(KEY_URL) ?: return@withContext Result.failure()
             val storageLocationStr = inputData.getString(KEY_STORAGE_LOCATION) ?: StorageLocation.PRIVATE.name
 
-            notificationId = BASE_NOTIFICATION_ID + trackId.hashCode().and(0xFFFF)
+            notificationId = BASE_NOTIFICATION_ID + trackId.hashCode().and(0x7FFFFF)
 
             val storageLocation =
                 try {
