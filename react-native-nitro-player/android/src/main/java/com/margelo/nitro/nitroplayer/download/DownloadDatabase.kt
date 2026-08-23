@@ -109,6 +109,12 @@ class DownloadDatabase private constructor(
         synchronized(this) { existenceCache.clear() }
     }
 
+    /** Count via the memoized existence cache — no per-record stat() on the caller's thread. */
+    fun countDownloadedTracks(): Int =
+        synchronized(this) {
+            downloadedTracks.count { (trackId, record) -> cachedFileExists(trackId, record.localPath) }
+        }
+
     fun isPlaylistDownloaded(playlistId: String): Boolean {
         synchronized(this) {
             val trackIds = playlistTracks[playlistId] ?: return false

@@ -258,7 +258,7 @@ class DownloadManagerCore private constructor(
             downloadedBytes += m.bytesDownloaded
         }
 
-        val completedCount = database.getAllDownloadedTracks().size
+        val completedCount = database.countDownloadedTracks()
 
         return DownloadQueueStatus(
             pendingCount = pendingCount.toDouble(),
