@@ -262,7 +262,7 @@ extension TrackPlayerCore {
 
     self.preloadUpcomingTracks(from: index + 1)
 
-    if wasPlaying { player.play() }
+    if wasPlaying { player.rate = Float(currentPlaybackSpeed) }
     return true
   }
 
