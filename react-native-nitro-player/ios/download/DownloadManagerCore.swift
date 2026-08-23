@@ -66,9 +66,11 @@ final class DownloadManagerCore: NSObject {
 
   // MARK: - Callbacks
 
-  private var progressCallbacks: [(DownloadProgress) -> Void] = []
-  private var stateChangeCallbacks: [(String, String, DownloadState, DownloadError?) -> Void] = []
-  private var completeCallbacks: [(DownloadedTrack) -> Void] = []
+  // Keyed so HybridDownloadManager.deinit can remove its registrations instead
+  // of leaking closures into dead JS runtimes across reloads
+  private var progressCallbacks: [(UUID, (DownloadProgress) -> Void)] = []
+  private var stateChangeCallbacks: [(UUID, (String, String, DownloadState, DownloadError?) -> Void)] = []
+  private var completeCallbacks: [(UUID, (DownloadedTrack) -> Void)] = []
 
   // MARK: - Thread Safety
 
@@ -509,23 +511,50 @@ final class DownloadManagerCore: NSObject {
 
   // MARK: - Callbacks
 
-  func addProgressCallback(_ callback: @escaping (DownloadProgress) -> Void) {
+  @discardableResult
+  func addProgressCallback(_ callback: @escaping (DownloadProgress) -> Void) -> UUID {
+    let id = UUID()
     queue.async(flags: .barrier) {
-      self.progressCallbacks.append(callback)
+      self.progressCallbacks.append((id, callback))
+    }
+    return id
+  }
+
+  func removeProgressCallback(id: UUID) {
+    queue.async(flags: .barrier) {
+      self.progressCallbacks.removeAll { $0.0 == id }
     }
   }
 
+  @discardableResult
   func addStateChangeCallback(
     _ callback: @escaping (String, String, DownloadState, DownloadError?) -> Void
-  ) {
+  ) -> UUID {
+    let id = UUID()
     queue.async(flags: .barrier) {
-      self.stateChangeCallbacks.append(callback)
+      self.stateChangeCallbacks.append((id, callback))
+    }
+    return id
+  }
+
+  func removeStateChangeCallback(id: UUID) {
+    queue.async(flags: .barrier) {
+      self.stateChangeCallbacks.removeAll { $0.0 == id }
     }
   }
 
-  func addCompleteCallback(_ callback: @escaping (DownloadedTrack) -> Void) {
+  @discardableResult
+  func addCompleteCallback(_ callback: @escaping (DownloadedTrack) -> Void) -> UUID {
+    let id = UUID()
     queue.async(flags: .barrier) {
-      self.completeCallbacks.append(callback)
+      self.completeCallbacks.append((id, callback))
+    }
+    return id
+  }
+
+  func removeCompleteCallback(id: UUID) {
+    queue.async(flags: .barrier) {
+      self.completeCallbacks.removeAll { $0.0 == id }
     }
   }
 
@@ -730,8 +759,9 @@ final class DownloadManagerCore: NSObject {
   }
 
   private func notifyProgress(_ progress: DownloadProgress) {
+    let callbacks = self.progressCallbacks
     DispatchQueue.main.async {
-      for callback in self.progressCallbacks {
+      for (_, callback) in callbacks {
         callback(progress)
       }
     }
@@ -740,16 +770,18 @@ final class DownloadManagerCore: NSObject {
   private func notifyStateChange(
     downloadId: String, trackId: String, state: DownloadState, error: DownloadError?
   ) {
+    let callbacks = self.stateChangeCallbacks
     DispatchQueue.main.async {
-      for callback in self.stateChangeCallbacks {
+      for (_, callback) in callbacks {
         callback(downloadId, trackId, state, error)
       }
     }
   }
 
   private func notifyComplete(_ downloadedTrack: DownloadedTrack) {
+    let callbacks = self.completeCallbacks
     DispatchQueue.main.async {
-      for callback in self.completeCallbacks {
+      for (_, callback) in callbacks {
         callback(downloadedTrack)
       }
     }

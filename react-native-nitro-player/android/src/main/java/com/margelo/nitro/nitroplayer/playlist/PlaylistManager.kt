@@ -28,7 +28,7 @@ class PlaylistManager private constructor(
 ) {
     private val playlists = ConcurrentHashMap<String, Playlist>()
     private val listeners = CopyOnWriteArrayList<(List<Playlist>, QueueOperation?) -> Unit>()
-    private val playlistListeners = mutableMapOf<String, CopyOnWriteArrayList<(Playlist, QueueOperation?) -> Unit>>()
+    private val playlistListeners = ConcurrentHashMap<String, CopyOnWriteArrayList<(Playlist, QueueOperation?) -> Unit>>()
     private var currentPlaylistId: String? = null
 
     private val saveScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -112,13 +112,16 @@ class PlaylistManager private constructor(
         description: String? = null,
         artwork: String? = null,
     ): Boolean {
-        val playlist = playlists[playlistId] ?: return false
-        playlists[playlistId] =
-            playlist.copy(
-                name = name ?: playlist.name,
-                description = description ?: playlist.description,
-                artwork = artwork ?: playlist.artwork,
-            )
+        // computeIfPresent: read-copy-put from two threads loses one edit
+        val updated =
+            playlists.computeIfPresent(playlistId) { _, playlist ->
+                playlist.copy(
+                    name = name ?: playlist.name,
+                    description = description ?: playlist.description,
+                    artwork = artwork ?: playlist.artwork,
+                )
+            } != null
+        if (!updated) return false
 
         scheduleSave()
         notifyPlaylistChanged(playlistId, QueueOperation.UPDATE)
@@ -146,14 +149,17 @@ class PlaylistManager private constructor(
         track: TrackItem,
         index: Int? = null,
     ): Boolean {
-        val playlist = playlists[playlistId] ?: return false
-        val tracks = playlist.tracks.toMutableList()
-        if (index != null && index >= 0 && index <= tracks.size) {
-            tracks.add(index, track)
-        } else {
-            tracks.add(track)
-        }
-        playlists[playlistId] = playlist.copy(tracks = tracks)
+        val added =
+            playlists.computeIfPresent(playlistId) { _, playlist ->
+                val tracks = playlist.tracks.toMutableList()
+                if (index != null && index >= 0 && index <= tracks.size) {
+                    tracks.add(index, track)
+                } else {
+                    tracks.add(track)
+                }
+                playlist.copy(tracks = tracks)
+            } != null
+        if (!added) return false
 
         scheduleSave()
         notifyPlaylistChanged(playlistId, QueueOperation.ADD)
@@ -169,14 +175,17 @@ class PlaylistManager private constructor(
         tracks: List<TrackItem>,
         index: Int? = null,
     ): Boolean {
-        val playlist = playlists[playlistId] ?: return false
-        val currentTracks = playlist.tracks.toMutableList()
-        if (index != null && index >= 0 && index <= currentTracks.size) {
-            currentTracks.addAll(index, tracks)
-        } else {
-            currentTracks.addAll(tracks)
-        }
-        playlists[playlistId] = playlist.copy(tracks = currentTracks)
+        val added =
+            playlists.computeIfPresent(playlistId) { _, playlist ->
+                val currentTracks = playlist.tracks.toMutableList()
+                if (index != null && index >= 0 && index <= currentTracks.size) {
+                    currentTracks.addAll(index, tracks)
+                } else {
+                    currentTracks.addAll(tracks)
+                }
+                playlist.copy(tracks = currentTracks)
+            } != null
+        if (!added) return false
 
         scheduleSave()
         notifyPlaylistChanged(playlistId, QueueOperation.ADD)
@@ -191,11 +200,15 @@ class PlaylistManager private constructor(
         playlistId: String,
         trackId: String,
     ): Boolean {
-        val playlist = playlists[playlistId] ?: return false
-        val tracks = playlist.tracks.toMutableList()
-        val removed = tracks.removeAll { it.id == trackId }
-        if (removed) {
-            playlists[playlistId] = playlist.copy(tracks = tracks)
+        var removed = false
+        playlists.computeIfPresent(playlistId) { _, playlist ->
+            val tracks = playlist.tracks.toMutableList()
+            if (tracks.removeAll { it.id == trackId }) {
+                removed = true
+                playlist.copy(tracks = tracks)
+            } else {
+                playlist
+            }
         }
 
         if (removed) {
@@ -215,15 +228,20 @@ class PlaylistManager private constructor(
         trackId: String,
         newIndex: Int,
     ): Boolean {
-        val playlist = playlists[playlistId] ?: return false
-        val tracks = playlist.tracks.toMutableList()
-        val oldIndex = tracks.indexOfFirst { it.id == trackId }
-        if (oldIndex < 0 || newIndex < 0 || newIndex >= tracks.size) {
-            return false
+        var reordered = false
+        playlists.computeIfPresent(playlistId) { _, playlist ->
+            val tracks = playlist.tracks.toMutableList()
+            val oldIndex = tracks.indexOfFirst { it.id == trackId }
+            if (oldIndex < 0 || newIndex < 0 || newIndex >= tracks.size) {
+                playlist
+            } else {
+                val track = tracks.removeAt(oldIndex)
+                tracks.add(newIndex, track)
+                reordered = true
+                playlist.copy(tracks = tracks)
+            }
         }
-        val track = tracks.removeAt(oldIndex)
-        tracks.add(newIndex, track)
-        playlists[playlistId] = playlist.copy(tracks = tracks)
+        if (!reordered) return false
 
         scheduleSave()
         notifyPlaylistChanged(playlistId, QueueOperation.UPDATE)
@@ -241,17 +259,19 @@ class PlaylistManager private constructor(
         val tracksMap = tracks.associateBy { it.id }
         val affectedPlaylists = mutableMapOf<String, Int>()
 
-        playlists.forEach { (playlistId, playlist) ->
-            var updateCount = 0
-            val newTracks =
-                playlist.tracks
-                    .map { track ->
+        for (playlistId in playlists.keys) {
+            playlists.computeIfPresent(playlistId) { _, playlist ->
+                var updateCount = 0
+                val newTracks =
+                    playlist.tracks.map { track ->
                         tracksMap[track.id]?.also { updateCount++ } ?: track
-                    }.toMutableList()
-
-            if (updateCount > 0) {
-                affectedPlaylists[playlistId] = updateCount
-                playlists[playlistId] = playlist.copy(tracks = newTracks)
+                    }
+                if (updateCount > 0) {
+                    affectedPlaylists[playlistId] = updateCount
+                    playlist.copy(tracks = newTracks)
+                } else {
+                    playlist
+                }
             }
         }
 
@@ -322,9 +342,17 @@ class PlaylistManager private constructor(
         playlistId: String,
         listener: (Playlist, QueueOperation?) -> Unit,
     ): () -> Unit {
-        val playlistListeners = playlistListeners.getOrPut(playlistId) { CopyOnWriteArrayList() }
+        val playlistListeners = playlistListeners.computeIfAbsent(playlistId) { CopyOnWriteArrayList() }
         playlistListeners.add(listener)
         return { playlistListeners.remove(listener) }
+    }
+
+    private val anyPlaylistListeners = CopyOnWriteArrayList<(Playlist, QueueOperation?) -> Unit>()
+
+    /** Fires for changes to ANY playlist, including ones created after registration. */
+    fun addAnyPlaylistChangeListener(listener: (Playlist, QueueOperation?) -> Unit): () -> Unit {
+        anyPlaylistListeners.add(listener)
+        return { anyPlaylistListeners.remove(listener) }
     }
 
     private fun notifyPlaylistsChanged(operation: QueueOperation?) {
@@ -337,6 +365,7 @@ class PlaylistManager private constructor(
     ) {
         val playlist = playlists[playlistId] ?: return
         playlistListeners[playlistId]?.forEach { it(playlist, operation) }
+        anyPlaylistListeners.forEach { it(playlist, operation) }
     }
 
     // MARK: - Persistence

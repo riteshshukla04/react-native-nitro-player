@@ -50,6 +50,11 @@ const DEFAULT_STATE: PlayerState = {
 export function useNowPlaying(): PlayerState {
   const [state, setState] = useState<PlayerState>(DEFAULT_STATE)
   const isMounted = useRef(true)
+  // Once pushed events carry position, an async getState() snapshot must not
+  // overwrite it — a slow snapshot resolving after newer ticks jumped the
+  // progress bar backward on play/pause/track transitions.
+  const eventsOwnPosition = useRef(false)
+  const fetchScheduled = useRef(false)
 
   const fetchFullState = useCallback(async () => {
     if (!isMounted.current) return
@@ -57,12 +62,31 @@ export function useNowPlaying(): PlayerState {
     try {
       const newState = await TrackPlayer.getState()
       if (isMounted.current) {
-        setState(newState)
+        setState((prev) =>
+          eventsOwnPosition.current
+            ? {
+                ...newState,
+                currentPosition: prev.currentPosition,
+                totalDuration: prev.totalDuration,
+              }
+            : newState
+        )
       }
     } catch (error) {
       console.error('[useNowPlaying] Error updating player state:', error)
     }
   }, [])
+
+  // Coalesces the track-change + playback-state burst that fires on one
+  // transition into a single getState() round trip
+  const requestFullState = useCallback(() => {
+    if (fetchScheduled.current) return
+    fetchScheduled.current = true
+    queueMicrotask(() => {
+      fetchScheduled.current = false
+      fetchFullState()
+    })
+  }, [fetchFullState])
 
   // Initialize with current state
   useEffect(() => {
@@ -74,19 +98,21 @@ export function useNowPlaying(): PlayerState {
     }
   }, [fetchFullState])
 
-  // Subscribe to track changes — full refresh
+  // Subscribe to track changes — full refresh; the new track's position comes
+  // from the snapshot, so release event ownership until ticks resume
   useEffect(() => {
     return callbackManager.subscribeToTrackChange(() => {
-      fetchFullState()
+      eventsOwnPosition.current = false
+      requestFullState()
     })
-  }, [fetchFullState])
+  }, [requestFullState])
 
   // Subscribe to playback state changes — full refresh
   useEffect(() => {
     return callbackManager.subscribeToPlaybackState(() => {
-      fetchFullState()
+      requestFullState()
     })
-  }, [fetchFullState])
+  }, [requestFullState])
 
   // Subscribe to progress changes — lightweight position/duration update.
   // Bail out when neither value changed at whole-second resolution: the native tick
@@ -95,6 +121,7 @@ export function useNowPlaying(): PlayerState {
     return callbackManager.subscribeToPlaybackProgressChange(
       (currentPosition, totalDuration) => {
         if (!isMounted.current) return
+        eventsOwnPosition.current = true
         setState((prev) => {
           if (
             Math.floor(prev.currentPosition) === Math.floor(currentPosition) &&
@@ -112,6 +139,7 @@ export function useNowPlaying(): PlayerState {
   useEffect(() => {
     return callbackManager.subscribeToSeek((currentPosition, totalDuration) => {
       if (!isMounted.current) return
+      eventsOwnPosition.current = true
       setState((prev) => ({ ...prev, currentPosition, totalDuration }))
     })
   }, [])

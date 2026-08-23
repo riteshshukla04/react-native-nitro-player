@@ -11,7 +11,6 @@ import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
 import com.margelo.nitro.nitroplayer.core.loadPlaylistOnQueue
 import com.margelo.nitro.nitroplayer.core.updatePlaylist
 import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
-import java.util.UUID
 import com.margelo.nitro.nitroplayer.playlist.Playlist as InternalPlaylist
 
 @DoNotStrip
@@ -29,7 +28,6 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
     }
 
     private val playlistsChangeListeners = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
-    private val playlistChangeListeners = java.util.concurrent.ConcurrentHashMap<String, () -> Unit>()
 
     // ── Playlist CRUD ─────────────────────────────────────────────────────────
 
@@ -41,7 +39,9 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
 
     override fun deletePlaylist(playlistId: String): Promise<Unit> =
         Promise.async {
-            playlistManager.deletePlaylist(playlistId)
+            if (!playlistManager.deletePlaylist(playlistId)) {
+                throw IllegalArgumentException("Playlist not found: $playlistId")
+            }
         }
 
     override fun updatePlaylist(
@@ -51,7 +51,9 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
         artwork: String?,
     ): Promise<Unit> =
         Promise.async {
-            playlistManager.updatePlaylist(playlistId, name, description, artwork)
+            if (!playlistManager.updatePlaylist(playlistId, name, description, artwork)) {
+                throw IllegalArgumentException("Playlist not found: $playlistId")
+            }
             core.updatePlaylist(playlistId)
         }
 
@@ -74,7 +76,9 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
         index: Double?,
     ): Promise<Unit> =
         Promise.async {
-            playlistManager.addTrackToPlaylist(playlistId, track, index?.toInt())
+            if (!playlistManager.addTrackToPlaylist(playlistId, track, index?.toInt())) {
+                throw IllegalArgumentException("Playlist not found: $playlistId")
+            }
             core.updatePlaylist(playlistId)
         }
 
@@ -84,7 +88,9 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
         index: Double?,
     ): Promise<Unit> =
         Promise.async {
-            playlistManager.addTracksToPlaylist(playlistId, tracks.toList(), index?.toInt())
+            if (!playlistManager.addTracksToPlaylist(playlistId, tracks.toList(), index?.toInt())) {
+                throw IllegalArgumentException("Playlist not found: $playlistId")
+            }
             core.updatePlaylist(playlistId)
         }
 
@@ -93,7 +99,9 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
         trackId: String,
     ): Promise<Unit> =
         Promise.async {
-            playlistManager.removeTrackFromPlaylist(playlistId, trackId)
+            if (!playlistManager.removeTrackFromPlaylist(playlistId, trackId)) {
+                throw IllegalArgumentException("Track $trackId not found in playlist $playlistId")
+            }
             core.updatePlaylist(playlistId)
         }
 
@@ -103,7 +111,9 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
         newIndex: Double,
     ): Promise<Unit> =
         Promise.async {
-            playlistManager.reorderTrackInPlaylist(playlistId, trackId, newIndex.toInt())
+            if (!playlistManager.reorderTrackInPlaylist(playlistId, trackId, newIndex.toInt())) {
+                throw IllegalArgumentException("Invalid reorder for track $trackId in playlist $playlistId")
+            }
             core.updatePlaylist(playlistId)
         }
 
@@ -122,8 +132,10 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
         core.enqueue {
             if (playlistManager.loadPlaylist(playlistId, startIndex)) {
                 core.loadPlaylistOnQueue(playlistId, startIndex)
+                promise.resolve(Unit)
+            } else {
+                promise.reject(IllegalArgumentException("Invalid playlist or index: $playlistId"))
             }
-            promise.resolve(Unit)
         }
         return promise
     }
@@ -148,14 +160,19 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
     }
 
     override fun onPlaylistChanged(callback: (playlistId: String, playlist: Playlist, operation: QueueOperation?) -> Unit) {
-        val listenerId = UUID.randomUUID().toString()
-        playlistManager.getAllPlaylists().forEach { internalPlaylist ->
-            val removeListener =
-                playlistManager.addPlaylistChangeListener(internalPlaylist.id) { playlist, operation ->
-                    callback(playlist.id, playlist.toPlaylist(), operation)
-                }
-            playlistChangeListeners[listenerId] = removeListener
-        }
+        // Manager-level listener: covers playlists created after registration,
+        // and one remover per callback instead of one per playlist
+        val removeListener =
+            playlistManager.addAnyPlaylistChangeListener { playlist, operation ->
+                callback(playlist.id, playlist.toPlaylist(), operation)
+            }
+        playlistsChangeListeners.add(removeListener)
+    }
+
+    override fun dispose() {
+        super.dispose()
+        playlistsChangeListeners.forEach { it() }
+        playlistsChangeListeners.clear()
     }
 
     // ── Helper ────────────────────────────────────────────────────────────────
