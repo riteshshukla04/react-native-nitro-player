@@ -157,8 +157,7 @@ export interface TrackPlayer extends HybridObject<{
   ): void
 
   /**
-   * Get the current track index in the active playlist
-   * @returns Promise resolving to 0-based index, or -1 if no track playing
+   * Set playback speed. Rejects non-finite and non-positive values.
    */
   setPlaybackSpeed(speed: number): Promise<void>
 

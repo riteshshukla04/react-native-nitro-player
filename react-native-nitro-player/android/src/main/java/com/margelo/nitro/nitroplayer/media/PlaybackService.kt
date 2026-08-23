@@ -107,7 +107,13 @@ class NitroPlayerPlaybackService : MediaSessionService() {
     private fun initCast() {
         try {
             val castContext = CastContext.getSharedInstance(this)
-            val castPlayer = CastPlayer(castContext, NitroMediaItemConverter())
+            val castPlayer =
+                CastPlayer(
+                    castContext,
+                    NitroMediaItemConverter(),
+                    ExoPlayerBuilder.DEFAULT_REMOTE_SKIP_INTERVAL_MS,
+                    ExoPlayerBuilder.DEFAULT_REMOTE_SKIP_INTERVAL_MS,
+                )
             castSessionController =
                 CastSessionController(
                     castContext = castContext,

@@ -129,7 +129,7 @@ await TrackPlayer.setVolume(0.8); // 80% volume
 
 ### `setPlaybackSpeed(speed)`
 
-Set the playback speed.
+Set the playback speed. `speed` must be finite and greater than `0`.
 
 ```typescript
 await TrackPlayer.setPlaybackSpeed(1.5); // 1.5x speed
@@ -137,7 +137,7 @@ await TrackPlayer.setPlaybackSpeed(1.5); // 1.5x speed
 
 | Param | Type | Required | Description |
 |---|---|---|---|
-| `speed` | `number` | Yes | Playback speed multiplier |
+| `speed` | `number` | Yes | Playback speed multiplier. Rejects non-finite and non-positive values. |
 
 **Returns:** `Promise<void>`
 
@@ -214,10 +214,14 @@ Configure the player. Call this early in your app lifecycle.
 await TrackPlayer.configure({
   androidAutoEnabled: true,
   showInNotification: true,
+  remoteSkipForwardInterval: 15,
+  remoteSkipBackwardInterval: 15,
   lookaheadCount: 10,
   androidNotificationIcon: 'ic_notification', // Android-only custom notification icon
 });
 ```
+
+Remote skip intervals are in seconds. iOS uses them for the AirPods/Control Center fixed skip commands and exposes remote playback rates `0.5, 1.0, 1.25, 1.5, 1.75, 2.0`. Android uses them for the Media3 seek back/forward notification buttons; no playback-rate media button is exposed there. Custom intervals apply to local playback; during a Google Cast session the receiver skips by a fixed 15 seconds.
 
 | Param | Type | Required | Description |
 |---|---|---|---|

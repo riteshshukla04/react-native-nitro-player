@@ -57,6 +57,8 @@ await TrackPlayer.configure({
   androidAutoEnabled: false,
   carPlayEnabled: false,
   showInNotification: true,
+  remoteSkipForwardInterval: 15,
+  remoteSkipBackwardInterval: 15,
   lookaheadCount: 5,
 });
 ```
@@ -66,7 +68,11 @@ await TrackPlayer.configure({
 | `androidAutoEnabled` | `boolean` | `false` | Enable Android Auto integration |
 | `carPlayEnabled` | `boolean` | `false` | Enable CarPlay integration |
 | `showInNotification` | `boolean` | `true` | Show playback in notification/Control Center |
+| `remoteSkipForwardInterval` | `number` | `15` | Seconds to skip forward from remote controls |
+| `remoteSkipBackwardInterval` | `number` | `15` | Seconds to skip backward from remote controls |
 | `lookaheadCount` | `number` | `5` | Tracks to preload URLs for (lazy loading) |
+
+Remote skip intervals drive the iOS AirPods/Control Center fixed skip buttons and the Android Media3 seek back/forward notification buttons. iOS also exposes remote playback rates: `0.5, 1.0, 1.25, 1.5, 1.75, 2.0`; Android exposes no playback-rate media button. Custom intervals apply to local playback; during a Google Cast session the receiver skips by a fixed 15 seconds.
 
 ## Next Steps
 

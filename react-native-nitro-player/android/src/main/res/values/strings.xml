@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="nitro_player_skip_back_seconds">Skip back %1$s seconds</string>
+  <string name="nitro_player_skip_forward_seconds">Skip forward %1$s seconds</string>
+  <string name="nitro_player_previous_track">Previous track</string>
+  <string name="nitro_player_next_track">Next track</string>
+</resources>

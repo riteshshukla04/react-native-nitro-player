@@ -98,7 +98,9 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
         androidAutoEnabled: config.androidAutoEnabled,
         carPlayEnabled: config.carPlayEnabled,
         showInNotification: config.showInNotification,
-        lookaheadCount: config.lookaheadCount.map { Int($0) }
+        lookaheadCount: config.lookaheadCount.map { Int($0) },
+        remoteSkipForwardInterval: config.remoteSkipForwardInterval,
+        remoteSkipBackwardInterval: config.remoteSkipBackwardInterval
       )
     }
   }
@@ -137,7 +139,7 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
 
   // MARK: - Playback speed
   func setPlaybackSpeed(speed: Double) throws -> Promise<Void> {
-    enqueue { self.core.setPlaybackSpeedOnQueue(speed) }
+    enqueueThrowing { try self.core.setPlaybackSpeedOnQueue(speed) }
   }
 
   func getPlaybackSpeed() throws -> Promise<Double> {

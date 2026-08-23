@@ -16,6 +16,8 @@ class MediaSessionManager {
 
   private enum Constants {
     static let artworkSize: CGFloat = 500.0
+    static let defaultRemoteSkipInterval: Double = 15.0
+    static let supportedPlaybackRates: [Float] = [0.5, 1.0, 1.25, 1.5, 1.75, 2.0]
   }
 
   // MARK: - Properties
@@ -24,6 +26,8 @@ class MediaSessionManager {
   private let artworkCache = NSCache<NSString, UIImage>()
 
   private var showInNotification: Bool = true
+  private var remoteSkipForwardInterval: Double = Constants.defaultRemoteSkipInterval
+  private var remoteSkipBackwardInterval: Double = Constants.defaultRemoteSkipInterval
 
   // Tracks the artwork URL currently shown so we can discard stale async loads
   private var lastArtworkUrl: String?
@@ -36,6 +40,7 @@ class MediaSessionManager {
   // per event; these two Ints are computed on playerQueue instead.
   private var cachedQueueCount: Int = 0
   private var cachedPositionInQueue: Int = -1
+  private var cachedPlaybackSpeed: Double = 1.0
 
   init() {
     setupRemoteCommandCenter()
@@ -48,11 +53,24 @@ class MediaSessionManager {
   func configure(
     androidAutoEnabled: Bool?,
     carPlayEnabled: Bool?,
-    showInNotification: Bool?
+    showInNotification: Bool?,
+    remoteSkipForwardInterval: Double?,
+    remoteSkipBackwardInterval: Double?,
+    playbackSpeed: Double?
   ) {
     if let showInNotification = showInNotification {
       self.showInNotification = showInNotification
     }
+    if let playbackSpeed = sanitizedPositive(playbackSpeed) {
+      cachedPlaybackSpeed = playbackSpeed
+    }
+    if let interval = sanitizedPositive(remoteSkipForwardInterval) {
+      self.remoteSkipForwardInterval = interval
+    }
+    if let interval = sanitizedPositive(remoteSkipBackwardInterval) {
+      self.remoteSkipBackwardInterval = interval
+    }
+    updateSkipCommandIntervals()
     refresh()
   }
 
@@ -61,12 +79,14 @@ class MediaSessionManager {
   // Receives pre-computed values captured on playerQueue — no player access here.
 
   func updateFromPlayerQueue(
-    track: TrackItem, state: PlayerState, queueCount: Int, positionInQueue: Int
+    track: TrackItem, state: PlayerState, queueCount: Int, positionInQueue: Int,
+    playbackSpeed: Double
   ) {
     cachedTrack = track
     cachedState = state
     cachedQueueCount = queueCount
     cachedPositionInQueue = positionInQueue
+    cachedPlaybackSpeed = sanitizedPositive(playbackSpeed) ?? 1.0
     refreshInternal()
   }
 
@@ -123,6 +143,7 @@ class MediaSessionManager {
     let currentPosition = state.currentPosition
     let safePosition = currentPosition.isNaN || currentPosition.isInfinite ? 0 : currentPosition
     let isPlaying = state.currentState == .playing
+    let playbackSpeed = sanitizedPositive(cachedPlaybackSpeed) ?? 1.0
 
     var nowPlayingInfo: [String: Any] = [
       MPMediaItemPropertyTitle: track.title,
@@ -130,8 +151,8 @@ class MediaSessionManager {
       MPMediaItemPropertyAlbumTitle: track.album,
       MPNowPlayingInfoPropertyElapsedPlaybackTime: safePosition,
       MPMediaItemPropertyPlaybackDuration: effectiveDuration,
-      MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? 1.0 : 0.0,
-      MPNowPlayingInfoPropertyDefaultPlaybackRate: 1.0,
+      MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? playbackSpeed : 0.0,
+      MPNowPlayingInfoPropertyDefaultPlaybackRate: playbackSpeed,
       MPNowPlayingInfoPropertyPlaybackQueueCount: max(1, queueCount),
       MPNowPlayingInfoPropertyPlaybackQueueIndex: max(0, positionInQueue),
     ]
@@ -176,9 +197,16 @@ class MediaSessionManager {
     commandCenter.togglePlayPauseCommand.removeTarget(nil)
     commandCenter.nextTrackCommand.removeTarget(nil)
     commandCenter.previousTrackCommand.removeTarget(nil)
+    commandCenter.skipForwardCommand.removeTarget(nil)
+    commandCenter.skipBackwardCommand.removeTarget(nil)
     commandCenter.seekForwardCommand.removeTarget(nil)
     commandCenter.seekBackwardCommand.removeTarget(nil)
+    commandCenter.changePlaybackRateCommand.removeTarget(nil)
     commandCenter.changePlaybackPositionCommand.removeTarget(nil)
+
+    updateSkipCommandIntervals()
+    commandCenter.changePlaybackRateCommand.supportedPlaybackRates =
+      Constants.supportedPlaybackRates.map { NSNumber(value: $0) }
 
     // Play
     commandCenter.playCommand.isEnabled = true
@@ -221,8 +249,44 @@ class MediaSessionManager {
       return .success
     }
 
+    commandCenter.skipForwardCommand.isEnabled = false
+    commandCenter.skipForwardCommand.addTarget { [weak self] event in
+      guard let self = self, let core = self.trackPlayerCore else { return .commandFailed }
+      let interval = (event as? MPSkipIntervalCommandEvent)?.interval ?? self.remoteSkipForwardInterval
+      Task { await core.seekBy(offset: interval) }
+      return .success
+    }
+
+    commandCenter.skipBackwardCommand.isEnabled = false
+    commandCenter.skipBackwardCommand.addTarget { [weak self] event in
+      guard let self = self, let core = self.trackPlayerCore else { return .commandFailed }
+      let interval = (event as? MPSkipIntervalCommandEvent)?.interval ?? self.remoteSkipBackwardInterval
+      Task { await core.seekBy(offset: -interval) }
+      return .success
+    }
+
     commandCenter.seekForwardCommand.isEnabled = false
     commandCenter.seekBackwardCommand.isEnabled = false
+
+    commandCenter.changePlaybackRateCommand.isEnabled = false
+    commandCenter.changePlaybackRateCommand.addTarget { [weak self] event in
+      guard let core = self?.trackPlayerCore,
+        let rateEvent = event as? MPChangePlaybackRateCommandEvent
+      else {
+        return .commandFailed
+      }
+      let rate = Double(rateEvent.playbackRate)
+      guard rate.isFinite, rate > 0 else { return .commandFailed }
+      Task {
+        do {
+          try await core.setPlaybackSpeed(rate)
+        } catch {
+          NitroPlayerLogger.log(
+            "MediaSessionManager", "❌ Failed to set remote playback rate: \(error)")
+        }
+      }
+      return .success
+    }
 
     // Scrubber
     commandCenter.changePlaybackPositionCommand.isEnabled = false
@@ -257,6 +321,9 @@ class MediaSessionManager {
 
     commandCenter.nextTrackCommand.isEnabled = hasCurrentTrack && isNotLast
     commandCenter.previousTrackCommand.isEnabled = hasCurrentTrack
+    commandCenter.skipForwardCommand.isEnabled = hasCurrentTrack
+    commandCenter.skipBackwardCommand.isEnabled = hasCurrentTrack
+    commandCenter.changePlaybackRateCommand.isEnabled = hasCurrentTrack
     commandCenter.changePlaybackPositionCommand.isEnabled = hasCurrentTrack && hasDuration
   }
 
@@ -264,10 +331,28 @@ class MediaSessionManager {
     let commandCenter = MPRemoteCommandCenter.shared()
     commandCenter.nextTrackCommand.isEnabled = false
     commandCenter.previousTrackCommand.isEnabled = false
+    commandCenter.skipForwardCommand.isEnabled = false
+    commandCenter.skipBackwardCommand.isEnabled = false
+    commandCenter.changePlaybackRateCommand.isEnabled = false
     commandCenter.changePlaybackPositionCommand.isEnabled = false
   }
 
   // MARK: - Helpers
+
+  private func sanitizedPositive(_ value: Double?) -> Double? {
+    guard let value = value, value.isFinite, value > 0 else { return nil }
+    return value
+  }
+
+  private func updateSkipCommandIntervals() {
+    let commandCenter = MPRemoteCommandCenter.shared()
+    commandCenter.skipForwardCommand.preferredIntervals = [
+      NSNumber(value: remoteSkipForwardInterval)
+    ]
+    commandCenter.skipBackwardCommand.preferredIntervals = [
+      NSNumber(value: remoteSkipBackwardInterval)
+    ]
+  }
 
   private func clearNowPlayingInfo() {
     MPNowPlayingInfoCenter.default().nowPlayingInfo = nil

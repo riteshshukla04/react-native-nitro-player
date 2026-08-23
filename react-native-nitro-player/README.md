@@ -52,7 +52,7 @@ Command-style methods return **`Promise<void>`** (or another **`Promise`**) and 
 | `skipToNext()`              | Both     | **Async**. Skips to the next track in the queue.                    |
 | `skipToPrevious()`          | Both     | **Async**. Skips to the previous track.                             |
 | `seek(position)`            | Both     | **Async**. Seeks to a specific time position in seconds.           |
-| `setPlaybackSpeed(speed)`   | Both     | **Async**. Sets playback speed (e.g. 0.5x, 1x, 1.5x, 2x).           |
+| `setPlaybackSpeed(speed)`   | Both     | **Async**. Sets playback speed; rejects non-finite and non-positive values. |
 | `getPlaybackSpeed()`        | Both     | **Async**. Gets the current playback speed.                         |
 | `setVolume(0-100)`          | Both     | **Async**. Sets playback volume (0-100).                            |
 | `setRepeatMode(mode)`       | Both     | **Async**. Sets repeat mode (`off`, `track`, `Playlist`).           |
@@ -131,8 +131,12 @@ await TrackPlayer.configure({
   androidAutoEnabled: true,
   carPlayEnabled: false,
   showInNotification: true,
+  remoteSkipForwardInterval: 15,
+  remoteSkipBackwardInterval: 15,
 })
 ```
+
+Remote skip intervals are in seconds. iOS uses them for AirPods/Control Center fixed skip buttons and exposes remote playback rates `0.5, 1.0, 1.25, 1.5, 1.75, 2.0`; Android uses them for the Media3 seek back/forward notification buttons and does not expose a playback-rate media button. Press-and-hold continuous seek is not implemented on either platform. Custom intervals apply to local playback; during a Google Cast session the receiver skips by a fixed 15 seconds.
 
 ### 2. Create Playlists
 
@@ -1227,6 +1231,7 @@ AndroidAutoMediaLibraryHelper.set({
 
 - ✅ **Playlist Management**: Create, update, and manage multiple playlists
 - ✅ **Playback Controls**: Play, pause, seek, skip tracks
+- ✅ **Remote Controls**: AirPods, lock screen, and notification skip controls
 - ✅ **Volume Control**: Adjust playback volume (0-100)
 - ✅ **React Hooks**: Built-in hooks for reactive state management
 - ✅ **Event Listeners**: Listen to track changes, state changes, and more

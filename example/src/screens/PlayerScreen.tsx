@@ -307,8 +307,8 @@ export default function PlayerScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={commonStyles.smallButton}
-            onPress={() => setPlaybackSpeedState(0)}>
-            <Text style={commonStyles.buttonText}>0x</Text>
+            onPress={() => setPlaybackSpeedState(1)}>
+            <Text style={commonStyles.buttonText}>1x</Text>
           </TouchableOpacity>
           </View>
           

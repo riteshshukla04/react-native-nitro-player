@@ -98,33 +98,49 @@ extension TrackPlayerCore {
 
   func configureOnQueue(
     androidAutoEnabled: Bool?, carPlayEnabled: Bool?,
-    showInNotification: Bool?, lookaheadCount: Int?
+    showInNotification: Bool?, lookaheadCount: Int?,
+    remoteSkipForwardInterval: Double?, remoteSkipBackwardInterval: Double?
   ) {
     if let la = lookaheadCount {
       self.lookaheadCount = la
       NitroPlayerLogger.log("TrackPlayerCore", "🔄 Lookahead count set to: \(la)")
     }
+    let playbackSpeed = currentPlaybackSpeed
     DispatchQueue.main.async { [weak self] in
       self?.mediaSessionManager?.configure(
         androidAutoEnabled: androidAutoEnabled,
         carPlayEnabled: carPlayEnabled,
-        showInNotification: showInNotification
+        showInNotification: showInNotification,
+        remoteSkipForwardInterval: remoteSkipForwardInterval,
+        remoteSkipBackwardInterval: remoteSkipBackwardInterval,
+        playbackSpeed: playbackSpeed
       )
     }
   }
   func configure(
     androidAutoEnabled: Bool?, carPlayEnabled: Bool?,
-    showInNotification: Bool?, lookaheadCount: Int?
+    showInNotification: Bool?, lookaheadCount: Int?,
+    remoteSkipForwardInterval: Double?, remoteSkipBackwardInterval: Double?
   ) async {
     await withPlayerQueueNoThrow {
       self.configureOnQueue(
         androidAutoEnabled: androidAutoEnabled, carPlayEnabled: carPlayEnabled,
-        showInNotification: showInNotification, lookaheadCount: lookaheadCount)
+        showInNotification: showInNotification, lookaheadCount: lookaheadCount,
+        remoteSkipForwardInterval: remoteSkipForwardInterval,
+        remoteSkipBackwardInterval: remoteSkipBackwardInterval)
     }
   }
 
-  func setPlaybackSpeedOnQueue(_ speed: Double) {
+  func setPlaybackSpeedOnQueue(_ speed: Double) throws {
+    guard speed.isFinite, speed > 0 else {
+      throw NSError(
+        domain: "NitroPlayer",
+        code: -1,
+        userInfo: [NSLocalizedDescriptionKey: "Speed must be finite and greater than 0"]
+      )
+    }
     currentPlaybackSpeed = speed
+    defer { refreshMediaSession() }
     if isCasting {
       castManager?.setPlaybackRate(Float(speed))
       return
@@ -134,8 +150,30 @@ extension TrackPlayerCore {
       player.rate = Float(speed)
     }
   }
-  func setPlaybackSpeed(_ speed: Double) async {
-    await withPlayerQueueNoThrow { self.setPlaybackSpeedOnQueue(speed) }
+  func setPlaybackSpeed(_ speed: Double) async throws {
+    try await withPlayerQueue { try self.setPlaybackSpeedOnQueue(speed) }
+  }
+
+  func seekByOnQueue(offset: Double) {
+    if isCasting {
+      let position = castManager?.lastKnownRemotePosition ?? 0
+      let duration = castManager?.lastKnownRemoteDuration ?? 0
+      var target = max(0, position + offset)
+      if duration > 0, duration.isFinite { target = min(target, duration) }
+      castManager?.seek(to: target)
+      return
+    }
+    guard let player = self.player else { return }
+    let position = player.currentTime().seconds
+    guard position.isFinite else { return }
+    var target = max(0, position + offset)
+    if let duration = player.currentItem?.duration.seconds, duration > 0, duration.isFinite {
+      target = min(target, duration)
+    }
+    seekInternal(position: target)
+  }
+  func seekBy(offset: Double) async {
+    await withPlayerQueueNoThrow { self.seekByOnQueue(offset: offset) }
   }
 
   func getPlaybackSpeed() async -> Double {

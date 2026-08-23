@@ -16,6 +16,8 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
  */
 @UnstableApi
 object ExoPlayerBuilder {
+    const val DEFAULT_REMOTE_SKIP_INTERVAL_MS = 15_000L
+
     fun build(context: Context): ExoPlayer {
         val loadControl =
             DefaultLoadControl
@@ -50,6 +52,8 @@ object ExoPlayerBuilder {
             .Builder(context)
             .setLoadControl(loadControl)
             .setMediaSourceFactory(mediaSourceFactory)
+            .setSeekBackIncrementMs(DEFAULT_REMOTE_SKIP_INTERVAL_MS)
+            .setSeekForwardIncrementMs(DEFAULT_REMOTE_SKIP_INTERVAL_MS)
             .setAudioAttributes(audioAttrs, /* handleAudioFocus */ true)
             .setHandleAudioBecomingNoisy(true)
             .setWakeMode(C.WAKE_MODE_NETWORK)

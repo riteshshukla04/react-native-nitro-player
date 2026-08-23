@@ -2,7 +2,10 @@
 
 package com.margelo.nitro.nitroplayer.core
 
+import androidx.annotation.OptIn
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
 import com.margelo.nitro.nitroplayer.PlayerConfig
 import com.margelo.nitro.nitroplayer.Reason
 import com.margelo.nitro.nitroplayer.RepeatMode
@@ -95,7 +98,31 @@ internal fun TrackPlayerCore.configureOnQueue(config: PlayerConfig) {
     config.androidAutoEnabled?.let { NitroPlayerMediaBrowserService.isAndroidAutoEnabled = it }
     config.lookaheadCount?.let { lookaheadCount = it.toInt() }
     config.androidNotificationIcon?.let { NitroPlayerPlaybackService.notificationSmallIconResName = it }
-    mediaSessionManager?.configure(config.androidAutoEnabled, config.carPlayEnabled, config.showInNotification)
+    remoteSkipIntervalMs(config.remoteSkipForwardInterval)?.let { remoteSkipForwardIntervalMs = it }
+    remoteSkipIntervalMs(config.remoteSkipBackwardInterval)?.let { remoteSkipBackwardIntervalMs = it }
+    applyRemoteSkipIntervals()
+    mediaSessionManager?.configure(
+        config.androidAutoEnabled,
+        config.carPlayEnabled,
+        config.showInNotification,
+        remoteSkipForwardIntervalMs,
+        remoteSkipBackwardIntervalMs,
+    )
+}
+
+// Resolved from the cast controller: mid-cast `exo` is the CastPlayer, whose increments are fixed
+@OptIn(UnstableApi::class)
+internal fun TrackPlayerCore.applyRemoteSkipIntervals() {
+    val local = castSessionController?.localPlayer ?: if (isExoInitialized) exo.player else null
+    (local as? ExoPlayer)?.let {
+        it.setSeekBackIncrementMs(remoteSkipBackwardIntervalMs)
+        it.setSeekForwardIncrementMs(remoteSkipForwardIntervalMs)
+    }
+}
+
+private fun remoteSkipIntervalMs(intervalSeconds: Double?): Long? {
+    if (intervalSeconds == null || !intervalSeconds.isFinite() || intervalSeconds <= 0.0) return null
+    return (intervalSeconds * 1000.0).toLong().coerceAtLeast(1L)
 }
 
 suspend fun TrackPlayerCore.playSong(
@@ -182,7 +209,9 @@ internal fun TrackPlayerCore.emitStateChange(reason: Reason? = null) {
 suspend fun TrackPlayerCore.setPlayBackSpeed(speed: Double) = withPlayerContext { setPlayBackSpeedOnQueue(speed) }
 
 internal fun TrackPlayerCore.setPlayBackSpeedOnQueue(speed: Double) {
-    if (speed <= 0.0) throw IllegalArgumentException("Speed must be greater than 0")
+    if (!speed.isFinite() || speed <= 0.0) {
+        throw IllegalArgumentException("Speed must be finite and greater than 0")
+    }
     if (isExoInitialized) exo.setPlaybackSpeed(speed.toFloat())
 }
 

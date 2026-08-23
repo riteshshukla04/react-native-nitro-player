@@ -61,6 +61,14 @@ export interface PlayerConfig {
   carPlayEnabled?: boolean
   showInNotification?: boolean
   /**
+   * Fixed interval, in seconds, for remote skip-forward controls (default: 15)
+   */
+  remoteSkipForwardInterval?: number
+  /**
+   * Fixed interval, in seconds, for remote skip-backward controls (default: 15)
+   */
+  remoteSkipBackwardInterval?: number
+  /**
    * Number of upcoming tracks to preload URLs for (default: 5)
    * Higher values = more proactive loading, but more network requests
    */

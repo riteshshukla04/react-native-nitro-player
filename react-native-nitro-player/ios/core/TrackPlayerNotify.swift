@@ -13,24 +13,24 @@ extension TrackPlayerCore {
   // Called on playerQueue — invoke listeners directly (Nitro handles JS thread hop)
   func notifyTrackChange(_ track: TrackItem, _ reason: Reason?) {
     onChangeTrackListeners.forEach { $0(track, reason) }
-    // Capture state + queue metrics now (on playerQueue), pass pre-computed values to main.
-    // Metrics, not the queue itself — the media session only needs count and position.
-    let state = getStateInternal()
-    let metrics = actualQueueMetrics()
-    DispatchQueue.main.async { [weak self] in
-      self?.mediaSessionManager?.updateFromPlayerQueue(
-        track: track, state: state, queueCount: metrics.count, positionInQueue: metrics.position)
-    }
+    refreshMediaSession(track: track)
   }
 
   func notifyPlaybackStateChange(_ state: TrackPlayerState, _ reason: Reason?) {
     onPlaybackStateChangeListeners.forEach { $0(state, reason) }
-    guard let track = getCurrentTrack() else { return }
-    let playerState = getStateInternal()
+    refreshMediaSession()
+  }
+
+  /// Must run on playerQueue — values are captured here and handed to main pre-computed
+  func refreshMediaSession(track providedTrack: TrackItem? = nil) {
+    guard let track = providedTrack ?? getCurrentTrack() else { return }
+    let state = getStateInternal()
     let metrics = actualQueueMetrics()
+    let playbackSpeed = currentPlaybackSpeed
     DispatchQueue.main.async { [weak self] in
       self?.mediaSessionManager?.updateFromPlayerQueue(
-        track: track, state: playerState, queueCount: metrics.count, positionInQueue: metrics.position)
+        track: track, state: state, queueCount: metrics.count,
+        positionInQueue: metrics.position, playbackSpeed: playbackSpeed)
     }
   }
 
