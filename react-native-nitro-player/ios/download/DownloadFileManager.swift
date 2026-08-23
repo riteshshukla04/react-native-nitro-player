@@ -24,33 +24,30 @@ final class DownloadFileManager {
 
   private let fileManager = FileManager.default
 
-  private lazy var privateDownloadsDirectory: URL = {
-    let documentsPath = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
-    let downloadsPath = documentsPath.appendingPathComponent(Self.privateDownloadsFolderName)
-
-    if !fileManager.fileExists(atPath: downloadsPath.path) {
-      try? fileManager.createDirectory(at: downloadsPath, withIntermediateDirectories: true)
-    }
-
-    return downloadsPath
-  }()
-
-  private lazy var publicDownloadsDirectory: URL = {
-    // On iOS, we can't write to a truly public folder, but we can use the shared container
-    // or the Documents folder which is accessible via Files app
-    let documentsPath = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
-    let publicPath = documentsPath.appendingPathComponent(Self.publicDownloadsFolderName)
-
-    if !fileManager.fileExists(atPath: publicPath.path) {
-      try? fileManager.createDirectory(at: publicPath, withIntermediateDirectories: true)
-    }
-
-    return publicPath
-  }()
+  // `let` computed once in the singleton's init — Swift `lazy var` initialization
+  // is not atomic and these were first-touched from multiple queues.
+  private let privateDownloadsDirectory: URL
+  private let publicDownloadsDirectory: URL
 
   // MARK: - Initialization
 
-  private init() {}
+  private init() {
+    let documentsPath = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
+
+    let downloadsPath = documentsPath.appendingPathComponent(Self.privateDownloadsFolderName)
+    if !fileManager.fileExists(atPath: downloadsPath.path) {
+      try? fileManager.createDirectory(at: downloadsPath, withIntermediateDirectories: true)
+    }
+    privateDownloadsDirectory = downloadsPath
+
+    // On iOS, we can't write to a truly public folder, but we can use the shared container
+    // or the Documents folder which is accessible via Files app
+    let publicPath = documentsPath.appendingPathComponent(Self.publicDownloadsFolderName)
+    if !fileManager.fileExists(atPath: publicPath.path) {
+      try? fileManager.createDirectory(at: publicPath, withIntermediateDirectories: true)
+    }
+    publicDownloadsDirectory = publicPath
+  }
 
   // MARK: - File Operations
 
