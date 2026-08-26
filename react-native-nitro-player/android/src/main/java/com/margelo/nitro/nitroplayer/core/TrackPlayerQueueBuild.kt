@@ -158,9 +158,13 @@ internal fun TrackPlayerCore.rebuildQueueFromCurrentPosition() {
     // ExoPlayer has already prepared, so gapless transitions survive.
     val existingCount = exo.mediaItemCount - currentIndex - 1
     var commonPrefix = 0
-    while (commonPrefix < existingCount && commonPrefix < newQueueTracks.size &&
-        extractTrackId(exo.getMediaItemAt(currentIndex + 1 + commonPrefix).mediaId) == newQueueTracks[commonPrefix].id
-    ) {
+    while (commonPrefix < existingCount && commonPrefix < newQueueTracks.size) {
+        val existing = exo.getMediaItemAt(currentIndex + 1 + commonPrefix)
+        val track = newQueueTracks[commonPrefix]
+        if (extractTrackId(existing.mediaId) != track.id) break
+        // URI must match too — items materialized before lazy URL resolution are unplayable
+        val desiredUrl = if (isCastingField) track.url else downloadManager.getEffectiveUrl(track)
+        if (existing.localConfiguration?.uri?.toString().orEmpty() != desiredUrl) break
         commonPrefix++
     }
 
