@@ -3,6 +3,7 @@
 package com.margelo.nitro.nitroplayer.core
 
 import android.net.Uri
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
@@ -79,14 +80,15 @@ internal fun TrackPlayerCore.rebuildQueueAndPlayFromIndex(index: Int) {
         return
     }
 
+    val windowStart = maxOf(0, index - 1)
     val windowEnd = minOf(index + 1 + QUEUE_WINDOW_SIZE, currentTracks.size)
     val mediaItems =
-        currentTracks.subList(index, windowEnd).map { track ->
+        currentTracks.subList(windowStart, windowEnd).map { track ->
             makeMediaItem(track, mediaIdFor(track))
         }
 
     currentTrackIndex = index
-    exo.setMediaItems(mediaItems, true)
+    exo.setMediaItems(mediaItems, index - windowStart, C.TIME_UNSET)
     exo.prepare()
 }
 

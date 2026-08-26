@@ -24,7 +24,8 @@ internal fun TrackPlayerCore.updateTracksOnQueue(tracks: List<TrackItem>) {
         val safeTracks =
             tracks.filter { track ->
                 when {
-                    track.id == currentTrackId && !currentTrackIsEmpty -> false
+                    track.id == currentTrackId && !currentTrackIsEmpty ->
+                        track.url == currentTrack?.url
 
                     // preserve gapless
                     track.id == currentTrackId && currentTrackIsEmpty -> track.url.isNotEmpty()
@@ -70,6 +71,26 @@ internal fun TrackPlayerCore.updateTracksOnQueue(tracks: List<TrackItem>) {
             }
 
             rebuildQueueFromCurrentPosition()
+
+            val metadataUpdate = currentTrackId?.let { id -> currentTracks.find { it.id == id } }
+            if (
+                !currentTrackResolvedNow &&
+                metadataUpdate != null &&
+                currentTrackUpdate != null &&
+                currentTrackUpdate.url == currentTrack?.url
+            ) {
+                val exoIndex = exo.currentMediaItemIndex
+                if (exoIndex >= 0) {
+                    val playlistId = currentPlaylistId ?: ""
+                    val mediaId =
+                        if (playlistId.isNotEmpty()) {
+                            "$playlistId:${metadataUpdate.id}"
+                        } else {
+                            metadataUpdate.id
+                        }
+                    exo.replaceMediaItem(exoIndex, makeMediaItem(metadataUpdate, mediaId))
+                }
+            }
         }
     }
 }

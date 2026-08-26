@@ -50,8 +50,12 @@ extension TrackPlayerCore {
           "🔄 Updating current track (\(currentItemFailed ? "failed item" : "no URL")): \(track.id)")
         return !track.url.isEmpty
       case track.id == currentTrackId:
+        // Same URL: allow title/artist/artwork updates (e.g. language change).
+        if let current = currentTrack, track.url == current.url, !track.url.isEmpty {
+          return true
+        }
         NitroPlayerLogger.log("TrackPlayerCore",
-          "⚠️ Skipping update for currently playing track: \(track.id) (preserves gapless)")
+          "⚠️ Skipping URL change for currently playing track: \(track.id) (preserves gapless)")
         return false
       case track.url.isEmpty:
         NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Skipping track with empty URL: \(track.id)")
@@ -159,6 +163,7 @@ extension TrackPlayerCore {
 
     NitroPlayerLogger.log("TrackPlayerCore",
       "✅ Track updates complete - \(affectedPlaylists.count) playlists affected")
+    refreshMediaSession()
   }
 
   func getTracksNeedingUrlsInternal() -> [TrackItem] {

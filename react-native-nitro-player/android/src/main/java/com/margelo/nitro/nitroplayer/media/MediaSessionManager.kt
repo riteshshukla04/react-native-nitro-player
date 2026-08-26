@@ -79,10 +79,12 @@ class MediaSessionManager(
 
     private fun updateMediaButtonPreferences() {
         val session = mediaSession ?: return
-        // Preferences replace Media3's default layout — prev/next must be declared or they vanish
+        // Compact uses slots 1-3 (play/pause, BACK, FORWARD). Skip +/-10 must be
+        // OVERFLOW or they steal Next. Order: prev, next, then overflow skips.
         val preserved = session.mediaButtonPreferences.filterNot { it.isManagedButton() }
         session.setMediaButtonPreferences(
-            listOf(previousTrackButton(), skipBackButton(), skipForwardButton(), nextTrackButton()) + preserved,
+            listOf(previousTrackButton(), nextTrackButton(), skipBackButton(), skipForwardButton()) +
+                preserved,
         )
     }
 
@@ -90,6 +92,7 @@ class MediaSessionManager(
         CommandButton
             .Builder(CommandButton.ICON_PREVIOUS)
             .setPlayerCommand(Player.COMMAND_SEEK_TO_PREVIOUS)
+            .setSlots(CommandButton.SLOT_BACK)
             .setDisplayName(context.getString(R.string.nitro_player_previous_track))
             .build()
 
@@ -97,6 +100,7 @@ class MediaSessionManager(
         CommandButton
             .Builder(CommandButton.ICON_NEXT)
             .setPlayerCommand(Player.COMMAND_SEEK_TO_NEXT)
+            .setSlots(CommandButton.SLOT_FORWARD)
             .setDisplayName(context.getString(R.string.nitro_player_next_track))
             .build()
 
@@ -104,6 +108,7 @@ class MediaSessionManager(
         CommandButton
             .Builder(skipBackIcon(remoteSkipBackwardIntervalMs))
             .setPlayerCommand(Player.COMMAND_SEEK_BACK)
+            .setSlots(CommandButton.SLOT_OVERFLOW)
             .setDisplayName(
                 context.getString(
                     R.string.nitro_player_skip_back_seconds,
@@ -115,6 +120,7 @@ class MediaSessionManager(
         CommandButton
             .Builder(skipForwardIcon(remoteSkipForwardIntervalMs))
             .setPlayerCommand(Player.COMMAND_SEEK_FORWARD)
+            .setSlots(CommandButton.SLOT_OVERFLOW)
             .setDisplayName(
                 context.getString(
                     R.string.nitro_player_skip_forward_seconds,

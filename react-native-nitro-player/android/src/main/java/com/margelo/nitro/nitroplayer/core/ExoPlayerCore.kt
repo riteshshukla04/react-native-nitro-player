@@ -53,6 +53,12 @@ class ExoPlayerCore(
         resetPosition: Boolean = false,
     ) = player.setMediaItems(items, resetPosition)
 
+    fun setMediaItems(
+        items: List<MediaItem>,
+        startIndex: Int,
+        startPositionMs: Long,
+    ) = player.setMediaItems(items, startIndex, startPositionMs)
+
     fun addMediaItems(items: List<MediaItem>) = player.addMediaItems(items)
 
     fun removeMediaItems(
