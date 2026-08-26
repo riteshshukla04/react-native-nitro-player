@@ -85,7 +85,7 @@ class NitroPlayerPlaybackService : MediaSessionService() {
         player = ExoPlayerBuilder.build(this)
 
         // MediaSession would otherwise call ExoPlayer.seekToPrevious/Next on a
-        // windowed timeline (playing item often at index 0 after resume).
+        // windowed timeline
         val sessionPlayer =
             object : ForwardingPlayer(player) {
                 override fun seekToPrevious() {
