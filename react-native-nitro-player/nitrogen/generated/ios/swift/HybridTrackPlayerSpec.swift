@@ -26,6 +26,9 @@ public protocol HybridTrackPlayerSpec_protocol: HybridObject {
   func getState() throws -> Promise<PlayerState>
   func setRepeatMode(mode: RepeatMode) throws -> Promise<Void>
   func getRepeatMode() throws -> RepeatMode
+  func setShuffleMode(enabled: Bool) throws -> Promise<Void>
+  func getShuffleMode() throws -> Bool
+  func reshuffle() throws -> Promise<Void>
   func configure(config: PlayerConfig) throws -> Promise<Void>
   func onChangeTrack(callback: @escaping (_ track: TrackItem, _ reason: Reason?) -> Void) throws -> Void
   func onPlaybackStateChange(callback: @escaping (_ state: TrackPlayerState, _ reason: Reason?) -> Void) throws -> Void
@@ -52,6 +55,7 @@ public protocol HybridTrackPlayerSpec_protocol: HybridObject {
   func getPlayNextQueue() throws -> Promise<[TrackItem]>
   func getUpNextQueue() throws -> Promise<[TrackItem]>
   func onTemporaryQueueChange(callback: @escaping (_ playNextQueue: [TrackItem], _ upNextQueue: [TrackItem]) -> Void) throws -> Void
+  func onShuffleChange(callback: @escaping (_ enabled: Bool) -> Void) throws -> Void
 }
 
 public extension HybridTrackPlayerSpec_protocol {

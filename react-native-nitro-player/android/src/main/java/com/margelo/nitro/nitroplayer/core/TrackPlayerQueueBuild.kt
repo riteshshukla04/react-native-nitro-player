@@ -219,7 +219,8 @@ internal fun TrackPlayerCore.buildUpcomingQueueTracks(currentId: String?): List<
 
 // ── Full queue set (initial load or no active item) ───────────────────────
 
-internal fun TrackPlayerCore.updatePlayerQueue(tracks: List<TrackItem>) {
+internal fun TrackPlayerCore.updatePlayerQueue(sourceTracks: List<TrackItem>) {
+    val tracks = applyShuffleOrder(sourceTracks)
     currentTracks = tracks
 
     if (isCastingField) {

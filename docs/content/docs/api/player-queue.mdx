@@ -148,6 +148,25 @@ await PlayerQueue.removeTrackFromPlaylist('playlist-123', 'track-1');
 
 ---
 
+### `removeTracksFromPlaylist(playlistId, trackIds)`
+
+Remove several tracks in one native pass: one save, one `onPlaylistChanged('remove')`, one queue
+rebuild. The currently playing track keeps playing unless it is among `trackIds`. Unknown ids are
+skipped; rejects only if the playlist does not exist.
+
+```typescript
+await PlayerQueue.removeTracksFromPlaylist('playlist-123', ['track-1', 'track-3']);
+```
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `playlistId` | `string` | Yes | Target playlist |
+| `trackIds` | `string[]` | Yes | Ids to remove |
+
+**Returns:** `Promise<void>`
+
+---
+
 ### `reorderTrackInPlaylist(playlistId, trackId, newIndex)`
 
 Move a track to a new position within a playlist.

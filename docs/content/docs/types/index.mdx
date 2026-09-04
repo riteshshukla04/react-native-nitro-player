@@ -97,7 +97,7 @@ interface PlayerState {
   totalDuration: number;         // Seconds
   currentState: TrackPlayerState;
   currentPlaylistId: string | null;
-  currentIndex: number;
+  currentIndex: number;          // Position in playback order (shuffled order while shuffle is on)
   currentPlayingType: CurrentPlayingType;
 }
 ```

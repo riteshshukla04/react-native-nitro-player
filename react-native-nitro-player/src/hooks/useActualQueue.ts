@@ -129,5 +129,12 @@ export function useActualQueue(): UseActualQueueResult {
     })
   }, [scheduleUpdate])
 
+  // Shuffle reorders the queue in place without any of the events above.
+  useEffect(() => {
+    return callbackManager.subscribeToShuffleChange(() => {
+      scheduleUpdate()
+    })
+  }, [scheduleUpdate])
+
   return { queue, refreshQueue, isLoading }
 }

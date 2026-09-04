@@ -42,6 +42,11 @@ export interface PlayerQueue extends HybridObject<{
     index?: number
   ): Promise<void>
   removeTrackFromPlaylist(playlistId: string, trackId: string): Promise<void>
+  /** One native pass; unknown ids are skipped, rejects only if the playlist does not exist. */
+  removeTracksFromPlaylist(
+    playlistId: string,
+    trackIds: string[]
+  ): Promise<void>
   reorderTrackInPlaylist(
     playlistId: string,
     trackId: string,
@@ -84,6 +89,12 @@ export interface TrackPlayer extends HybridObject<{
   getState(): Promise<PlayerState>
   setRepeatMode(mode: RepeatMode): Promise<void>
   getRepeatMode(): RepeatMode
+  /** Reorders the live playlist without stopping: current track becomes index 0, rest shuffled; off restores order. */
+  setShuffleMode(enabled: boolean): Promise<void>
+  /** Synchronous. */
+  getShuffleMode(): boolean
+  /** Re-randomizes the upcoming order (current track stays first). Enables shuffle if it was off. */
+  reshuffle(): Promise<void>
   configure(config: PlayerConfig): Promise<void>
   onChangeTrack(callback: (track: TrackItem, reason?: Reason) => void): void
   onPlaybackStateChange(
@@ -202,4 +213,7 @@ export interface TrackPlayer extends HybridObject<{
   onTemporaryQueueChange(
     callback: (playNextQueue: TrackItem[], upNextQueue: TrackItem[]) => void
   ): void
+
+  /** Fires when shuffle is toggled and after every reshuffle(). */
+  onShuffleChange(callback: (enabled: boolean) => void): void
 }

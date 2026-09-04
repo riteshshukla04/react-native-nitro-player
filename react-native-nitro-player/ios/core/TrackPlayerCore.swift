@@ -54,6 +54,8 @@ class TrackPlayerCore: NSObject {
   internal var playlistUpdateGeneration: UInt64 = 0
   internal var isManuallySeeked = false
   internal var currentRepeatMode: RepeatMode = .off
+  internal var shuffleEnabled = false
+  internal var shuffleOrder: [String] = []
   internal var currentPlaybackSpeed: Double = 1.0
   internal var lookaheadCount: Int = 5
   internal var boundaryTimeObserver: Any?
@@ -118,6 +120,7 @@ class TrackPlayerCore: NSObject {
   internal let onProgressListeners            = ListenerRegistry<(Double, Double, Bool?) -> Void>()
   internal let onTracksNeedUpdateListeners    = ListenerRegistry<([TrackItem], Int) -> Void>()
   internal let onTemporaryQueueChangeListeners = ListenerRegistry<([TrackItem], [TrackItem]) -> Void>()
+  internal let onShuffleChangeListeners       = ListenerRegistry<(Bool) -> Void>()
   internal let onTimedMetadataListeners       = ListenerRegistry<(TimedMetadata) -> Void>()
   internal let onCastStateChangeListeners     = ListenerRegistry<(CastState, String?) -> Void>()
 
@@ -236,6 +239,12 @@ class TrackPlayerCore: NSObject {
   @discardableResult func removeOnTemporaryQueueChangeListener(id: Int64) -> Bool {
     onTemporaryQueueChangeListeners.remove(id: id)
   }
+  @discardableResult func addOnShuffleChangeListener(_ cb: @escaping (Bool) -> Void) -> Int64 {
+    onShuffleChangeListeners.add(cb)
+  }
+  @discardableResult func removeOnShuffleChangeListener(id: Int64) -> Bool {
+    onShuffleChangeListeners.remove(id: id)
+  }
 
   @discardableResult func addOnTimedMetadataListener(_ cb: @escaping (TimedMetadata) -> Void) -> Int64 {
     onTimedMetadataListeners.add(cb)
@@ -256,6 +265,7 @@ class TrackPlayerCore: NSObject {
   func getPlaylistManager() -> PlaylistManager { playlistManager }
   func isAndroidAutoConnected() -> Bool { false } // iOS stub
   func getRepeatMode() -> RepeatMode { currentRepeatMode }
+  func getShuffleMode() -> Bool { shuffleEnabled }
 
   // MARK: - Lifecycle
   func destroy() {

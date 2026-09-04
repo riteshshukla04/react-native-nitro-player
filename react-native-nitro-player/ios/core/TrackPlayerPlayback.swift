@@ -402,11 +402,14 @@ extension TrackPlayerCore {
       NitroPlayerLogger.log("TrackPlayerCore", "🔄 Loading new playlist: \(playlistId)")
       if let playlist = self.playlistManager.getPlaylist(playlistId: playlistId) {
         self.currentPlaylistId = playlistId
+        if shuffleEnabled { seedShuffleOrder(playlist.tracks, firstId: songId) }
         self.updatePlayerQueue(tracks: playlist.tracks)
       }
     }
 
-    NitroPlayerLogger.log("TrackPlayerCore", "▶️ Playing from index: \(songIndex)")
-    self.playFromIndexInternal(index: songIndex)
+    // songIndex is a playlist-order index; currentTracks may be shuffled.
+    let playbackIndex = self.currentTracks.firstIndex { $0.id == songId } ?? songIndex
+    NitroPlayerLogger.log("TrackPlayerCore", "▶️ Playing from index: \(playbackIndex)")
+    self.playFromIndexInternal(index: playbackIndex)
   }
 }

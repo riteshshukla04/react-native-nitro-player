@@ -27,6 +27,9 @@ namespace margelo::nitro::nitroplayer {
       prototype.registerHybridMethod("getState", &HybridTrackPlayerSpec::getState);
       prototype.registerHybridMethod("setRepeatMode", &HybridTrackPlayerSpec::setRepeatMode);
       prototype.registerHybridMethod("getRepeatMode", &HybridTrackPlayerSpec::getRepeatMode);
+      prototype.registerHybridMethod("setShuffleMode", &HybridTrackPlayerSpec::setShuffleMode);
+      prototype.registerHybridMethod("getShuffleMode", &HybridTrackPlayerSpec::getShuffleMode);
+      prototype.registerHybridMethod("reshuffle", &HybridTrackPlayerSpec::reshuffle);
       prototype.registerHybridMethod("configure", &HybridTrackPlayerSpec::configure);
       prototype.registerHybridMethod("onChangeTrack", &HybridTrackPlayerSpec::onChangeTrack);
       prototype.registerHybridMethod("onPlaybackStateChange", &HybridTrackPlayerSpec::onPlaybackStateChange);
@@ -53,6 +56,7 @@ namespace margelo::nitro::nitroplayer {
       prototype.registerHybridMethod("getPlayNextQueue", &HybridTrackPlayerSpec::getPlayNextQueue);
       prototype.registerHybridMethod("getUpNextQueue", &HybridTrackPlayerSpec::getUpNextQueue);
       prototype.registerHybridMethod("onTemporaryQueueChange", &HybridTrackPlayerSpec::onTemporaryQueueChange);
+      prototype.registerHybridMethod("onShuffleChange", &HybridTrackPlayerSpec::onShuffleChange);
     });
   }
 

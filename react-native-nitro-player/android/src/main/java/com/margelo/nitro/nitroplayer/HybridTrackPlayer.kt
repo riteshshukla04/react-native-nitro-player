@@ -14,6 +14,7 @@ import com.margelo.nitro.nitroplayer.core.configureOnQueue
 import com.margelo.nitro.nitroplayer.core.getActualQueueInternal
 import com.margelo.nitro.nitroplayer.core.getNextTracksInternal
 import com.margelo.nitro.nitroplayer.core.getRepeatMode
+import com.margelo.nitro.nitroplayer.core.getShuffleMode
 import com.margelo.nitro.nitroplayer.core.getStateInternal
 import com.margelo.nitro.nitroplayer.core.getTracksNeedingUrlsInternal
 import com.margelo.nitro.nitroplayer.core.pauseOnQueue
@@ -23,9 +24,11 @@ import com.margelo.nitro.nitroplayer.core.playSongInternal
 import com.margelo.nitro.nitroplayer.core.removeFromPlayNextOnQueue
 import com.margelo.nitro.nitroplayer.core.removeFromUpNextOnQueue
 import com.margelo.nitro.nitroplayer.core.reorderTemporaryTrackOnQueue
+import com.margelo.nitro.nitroplayer.core.reshuffleOnQueue
 import com.margelo.nitro.nitroplayer.core.seekOnQueue
 import com.margelo.nitro.nitroplayer.core.setPlayBackSpeedOnQueue
 import com.margelo.nitro.nitroplayer.core.setRepeatModeOnQueue
+import com.margelo.nitro.nitroplayer.core.setShuffleModeOnQueue
 import com.margelo.nitro.nitroplayer.core.setVolumeOnQueue
 import com.margelo.nitro.nitroplayer.core.skipToIndexInternal
 import com.margelo.nitro.nitroplayer.core.skipToNextOnQueue
@@ -89,6 +92,12 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
     override fun setRepeatMode(mode: RepeatMode): Promise<Unit> = enqueue { core.setRepeatModeOnQueue(mode) }
 
     override fun getRepeatMode(): RepeatMode = core.getRepeatMode()
+
+    override fun setShuffleMode(enabled: Boolean): Promise<Unit> = enqueue { core.setShuffleModeOnQueue(enabled) }
+
+    override fun getShuffleMode(): Boolean = core.getShuffleMode()
+
+    override fun reshuffle(): Promise<Unit> = enqueue { core.reshuffleOnQueue() }
 
     override fun setVolume(volume: Double): Promise<Unit> = enqueue { core.setVolumeOnQueue(volume) }
 
@@ -204,6 +213,11 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
         listenerIds += "onTemporaryQueueChange" to id
     }
 
+    override fun onShuffleChange(callback: (enabled: Boolean) -> Unit) {
+        val id = core.addOnShuffleChangeListener(callback)
+        listenerIds += "onShuffleChange" to id
+    }
+
     // ── Cleanup ───────────────────────────────────────────────────────────────
 
     override fun dispose() {
@@ -217,6 +231,7 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
                 "onAndroidAutoConnectionChange" -> core.removeOnAndroidAutoConnectionListener(id)
                 "onTracksNeedUpdate" -> core.removeOnTracksNeedUpdateListener(id)
                 "onTemporaryQueueChange" -> core.removeOnTemporaryQueueChangeListener(id)
+                "onShuffleChange" -> core.removeOnShuffleChangeListener(id)
                 "onTimedMetadata" -> core.removeOnTimedMetadataListener(id)
                 "appStartedWithNotification" -> core.removeOnNotificationLaunchListener(id)
             }

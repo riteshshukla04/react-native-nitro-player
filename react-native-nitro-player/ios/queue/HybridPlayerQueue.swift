@@ -83,6 +83,16 @@ final class HybridPlayerQueue: HybridPlayerQueueSpec {
     }
   }
 
+  func removeTracksFromPlaylist(playlistId: String, trackIds: [String]) throws -> Promise<Void> {
+    Promise.async {
+      guard self.playlistManager.removeTracksFromPlaylist(playlistId: playlistId, trackIds: trackIds)
+      else {
+        throw RuntimeError.error(withMessage: "Playlist not found: \(playlistId)")
+      }
+      self.core.updatePlaylist(playlistId: playlistId)
+    }
+  }
+
   func reorderTrackInPlaylist(playlistId: String, trackId: String, newIndex: Double) throws -> Promise<Void> {
     Promise.async {
       guard self.playlistManager.reorderTrackInPlaylist(

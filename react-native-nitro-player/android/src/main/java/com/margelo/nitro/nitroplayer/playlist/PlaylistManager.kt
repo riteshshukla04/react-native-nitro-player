@@ -220,6 +220,33 @@ class PlaylistManager private constructor(
         return removed
     }
 
+    /** Batch remove; returns false only when the playlist does not exist. Unknown ids are ignored. */
+    fun removeTracksFromPlaylist(
+        playlistId: String,
+        trackIds: List<String>,
+    ): Boolean {
+        val ids = trackIds.toHashSet()
+        var removed = false
+        val found =
+            playlists.computeIfPresent(playlistId) { _, playlist ->
+                val tracks = playlist.tracks.toMutableList()
+                if (tracks.removeAll { it.id in ids }) {
+                    removed = true
+                    playlist.copy(tracks = tracks)
+                } else {
+                    playlist
+                }
+            } != null
+
+        if (removed) {
+            scheduleSave()
+            notifyPlaylistChanged(playlistId, QueueOperation.REMOVE)
+            NitroPlayerMediaBrowserService.getInstance()?.onPlaylistUpdated(playlistId)
+        }
+
+        return found
+    }
+
     /**
      * Reorder a track in a playlist
      */

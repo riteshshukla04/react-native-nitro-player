@@ -83,6 +83,18 @@ abstract class HybridTrackPlayerSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
+  abstract fun setShuffleMode(enabled: Boolean): Promise<Unit>
+  
+  @DoNotStrip
+  @Keep
+  abstract fun getShuffleMode(): Boolean
+  
+  @DoNotStrip
+  @Keep
+  abstract fun reshuffle(): Promise<Unit>
+  
+  @DoNotStrip
+  @Keep
   abstract fun configure(config: PlayerConfig): Promise<Unit>
   
   abstract fun onChangeTrack(callback: (track: TrackItem, reason: Reason?) -> Unit): Unit
@@ -227,6 +239,15 @@ abstract class HybridTrackPlayerSpec: HybridObject() {
   @Keep
   private fun onTemporaryQueueChange_cxx(callback: Func_void_std__vector_TrackItem__std__vector_TrackItem_): Unit {
     val __result = onTemporaryQueueChange(callback)
+    return __result
+  }
+  
+  abstract fun onShuffleChange(callback: (enabled: Boolean) -> Unit): Unit
+  
+  @DoNotStrip
+  @Keep
+  private fun onShuffleChange_cxx(callback: Func_void_bool): Unit {
+    val __result = onShuffleChange(callback)
     return __result
   }
 

@@ -80,3 +80,26 @@ function QueueView() {
 | `queue` | `TrackItem[]` | The complete resolved queue |
 | `refreshQueue` | `() => void` | Manually refresh the queue |
 | `isLoading` | `boolean` | Loading state |
+
+---
+
+## useShuffleMode
+
+Returns whether shuffle is enabled. Updates on `setShuffleMode`, `reshuffle`, and remote toggles
+(CarPlay / Android Auto).
+
+```tsx
+import { TrackPlayer, useShuffleMode } from 'react-native-nitro-player';
+
+function ShuffleButton() {
+  const enabled = useShuffleMode();
+  return (
+    <Button
+      title={enabled ? 'Shuffle on' : 'Shuffle off'}
+      onPress={() => TrackPlayer.setShuffleMode(!enabled)}
+    />
+  );
+}
+```
+
+**Returns:** `boolean`

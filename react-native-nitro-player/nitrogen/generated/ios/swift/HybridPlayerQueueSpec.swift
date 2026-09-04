@@ -21,6 +21,7 @@ public protocol HybridPlayerQueueSpec_protocol: HybridObject {
   func addTrackToPlaylist(playlistId: String, track: TrackItem, index: Double?) throws -> Promise<Void>
   func addTracksToPlaylist(playlistId: String, tracks: [TrackItem], index: Double?) throws -> Promise<Void>
   func removeTrackFromPlaylist(playlistId: String, trackId: String) throws -> Promise<Void>
+  func removeTracksFromPlaylist(playlistId: String, trackIds: [String]) throws -> Promise<Void>
   func reorderTrackInPlaylist(playlistId: String, trackId: String, newIndex: Double) throws -> Promise<Void>
   func loadPlaylist(playlistId: String, index: Double?) throws -> Promise<Void>
   func getCurrentPlaylistId() throws -> Variant_NullType_String

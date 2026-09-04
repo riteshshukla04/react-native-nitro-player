@@ -105,6 +105,17 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
             core.updatePlaylist(playlistId)
         }
 
+    override fun removeTracksFromPlaylist(
+        playlistId: String,
+        trackIds: Array<String>,
+    ): Promise<Unit> =
+        Promise.async {
+            if (!playlistManager.removeTracksFromPlaylist(playlistId, trackIds.toList())) {
+                throw IllegalArgumentException("Playlist not found: $playlistId")
+            }
+            core.updatePlaylist(playlistId)
+        }
+
     override fun reorderTrackInPlaylist(
         playlistId: String,
         trackId: String,

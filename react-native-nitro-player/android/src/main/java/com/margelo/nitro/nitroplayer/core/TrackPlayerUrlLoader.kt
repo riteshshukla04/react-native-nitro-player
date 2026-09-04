@@ -53,7 +53,7 @@ internal fun TrackPlayerCore.updateTracksOnQueue(tracks: List<TrackItem>) {
         if (currentPlaylistId != null && affectedPlaylists.containsKey(currentPlaylistId)) {
             val refreshedPlaylist = playlistManager.getPlaylist(currentPlaylistId!!)
             if (refreshedPlaylist != null) {
-                currentTracks = refreshedPlaylist.tracks
+                currentTracks = applyShuffleOrder(refreshedPlaylist.tracks)
                 val updatedById = currentTracks.associateBy { it.id }
                 playNextStack.forEachIndexed { i, t -> updatedById[t.id]?.let { if (it !== t) playNextStack[i] = it } }
                 upNextQueue.forEachIndexed { i, t -> updatedById[t.id]?.let { if (it !== t) upNextQueue[i] = it } }

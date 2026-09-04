@@ -47,7 +47,9 @@ extension TrackPlayerCore {
     }
 
     self.currentPlaylistId = playlistId
-    if targetIndex == 0 {
+    // Shuffled: the start track is seeded to index 0, so the index-0 load path is the right one.
+    if shuffleEnabled { seedShuffleOrder(playlist.tracks, firstId: playlist.tracks[targetIndex].id) }
+    if targetIndex == 0 || shuffleEnabled {
       self.updatePlayerQueue(tracks: playlist.tracks)
     } else {
       // Bypass updatePlayerQueue to avoid emitting a spurious onTrackChange for index 0.
@@ -86,7 +88,7 @@ extension TrackPlayerCore {
         }
 
         // Update tracks list without interrupting playback
-        self.currentTracks = playlist.tracks
+        self.currentTracks = applyShuffleOrder(playlist.tracks)
         self.rebuildAVQueueFromCurrentPosition()
         self.checkUpcomingTracksForUrls(lookahead: self.lookaheadCount)
       }

@@ -18,6 +18,7 @@ import {
   AudioRoutePicker,
   useNowPlaying,
   useTimedMetadata,
+  useShuffleMode,
 } from 'react-native-nitro-player';
 import type { RepeatMode } from 'react-native-nitro-player';
 import { colors, commonStyles, spacing, borderRadius } from '../styles/theme';
@@ -98,6 +99,14 @@ export default function PlayerScreen() {
   const fetchRepeatMode = async () => {
     const current = TrackPlayer.getRepeatMode();
     setRepeatModeState(current);
+  };
+
+  const shuffleEnabled = useShuffleMode();
+  const toggleShuffle = () => {
+    void TrackPlayer.setShuffleMode(!shuffleEnabled);
+  };
+  const reshuffle = () => {
+    void TrackPlayer.reshuffle();
   };
 
   return (
@@ -212,6 +221,19 @@ export default function PlayerScreen() {
               ]}
               onPress={cycleRepeatMode}>
               <Text style={commonStyles.buttonText}>{REPEAT_LABELS[repeatMode]}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                commonStyles.smallButton,
+                shuffleEnabled && styles.repeatActiveButton,
+              ]}
+              onPress={toggleShuffle}>
+              <Text style={commonStyles.buttonText}>
+                {shuffleEnabled ? '🔀 Shuffle On' : '🔀 Shuffle Off'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={commonStyles.smallButton} onPress={reshuffle}>
+              <Text style={commonStyles.buttonText}>🎲 Reshuffle</Text>
             </TouchableOpacity>
             {Platform.OS === 'ios' && (
               <TouchableOpacity

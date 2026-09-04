@@ -200,6 +200,30 @@ namespace margelo::nitro::nitroplayer {
       auto __value = std::move(__result.value());
       return __value;
     }
+    inline std::shared_ptr<Promise<void>> setShuffleMode(bool enabled) override {
+      auto __result = _swiftPart.setShuffleMode(std::forward<decltype(enabled)>(enabled));
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline bool getShuffleMode() override {
+      auto __result = _swiftPart.getShuffleMode();
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline std::shared_ptr<Promise<void>> reshuffle() override {
+      auto __result = _swiftPart.reshuffle();
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
     inline std::shared_ptr<Promise<void>> configure(const PlayerConfig& config) override {
       auto __result = _swiftPart.configure(std::forward<decltype(config)>(config));
       if (__result.hasError()) [[unlikely]] {
@@ -386,6 +410,12 @@ namespace margelo::nitro::nitroplayer {
     }
     inline void onTemporaryQueueChange(const std::function<void(const std::vector<TrackItem>& /* playNextQueue */, const std::vector<TrackItem>& /* upNextQueue */)>& callback) override {
       auto __result = _swiftPart.onTemporaryQueueChange(callback);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+    }
+    inline void onShuffleChange(const std::function<void(bool /* enabled */)>& callback) override {
+      auto __result = _swiftPart.onShuffleChange(callback);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }

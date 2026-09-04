@@ -8,6 +8,7 @@ import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.source.ShuffleOrder
 
 /**
  * Builds an [ExoPlayer] with the standard NitroPlayer configuration.
@@ -59,5 +60,7 @@ object ExoPlayerBuilder {
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .setPauseAtEndOfMediaItems(false)
             .build()
+            // Shuffle order is owned by TrackPlayerCore; keep ExoPlayer's flag a pure state bit for controllers.
+            .apply { setShuffleOrder(ShuffleOrder.UnshuffledShuffleOrder(0)) }
     }
 }

@@ -88,6 +88,18 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
     core.getRepeatMode()
   }
 
+  func setShuffleMode(enabled: Bool) throws -> Promise<Void> {
+    enqueue { self.core.setShuffleModeOnQueue(enabled: enabled) }
+  }
+
+  func getShuffleMode() throws -> Bool {
+    core.getShuffleMode()
+  }
+
+  func reshuffle() throws -> Promise<Void> {
+    enqueue { self.core.reshuffleOnQueue() }
+  }
+
   func setVolume(volume: Double) throws -> Promise<Void> {
     enqueue { self.core.setVolumeOnQueue(volume: volume) }
   }
@@ -235,6 +247,11 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
     listenerIds.append(("onTemporaryQueueChange", id))
   }
 
+  func onShuffleChange(callback: @escaping (_ enabled: Bool) -> Void) throws {
+    let id = core.addOnShuffleChangeListener(callback)
+    listenerIds.append(("onShuffleChange", id))
+  }
+
   // MARK: - Cleanup
 
   deinit {
@@ -246,6 +263,7 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
       case "onPlaybackProgressChange":_ = core.removeOnProgressListener(id: id)
       case "onTracksNeedUpdate":      _ = core.removeOnTracksNeedUpdateListener(id: id)
       case "onTemporaryQueueChange":  _ = core.removeOnTemporaryQueueChangeListener(id: id)
+      case "onShuffleChange":         _ = core.removeOnShuffleChangeListener(id: id)
       case "onTimedMetadata":         _ = core.removeOnTimedMetadataListener(id: id)
       default: break
       }

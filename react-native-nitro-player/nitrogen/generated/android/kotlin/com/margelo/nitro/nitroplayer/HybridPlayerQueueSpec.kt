@@ -64,6 +64,10 @@ abstract class HybridPlayerQueueSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
+  abstract fun removeTracksFromPlaylist(playlistId: String, trackIds: Array<String>): Promise<Unit>
+  
+  @DoNotStrip
+  @Keep
   abstract fun reorderTrackInPlaylist(playlistId: String, trackId: String, newIndex: Double): Promise<Unit>
   
   @DoNotStrip

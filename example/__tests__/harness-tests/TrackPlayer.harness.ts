@@ -58,6 +58,8 @@ describe('TrackPlayer - Comprehensive Tests', () => {
     });
 
     afterEach(async () => {
+        // Shuffle is a process-wide player setting; reset so queue-order assertions elsewhere stay valid.
+        await TrackPlayer.setShuffleMode(false);
         for (const id of createdPlaylistIds) {
             try {
                 await PlayerQueue.deletePlaylist(id);
@@ -505,6 +507,104 @@ describe('TrackPlayer - Comprehensive Tests', () => {
     // // ============================================
     // // STATE MANAGEMENT
     // // ============================================
+
+    describe('Shuffle', () => {
+        const ids = (tracks: TrackItem[]) => tracks.map(t => t.id);
+
+        it('should toggle shuffle mode with a sync getter', async () => {
+            await TrackPlayer.setShuffleMode(true);
+            expect(TrackPlayer.getShuffleMode()).toBe(true);
+            await TrackPlayer.setShuffleMode(false);
+            expect(TrackPlayer.getShuffleMode()).toBe(false);
+        });
+
+        it('should keep the current track playing at index 0 when enabled', async () => {
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playSong('2', playlist1Id);
+            await waitForNextTick();
+
+            await TrackPlayer.setShuffleMode(true);
+            await waitForNextTick();
+
+            const state = await TrackPlayer.getState();
+            expect(state.currentTrack?.id).toBe('2');
+            expect(state.currentIndex).toBe(0);
+
+            const queue = ids(await TrackPlayer.getActualQueue());
+            expect(queue[0]).toBe('2');
+            expect([...queue].sort()).toStrictEqual(['1', '2', '3']);
+        });
+
+        it('should restore playlist order and index when disabled', async () => {
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playSong('2', playlist1Id);
+            await TrackPlayer.setShuffleMode(true);
+            await waitForNextTick();
+            await TrackPlayer.setShuffleMode(false);
+            await waitForNextTick();
+
+            expect(ids(await TrackPlayer.getActualQueue())).toStrictEqual(['1', '2', '3']);
+            const state = await TrackPlayer.getState();
+            expect(state.currentTrack?.id).toBe('2');
+            expect(state.currentIndex).toBe(1);
+        });
+
+        it('should emit onShuffleChange on toggle and reshuffle', async () => {
+            const events: boolean[] = [];
+            TrackPlayer.onShuffleChange(enabled => {
+                events.push(enabled);
+            });
+
+            await TrackPlayer.setShuffleMode(true);
+            await TrackPlayer.reshuffle();
+            await TrackPlayer.setShuffleMode(false);
+            await waitForNextTick();
+
+            expect(events).toStrictEqual([true, true, false]);
+        });
+
+        it('should keep the current track first after reshuffle', async () => {
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playSong('3', playlist1Id);
+            await TrackPlayer.reshuffle();
+            await waitForNextTick();
+
+            expect(TrackPlayer.getShuffleMode()).toBe(true);
+            expect(ids(await TrackPlayer.getActualQueue())[0]).toBe('3');
+        });
+
+        it('should put the requested song first when playSong switches playlists while shuffled', async () => {
+            await TrackPlayer.setShuffleMode(true);
+            await TrackPlayer.playSong('2', playlist1Id);
+            await waitForNextTick();
+
+            const state = await TrackPlayer.getState();
+            expect(state.currentTrack?.id).toBe('2');
+            expect(state.currentIndex).toBe(0);
+        });
+
+        it('should start loadPlaylist(id, index) at that track while shuffled', async () => {
+            await TrackPlayer.setShuffleMode(true);
+            await PlayerQueue.loadPlaylist(playlist1Id, 2);
+            await waitForNextTick();
+
+            const state = await TrackPlayer.getState();
+            expect(state.currentTrack?.id).toBe('3');
+            expect((await TrackPlayer.getActualQueue()).length).toBe(3);
+        });
+
+        it('should keep temporary tracks ahead of the shuffled playlist', async () => {
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.playNext(sampleTracks2[0].id);
+            await TrackPlayer.setShuffleMode(true);
+            await waitForNextTick();
+
+            const queue = ids(await TrackPlayer.getActualQueue());
+            expect(queue[0]).toBe('1');
+            expect(queue[1]).toBe(sampleTracks2[0].id);
+        });
+    });
 
     describe('State Management', () => {
         it('should return correct state after loading playlist', async () => {

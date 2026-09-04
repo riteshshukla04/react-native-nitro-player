@@ -39,7 +39,8 @@ extension TrackPlayerCore {
     player.removeAllItems()
   }
 
-  func updatePlayerQueue(tracks: [TrackItem]) {
+  func updatePlayerQueue(tracks sourceTracks: [TrackItem]) {
+    let tracks = applyShuffleOrder(sourceTracks)
     // While casting, mirror the new queue to the Cast device instead of building
     // the local AVQueuePlayer (which would start local audio).
     if isCasting {

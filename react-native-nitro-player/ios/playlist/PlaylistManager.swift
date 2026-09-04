@@ -220,6 +220,36 @@ class PlaylistManager {
     return removed
   }
 
+  /// Batch remove; returns false only when the playlist does not exist. Unknown ids are ignored.
+  func removeTracksFromPlaylist(playlistId: String, trackIds: [String]) -> Bool {
+    let ids = Set(trackIds)
+    let removed: Bool? = queue.sync { () -> Bool? in
+      guard let playlist = playlists[playlistId] else { return nil }
+      var tracks = playlist.tracks
+      let initialCount = tracks.count
+      tracks.removeAll { ids.contains($0.id) }
+      guard tracks.count < initialCount else { return false }
+      playlists[playlistId] = PlaylistModel(
+        id: playlist.id,
+        name: playlist.name,
+        description: playlist.description,
+        artwork: playlist.artwork,
+        tracks: tracks
+      )
+      return true
+    }
+    guard let removed else { return false }
+
+    if removed {
+      scheduleSave()
+      notifyPlaylistChanged(playlistId, .remove)
+      if currentPlaylistId == playlistId {
+        TrackPlayerCore.shared.updatePlaylist(playlistId: playlistId)
+      }
+    }
+    return true
+  }
+
   /**
    * Reorder a track in a playlist
    */

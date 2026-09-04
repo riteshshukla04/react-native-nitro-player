@@ -67,6 +67,9 @@ namespace margelo::nitro::nitroplayer {
     std::shared_ptr<Promise<PlayerState>> getState() override;
     std::shared_ptr<Promise<void>> setRepeatMode(RepeatMode mode) override;
     RepeatMode getRepeatMode() override;
+    std::shared_ptr<Promise<void>> setShuffleMode(bool enabled) override;
+    bool getShuffleMode() override;
+    std::shared_ptr<Promise<void>> reshuffle() override;
     std::shared_ptr<Promise<void>> configure(const PlayerConfig& config) override;
     void onChangeTrack(const std::function<void(const TrackItem& /* track */, std::optional<Reason> /* reason */)>& callback) override;
     void onPlaybackStateChange(const std::function<void(TrackPlayerState /* state */, std::optional<Reason> /* reason */)>& callback) override;
@@ -93,6 +96,7 @@ namespace margelo::nitro::nitroplayer {
     std::shared_ptr<Promise<std::vector<TrackItem>>> getPlayNextQueue() override;
     std::shared_ptr<Promise<std::vector<TrackItem>>> getUpNextQueue() override;
     void onTemporaryQueueChange(const std::function<void(const std::vector<TrackItem>& /* playNextQueue */, const std::vector<TrackItem>& /* upNextQueue */)>& callback) override;
+    void onShuffleChange(const std::function<void(bool /* enabled */)>& callback) override;
 
   private:
     jni::global_ref<JHybridTrackPlayerSpec::JavaPart> _javaPart;

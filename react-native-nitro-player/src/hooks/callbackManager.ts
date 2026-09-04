@@ -20,6 +20,7 @@ type TemporaryQueueCallback = (
   upNextQueue: TrackItem[]
 ) => void
 type AndroidAutoConnectionCallback = (connected: boolean) => void
+type ShuffleChangeCallback = (enabled: boolean) => void
 
 /**
  * Internal subscription manager that allows multiple hooks to subscribe
@@ -36,8 +37,10 @@ class CallbackSubscriptionManager {
   private playlistsChangedSubscribers = new Set<() => void>()
   private androidAutoConnectionSubscribers =
     new Set<AndroidAutoConnectionCallback>()
+  private shuffleChangeSubscribers = new Set<ShuffleChangeCallback>()
   private isPlaylistsChangedRegistered = false
   private isAndroidAutoConnectionRegistered = false
+  private isShuffleChangeRegistered = false
   private isPlaybackStateRegistered = false
   private isTrackChangeRegistered = false
   private isPlaybackProgressRegistered = false
@@ -271,6 +274,44 @@ class CallbackSubscriptionManager {
     } catch (error) {
       console.error(
         '[CallbackManager] Failed to register seek callback:',
+        error
+      )
+    }
+  }
+
+  /**
+   * Subscribe to shuffle toggles and reshuffles
+   * @returns Unsubscribe function
+   */
+  subscribeToShuffleChange(callback: ShuffleChangeCallback): () => void {
+    this.shuffleChangeSubscribers.add(callback)
+    this.ensureShuffleChangeRegistered()
+
+    return () => {
+      this.shuffleChangeSubscribers.delete(callback)
+    }
+  }
+
+  private ensureShuffleChangeRegistered(): void {
+    if (this.isShuffleChangeRegistered) return
+
+    try {
+      TrackPlayer.onShuffleChange((enabled) => {
+        this.shuffleChangeSubscribers.forEach((subscriber) => {
+          try {
+            subscriber(enabled)
+          } catch (error) {
+            console.error(
+              '[CallbackManager] Error in shuffle change subscriber:',
+              error
+            )
+          }
+        })
+      })
+      this.isShuffleChangeRegistered = true
+    } catch (error) {
+      console.error(
+        '[CallbackManager] Failed to register shuffle change callback:',
         error
       )
     }

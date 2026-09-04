@@ -12,6 +12,7 @@ export { usePlaylist } from './usePlaylist'
 export type { UsePlaylistResult } from './usePlaylist'
 export { useActualQueue } from './useActualQueue'
 export type { UseActualQueueResult } from './useActualQueue'
+export { useShuffleMode } from './useShuffleMode'
 
 // Cast hooks
 export { useIsCasting } from './useIsCasting'

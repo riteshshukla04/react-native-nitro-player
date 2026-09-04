@@ -55,4 +55,11 @@ extension TrackPlayerCore {
     let un = upNextQueue
     onTemporaryQueueChangeListeners.forEach { $0(pn, un) }
   }
+
+  func notifyShuffleChange(_ enabled: Bool) {
+    onShuffleChangeListeners.forEach { $0(enabled) }
+    DispatchQueue.main.async { [weak self] in
+      self?.mediaSessionManager?.setShuffleEnabled(enabled)
+    }
+  }
 }

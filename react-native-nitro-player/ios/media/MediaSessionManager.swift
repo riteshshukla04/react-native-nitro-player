@@ -203,6 +203,7 @@ class MediaSessionManager {
     commandCenter.seekBackwardCommand.removeTarget(nil)
     commandCenter.changePlaybackRateCommand.removeTarget(nil)
     commandCenter.changePlaybackPositionCommand.removeTarget(nil)
+    commandCenter.changeShuffleModeCommand.removeTarget(nil)
 
     updateSkipCommandIntervals()
     commandCenter.changePlaybackRateCommand.supportedPlaybackRates =
@@ -221,6 +222,19 @@ class MediaSessionManager {
     commandCenter.pauseCommand.addTarget { [weak self] _ in
       guard let core = self?.trackPlayerCore else { return .commandFailed }
       Task { await core.pause() }
+      return .success
+    }
+
+    // Shuffle (CarPlay Now Playing)
+    commandCenter.changeShuffleModeCommand.isEnabled = true
+    commandCenter.changeShuffleModeCommand.currentShuffleType = .off
+    commandCenter.changeShuffleModeCommand.addTarget { [weak self] event in
+      guard let core = self?.trackPlayerCore,
+        let shuffleEvent = event as? MPChangeShuffleModeCommandEvent
+      else {
+        return .commandFailed
+      }
+      Task { await core.setShuffleMode(enabled: shuffleEvent.shuffleType != .off) }
       return .success
     }
 
@@ -325,6 +339,10 @@ class MediaSessionManager {
     commandCenter.skipBackwardCommand.isEnabled = hasCurrentTrack
     commandCenter.changePlaybackRateCommand.isEnabled = hasCurrentTrack
     commandCenter.changePlaybackPositionCommand.isEnabled = hasCurrentTrack && hasDuration
+  }
+
+  func setShuffleEnabled(_ enabled: Bool) {
+    MPRemoteCommandCenter.shared().changeShuffleModeCommand.currentShuffleType = enabled ? .items : .off
   }
 
   private func disableAllCommands() {

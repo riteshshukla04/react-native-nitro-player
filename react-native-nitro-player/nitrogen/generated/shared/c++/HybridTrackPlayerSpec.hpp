@@ -85,6 +85,9 @@ namespace margelo::nitro::nitroplayer {
       virtual std::shared_ptr<Promise<PlayerState>> getState() = 0;
       virtual std::shared_ptr<Promise<void>> setRepeatMode(RepeatMode mode) = 0;
       virtual RepeatMode getRepeatMode() = 0;
+      virtual std::shared_ptr<Promise<void>> setShuffleMode(bool enabled) = 0;
+      virtual bool getShuffleMode() = 0;
+      virtual std::shared_ptr<Promise<void>> reshuffle() = 0;
       virtual std::shared_ptr<Promise<void>> configure(const PlayerConfig& config) = 0;
       virtual void onChangeTrack(const std::function<void(const TrackItem& /* track */, std::optional<Reason> /* reason */)>& callback) = 0;
       virtual void onPlaybackStateChange(const std::function<void(TrackPlayerState /* state */, std::optional<Reason> /* reason */)>& callback) = 0;
@@ -111,6 +114,7 @@ namespace margelo::nitro::nitroplayer {
       virtual std::shared_ptr<Promise<std::vector<TrackItem>>> getPlayNextQueue() = 0;
       virtual std::shared_ptr<Promise<std::vector<TrackItem>>> getUpNextQueue() = 0;
       virtual void onTemporaryQueueChange(const std::function<void(const std::vector<TrackItem>& /* playNextQueue */, const std::vector<TrackItem>& /* upNextQueue */)>& callback) = 0;
+      virtual void onShuffleChange(const std::function<void(bool /* enabled */)>& callback) = 0;
 
     protected:
       // Hybrid Setup

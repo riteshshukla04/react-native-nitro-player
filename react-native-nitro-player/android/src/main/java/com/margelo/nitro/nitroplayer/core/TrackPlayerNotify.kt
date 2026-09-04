@@ -56,6 +56,10 @@ internal fun TrackPlayerCore.notifyTemporaryQueueChange() {
     onTemporaryQueueChangeListeners.forEach { it(pn, un) }
 }
 
+internal fun TrackPlayerCore.notifyShuffleChange(enabled: Boolean) {
+    onShuffleChangeListeners.forEach { it(enabled) }
+}
+
 internal fun TrackPlayerCore.notifyAndroidAutoConnection(connected: Boolean) {
     onAndroidAutoConnectionListeners.forEach { it(connected) }
 }

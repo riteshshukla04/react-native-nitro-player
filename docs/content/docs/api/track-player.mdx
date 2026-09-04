@@ -176,6 +176,8 @@ const state = await TrackPlayer.getState();
 
 **Returns:** `Promise<PlayerState>` — See [PlayerState](/docs/types#playerstate)
 
+`currentIndex` is the position in playback order — the shuffled order while shuffle is on.
+
 ---
 
 ### `setRepeatMode(mode)`
@@ -203,6 +205,50 @@ const mode = TrackPlayer.getRepeatMode(); // 'off' | 'Playlist' | 'track'
 ```
 
 **Returns:** `RepeatMode`
+
+---
+
+### `setShuffleMode(enabled)`
+
+Shuffle the live playlist without interrupting playback. The current track keeps playing and
+becomes index 0; the rest of the playlist is shuffled behind it. Disabling restores the playlist
+order and `currentIndex`. Shuffle is a player-level setting: it persists across `loadPlaylist` and
+`playSong` (the start track comes first, the rest is shuffled). playNext / upNext are unaffected.
+Tracks added while shuffled land at a random upcoming position; removed tracks simply drop out.
+
+```typescript
+await TrackPlayer.setShuffleMode(true);
+```
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `enabled` | `boolean` | Yes | `true` to shuffle, `false` to restore playlist order |
+
+**Returns:** `Promise<void>`
+
+---
+
+### `getShuffleMode()`
+
+Whether shuffle is enabled. **Synchronous.**
+
+```typescript
+const enabled = TrackPlayer.getShuffleMode();
+```
+
+**Returns:** `boolean`
+
+---
+
+### `reshuffle()`
+
+Re-randomize the upcoming order. The current track stays first. Enables shuffle if it was off.
+
+```typescript
+await TrackPlayer.reshuffle();
+```
+
+**Returns:** `Promise<void>`
 
 ---
 
@@ -533,6 +579,18 @@ Called when the temporary queue (playNext or upNext) changes.
 ```typescript
 TrackPlayer.onTemporaryQueueChange((playNextQueue, upNextQueue) => {
   console.log(`playNext: ${playNextQueue.length}, upNext: ${upNextQueue.length}`);
+});
+```
+
+---
+
+### `onShuffleChange(callback)`
+
+Called when shuffle is toggled (including from CarPlay / Android Auto) and after every `reshuffle()`.
+
+```typescript
+TrackPlayer.onShuffleChange((enabled) => {
+  console.log(`shuffle: ${enabled}`);
 });
 ```
 

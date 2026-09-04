@@ -295,6 +295,41 @@ namespace margelo::nitro::nitroplayer {
     auto __result = method(_javaPart);
     return __result->toCpp();
   }
+  std::shared_ptr<Promise<void>> JHybridTrackPlayerSpec::setShuffleMode(bool enabled) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jboolean /* enabled */)>("setShuffleMode");
+    auto __result = method(_javaPart, enabled);
+    return [&]() {
+      auto __promise = Promise<void>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& /* unit */) {
+        __promise->resolve();
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
+  }
+  bool JHybridTrackPlayerSpec::getShuffleMode() {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jboolean()>("getShuffleMode");
+    auto __result = method(_javaPart);
+    return static_cast<bool>(__result);
+  }
+  std::shared_ptr<Promise<void>> JHybridTrackPlayerSpec::reshuffle() {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>()>("reshuffle");
+    auto __result = method(_javaPart);
+    return [&]() {
+      auto __promise = Promise<void>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& /* unit */) {
+        __promise->resolve();
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
+  }
   std::shared_ptr<Promise<void>> JHybridTrackPlayerSpec::configure(const PlayerConfig& config) {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<JPlayerConfig> /* config */)>("configure");
     auto __result = method(_javaPart, JPlayerConfig::fromCpp(config));
@@ -648,6 +683,10 @@ namespace margelo::nitro::nitroplayer {
   void JHybridTrackPlayerSpec::onTemporaryQueueChange(const std::function<void(const std::vector<TrackItem>& /* playNextQueue */, const std::vector<TrackItem>& /* upNextQueue */)>& callback) {
     static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_std__vector_TrackItem__std__vector_TrackItem_::javaobject> /* callback */)>("onTemporaryQueueChange_cxx");
     method(_javaPart, JFunc_void_std__vector_TrackItem__std__vector_TrackItem__cxx::fromCpp(callback));
+  }
+  void JHybridTrackPlayerSpec::onShuffleChange(const std::function<void(bool /* enabled */)>& callback) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_bool::javaobject> /* callback */)>("onShuffleChange_cxx");
+    method(_javaPart, JFunc_void_bool_cxx::fromCpp(callback));
   }
 
 } // namespace margelo::nitro::nitroplayer

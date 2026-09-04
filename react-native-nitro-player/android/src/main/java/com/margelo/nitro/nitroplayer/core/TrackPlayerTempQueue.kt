@@ -35,7 +35,9 @@ internal fun TrackPlayerCore.loadPlaylistOnQueue(
             }
 
         currentPlaylistId = playlistId
-        if (targetIndex == 0) {
+        // Shuffled: the start track is seeded to index 0, so the index-0 load path is the right one.
+        if (shuffleEnabled) seedShuffleOrder(playlist.tracks, playlist.tracks[targetIndex].id)
+        if (targetIndex == 0 || shuffleEnabled) {
             updatePlayerQueue(playlist.tracks)
         } else {
             // Bypass updatePlayerQueue to avoid emitting a spurious onTrackChange for index 0.

@@ -33,6 +33,7 @@ npm install react-native-nitro-modules
 | `useOnSeek`                   | Both     | Returns information about the last seek event (position/duration).              |
 | `useNowPlaying`               | Both     | Returns complete player state (track, state, duration, playlist) in one object. |
 | `useActualQueue`              | Both     | Returns the efficient playback queue including temporary tracks.                |
+| `useShuffleMode`              | Both     | Returns whether shuffle is on. Updates on toggles, reshuffle and remote controls. |
 | `usePlaylist`                 | Both     | Manages playlist state, providing access to all playlists and tracks.           |
 | `useEqualizer`                | Both     | Controls the 5-band equalizer, including presets and individual band gains.     |
 | `useAndroidAutoConnection`    | Both     | Monitors Android Auto connection status.                                        |
@@ -42,7 +43,7 @@ npm install react-native-nitro-modules
 
 ### TrackPlayer Methods
 
-Command-style methods return **`Promise<void>`** (or another **`Promise`**) and **reject** on failure; **`getRepeatMode()`** and **`isAndroidAutoConnected()`** are synchronous reads.
+Command-style methods return **`Promise<void>`** (or another **`Promise`**) and **reject** on failure; **`getRepeatMode()`**, **`getShuffleMode()`** and **`isAndroidAutoConnected()`** are synchronous reads.
 
 | Name                        | Platform | Description                                                         |
 | --------------------------- | -------- | ------------------------------------------------------------------- |
@@ -57,6 +58,9 @@ Command-style methods return **`Promise<void>`** (or another **`Promise`**) and 
 | `setVolume(0-100)`          | Both     | **Async**. Sets playback volume (0-100).                            |
 | `setRepeatMode(mode)`       | Both     | **Async**. Sets repeat mode (`off`, `track`, `Playlist`).           |
 | `getRepeatMode()`           | Both     | **Sync**. Current repeat mode.                                      |
+| `setShuffleMode(enabled)`   | Both     | **Async**. Shuffles the live playlist without stopping; `false` restores order. |
+| `getShuffleMode()`          | Both     | **Sync**. Whether shuffle is on.                                    |
+| `reshuffle()`               | Both     | **Async**. Re-randomizes the upcoming order; current track stays first. |
 | `addToUpNext(id)`           | Both     | **Async**. Adds a track to the "up next" queue (FIFO).              |
 | `playNext(id)`              | Both     | **Async**. Adds a track to the "play next" stack (LIFO).            |
 | `getActualQueue()`          | Both     | **Async**. Full playback queue including temporary tracks.          |
@@ -81,6 +85,7 @@ Mutations return **`Promise<void>`** (or **`Promise<string>`** for `createPlayli
 | `addTrackToPlaylist(pid, track)`        | Both     | **Async**. Adds a track to a playlist.                  |
 | `addTracksToPlaylist(pid, tracks)`      | Both     | **Async**. Adds multiple tracks to a playlist.         |
 | `removeTrackFromPlaylist(pid, tid)`     | Both     | **Async**. Removes a track from a playlist.             |
+| `removeTracksFromPlaylist(pid, tids)`   | Both     | **Async**. Removes many tracks in one pass; unknown ids skipped. |
 | `reorderTrackInPlaylist(pid, tid, idx)` | Both     | **Async**. Moves a track to a new position.             |
 
 ### Platform-Specific APIs
@@ -812,6 +817,35 @@ TrackPlayer.setRepeatMode('Playlist')
 
 // Repeat current track
 TrackPlayer.setRepeatMode('track')
+```
+
+## Shuffle
+
+Native shuffle that never stops playback. The current track keeps playing and becomes index 0; the
+rest of the playlist is shuffled behind it. Turning shuffle off restores the playlist order.
+
+```typescript
+import { TrackPlayer, useShuffleMode } from 'react-native-nitro-player'
+
+await TrackPlayer.setShuffleMode(true) // current stays, rest shuffled
+await TrackPlayer.reshuffle() // new random order, current still first
+await TrackPlayer.setShuffleMode(false) // playlist order restored
+TrackPlayer.getShuffleMode() // sync boolean
+
+TrackPlayer.onShuffleChange((enabled) => console.log('shuffle', enabled))
+const enabled = useShuffleMode() // hook
+```
+
+- Shuffle is a player-level setting: `loadPlaylist(id, index)` and `playSong` put the start track first and shuffle the rest.
+- `getActualQueue()`, `PlayerState.currentIndex` and `skipToIndex()` use the shuffled order while shuffle is on.
+- playNext / upNext still play before the shuffled remainder; repeat `'Playlist'` loops the same shuffled order.
+- Tracks added while shuffled land at a random upcoming position; removed tracks drop out.
+- The CarPlay / Android Auto shuffle button toggles the same state and fires `onShuffleChange`.
+
+To drop many tracks from the playing playlist without touching the current one:
+
+```typescript
+await PlayerQueue.removeTracksFromPlaylist(playlistId, ['track-2', 'track-5'])
 ```
 
 ## Volume Control

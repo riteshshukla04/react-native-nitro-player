@@ -188,9 +188,12 @@ internal fun TrackPlayerCore.playSongInternal(
     if (currentPlaylistId != targetPlaylistId) {
         val playlist = playlistManager.getPlaylist(targetPlaylistId) ?: return
         currentPlaylistId = targetPlaylistId
+        if (shuffleEnabled) seedShuffleOrder(playlist.tracks, songId)
         updatePlayerQueue(playlist.tracks)
     }
-    playFromIndexInternal(songIndex)
+    // songIndex is a playlist-order index; currentTracks may be shuffled.
+    val playbackIndex = currentTracks.indexOfFirst { it.id == songId }
+    playFromIndexInternal(if (playbackIndex >= 0) playbackIndex else songIndex)
 }
 
 // ── State emission (called from player thread) ─────────────────────────────

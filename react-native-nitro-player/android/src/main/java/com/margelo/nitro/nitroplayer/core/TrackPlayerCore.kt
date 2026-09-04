@@ -69,6 +69,9 @@ class TrackPlayerCore private constructor(
     internal var previousMediaItem: androidx.media3.common.MediaItem? = null
 
     @Volatile internal var currentRepeatMode: RepeatMode = RepeatMode.OFF
+
+    @Volatile internal var shuffleEnabled: Boolean = false
+    internal var shuffleOrder: MutableList<String> = mutableListOf()
     internal var lookaheadCount: Int = 5
 
     internal var remoteSkipForwardIntervalMs: Long = ExoPlayerBuilder.DEFAULT_REMOTE_SKIP_INTERVAL_MS
@@ -97,6 +100,8 @@ class TrackPlayerCore private constructor(
         ListenerRegistry<(List<TrackItem>, Int) -> Unit>()
     internal val onTemporaryQueueChangeListeners =
         ListenerRegistry<(List<TrackItem>, List<TrackItem>) -> Unit>()
+    internal val onShuffleChangeListeners =
+        ListenerRegistry<(Boolean) -> Unit>()
     internal val onAndroidAutoConnectionListeners =
         ListenerRegistry<(Boolean) -> Unit>()
     internal val onTimedMetadataListeners =
@@ -148,7 +153,7 @@ class TrackPlayerCore private constructor(
         Runnable {
             val id = currentPlaylistId ?: return@Runnable
             val playlist = playlistManager.getPlaylist(id) ?: return@Runnable
-            currentTracks = playlist.tracks
+            currentTracks = applyShuffleOrder(playlist.tracks)
             if (::exo.isInitialized &&
                 exo.currentMediaItem != null &&
                 exo.currentMediaItemIndex >= 0
@@ -396,6 +401,10 @@ class TrackPlayerCore private constructor(
     fun addOnTemporaryQueueChangeListener(cb: (List<TrackItem>, List<TrackItem>) -> Unit): Long = onTemporaryQueueChangeListeners.add(cb)
 
     fun removeOnTemporaryQueueChangeListener(id: Long): Boolean = onTemporaryQueueChangeListeners.remove(id)
+
+    fun addOnShuffleChangeListener(cb: (Boolean) -> Unit): Long = onShuffleChangeListeners.add(cb)
+
+    fun removeOnShuffleChangeListener(id: Long): Boolean = onShuffleChangeListeners.remove(id)
 
     fun addOnTimedMetadataListener(cb: (TimedMetadata) -> Unit): Long = onTimedMetadataListeners.add(cb)
 

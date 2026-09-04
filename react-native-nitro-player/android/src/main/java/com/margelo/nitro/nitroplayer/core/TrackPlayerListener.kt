@@ -187,6 +187,11 @@ internal class TrackPlayerEventListener(
         }
     }
 
+    override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+        // Remote controllers (Android Auto, Bluetooth) toggle the player flag; route it into our shuffle.
+        if (!core.isCastingField && shuffleModeEnabled != core.shuffleEnabled) core.setShuffleModeOnQueue(shuffleModeEnabled)
+    }
+
     override fun onAudioSessionIdChanged(audioSessionId: Int) {
         if (audioSessionId != 0) {
             try {

@@ -6,7 +6,7 @@ import {
   beforeAll,
   afterEach,
 } from 'react-native-harness';
-import { PlayerQueue, TrackItem, Playlist } from 'react-native-nitro-player';
+import { PlayerQueue, TrackPlayer, TrackItem, Playlist } from 'react-native-nitro-player';
 import { sampleTracks1, sampleTracks2 } from '../../src/data/sampleTracks';
 
 // Helper to create additional test tracks
@@ -328,6 +328,67 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
 
       const playlist = PlayerQueue.getPlaylist(playlistId);
       expect(playlist?.tracks.length).toBe(3);
+    });
+
+    it('should remove several tracks in one call', async () => {
+      const playlistId = await PlayerQueue.createPlaylist('Batch Remove Test');
+      createdPlaylistIds.push(playlistId);
+
+      await PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
+      await PlayerQueue.removeTracksFromPlaylist(playlistId, ['1', '3']);
+
+      expect(PlayerQueue.getPlaylist(playlistId)?.tracks.map(t => t.id)).toStrictEqual(['2']);
+    });
+
+    it('should skip unknown ids in a batch removal', async () => {
+      const playlistId = await PlayerQueue.createPlaylist('Batch Remove Unknown Test');
+      createdPlaylistIds.push(playlistId);
+
+      await PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
+      await PlayerQueue.removeTracksFromPlaylist(playlistId, ['1', 'non-existent-id']);
+
+      expect(PlayerQueue.getPlaylist(playlistId)?.tracks.map(t => t.id)).toStrictEqual(['2', '3']);
+    });
+
+    it('should reject a batch removal on an unknown playlist', async () => {
+      let threw = false;
+      try {
+        await PlayerQueue.removeTracksFromPlaylist('non-existent-playlist', ['1']);
+      } catch {
+        threw = true;
+      }
+      expect(threw).toBe(true);
+    });
+
+    it('should emit a single remove operation for a batch removal', async () => {
+      const playlistId = await PlayerQueue.createPlaylist('Batch Remove Event Test');
+      createdPlaylistIds.push(playlistId);
+      await PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
+
+      const operations: (string | undefined)[] = [];
+      PlayerQueue.onPlaylistChanged((id, _playlist, operation) => {
+        if (id === playlistId) operations.push(operation);
+      });
+
+      await PlayerQueue.removeTracksFromPlaylist(playlistId, ['1', '2']);
+      await new Promise<void>(resolve => setTimeout(resolve, 500));
+
+      expect(operations).toStrictEqual(['remove']);
+    });
+
+    it('should keep the current track playing during a batch removal', async () => {
+      const playlistId = await PlayerQueue.createPlaylist('Batch Remove Playing Test');
+      createdPlaylistIds.push(playlistId);
+      await PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks1);
+      await PlayerQueue.loadPlaylist(playlistId);
+      await TrackPlayer.playSong('1', playlistId);
+
+      await PlayerQueue.removeTracksFromPlaylist(playlistId, ['2']);
+      await new Promise<void>(resolve => setTimeout(resolve, 500));
+
+      const state = await TrackPlayer.getState();
+      expect(state.currentTrack?.id).toBe('1');
+      expect((await TrackPlayer.getActualQueue()).map(t => t.id)).toStrictEqual(['1', '3']);
     });
   });
 

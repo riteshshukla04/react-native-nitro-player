@@ -86,6 +86,28 @@ const upNext = await TrackPlayer.getUpNextQueue();
 const actualQueue = await TrackPlayer.getActualQueue(); // Full resolved queue
 ```
 
+## Shuffle
+
+Shuffle is native and never stops playback: the current track keeps playing and becomes index 0,
+the rest of the playlist is shuffled behind it. Only the next item is re-buffered.
+
+```typescript
+await TrackPlayer.setShuffleMode(true);   // current stays, rest shuffled
+await TrackPlayer.reshuffle();            // new random order, current still first
+await TrackPlayer.setShuffleMode(false);  // playlist order restored
+TrackPlayer.getShuffleMode();             // sync
+```
+
+While shuffle is on, `getActualQueue()`, `PlayerState.currentIndex` and `skipToIndex()` all use the
+shuffled order. playNext / upNext still play before the shuffled remainder. `loadPlaylist(id, index)`
+puts track `index` first and shuffles the rest; repeat `'Playlist'` loops the same shuffled order.
+
+To remove many tracks without touching the current one, use one call instead of a loop:
+
+```typescript
+await PlayerQueue.removeTracksFromPlaylist(playlistId, idsToRemove);
+```
+
 ## Reactive Updates
 
 ### With hooks
