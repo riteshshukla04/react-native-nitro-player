@@ -151,11 +151,10 @@ jobs:
           avd-name: ${{ env.AVD_NAME }}
           disable-animations: true
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          # android-emulator-runner runs each script line in its own `sh -c` and waits for
-          # the output pipe to close, so the whole run is one physical line. Each suite is
-          # its own harness process with the app force-stopped in between: playback state
-          # survives inside one app launch and leaks across suites otherwise.
-          script: adb install -r "./android/app/build/outputs/apk/debug/app-debug.apk"; adb shell am start -n com.example/.MainActivity; sleep 20; adb shell am force-stop com.example; failed=0; for suite in Playlist TrackPlayer Equalizer Platform DownloadManager; do adb shell am force-stop com.example; sleep 3; bun run test:harness --harnessRunner android "${suite}.harness" || failed=1; done; exit $failed
+          # android-emulator-runner runs each script line in its own `sh -c` and waits for the
+          # output pipe to close, so the whole run is one physical line. The app is launched
+          # once after install because the harness attaches to a running app.
+          script: adb install -r "./android/app/build/outputs/apk/debug/app-debug.apk"; adb shell am start -n com.example/.MainActivity; sleep 20; adb shell am force-stop com.example; bun run test:harness --harnessRunner android
 
       - name: Stop Gradle Daemon
         if: always()

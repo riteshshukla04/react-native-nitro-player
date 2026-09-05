@@ -156,16 +156,4 @@ jobs:
         env:
           HARNESS_IOS_DEVICE: ${{ env.DEVICE_MODEL }}
           HARNESS_IOS_VERSION: ${{ env.IOS_VERSION }}
-        run: |
-          set -o pipefail
-          failed=0
-          # Each suite is its own harness process with the app terminated in between:
-          # playback state survives inside one app launch and leaks across suites otherwise.
-          for suite in Playlist TrackPlayer Equalizer Platform DownloadManager; do
-            echo "::group::$suite"
-            xcrun simctl terminate booted org.reactjs.native.example.example || true
-            sleep 3
-            bun run test:harness --harnessRunner ios "${suite}.harness" || failed=1
-            echo "::endgroup::"
-          done
-          exit $failed
+        run: bun run test:harness --harnessRunner ios

@@ -11,7 +11,7 @@ import {
 const config = {
   defaultRunner: 'ios',
   // Playback tests wait on real audio; a whole suite must fit in one RPC.
-  bridgeTimeout: 1800000,
+  bridgeTimeout: 900000,
   entryPoint: './index.js',
   appRegistryComponentName: 'example',
   forwardClientLogs: true,
