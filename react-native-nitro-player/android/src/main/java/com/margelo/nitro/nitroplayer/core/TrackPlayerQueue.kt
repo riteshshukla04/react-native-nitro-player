@@ -72,8 +72,8 @@ suspend fun TrackPlayerCore.getActualQueue(): List<TrackItem> = withPlayerContex
 
 internal fun TrackPlayerCore.getActualQueueInternal(): List<TrackItem> {
     if (!isExoInitialized) return emptyList()
+    // May be -1 (no anchor while a temp plays); the arithmetic below handles it.
     val currentIndex = currentTrackIndex
-    if (currentIndex < 0) return emptyList()
 
     val queue = ArrayList<TrackItem>(currentTracks.size + playNextStack.size + upNextQueue.size)
 

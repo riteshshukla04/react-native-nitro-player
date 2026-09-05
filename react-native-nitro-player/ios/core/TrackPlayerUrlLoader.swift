@@ -98,7 +98,7 @@ extension TrackPlayerCore {
 
       // Sync currentTracks from the freshly-updated PlaylistManager
       if let updatedPlaylist = self.playlistManager.getPlaylist(playlistId: currentId) {
-        self.currentTracks = updatedPlaylist.tracks
+        self.assignCurrentTracks(updatedPlaylist.tracks)
         NitroPlayerLogger.log("TrackPlayerCore",
           "📥 Synced currentTracks from PlaylistManager (\(self.currentTracks.count) tracks)")
       }

@@ -249,6 +249,61 @@ class PlaylistManager private constructor(
         return true
     }
 
+    /** Removed count; null when the playlist does not exist. Unknown ids are ignored. */
+    fun removeTracksFromPlaylist(
+        playlistId: String,
+        trackIds: List<String>,
+    ): Int? {
+        val ids = trackIds.toHashSet()
+        var removed = 0
+        val found =
+            playlists.computeIfPresent(playlistId) { _, playlist ->
+                val tracks = playlist.tracks.toMutableList()
+                val before = tracks.size
+                if (tracks.removeAll { it.id in ids }) {
+                    removed = before - tracks.size
+                    playlist.copy(tracks = tracks)
+                } else {
+                    playlist
+                }
+            } != null
+        if (!found) return null
+        if (removed > 0) {
+            scheduleSave()
+            notifyPlaylistChanged(playlistId, QueueOperation.REMOVE)
+            NitroPlayerMediaBrowserService.getInstance()?.onPlaylistUpdated(playlistId)
+        }
+        return removed
+    }
+
+    /** Fisher-Yates; [firstTrackId] is pinned at index 0. Null when the playlist does not exist. */
+    fun shufflePlaylist(
+        playlistId: String,
+        firstTrackId: String?,
+    ): Boolean? {
+        var changed = false
+        val found =
+            playlists.computeIfPresent(playlistId) { _, playlist ->
+                val tracks = playlist.tracks.toMutableList()
+                val pinned = tracks.indexOfFirst { it.id == firstTrackId }.takeIf { it >= 0 }?.let { tracks.removeAt(it) }
+                tracks.shuffle()
+                pinned?.let { tracks.add(0, it) }
+                if (tracks.map { it.id } == playlist.tracks.map { it.id }) {
+                    playlist
+                } else {
+                    changed = true
+                    playlist.copy(tracks = tracks)
+                }
+            } != null
+        if (!found) return null
+        if (changed) {
+            scheduleSave()
+            notifyPlaylistChanged(playlistId, QueueOperation.UPDATE)
+            NitroPlayerMediaBrowserService.getInstance()?.onPlaylistUpdated(playlistId)
+        }
+        return changed
+    }
+
     /**
      * Update entire track objects across all playlists
      * Matches by track.id and replaces the entire track object
@@ -315,6 +370,11 @@ class PlaylistManager private constructor(
         if (index != null && (index < 0 || index >= playlist.tracks.size)) return false
         currentPlaylistId = playlistId
         return true
+    }
+
+    /** Mirrors the core's current playlist (playSong bypasses loadPlaylist); Android Auto and persistence read this. */
+    fun setCurrentPlaylistId(playlistId: String?) {
+        currentPlaylistId = playlistId
     }
 
     /**

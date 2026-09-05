@@ -15,4 +15,5 @@ export default {
   rootDir: __dirname,
   runner: '@react-native-harness/jest',
   setupFiles: [],
+  testTimeout: 300000,
 };

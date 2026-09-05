@@ -104,6 +104,20 @@ interface PlayerState {
 
 ---
 
+### ShufflePlaylistOptions
+
+Options for `PlayerQueue.shufflePlaylist`.
+
+```typescript
+interface ShufflePlaylistOptions {
+  // Default: true — the playing track moves to index 0 and the rest is shuffled behind it.
+  // false shuffles the whole list; the playing track keeps playing wherever it lands.
+  keepCurrentTrackFirst?: boolean;
+}
+```
+
+---
+
 ### PlayerConfig
 
 Configuration options for the player.

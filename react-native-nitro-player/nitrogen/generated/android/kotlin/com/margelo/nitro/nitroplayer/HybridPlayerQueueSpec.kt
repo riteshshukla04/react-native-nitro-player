@@ -68,6 +68,14 @@ abstract class HybridPlayerQueueSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
+  abstract fun removeTracksFromPlaylist(playlistId: String, trackIds: Array<String>): Promise<Unit>
+  
+  @DoNotStrip
+  @Keep
+  abstract fun shufflePlaylist(playlistId: String, options: ShufflePlaylistOptions?): Promise<Unit>
+  
+  @DoNotStrip
+  @Keep
   abstract fun loadPlaylist(playlistId: String, index: Double?): Promise<Unit>
   
   @DoNotStrip

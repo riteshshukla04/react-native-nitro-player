@@ -23,6 +23,8 @@ namespace margelo::nitro::nitroplayer {
       prototype.registerHybridMethod("addTracksToPlaylist", &HybridPlayerQueueSpec::addTracksToPlaylist);
       prototype.registerHybridMethod("removeTrackFromPlaylist", &HybridPlayerQueueSpec::removeTrackFromPlaylist);
       prototype.registerHybridMethod("reorderTrackInPlaylist", &HybridPlayerQueueSpec::reorderTrackInPlaylist);
+      prototype.registerHybridMethod("removeTracksFromPlaylist", &HybridPlayerQueueSpec::removeTracksFromPlaylist);
+      prototype.registerHybridMethod("shufflePlaylist", &HybridPlayerQueueSpec::shufflePlaylist);
       prototype.registerHybridMethod("loadPlaylist", &HybridPlayerQueueSpec::loadPlaylist);
       prototype.registerHybridMethod("getCurrentPlaylistId", &HybridPlayerQueueSpec::getCurrentPlaylistId);
       prototype.registerHybridMethod("onPlaylistsChanged", &HybridPlayerQueueSpec::onPlaylistsChanged);

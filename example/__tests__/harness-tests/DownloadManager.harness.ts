@@ -599,4 +599,15 @@ describe('DownloadManager - Comprehensive Tests', () => {
       }).not.toThrow();
     });
   });
+
+  describe('Sync', () => {
+    it('should reconcile the download store without dropping known downloads', async () => {
+      const before = (await DownloadManager.getAllDownloadedTracks()).map(t => t.trackId).sort();
+
+      await DownloadManager.syncDownloads();
+
+      const after = (await DownloadManager.getAllDownloadedTracks()).map(t => t.trackId).sort();
+      expect(after).toStrictEqual(before);
+    });
+  });
 });

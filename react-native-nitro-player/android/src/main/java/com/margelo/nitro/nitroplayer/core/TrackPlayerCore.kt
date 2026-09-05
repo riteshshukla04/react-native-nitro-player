@@ -144,21 +144,44 @@ class TrackPlayerCore private constructor(
         playerHandler.postDelayed(progressUpdateRunnable, PROGRESS_INTERVAL_MS)
     }
 
-    internal val updateCurrentPlaylistRunnable =
-        Runnable {
-            val id = currentPlaylistId ?: return@Runnable
-            val playlist = playlistManager.getPlaylist(id) ?: return@Runnable
-            currentTracks = playlist.tracks
-            if (::exo.isInitialized &&
-                exo.currentMediaItem != null &&
-                exo.currentMediaItemIndex >= 0
-            ) {
-                rebuildQueueFromCurrentPosition()
-            } else {
-                updatePlayerQueue(playlist.tracks)
-            }
-            checkUpcomingTracksForUrls(lookaheadCount)
+    internal enum class AnchorOutcome { NONE, KEPT, REMOVED }
+
+    /** Re-resolves the anchor by id, or moves the cursor to the resume slot when it was removed. */
+    internal fun assignCurrentTracks(next: List<TrackItem>): AnchorOutcome {
+        val old = currentTracks
+        val anchor = old.getOrNull(currentTrackIndex)
+        currentTracks = next
+        if (anchor == null) return AnchorOutcome.NONE
+        val newIndex = next.indexOfFirst { it.id == anchor.id }
+        if (newIndex >= 0) {
+            currentTrackIndex = newIndex
+            return AnchorOutcome.KEPT
         }
+        val alive = next.mapTo(HashSet()) { it.id }
+        val followerId = old.drop(currentTrackIndex + 1).firstOrNull { it.id in alive }?.id
+        val resume = followerId?.let { id -> next.indexOfFirst { it.id == id } } ?: next.size
+        currentTrackIndex = resume - 1
+        return AnchorOutcome.REMOVED
+    }
+
+    /** Applies the stored playlist to the live queue without re-preparing the playing item. */
+    internal fun syncCurrentPlaylistOnQueue() {
+        playerHandler.removeCallbacks(updateCurrentPlaylistRunnable)
+        val id = currentPlaylistId ?: return
+        val playlist = playlistManager.getPlaylist(id) ?: return
+        assignCurrentTracks(playlist.tracks)
+        if (::exo.isInitialized &&
+            exo.currentMediaItem != null &&
+            exo.currentMediaItemIndex >= 0
+        ) {
+            rebuildQueueFromCurrentPosition()
+        } else {
+            updatePlayerQueue(playlist.tracks)
+        }
+        checkUpcomingTracksForUrls(lookaheadCount)
+    }
+
+    internal val updateCurrentPlaylistRunnable = Runnable { syncCurrentPlaylistOnQueue() }
 
     // ── Service binding ────────────────────────────────────────────────────
     private var serviceBound = false

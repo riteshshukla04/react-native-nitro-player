@@ -52,6 +52,8 @@ class TrackPlayerCore: NSObject {
   // whose generation is stale was superseded by a later request and is dropped,
   // so a burst of playlist mutations collapses into a single rebuild.
   internal var playlistUpdateGeneration: UInt64 = 0
+  // Set by handleCastDisconnected: suppresses onChangeTrack until the local player reaches this id.
+  internal var backendTransferTargetId: String?
   internal var isManuallySeeked = false
   internal var currentRepeatMode: RepeatMode = .off
   internal var currentPlaybackSpeed: Double = 1.0
@@ -266,6 +268,7 @@ class TrackPlayerCore: NSObject {
       }
       self.currentItemObservers.removeAll()
       self.detachMetadataOutput()
+      self.backendTransferTargetId = nil
       if let p = self.player {
         p.removeObserver(self, forKeyPath: "status")
         p.removeObserver(self, forKeyPath: "rate")
@@ -285,6 +288,34 @@ class TrackPlayerCore: NSObject {
 
   deinit {
     NitroPlayerLogger.log("TrackPlayerCore", "🧹 deinit")
+  }
+}
+
+enum AnchorOutcome { case none, kept, removed }
+
+extension TrackPlayerCore {
+  /// Re-resolves the anchor by id, or moves the cursor to the resume slot when it was removed.
+  @discardableResult
+  func assignCurrentTracks(_ next: [TrackItem]) -> AnchorOutcome {
+    let old = currentTracks
+    let anchor = old[safe: currentTrackIndex]
+    currentTracks = next
+    guard let anchor else { return .none }
+    if let newIndex = next.firstIndex(where: { $0.id == anchor.id }) {
+      currentTrackIndex = newIndex
+      return .kept
+    }
+    let alive = Set(next.map(\.id))
+    let followerId = old.dropFirst(currentTrackIndex + 1).first { alive.contains($0.id) }?.id
+    let resume = followerId.flatMap { id in next.firstIndex { $0.id == id } } ?? next.count
+    currentTrackIndex = resume - 1
+    return .removed
+  }
+
+  /// True while the playing item was removed from the playlist and is finishing.
+  func isTransientPlayOut() -> Bool {
+    guard currentTemporaryType == .none, let id = activeCurrentTrackId else { return false }
+    return !currentTracks.contains { $0.id == id }
   }
 }
 

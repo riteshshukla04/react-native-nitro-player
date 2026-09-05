@@ -64,6 +64,8 @@ internal class TrackPlayerEventListener(
                 val newIdx = currentTracks.indexOfFirst { it.id == trackId }
                 if (newIdx >= 0 && newIdx != currentTrackIndex) currentTrackIndex = newIdx
             }
+            // A transient play-out ends here: restore the user's repeat mode.
+            core.applyBackendRepeatMode()
 
             val wrappedToStart = currentRepeatMode == RepeatMode.PLAYLIST &&
                 currentTrackIndex == 0 && previousTrackIndex == currentTracks.size - 1

@@ -26,6 +26,11 @@ export interface Playlist {
 
 export type QueueOperation = 'add' | 'remove' | 'clear' | 'update'
 
+export interface ShufflePlaylistOptions {
+  /** Move the playing track to index 0 and shuffle the rest behind it (default: true). */
+  keepCurrentTrackFirst?: boolean
+}
+
 export type TrackPlayerState = 'playing' | 'paused' | 'stopped' | 'buffering'
 
 export type Reason = 'user_action' | 'skip' | 'end' | 'error' | 'repeat'

@@ -16,6 +16,8 @@ namespace NitroPlayer { class HybridPlayerQueueSpec_cxx; }
 namespace margelo::nitro::nitroplayer { struct Playlist; }
 // Forward declaration of `TrackItem` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct TrackItem; }
+// Forward declaration of `ShufflePlaylistOptions` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct ShufflePlaylistOptions; }
 // Forward declaration of `QueueOperation` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class QueueOperation; }
 
@@ -28,6 +30,7 @@ namespace margelo::nitro::nitroplayer { enum class QueueOperation; }
 #include "TrackItem.hpp"
 #include <vector>
 #include <NitroModules/AnyMap.hpp>
+#include "ShufflePlaylistOptions.hpp"
 #include "QueueOperation.hpp"
 #include <functional>
 
@@ -147,6 +150,22 @@ namespace margelo::nitro::nitroplayer {
     }
     inline std::shared_ptr<Promise<void>> reorderTrackInPlaylist(const std::string& playlistId, const std::string& trackId, double newIndex) override {
       auto __result = _swiftPart.reorderTrackInPlaylist(playlistId, trackId, std::forward<decltype(newIndex)>(newIndex));
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline std::shared_ptr<Promise<void>> removeTracksFromPlaylist(const std::string& playlistId, const std::vector<std::string>& trackIds) override {
+      auto __result = _swiftPart.removeTracksFromPlaylist(playlistId, trackIds);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline std::shared_ptr<Promise<void>> shufflePlaylist(const std::string& playlistId, const std::optional<ShufflePlaylistOptions>& options) override {
+      auto __result = _swiftPart.shufflePlaylist(playlistId, options);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }

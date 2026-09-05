@@ -14,6 +14,7 @@ class PlaylistManager {
   private var listeners: [(String, ([PlaylistModel], QueueOperation?) -> Void)] = []
   private var playlistListeners: [String: [(String, (PlaylistModel, QueueOperation?) -> Void)]] =
     [:]
+  private var anyPlaylistListeners: [(String, (PlaylistModel, QueueOperation?) -> Void)] = []
   // Backing store must only be touched inside `queue`; every current use of the
   // computed property is outside a queue.sync block, so the accessors can sync.
   private var _currentPlaylistId: String?
@@ -257,6 +258,48 @@ class PlaylistManager {
     return true
   }
 
+  /// Removed count; nil when the playlist does not exist. Unknown ids are ignored.
+  func removeTracksFromPlaylist(playlistId: String, trackIds: [String]) -> Int? {
+    let ids = Set(trackIds)
+    let removed: Int? = queue.sync {
+      guard let playlist = playlists[playlistId] else { return nil }
+      let tracks = playlist.tracks.filter { !ids.contains($0.id) }
+      let count = playlist.tracks.count - tracks.count
+      if count > 0 {
+        playlists[playlistId] = PlaylistModel(
+          id: playlist.id, name: playlist.name, description: playlist.description,
+          artwork: playlist.artwork, tracks: tracks)
+      }
+      return count
+    }
+    if let removed, removed > 0 {
+      scheduleSave()
+      notifyPlaylistChanged(playlistId, .remove)
+    }
+    return removed
+  }
+
+  /// Fisher-Yates; `firstTrackId` is pinned at index 0. Nil when the playlist does not exist.
+  func shufflePlaylist(playlistId: String, firstTrackId: String?) -> Bool? {
+    let changed: Bool? = queue.sync {
+      guard let playlist = playlists[playlistId] else { return nil }
+      var tracks = playlist.tracks
+      let pinned = tracks.firstIndex { $0.id == firstTrackId }.map { tracks.remove(at: $0) }
+      tracks.shuffle()
+      if let pinned { tracks.insert(pinned, at: 0) }
+      guard tracks.map(\.id) != playlist.tracks.map(\.id) else { return false }
+      playlists[playlistId] = PlaylistModel(
+        id: playlist.id, name: playlist.name, description: playlist.description,
+        artwork: playlist.artwork, tracks: tracks)
+      return true
+    }
+    if changed == true {
+      scheduleSave()
+      notifyPlaylistChanged(playlistId, .update)
+    }
+    return changed
+  }
+
   /**
    * Load a playlist for playback (sets it as current)
    */
@@ -343,6 +386,11 @@ class PlaylistManager {
     return trackIds.compactMap { foundTracks[$0] }
   }
 
+  /// Mirrors the core's current playlist; playSong bypasses loadPlaylist.
+  func setCurrentPlaylistId(_ playlistId: String?) {
+    currentPlaylistId = playlistId
+  }
+
   /**
    * Get the current playlist ID
    */
@@ -403,11 +451,22 @@ class PlaylistManager {
     currentListeners.forEach { $0.1(allPlaylists, operation) }
   }
 
+  /// Fires for ANY playlist, including ones created after registration.
+  func addAnyPlaylistChangeListener(
+    listener: @escaping (PlaylistModel, QueueOperation?) -> Void
+  ) -> () -> Void {
+    let listenerId = UUID().uuidString
+    queue.sync { anyPlaylistListeners.append((listenerId, listener)) }
+    return {
+      self.queue.sync { self.anyPlaylistListeners.removeAll { $0.0 == listenerId } }
+    }
+  }
+
   private func notifyPlaylistChanged(_ playlistId: String, _ operation: QueueOperation?) {
     let result: (PlaylistModel, [(String, (PlaylistModel, QueueOperation?) -> Void)])? = queue.sync
     {
       guard let p = playlists[playlistId] else { return nil }
-      return (p, playlistListeners[playlistId] ?? [])
+      return (p, (playlistListeners[playlistId] ?? []) + anyPlaylistListeners)
     }
 
     guard let (playlist, currentListeners) = result else { return }

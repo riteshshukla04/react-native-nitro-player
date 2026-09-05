@@ -82,6 +82,8 @@ Mutations return **`Promise<void>`** (or **`Promise<string>`** for `createPlayli
 | `addTracksToPlaylist(pid, tracks)`      | Both     | **Async**. Adds multiple tracks to a playlist.         |
 | `removeTrackFromPlaylist(pid, tid)`     | Both     | **Async**. Removes a track from a playlist.             |
 | `reorderTrackInPlaylist(pid, tid, idx)` | Both     | **Async**. Moves a track to a new position.             |
+| `removeTracksFromPlaylist(pid, tids)`   | Both     | **Async**. Removes several tracks in one call.          |
+| `shufflePlaylist(pid, options?)`        | Both     | **Async**. Shuffles a playlist without stopping playback.|
 
 ### Platform-Specific APIs
 
@@ -939,6 +941,13 @@ PlayerQueue.removeTrackFromPlaylist(playlistId, trackId)
 
 // Reorder tracks
 PlayerQueue.reorderTrackInPlaylist(playlistId, trackId, newIndex)
+
+// Remove several tracks in one native call
+PlayerQueue.removeTracksFromPlaylist(playlistId, [trackId1, trackId2])
+
+// Shuffle in place — the playing track keeps playing, no shuffle mode to turn off
+PlayerQueue.shufflePlaylist(playlistId)
+PlayerQueue.shufflePlaylist(playlistId, { keepCurrentTrackFirst: false })
 
 // Delete a playlist
 PlayerQueue.deletePlaylist(playlistId)

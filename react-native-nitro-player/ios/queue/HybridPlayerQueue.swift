@@ -73,14 +73,9 @@ final class HybridPlayerQueue: HybridPlayerQueueSpec {
     }
   }
 
+  /// Same semantics as the batch form: unknown ids are skipped, only a missing playlist rejects.
   func removeTrackFromPlaylist(playlistId: String, trackId: String) throws -> Promise<Void> {
-    Promise.async {
-      guard self.playlistManager.removeTrackFromPlaylist(playlistId: playlistId, trackId: trackId)
-      else {
-        throw RuntimeError.error(withMessage: "Track \(trackId) not found in playlist \(playlistId)")
-      }
-      self.core.updatePlaylist(playlistId: playlistId)
-    }
+    try removeTracksFromPlaylist(playlistId: playlistId, trackIds: [trackId])
   }
 
   func reorderTrackInPlaylist(playlistId: String, trackId: String, newIndex: Double) throws -> Promise<Void> {
@@ -92,6 +87,40 @@ final class HybridPlayerQueue: HybridPlayerQueueSpec {
       }
       self.core.updatePlaylist(playlistId: playlistId)
     }
+  }
+
+  /// On the player queue: the live queue must reflect the removal before the promise resolves.
+  func removeTracksFromPlaylist(playlistId: String, trackIds: [String]) throws -> Promise<Void> {
+    let promise = Promise<Void>()
+    core.playerQueue.async {
+      guard let removed = self.playlistManager.removeTracksFromPlaylist(playlistId: playlistId, trackIds: trackIds) else {
+        promise.reject(withError: RuntimeError.error(withMessage: "Playlist not found: \(playlistId)"))
+        return
+      }
+      if removed > 0, self.core.currentPlaylistId == playlistId {
+        self.core.syncCurrentPlaylistOnQueue(playlistId: playlistId)
+      }
+      promise.resolve(withResult: ())
+    }
+    return promise
+  }
+
+  /// On the player queue: the anchor id is player-queue state.
+  func shufflePlaylist(playlistId: String, options: ShufflePlaylistOptions?) throws -> Promise<Void> {
+    let promise = Promise<Void>()
+    core.playerQueue.async {
+      let isCurrent = self.core.currentPlaylistId == playlistId
+      let pin: String? =
+        (isCurrent && options?.keepCurrentTrackFirst != false)
+        ? self.core.currentTracks[safe: self.core.currentTrackIndex]?.id : nil
+      guard let changed = self.playlistManager.shufflePlaylist(playlistId: playlistId, firstTrackId: pin) else {
+        promise.reject(withError: RuntimeError.error(withMessage: "Playlist not found: \(playlistId)"))
+        return
+      }
+      if changed, isCurrent { self.core.syncCurrentPlaylistOnQueue(playlistId: playlistId) }
+      promise.resolve(withResult: ())
+    }
+    return promise
   }
 
   // MARK: - Playback control
@@ -130,13 +159,11 @@ final class HybridPlayerQueue: HybridPlayerQueueSpec {
   }
 
   func onPlaylistChanged(callback: @escaping (_ playlistId: String, _ playlist: Playlist, _ operation: QueueOperation?) -> Void) throws {
-    let allPlaylists = playlistManager.getAllPlaylists()
-    for playlist in allPlaylists {
-      let remover = playlistManager.addPlaylistChangeListener(playlistId: playlist.id) { updated, operation in
-        callback(updated.id, updated.toGeneratedPlaylist(), operation)
-      }
-      playlistChangeRemovers.append(remover)
+    // Manager-level listener: covers playlists created after registration.
+    let remover = playlistManager.addAnyPlaylistChangeListener { updated, operation in
+      callback(updated.id, updated.toGeneratedPlaylist(), operation)
     }
+    playlistChangeRemovers.append(remover)
   }
 
   // MARK: - Cleanup
