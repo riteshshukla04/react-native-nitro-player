@@ -20,11 +20,17 @@ import com.margelo.nitro.nitroplayer.media.NitroPlayerPlaybackService
 
 suspend fun TrackPlayerCore.play() = withPlayerContext { playOnQueue() }
 
-internal fun TrackPlayerCore.playOnQueue() = exo.play()
+internal fun TrackPlayerCore.playOnQueue() {
+    audioFocusController?.acquire()
+    exo.play()
+}
 
 suspend fun TrackPlayerCore.pause() = withPlayerContext { pauseOnQueue() }
 
-internal fun TrackPlayerCore.pauseOnQueue() = exo.pause()
+internal fun TrackPlayerCore.pauseOnQueue() {
+    exo.pause()
+    audioFocusController?.abandon()
+}
 
 suspend fun TrackPlayerCore.seek(position: Double) = withPlayerContext { seekOnQueue(position) }
 
@@ -110,12 +116,14 @@ suspend fun TrackPlayerCore.setVolume(volume: Double) = withPlayerContext { setV
 
 internal fun TrackPlayerCore.setVolumeOnQueue(volume: Double) {
     val clamped = volume.coerceIn(0.0, 100.0)
-    exo.setVolume((clamped / 100.0).toFloat())
+    userVolume = (clamped / 100.0).toFloat()
+    exo.setVolume(userVolume * if (isDucked) DUCK_VOLUME_FACTOR else 1f)
 }
 
 suspend fun TrackPlayerCore.configure(config: PlayerConfig) = withPlayerContext { configureOnQueue(config) }
 
 internal fun TrackPlayerCore.configureOnQueue(config: PlayerConfig) {
+    config.androidAudioFocus?.let { applyAudioFocusMode(it) }
     config.androidAutoEnabled?.let { NitroPlayerMediaBrowserService.isAndroidAutoEnabled = it }
     config.lookaheadCount?.let { lookaheadCount = it.toInt() }
     config.androidNotificationIcon?.let { NitroPlayerPlaybackService.notificationSmallIconResName = it }

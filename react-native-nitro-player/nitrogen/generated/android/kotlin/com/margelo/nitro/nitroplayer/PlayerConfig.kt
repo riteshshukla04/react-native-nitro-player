@@ -37,7 +37,10 @@ data class PlayerConfig(
   val lookaheadCount: Double?,
   @DoNotStrip
   @Keep
-  val androidNotificationIcon: String?
+  val androidNotificationIcon: String?,
+  @DoNotStrip
+  @Keep
+  val androidAudioFocus: AndroidAudioFocusMode?
 ) {
   /* primary constructor */
 
@@ -49,8 +52,8 @@ data class PlayerConfig(
     @Keep
     @Suppress("unused")
     @JvmStatic
-    private fun fromCpp(androidAutoEnabled: Boolean?, carPlayEnabled: Boolean?, showInNotification: Boolean?, remoteSkipForwardInterval: Double?, remoteSkipBackwardInterval: Double?, lookaheadCount: Double?, androidNotificationIcon: String?): PlayerConfig {
-      return PlayerConfig(androidAutoEnabled, carPlayEnabled, showInNotification, remoteSkipForwardInterval, remoteSkipBackwardInterval, lookaheadCount, androidNotificationIcon)
+    private fun fromCpp(androidAutoEnabled: Boolean?, carPlayEnabled: Boolean?, showInNotification: Boolean?, remoteSkipForwardInterval: Double?, remoteSkipBackwardInterval: Double?, lookaheadCount: Double?, androidNotificationIcon: String?, androidAudioFocus: AndroidAudioFocusMode?): PlayerConfig {
+      return PlayerConfig(androidAutoEnabled, carPlayEnabled, showInNotification, remoteSkipForwardInterval, remoteSkipBackwardInterval, lookaheadCount, androidNotificationIcon, androidAudioFocus)
     }
   }
 }

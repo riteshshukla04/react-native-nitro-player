@@ -18,7 +18,7 @@ public extension PlayerConfig {
   /**
    * Create a new instance of `PlayerConfig`.
    */
-  init(androidAutoEnabled: Bool?, carPlayEnabled: Bool?, showInNotification: Bool?, remoteSkipForwardInterval: Double?, remoteSkipBackwardInterval: Double?, lookaheadCount: Double?, androidNotificationIcon: String?) {
+  init(androidAutoEnabled: Bool?, carPlayEnabled: Bool?, showInNotification: Bool?, remoteSkipForwardInterval: Double?, remoteSkipBackwardInterval: Double?, lookaheadCount: Double?, androidNotificationIcon: String?, androidAudioFocus: AndroidAudioFocusMode?) {
     self.init({ () -> bridge.std__optional_bool_ in
       if let __unwrappedValue = androidAutoEnabled {
         return bridge.create_std__optional_bool_(__unwrappedValue)
@@ -58,6 +58,12 @@ public extension PlayerConfig {
     }(), { () -> bridge.std__optional_std__string_ in
       if let __unwrappedValue = androidNotificationIcon {
         return bridge.create_std__optional_std__string_(std.string(__unwrappedValue))
+      } else {
+        return .init()
+      }
+    }(), { () -> bridge.std__optional_AndroidAudioFocusMode_ in
+      if let __unwrappedValue = androidAudioFocus {
+        return bridge.create_std__optional_AndroidAudioFocusMode_(__unwrappedValue)
       } else {
         return .init()
       }
@@ -146,5 +152,10 @@ public extension PlayerConfig {
         return nil
       }
     }()
+  }
+  
+  @inline(__always)
+  var androidAudioFocus: AndroidAudioFocusMode? {
+    return self.__androidAudioFocus.value
   }
 }

@@ -8,6 +8,8 @@
 #pragma once
 
 // Forward declarations of C++ defined types
+// Forward declaration of `AndroidAudioFocusMode` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class AndroidAudioFocusMode; }
 // Forward declaration of `CastState` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class CastState; }
 // Forward declaration of `CurrentPlayingType` to properly resolve imports.
@@ -92,6 +94,7 @@ namespace NitroPlayer { class HybridPlayerQueueSpec_cxx; }
 namespace NitroPlayer { class HybridTrackPlayerSpec_cxx; }
 
 // Include C++ defined types
+#include "AndroidAudioFocusMode.hpp"
 #include "CastState.hpp"
 #include "CurrentPlayingType.hpp"
 #include "DownloadConfig.hpp"
@@ -1643,6 +1646,21 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
   Func_void_PlayerState create_Func_void_PlayerState(void* NON_NULL swiftClosureWrapper) noexcept;
   inline Func_void_PlayerState_Wrapper wrap_Func_void_PlayerState(Func_void_PlayerState value) noexcept {
     return Func_void_PlayerState_Wrapper(std::move(value));
+  }
+  
+  // pragma MARK: std::optional<AndroidAudioFocusMode>
+  /**
+   * Specialized version of `std::optional<AndroidAudioFocusMode>`.
+   */
+  using std__optional_AndroidAudioFocusMode_ = std::optional<AndroidAudioFocusMode>;
+  inline std::optional<AndroidAudioFocusMode> create_std__optional_AndroidAudioFocusMode_(const AndroidAudioFocusMode& value) noexcept {
+    return std::optional<AndroidAudioFocusMode>(value);
+  }
+  inline bool has_value_std__optional_AndroidAudioFocusMode_(const std::optional<AndroidAudioFocusMode>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline AndroidAudioFocusMode get_std__optional_AndroidAudioFocusMode_(const std::optional<AndroidAudioFocusMode>& optional) noexcept {
+    return optional.value();
   }
   
   // pragma MARK: std::optional<Reason>

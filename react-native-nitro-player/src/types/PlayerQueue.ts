@@ -61,6 +61,15 @@ export interface TimedMetadata {
   artworkUrl?: string
 }
 
+/**
+ * How Android reacts when another app takes audio focus.
+ * - 'pause': pause for any interruption and resume after it (default, today's behaviour)
+ * - 'duck': keep playing at a reduced volume through transient interruptions
+ * - 'ignore': never react to audio focus at all
+ * iOS ignores this option.
+ */
+export type AndroidAudioFocusMode = 'pause' | 'duck' | 'ignore'
+
 export interface PlayerConfig {
   androidAutoEnabled?: boolean
   carPlayEnabled?: boolean
@@ -80,4 +89,7 @@ export interface PlayerConfig {
   lookaheadCount?: number
 
   androidNotificationIcon?: string
+
+  /** How Android reacts when another app takes audio focus (default: 'pause'). */
+  androidAudioFocus?: AndroidAudioFocusMode
 }
