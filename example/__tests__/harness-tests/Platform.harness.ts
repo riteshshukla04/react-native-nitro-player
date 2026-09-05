@@ -58,20 +58,20 @@ describe('AudioDevices (Android only)', () => {
     expect(AudioDevices.getAudioDevices().length > 0).toBe(true);
   });
 
-  it('should keep at most one device selected', () => {
+  it('should keep at most one device active', () => {
     if (!AudioDevices) return;
 
-    const selected = AudioDevices.getAudioDevices().filter(d => d.isSelected);
-    expect(selected.length <= 1).toBe(true);
+    const active = AudioDevices.getAudioDevices().filter(d => d.isActive);
+    expect(active.length <= 1).toBe(true);
   });
 
-  it('should leave the selection alone for an unknown device id', async () => {
+  it('should reject an unknown device id and leave the selection alone', async () => {
     if (!AudioDevices) return;
 
-    const before = AudioDevices.getAudioDevices().find(d => d.isSelected)?.id;
-    await AudioDevices.setAudioDevice(999999);
+    const before = AudioDevices.getAudioDevices().find(d => d.isActive)?.id;
+    await expect(AudioDevices.setAudioDevice(999999)).rejects.toBeDefined();
 
-    expect(AudioDevices.getAudioDevices().find(d => d.isSelected)?.id).toBe(before);
+    expect(AudioDevices.getAudioDevices().find(d => d.isActive)?.id).toBe(before);
   });
 });
 

@@ -1,6 +1,7 @@
 import {
   androidPlatform,
   androidEmulator,
+  physicalAndroidDevice,
 } from '@react-native-harness/platform-android';
 import {
   applePlatform,
@@ -17,7 +18,13 @@ const config = {
   runners: [
     androidPlatform({
       name: 'android',
-      device: androidEmulator(process.env.HARNESS_ANDROID_AVD ?? 'Pixel_6_Pro'),
+      // Set HARNESS_ANDROID_MANUFACTURER/MODEL to run on a plugged-in phone instead of an emulator.
+      device: process.env.HARNESS_ANDROID_MODEL
+        ? physicalAndroidDevice(
+            process.env.HARNESS_ANDROID_MANUFACTURER ?? 'samsung',
+            process.env.HARNESS_ANDROID_MODEL
+          )
+        : androidEmulator(process.env.HARNESS_ANDROID_AVD ?? 'Pixel_8_API_35'),
       bundleId: 'com.example', // Your Android bundle ID
     }),
     applePlatform({
