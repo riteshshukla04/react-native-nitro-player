@@ -11,6 +11,8 @@
 namespace margelo::nitro::nitroplayer { struct Playlist; }
 // Forward declaration of `TrackItem` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct TrackItem; }
+// Forward declaration of `ShufflePlaylistOptions` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct ShufflePlaylistOptions; }
 // Forward declaration of `QueueOperation` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class QueueOperation; }
 
@@ -31,6 +33,8 @@ namespace margelo::nitro::nitroplayer { enum class QueueOperation; }
 #include "JTrackItem.hpp"
 #include <NitroModules/AnyMap.hpp>
 #include <NitroModules/JAnyMap.hpp>
+#include "ShufflePlaylistOptions.hpp"
+#include "JShufflePlaylistOptions.hpp"
 #include "QueueOperation.hpp"
 #include <functional>
 #include "JFunc_void_std__vector_Playlist__std__optional_QueueOperation_.hpp"
@@ -193,6 +197,45 @@ namespace margelo::nitro::nitroplayer {
   std::shared_ptr<Promise<void>> JHybridPlayerQueueSpec::reorderTrackInPlaylist(const std::string& playlistId, const std::string& trackId, double newIndex) {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* playlistId */, jni::alias_ref<jni::JString> /* trackId */, double /* newIndex */)>("reorderTrackInPlaylist");
     auto __result = method(_javaPart, jni::make_jstring(playlistId), jni::make_jstring(trackId), newIndex);
+    return [&]() {
+      auto __promise = Promise<void>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& /* unit */) {
+        __promise->resolve();
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
+  }
+  std::shared_ptr<Promise<void>> JHybridPlayerQueueSpec::removeTracksFromPlaylist(const std::string& playlistId, const std::vector<std::string>& trackIds) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* playlistId */, jni::alias_ref<jni::JArrayClass<jni::JString>> /* trackIds */)>("removeTracksFromPlaylist");
+    auto __result = method(_javaPart, jni::make_jstring(playlistId), [&]() {
+      size_t __size = trackIds.size();
+      jni::local_ref<jni::JArrayClass<jni::JString>> __array = jni::JArrayClass<jni::JString>::newArray(__size);
+      for (size_t __i = 0; __i < __size; __i++) {
+        const auto& __element = trackIds[__i];
+        auto __elementJni = jni::make_jstring(__element);
+        __array->setElement(__i, *__elementJni);
+      }
+      return __array;
+    }());
+    return [&]() {
+      auto __promise = Promise<void>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& /* unit */) {
+        __promise->resolve();
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
+  }
+  std::shared_ptr<Promise<void>> JHybridPlayerQueueSpec::shufflePlaylist(const std::string& playlistId, const std::optional<ShufflePlaylistOptions>& options) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* playlistId */, jni::alias_ref<JShufflePlaylistOptions> /* options */)>("shufflePlaylist");
+    auto __result = method(_javaPart, jni::make_jstring(playlistId), options.has_value() ? JShufflePlaylistOptions::fromCpp(options.value()) : nullptr);
     return [&]() {
       auto __promise = Promise<void>::create();
       __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& /* unit */) {

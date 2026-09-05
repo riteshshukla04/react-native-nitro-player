@@ -55,9 +55,8 @@ internal fun TrackPlayerCore.skipToPreviousOnQueue() {
         }
 
         currentTemporaryType != TrackPlayerCore.TemporaryType.NONE -> {
-            // playFromIndexInternal clears both temp lists (matching iOS behavior),
-            // so no per-track removal is needed here
-            playFromIndexInternal(currentTrackIndex)
+            // playFromIndexInternal clears both temp lists; cursor may be -1 (anchor removed).
+            if (currentTracks.isEmpty()) exo.seekTo(0) else playFromIndexInternal(maxOf(0, currentTrackIndex))
         }
 
         currentTrackIndex > 0 -> {
@@ -76,17 +75,33 @@ suspend fun TrackPlayerCore.setRepeatMode(mode: RepeatMode) = withPlayerContext 
 internal fun TrackPlayerCore.setRepeatModeOnQueue(mode: RepeatMode) {
     val previousMode = currentRepeatMode
     currentRepeatMode = mode
-    exo.setRepeatMode(
-        when (mode) {
-            RepeatMode.TRACK -> Player.REPEAT_MODE_ONE
-            else -> Player.REPEAT_MODE_OFF
-        },
-    )
+    applyBackendRepeatMode()
     if (!isCastingField && previousMode != mode &&
         (previousMode == RepeatMode.PLAYLIST || mode == RepeatMode.PLAYLIST)
     ) {
         rebuildQueueFromCurrentPosition()
     }
+}
+
+/** True while the playing item was removed from the playlist and is finishing. */
+internal fun TrackPlayerCore.isTransientPlayOut(): Boolean {
+    if (!isExoInitialized || currentTemporaryType != TrackPlayerCore.TemporaryType.NONE) return false
+    val item = exo.currentMediaItem ?: return false
+    return findTrack(item) == null
+}
+
+/** Follows the user's mode except during a transient play-out, which must finish once. */
+internal fun TrackPlayerCore.backendRepeatMode(): Int =
+    when {
+        isTransientPlayOut() -> Player.REPEAT_MODE_OFF
+        currentRepeatMode == RepeatMode.TRACK -> Player.REPEAT_MODE_ONE
+        else -> Player.REPEAT_MODE_OFF
+    }
+
+internal fun TrackPlayerCore.applyBackendRepeatMode() {
+    if (!isExoInitialized) return
+    val desired = backendRepeatMode()
+    if (exo.player.repeatMode != desired) exo.setRepeatMode(desired)
 }
 
 fun TrackPlayerCore.getRepeatMode(): RepeatMode = currentRepeatMode
@@ -185,6 +200,7 @@ internal fun TrackPlayerCore.playSongInternal(
 
     if (targetPlaylistId == null || songIndex < 0) return
 
+    playlistManager.setCurrentPlaylistId(targetPlaylistId)
     if (currentPlaylistId != targetPlaylistId) {
         val playlist = playlistManager.getPlaylist(targetPlaylistId) ?: return
         currentPlaylistId = targetPlaylistId

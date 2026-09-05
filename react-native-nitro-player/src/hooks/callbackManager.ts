@@ -37,6 +37,7 @@ class CallbackSubscriptionManager {
   private androidAutoConnectionSubscribers =
     new Set<AndroidAutoConnectionCallback>()
   private isPlaylistsChangedRegistered = false
+  private playlistsChangedFanOutScheduled = false
   private isAndroidAutoConnectionRegistered = false
   private isPlaybackStateRegistered = false
   private isTrackChangeRegistered = false
@@ -204,21 +205,35 @@ class CallbackSubscriptionManager {
     }
   }
 
+  // Task-level, not a microtask: native callbacks arrive as separate JS tasks.
+  private schedulePlaylistsChangedFanOut(): void {
+    if (this.playlistsChangedFanOutScheduled) return
+    this.playlistsChangedFanOutScheduled = true
+    setTimeout(() => {
+      this.playlistsChangedFanOutScheduled = false
+      this.playlistsChangedSubscribers.forEach((subscriber) => {
+        try {
+          subscriber()
+        } catch (error) {
+          console.error(
+            '[CallbackManager] Error in playlists changed subscriber:',
+            error
+          )
+        }
+      })
+    }, 0)
+  }
+
   private ensurePlaylistsChangedRegistered(): void {
     if (this.isPlaylistsChangedRegistered) return
 
     try {
       PlayerQueue.onPlaylistsChanged(() => {
-        this.playlistsChangedSubscribers.forEach((subscriber) => {
-          try {
-            subscriber()
-          } catch (error) {
-            console.error(
-              '[CallbackManager] Error in playlists changed subscriber:',
-              error
-            )
-          }
-        })
+        this.schedulePlaylistsChangedFanOut()
+      })
+      // Track-level mutations only fire the per-playlist event.
+      PlayerQueue.onPlaylistChanged(() => {
+        this.schedulePlaylistsChangedFanOut()
       })
       this.isPlaylistsChangedRegistered = true
     } catch (error) {

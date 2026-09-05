@@ -8,6 +8,7 @@ import type {
   PlayerConfig,
   Playlist,
   TimedMetadata,
+  ShufflePlaylistOptions,
 } from '../types/PlayerQueue'
 
 export interface PlayerQueue extends HybridObject<{
@@ -46,6 +47,16 @@ export interface PlayerQueue extends HybridObject<{
     playlistId: string,
     trackId: string,
     newIndex: number
+  ): Promise<void>
+  /** One native pass. Unknown ids are skipped; rejects only if the playlist does not exist. */
+  removeTracksFromPlaylist(
+    playlistId: string,
+    trackIds: string[]
+  ): Promise<void>
+  /** Fisher-Yates shuffle of the stored playlist, persisted. Never interrupts the playing item. */
+  shufflePlaylist(
+    playlistId: string,
+    options?: ShufflePlaylistOptions
   ): Promise<void>
 
   // Playback control

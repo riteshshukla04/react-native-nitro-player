@@ -172,8 +172,12 @@ extension TrackPlayerCore {
     // Items without our trackId belong to another AVPlayer in the host app
     guard finishedItem.trackId != nil else { return }
 
+    // A track removed from the playlist is finishing: it must play once, never loop.
+    let finishedWasRemoved =
+      finishedItem.trackId.map { id in !currentTracks.contains { $0.id == id } } ?? false
+
     // 1. TRACK repeat — handle FIRST, before any temp-track removal
-    if currentRepeatMode == .track {
+    if currentRepeatMode == .track && !finishedWasRemoved {
       if player?.currentItem == nil || player?.currentItem === finishedItem {
         NitroPlayerLogger.log("TrackPlayerCore", "🔁 TRACK repeat — no queued copy, seeking to zero")
         player?.seek(to: .zero)
@@ -317,6 +321,12 @@ extension TrackPlayerCore {
           notifyTrackChange(firstTrack, .repeat)
         }
         notifyTemporaryQueueChange()
+      } else if let player = self.player, player.items().isEmpty, !hasUpcomingTrack() {
+        // AVQueuePlayer leaves `rate` at 1 with no item left, so state would keep reading as
+        // playing after the last track ends. Stop for real and tell JS.
+        player.rate = 0
+        intendedToPlay = false
+        emitStateChange(reason: .end)
       }
       return
     }
@@ -362,6 +372,12 @@ extension TrackPlayerCore {
     // Setup KVO observers for current item
     setupCurrentItemObservers(item: currentItem)
 
+    // A Cast disconnect rebuilds around the receiver's track; none of those transitions is a change.
+    let isBackendTransfer = backendTransferTargetId != nil
+    if let target = backendTransferTargetId, currentItem.trackId == target {
+      backendTransferTargetId = nil
+    }
+
     // Update track index and determine temporary type
     if let trackId = currentItem.trackId {
       NitroPlayerLogger.log("TrackPlayerCore", "🔍 Looking up trackId '\(trackId)' in currentTracks...")
@@ -375,7 +391,7 @@ extension TrackPlayerCore {
         if currentTemporaryType == .playNext { tempTrack = playNextStack.first(where: { $0.id == trackId }) }
         else if currentTemporaryType == .upNext { tempTrack = upNextQueue.first(where: { $0.id == trackId }) }
         if let track = tempTrack {
-          if isRecoveryReplace || isRepeatLoop {
+          if isRecoveryReplace || isRepeatLoop || isBackendTransfer {
             NitroPlayerLogger.log("TrackPlayerCore",
               "   ♻️ Same-track transition for '\(track.title)' — suppressing onChangeTrack")
           } else {
@@ -393,7 +409,7 @@ extension TrackPlayerCore {
 
         if let track = currentTracks[safe: index] {
           NitroPlayerLogger.log("TrackPlayerCore", "   🎵 Track: \(track.title) - \(track.artist)")
-          if oldIndex != index {
+          if oldIndex != index && !isBackendTransfer {
             NitroPlayerLogger.log("TrackPlayerCore", "   📢 Emitting onChangeTrack (index changed from \(oldIndex) to \(index))")
             let wrappedToStart =
               currentRepeatMode == .playlist && index == 0 && oldIndex == currentTracks.count - 1

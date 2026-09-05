@@ -71,6 +71,7 @@ extension TrackPlayerCore {
     // Store tracks for index tracking
     currentTracks = tracks
     currentTrackIndex = 0
+    backendTransferTargetId = nil
     NitroPlayerLogger.log("TrackPlayerCore", "🔢 Reset currentTrackIndex to 0 (will be updated by KVO observer)")
 
     // Remove old boundary observer if exists
@@ -167,7 +168,9 @@ extension TrackPlayerCore {
   /// Clears temporary tracks, rebuilds AVQueuePlayer from `index` in the original playlist,
   /// and resumes playback only if the player was already playing (preserves paused state).
   @discardableResult
-  func rebuildQueueFromPlaylistIndex(index: Int) -> Bool {
+  func rebuildQueueFromPlaylistIndex(index: Int, emitChange: Bool = true) -> Bool {
+    // A real jump supersedes any in-progress backend transfer.
+    if emitChange { backendTransferTargetId = nil }
     guard index >= 0 && index < self.currentTracks.count else {
       NitroPlayerLogger.log("TrackPlayerCore", "❌ rebuildQueueFromPlaylistIndex - invalid index \(index), currentTracks.count = \(self.currentTracks.count)")
       return false
@@ -216,7 +219,7 @@ extension TrackPlayerCore {
       }
       if let p = player { removeAllItemsCancellingLoads(p) }
       self.currentTracks = fullPlaylist
-      if let track = self.currentTracks[safe: index] {
+      if emitChange, let track = self.currentTracks[safe: index] {
         notifyTrackChange(track, .skip)
       }
       return true
@@ -256,7 +259,7 @@ extension TrackPlayerCore {
     self.currentTracks = fullPlaylist
 
     NitroPlayerLogger.log("TrackPlayerCore", "   ✅ Gapless queue recreated. Now at index: \(self.currentTrackIndex)")
-    if let track = self.getCurrentTrack() {
+    if emitChange, let track = self.getCurrentTrack() {
       NitroPlayerLogger.log("TrackPlayerCore", "   🎵 Playing: \(track.title)")
       notifyTrackChange(track, .skip)
     }
@@ -296,14 +299,12 @@ extension TrackPlayerCore {
     // delegate to rebuildQueueFromPlaylistIndex so the player immediately
     // starts what is now at currentTrackIndex in the updated list.
     if !currentTracks.contains(where: { $0.id == playingTrackId }) &&
-      currentTemporaryType == .none {
-      let targetIndex = currentTrackIndex < currentTracks.count
-        ? currentTrackIndex : currentTracks.count - 1
-      if targetIndex >= 0 {
-        _ = rebuildQueueFromPlaylistIndex(index: targetIndex)
-      }
+      currentTemporaryType == .none && !currentTracks.isEmpty {
+      // currentTrackIndex + 1 is the resume slot set by assignCurrentTracks.
+      _ = rebuildQueueFromPlaylistIndex(index: min(currentTrackIndex + 1, currentTracks.count - 1))
       return
     }
+    // Removed item still playing: fall through so the diff keeps only the temps.
 
     // Sync currentTrackIndex to the track's actual position after a playlist mutation
     // (e.g. reorder). Without this, the remaining-tracks slice uses the stale index,

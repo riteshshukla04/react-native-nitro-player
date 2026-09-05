@@ -36,10 +36,24 @@ final class CastSessionManager: NSObject {
   private var cachedState: CastState = .noDevicesAvailable
   private var cachedDeviceName: String?
 
+  // MARK: - Receiver queue reconciliation (main thread only)
+
+  /// Serializes every receiver queue mutation and owns the item-id map.
+  private let reconciler = CastQueueReconciler()
+  private var catalog: [String: TrackItem] = [:]
+  private var watchdog: DispatchWorkItem?
+  private static let requestTimeout: TimeInterval = 10
+
   /// Track ID playing on the receiver (or expected to, right after a locally-initiated jump).
   var currentRemoteTrackId: String? {
     stateLock.lock(); defer { stateLock.unlock() }
     return _lastCurrentTrackId
+  }
+
+  /// The receiver's current track, resolved from what we last sent it.
+  var currentRemoteTrackItem: TrackItem? {
+    stateLock.lock(); defer { stateLock.unlock() }
+    return _lastCurrentTrackId.flatMap { id in _loadedTracks.first { $0.id == id } }
   }
 
   /// IDs of the tracks last sent to the receiver, in queue order.
@@ -225,52 +239,39 @@ final class CastSessionManager: NSObject {
       return had
     }
     guard hadMedia else { return }
-    onMain { self.remoteClient?.stop() }
+    onMain { self.run(self.reconciler.unloadRequested()) }
     #endif
   }
 
-  // MARK: - Queue loading
+  // MARK: - Queue loading / reconciliation
 
-  /// Atomically replace the receiver queue — `tracks` must be castable and start at the item that should play.
-  func loadQueue(tracks: [TrackItem], position: Double, autoplay: Bool, repeatMode: RepeatMode) {
+  /// Serialized with every other receiver mutation. `startIndex` is the item that should play.
+  func loadQueue(
+    tracks: [TrackItem], startIndex: Int, position: Double, autoplay: Bool, repeatMode: RepeatMode
+  ) {
     #if canImport(GoogleCast)
-    guard !tracks.isEmpty else { return }
+    guard !tracks.isEmpty, startIndex >= 0, startIndex < tracks.count else { return }
     withState {
       _loadedTracks = tracks
       _hasLoadedMedia = true // optimistic; corrected by the next media status
-      _lastCurrentTrackId = tracks.first?.id
+      _lastCurrentTrackId = tracks[startIndex].id
     }
     onMain {
-      guard let client = self.remoteClient else { return }
-      let items = tracks.compactMap { self.makeQueueItem(for: $0, autoplay: autoplay) }
-      guard !items.isEmpty else { return }
-
-      let options = GCKMediaQueueLoadOptions()
-      options.startIndex = 0
-      options.playPosition = position.isFinite ? max(0, position) : 0
-      switch repeatMode {
-      case .track: options.repeatMode = .single
-      case .playlist: options.repeatMode = .all
-      default: options.repeatMode = .off
-      }
-      client.queueLoad(items, with: options)
+      for track in tracks { self.catalog[track.id] = track }
+      let load = CastQueueLoad(
+        tracks: tracks, startIndex: startIndex, position: position, autoplay: autoplay,
+        repeatMode: repeatMode)
+      self.run(self.reconciler.loadRequested(load))
     }
     #endif
   }
 
-  /// Append tracks to the END of the receiver queue without touching playback.
-  func appendToQueue(tracks: [TrackItem]) {
+  /// Current-preserving operations, no reload.
+  func reconcileQueue(desired tracks: [TrackItem], currentTrackId: String) {
     #if canImport(GoogleCast)
-    guard !tracks.isEmpty else { return }
-    withState {
-      let known = Set(_loadedTracks.map { $0.id })
-      _loadedTracks.append(contentsOf: tracks.filter { !known.contains($0.id) })
-    }
     onMain {
-      guard let client = self.remoteClient else { return }
-      let items = tracks.compactMap { self.makeQueueItem(for: $0, autoplay: true) }
-      guard !items.isEmpty else { return }
-      client.queueInsert(items, beforeItemWithID: kGCKMediaQueueInvalidItemID)
+      for track in tracks { self.catalog[track.id] = track }
+      self.run(self.reconciler.desired(ids: tracks.map(\.id), currentId: currentTrackId))
     }
     #endif
   }
@@ -428,6 +429,170 @@ final class CastSessionManager: NSObject {
 }
 
 #if canImport(GoogleCast)
+// MARK: - Reconciler host (main thread)
+
+extension CastSessionManager {
+
+  /// Every receiver mutation goes through here.
+  fileprivate func run(_ effect: CastQueueEffect) {
+    switch effect {
+    case .none:
+      publishOrder()
+    case .send(let op):
+      send(op)
+    case .sendLoad(let load):
+      sendLoad(load)
+    case .sendUnload:
+      guard let client = remoteClient else { return recover("no client") }
+      track(client.stop())
+    case .recover(let reason):
+      recover(reason)
+    }
+  }
+
+  private func send(_ op: CastQueueOp) {
+    guard let client = remoteClient else { return recover("no client") }
+    let ids = reconciler.order
+    let trackOf = reconciler.trackOf
+    func itemIDs(_ trackIds: [String]) -> [NSNumber]? {
+      var out: [NSNumber] = []
+      for trackId in trackIds {
+        guard let id = ids.first(where: { trackOf[$0] == trackId }) else { return nil }
+        out.append(NSNumber(value: id))
+      }
+      return out
+    }
+    switch op {
+    case .remove(let trackIds):
+      guard let items = itemIDs(trackIds) else { return recover("unknown item for remove") }
+      track(client.queueRemoveItems(withIDs: items))
+    case .insert(let trackIds):
+      let tracks = trackIds.compactMap { catalog[$0] }
+      guard tracks.count == trackIds.count else { return recover("catalog miss") }
+      let items = tracks.compactMap { makeQueueItem(for: $0, autoplay: true) }
+      guard items.count == tracks.count else { return recover("uncastable item") }
+      track(client.queueInsert(items, beforeItemWithID: kGCKMediaQueueInvalidItemID))
+    case .moveToEnd(let trackIds):
+      guard let items = itemIDs(trackIds) else { return recover("unknown item for reorder") }
+      track(
+        client.queueReorderItems(
+          withIDs: items, insertBeforeItemWithID: kGCKMediaQueueInvalidItemID))
+    case .moveBefore(let trackIds, let anchor):
+      guard let items = itemIDs(trackIds),
+        let anchorId = ids.first(where: { trackOf[$0] == anchor })
+      else { return recover("unknown item for reorder") }
+      track(client.queueReorderItems(withIDs: items, insertBeforeItemWithID: anchorId))
+    }
+  }
+
+  private func sendLoad(_ load: CastQueueLoad) {
+    guard let client = remoteClient else { return recover("no client") }
+    let items = load.tracks.compactMap { makeQueueItem(for: $0, autoplay: load.autoplay) }
+    guard items.count == load.tracks.count else { return recover("uncastable item") }
+    let options = GCKMediaQueueLoadOptions()
+    options.startIndex = UInt(load.startIndex)
+    options.playPosition = load.position.isFinite ? max(0, load.position) : 0
+    switch load.repeatMode {
+    case .track: options.repeatMode = .single
+    case .playlist: options.repeatMode = .all
+    default: options.repeatMode = .off
+    }
+    track(client.queueLoad(items, with: options))
+  }
+
+  /// Bounds the wait so a lost callback cannot stall the queue.
+  private func track(_ request: GCKRequest) {
+    request.delegate = self
+    reconciler.requestAssigned(request.requestID)
+    watchdog?.cancel()
+    let work = DispatchWorkItem { [weak self] in
+      guard let self else { return }
+      self.run(self.reconciler.requestFailed(request.requestID, reason: "request timeout"))
+    }
+    watchdog = work
+    DispatchQueue.main.asyncAfter(deadline: .now() + Self.requestTimeout, execute: work)
+  }
+
+  private func recover(_ reason: String) {
+    watchdog?.cancel()
+    watchdog = nil
+    NitroPlayerLogger.log("CastSessionManager", "Cast queue recovery: \(reason)")
+    guard let core else { return }
+    core.playerQueue.async {
+      core.loadCastQueue(
+        autoplay: core.intendedToPlay,
+        position: self.lastKnownRemotePosition)
+    }
+  }
+
+  fileprivate func observeReceiverQueue(_ client: GCKRemoteMediaClient) {
+    let queue = client.mediaQueue
+    let ids = (0..<queue.itemCount).map { queue.itemID(at: $0) }
+    run(reconciler.queueObserved(ids))
+    sweepVerification(queue)
+  }
+
+  /// Ids the SDK's rolling fetch window drops stay pending and are requested again.
+  private func sweepVerification(_ queue: GCKMediaQueue) {
+    let pending = reconciler.unverified
+    guard !pending.isEmpty else { return }
+    var requested = 0
+    for (index, id) in reconciler.order.enumerated() where pending.contains(id) {
+      if let item = queue.item(at: UInt(index), fetchIfNeeded: true) { verify(item) }
+      requested += 1
+      if requested >= 20 { break }
+    }
+  }
+
+  fileprivate func verify(_ item: GCKMediaQueueItem?) {
+    guard let item,
+      let customData = item.mediaInformation.customData as? [String: Any],
+      let trackId = customData["trackId"] as? String
+    else { return }
+    run(reconciler.verified(item.itemID, trackId: trackId))
+  }
+
+  /// Republish so playerQueue readers see the reconciled order.
+  fileprivate func publishOrder() {
+    let tracks = reconciler.orderedTrackIds.compactMap { catalog[$0] }
+    guard !tracks.isEmpty else { return }
+    withState { _loadedTracks = tracks }
+  }
+}
+
+// MARK: - GCKRequestDelegate
+
+extension CastSessionManager: GCKRequestDelegate {
+  func requestDidComplete(_ request: GCKRequest) {
+    watchdog?.cancel()
+    watchdog = nil
+    run(reconciler.requestCompleted(request.requestID))
+    if let client = remoteClient { observeReceiverQueue(client) }
+  }
+
+  func request(_ request: GCKRequest, didFailWithError error: GCKError) {
+    run(reconciler.requestFailed(request.requestID, reason: "request failed: \(error.code)"))
+  }
+
+  func request(_ request: GCKRequest, didAbortWith abortReason: GCKRequestAbortReason) {
+    run(reconciler.requestFailed(request.requestID, reason: "request aborted: \(abortReason.rawValue)"))
+  }
+}
+
+// MARK: - GCKMediaQueueDelegate
+
+extension CastSessionManager: GCKMediaQueueDelegate {
+  func mediaQueueDidChange(_ queue: GCKMediaQueue) {
+    if let client = remoteClient { observeReceiverQueue(client) }
+  }
+
+  func mediaQueue(_ queue: GCKMediaQueue, didUpdateItemsAtIndexes indexes: [NSNumber]) {
+    for index in indexes {
+      verify(queue.item(at: index.uintValue, fetchIfNeeded: false))
+    }
+  }
+}
+
 // MARK: - GCKSessionManagerListener
 
 extension CastSessionManager: GCKSessionManagerListener {
@@ -445,6 +610,14 @@ extension CastSessionManager: GCKSessionManagerListener {
 
   func sessionManager(_ sessionManager: GCKSessionManager, didEnd session: GCKSession, withError error: Error?) {
     stopProgressTimer()
+    (session as? GCKCastSession)?.remoteMediaClient?.mediaQueue.remove(self)
+    watchdog?.cancel()
+    watchdog = nil
+    // The handler runs asynchronously, so hand it a snapshot taken before the reset.
+    let snapshot = CastTransferSnapshot(
+      trackId: currentRemoteTrackId, position: lastKnownRemotePosition)
+    reconciler.sessionEnded()
+    catalog = [:]
     withState {
       _lastCurrentTrackId = nil
       _loadedTracks = []
@@ -452,12 +625,15 @@ extension CastSessionManager: GCKSessionManagerListener {
       _cachedPlaybackState = .stopped
       _lastEmittedPlaybackState = nil
     }
-    core?.handleCastDisconnected()
+    core?.handleCastDisconnected(snapshot)
     emitCastState()
   }
 
   private func handleSessionStarted(_ session: GCKSession) {
     (session as? GCKCastSession)?.remoteMediaClient?.add(self)
+    (session as? GCKCastSession)?.remoteMediaClient?.mediaQueue.add(self)
+    reconciler.sessionEnded()
+    catalog = [:]
     startProgressTimer()
     core?.handleCastConnected()
     emitCastState()
@@ -491,6 +667,14 @@ extension CastSessionManager: GCKRemoteMediaClientListener {
       withState {
         _hasLoadedMedia = hasMedia
         _cachedPlaybackState = state
+      }
+    }
+
+    observeReceiverQueue(client)
+    if let status = mediaStatus {
+      verify(status.queueItem(withItemID: status.currentItemID))
+      if status.preloadedItemID != kGCKMediaQueueInvalidItemID {
+        verify(status.queueItem(withItemID: status.preloadedItemID))
       }
     }
 

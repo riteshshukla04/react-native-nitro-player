@@ -94,16 +94,11 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
             core.updatePlaylist(playlistId)
         }
 
+    /** Same semantics as the batch form: unknown ids are skipped, only a missing playlist rejects. */
     override fun removeTrackFromPlaylist(
         playlistId: String,
         trackId: String,
-    ): Promise<Unit> =
-        Promise.async {
-            if (!playlistManager.removeTrackFromPlaylist(playlistId, trackId)) {
-                throw IllegalArgumentException("Track $trackId not found in playlist $playlistId")
-            }
-            core.updatePlaylist(playlistId)
-        }
+    ): Promise<Unit> = removeTracksFromPlaylist(playlistId, arrayOf(trackId))
 
     override fun reorderTrackInPlaylist(
         playlistId: String,
@@ -116,6 +111,49 @@ class HybridPlayerQueue : HybridPlayerQueueSpec() {
             }
             core.updatePlaylist(playlistId)
         }
+
+    /** On the player looper: the live queue must reflect the removal before the promise resolves. */
+    override fun removeTracksFromPlaylist(
+        playlistId: String,
+        trackIds: Array<String>,
+    ): Promise<Unit> {
+        val promise = Promise<Unit>()
+        core.enqueue {
+            val removed = playlistManager.removeTracksFromPlaylist(playlistId, trackIds.toList())
+            if (removed == null) {
+                promise.reject(IllegalArgumentException("Playlist not found: $playlistId"))
+                return@enqueue
+            }
+            if (removed > 0 && core.getCurrentPlaylistId() == playlistId) core.syncCurrentPlaylistOnQueue()
+            promise.resolve(Unit)
+        }
+        return promise
+    }
+
+    /** On the player looper: the anchor id is player-thread state. */
+    override fun shufflePlaylist(
+        playlistId: String,
+        options: ShufflePlaylistOptions?,
+    ): Promise<Unit> {
+        val promise = Promise<Unit>()
+        core.enqueue {
+            val isCurrent = core.getCurrentPlaylistId() == playlistId
+            val pin =
+                if (isCurrent && options?.keepCurrentTrackFirst != false) {
+                    core.currentTracks.getOrNull(core.currentTrackIndex)?.id
+                } else {
+                    null
+                }
+            val changed = playlistManager.shufflePlaylist(playlistId, pin)
+            if (changed == null) {
+                promise.reject(IllegalArgumentException("Playlist not found: $playlistId"))
+                return@enqueue
+            }
+            if (changed && isCurrent) core.syncCurrentPlaylistOnQueue()
+            promise.resolve(Unit)
+        }
+        return promise
+    }
 
     // ── Playback control ──────────────────────────────────────────────────────
 

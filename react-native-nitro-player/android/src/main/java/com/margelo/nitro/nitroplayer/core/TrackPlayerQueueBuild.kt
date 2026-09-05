@@ -88,6 +88,7 @@ internal fun TrackPlayerCore.rebuildQueueAndPlayFromIndex(index: Int) {
     currentTrackIndex = index
     exo.setMediaItems(mediaItems, true)
     exo.prepare()
+    applyBackendRepeatMode()
 }
 
 // ── Surgical rebuild (preserve current item) ──────────────────────────────
@@ -105,9 +106,13 @@ internal fun TrackPlayerCore.rebuildQueueFromCurrentPosition() {
         currentTracks.none { it.id == currentTrackId } &&
         currentTemporaryType == TrackPlayerCore.TemporaryType.NONE
     ) {
-        if (currentTracks.isEmpty()) return
-        playFromIndexInternal(minOf(currentTrackIndex, currentTracks.size - 1))
-        return
+        if (currentTracks.isNotEmpty()) {
+            // currentTrackIndex + 1 is the resume slot set by assignCurrentTracks.
+            playFromIndexInternal(minOf(currentTrackIndex + 1, currentTracks.size - 1))
+            return
+        }
+        // Transient play-out: the removed item must finish once, not loop.
+        applyBackendRepeatMode()
     }
 
     // Keep the logical playlist pointer in sync after playlist mutations.
@@ -248,6 +253,7 @@ internal fun TrackPlayerCore.updatePlayerQueue(tracks: List<TrackItem>) {
     if (exo.playbackState == Player.STATE_IDLE && mediaItems.isNotEmpty()) {
         exo.prepare()
     }
+    applyBackendRepeatMode()
 }
 
 // ── MediaItem construction (member extension to access downloadManager) ────

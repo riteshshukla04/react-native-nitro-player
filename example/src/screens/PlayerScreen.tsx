@@ -95,6 +95,16 @@ export default function PlayerScreen() {
     void TrackPlayer.setRepeatMode(next).then(() => setRepeatModeState(next));
   };
 
+  const shuffleCurrentPlaylist = () => {
+    const playlistId = PlayerQueue.getCurrentPlaylistId();
+    if (!playlistId) {
+      console.log('❌ No active playlist to shuffle');
+      return;
+    }
+    // The song keeps playing — only the upcoming order changes.
+    void PlayerQueue.shufflePlaylist(playlistId);
+  };
+
   const fetchRepeatMode = async () => {
     const current = TrackPlayer.getRepeatMode();
     setRepeatModeState(current);
@@ -212,6 +222,11 @@ export default function PlayerScreen() {
               ]}
               onPress={cycleRepeatMode}>
               <Text style={commonStyles.buttonText}>{REPEAT_LABELS[repeatMode]}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={commonStyles.smallButton}
+              onPress={shuffleCurrentPlaylist}>
+              <Text style={commonStyles.buttonText}>🔀 Shuffle</Text>
             </TouchableOpacity>
             {Platform.OS === 'ios' && (
               <TouchableOpacity

@@ -16,6 +16,12 @@
 import AVFoundation
 import Foundation
 
+/// Receiver state captured before the Cast session tears its caches down.
+struct CastTransferSnapshot {
+  let trackId: String?
+  let position: Double
+}
+
 extension TrackPlayerCore {
 
   // MARK: - Cast-safety helpers
@@ -62,43 +68,66 @@ extension TrackPlayerCore {
   }
 
   /// The Cast session ended — rebuild local playback at the last remote position.
-  func handleCastDisconnected() {
+  func handleCastDisconnected(_ snapshot: CastTransferSnapshot) {
     playerQueue.async { [weak self] in
       guard let self else { return }
       guard self.isCasting else { return }
-      let resumePosition = self.castManager?.lastKnownRemotePosition ?? 0
-      let remoteTrackId = self.castManager?.currentRemoteTrackId
+      let resumePosition = snapshot.position
+      let remoteTrackId = snapshot.trackId
       self.isCasting = false
 
-      let index = self.currentTrackIndex
-      guard index >= 0 && index < self.currentTracks.count else { return }
+      // A backend transfer is not a track change.
+      self.backendTransferTargetId = remoteTrackId
+      let hadAnchor = self.currentTrackIndex >= 0
+      let index = max(0, self.currentTrackIndex)
 
       // rebuildQueueFromPlaylistIndex wipes the temp lists — preserve them
       let savedPlayNext = self.playNextStack
       let savedUpNext = self.upNextQueue
-
-      _ = self.rebuildQueueFromPlaylistIndex(index: index)
-
-      if !savedPlayNext.isEmpty || !savedUpNext.isEmpty {
-        self.playNextStack = savedPlayNext
-        self.upNextQueue = savedUpNext
-        self.rebuildAVQueueFromCurrentPosition()
-        self.notifyTemporaryQueueChange()
+      let remoteTemp = remoteTrackId.flatMap { id in
+        savedPlayNext.first { $0.id == id } ?? savedUpNext.first { $0.id == id }
       }
 
-      // If the receiver was playing the head temp track, make it current again
-      // (mirrors skipToNext: remove from its list before it becomes current)
-      if let target = remoteTrackId, target != self.player?.currentItem?.trackId {
-        if self.playNextStack.first?.id == target {
-          self.playNextStack.removeFirst()
-          self.player?.advanceToNextItem()
-          self.currentTemporaryType = .playNext
+      if self.currentTracks.isEmpty {
+        // Playlist emptied while casting: bootstrap the local player from the remote temp.
+        guard let player = self.player, let temp = remoteTemp,
+          let item = self.createGaplessPlayerItem(for: temp, isPreload: false)
+        else {
+          self.backendTransferTargetId = nil
+          return
+        }
+        self.removeAllItemsCancellingLoads(player)
+        player.insert(item, after: nil)
+        self.currentTemporaryType = savedPlayNext.contains { $0.id == temp.id } ? .playNext : .upNext
+        self.currentTrackIndex = -1
+        self.rebuildAVQueueFromCurrentPosition()
+        self.notifyTemporaryQueueChange()
+      } else {
+        guard self.rebuildQueueFromPlaylistIndex(index: index, emitChange: false) else {
+          self.backendTransferTargetId = nil
+          return
+        }
+        if !savedPlayNext.isEmpty || !savedUpNext.isEmpty {
+          self.playNextStack = savedPlayNext
+          self.upNextQueue = savedUpNext
+          self.rebuildAVQueueFromCurrentPosition()
           self.notifyTemporaryQueueChange()
-        } else if self.playNextStack.isEmpty, self.upNextQueue.first?.id == target {
-          self.upNextQueue.removeFirst()
-          self.player?.advanceToNextItem()
-          self.currentTemporaryType = .upNext
-          self.notifyTemporaryQueueChange()
+        }
+
+        // The temp stays in its list; the builder skips the current id and transitions drop it.
+        if let target = remoteTrackId, target != self.player?.currentItem?.trackId {
+          if self.playNextStack.first?.id == target {
+            self.player?.advanceToNextItem()
+            self.currentTemporaryType = .playNext
+          } else if self.playNextStack.isEmpty, self.upNextQueue.first?.id == target {
+            self.player?.advanceToNextItem()
+            self.currentTemporaryType = .upNext
+          }
+          // The advance consumed track 0; re-queue it after the temps.
+          if !hadAnchor, self.currentTemporaryType != .none {
+            self.currentTrackIndex = -1
+            self.rebuildAVQueueFromCurrentPosition()
+          }
         }
       }
 
@@ -111,6 +140,7 @@ extension TrackPlayerCore {
       if self.intendedToPlay {
         self.player?.rate = Float(self.currentPlaybackSpeed)
       }
+      if self.player?.currentItem?.trackId == remoteTrackId { self.backendTransferTargetId = nil }
     }
   }
 
@@ -127,14 +157,36 @@ extension TrackPlayerCore {
     loadCastQueue(fromActualIndex: startIndex, autoplay: autoplay, position: position)
   }
 
-  /// Atomically (re)load the receiver queue from `index` in the actual queue (lazy targets stop the receiver and wait for updateTracks).
+  /// The whole castable queue, so a shuffle can reorder items before the current one. Nil when the current is lazy.
+  func castableQueue(_ actual: [TrackItem], currentIdx: Int) -> (tracks: [TrackItem], startIndex: Int)? {
+    guard currentIdx >= 0, currentIdx < actual.count else { return nil }
+    let after = castableUpcoming(Array(actual[currentIdx...]))
+    guard !after.isEmpty else { return nil }
+    let before = actual[..<currentIdx].filter { isTrackCastable($0) }
+    return (before + after, before.count)
+  }
+
+  /// A removed track finishing is no longer in the logical queue, so the receiver's own current anchors it.
+  func castDesiredQueue() -> (tracks: [TrackItem], currentId: String)? {
+    guard let currentId = activeCurrentTrackId else { return nil }
+    let actual = getActualQueueInternal()
+    if let idx = actual.firstIndex(where: { $0.id == currentId }) {
+      guard let built = castableQueue(actual, currentIdx: idx) else { return nil }
+      return (built.tracks, currentId)
+    }
+    guard let remoteCurrent = castManager?.currentRemoteTrackItem else { return nil }
+    castManager?.setQueueRepeatMode(.off)
+    let rest = currentTrackIndex + 1 < currentTracks.count
+      ? Array(currentTracks[(currentTrackIndex + 1)...]) : []
+    return ([remoteCurrent] + castableUpcoming(playNextStack + upNextQueue + rest), remoteCurrent.id)
+  }
+
+  /// Atomically (re)load the receiver queue positioned at `index` in the actual queue (lazy targets stop the receiver and wait for updateTracks).
   func loadCastQueue(fromActualIndex index: Int, autoplay: Bool, position: Double) {
     let queue = getActualQueueInternal()
     guard index >= 0, index < queue.count else { return }
-    let slice = Array(queue[index...])
-    let playable = castableUpcoming(slice)
 
-    guard !playable.isEmpty else {
+    guard let built = castableQueue(queue, currentIdx: index) else {
       // Lazy target — silence the receiver and wait for updateTracks to reload.
       castManager?.stop()
       checkUpcomingTracksForUrls(lookahead: lookaheadCount)
@@ -142,19 +194,21 @@ extension TrackPlayerCore {
     }
 
     // Resume mid-track only when the receiver starts on the requested track.
-    let effectivePosition = playable[0].id == slice[0].id ? position : 0
+    let startTrack = built.tracks[built.startIndex]
+    let effectivePosition = startTrack.id == queue[index].id ? position : 0
 
-    castManager?.setExpectedCurrentTrack(playable[0].id)
+    castManager?.setExpectedCurrentTrack(startTrack.id)
     castManager?.loadQueue(
-      tracks: playable,
+      tracks: built.tracks,
+      startIndex: built.startIndex,
       position: effectivePosition,
       autoplay: autoplay,
-      repeatMode: currentRepeatMode
+      repeatMode: isTransientPlayOut() ? .off : currentRepeatMode
     )
     checkUpcomingTracksForUrls(lookahead: lookaheadCount)
   }
 
-  /// Sync the receiver's upcoming items: append-only extensions don't interrupt playback; anything else reloads at the current position.
+  /// Current-preserving operations; the reconciler reloads only when receiver state is untrusted.
   func syncCastQueueAfterCurrent() {
     guard let cast = castManager else { return }
     guard cast.hasLoadedMedia else {
@@ -162,38 +216,8 @@ extension TrackPlayerCore {
       loadCastQueue(autoplay: intendedToPlay, position: 0)
       return
     }
-
-    let queue = getActualQueueInternal()
-    guard let current = getCurrentTrack(),
-      let currentIdx = queue.firstIndex(where: { $0.id == current.id })
-    else { return }
-
-    let desired = castableUpcoming(Array(queue[(currentIdx + 1)...]))
-    let desiredIds = desired.map { $0.id }
-
-    let loaded = cast.loadedTrackIds
-    let existingUpcoming: [String]
-    if let ei = loaded.firstIndex(of: current.id) {
-      existingUpcoming = Array(loaded[(ei + 1)...])
-    } else {
-      existingUpcoming = []
-    }
-
-    if desiredIds == existingUpcoming { return } // already in sync
-
-    if desiredIds.count > existingUpcoming.count,
-      Array(desiredIds.prefix(existingUpcoming.count)) == existingUpcoming {
-      // Strict tail extension — append without touching current playback.
-      let toAppend = Array(desired.suffix(desiredIds.count - existingUpcoming.count))
-      castManager?.appendToQueue(tracks: toAppend)
-    } else {
-      // Order changed / items removed — atomic reload preserving position.
-      loadCastQueue(
-        fromActualIndex: currentIdx,
-        autoplay: intendedToPlay,
-        position: cast.lastKnownRemotePosition
-      )
-    }
+    guard let desired = castDesiredQueue() else { return }
+    cast.reconcileQueue(desired: desired.tracks, currentTrackId: desired.currentId)
   }
 
   // MARK: - Cast-mode navigation (mirrors the local skip logic, minus AVQueuePlayer)
@@ -273,6 +297,11 @@ extension TrackPlayerCore {
     }
 
     if currentTemporaryType != .none {
+      // No playlist track to return to: restart the temp without touching its list.
+      if currentTracks.isEmpty {
+        castManager?.seek(to: 0)
+        return
+      }
       // Leaving a temp track removes it, then return to the current original.
       if let currentId = activeCurrentTrackId {
         if currentTemporaryType == .playNext,
@@ -284,6 +313,8 @@ extension TrackPlayerCore {
         }
       }
       currentTemporaryType = .none
+      // Cursor may be -1 (anchor removed): return to the resume slot.
+      currentTrackIndex = max(0, currentTrackIndex)
       notifyTemporaryQueueChange()
     } else if currentTrackIndex > 0 {
       currentTrackIndex -= 1

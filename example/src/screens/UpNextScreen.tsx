@@ -94,6 +94,35 @@ export default function UpNextScreen() {
     }
   }, [currentTrack]);
 
+  const shuffleCurrentPlaylist = useCallback(async () => {
+    const playlistId = PlayerQueue.getCurrentPlaylistId();
+    if (!playlistId) {
+      console.log('❌ No active playlist to shuffle');
+      return;
+    }
+    await PlayerQueue.shufflePlaylist(playlistId);
+    console.log('🔀 Shuffled', playlistId);
+  }, []);
+
+  const removeNextTwo = useCallback(async () => {
+    const playlistId = PlayerQueue.getCurrentPlaylistId();
+    if (!playlistId) {
+      console.log('❌ No active playlist');
+      return;
+    }
+    const playlist = PlayerQueue.getPlaylist(playlistId);
+    const currentIndex = (await TrackPlayer.getState()).currentIndex;
+    const ids = (playlist?.tracks ?? [])
+      .slice(currentIndex + 1, currentIndex + 3)
+      .map(t => t.id);
+    if (ids.length === 0) {
+      console.log('❌ Nothing after the current track');
+      return;
+    }
+    await PlayerQueue.removeTracksFromPlaylist(playlistId, ids);
+    console.log('🗑 Removed', ids.join(', '));
+  }, []);
+
   return (
     <SafeAreaView style={commonStyles.container}>
       <ScrollView
@@ -126,6 +155,18 @@ export default function UpNextScreen() {
             style={[commonStyles.button, styles.primaryButton, { marginTop: spacing.md }]}
             onPress={insertRandomSongNext}>
             <Text style={commonStyles.buttonText}>🎲 Add Random & Play Next</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[commonStyles.button, styles.primaryButton, { marginTop: spacing.sm }]}
+            onPress={shuffleCurrentPlaylist}>
+            <Text style={commonStyles.buttonText}>🔀 Shuffle Playlist</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[commonStyles.button, styles.secondaryButton, { marginTop: spacing.sm }]}
+            onPress={removeNextTwo}>
+            <Text style={commonStyles.buttonText}>🗑 Remove Next 2</Text>
           </TouchableOpacity>
         </View>
 

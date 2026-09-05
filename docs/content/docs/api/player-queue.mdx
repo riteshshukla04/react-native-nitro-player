@@ -144,6 +144,12 @@ Remove a track from a playlist.
 await PlayerQueue.removeTrackFromPlaylist('playlist-123', 'track-1');
 ```
 
+Unknown track ids are ignored; only a missing playlist rejects.
+If the removed track is not the one playing, playback is untouched. If it *is* playing,
+playback moves to the next surviving track. If it was the last track in the playlist, it
+finishes once (it never loops, whatever the repeat mode) and any queued Play Next / Up Next
+tracks still play.
+
 **Returns:** `Promise<void>`
 
 ---
@@ -161,6 +167,62 @@ await PlayerQueue.reorderTrackInPlaylist('playlist-123', 'track-1', 3);
 | `playlistId` | `string` | Yes | Target playlist |
 | `trackId` | `string` | Yes | Track to move |
 | `newIndex` | `number` | Yes | New 0-based position |
+
+**Returns:** `Promise<void>`
+
+---
+
+### `removeTracksFromPlaylist(playlistId, trackIds)`
+
+Remove several tracks in a single native call: one save, one event, one queue rebuild.
+
+```typescript
+await PlayerQueue.removeTracksFromPlaylist('playlist-123', ['track-1', 'track-7']);
+```
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `playlistId` | `string` | Yes | Target playlist |
+| `trackIds` | `string[]` | Yes | Tracks to remove; unknown ids are skipped |
+
+Rejects only when the playlist does not exist. Removal semantics match
+[`removeTrackFromPlaylist`](#removetrackfromplaylistplaylistid-trackid), and the currently
+playing track is never interrupted unless it is itself removed.
+
+**Returns:** `Promise<void>`
+
+---
+
+### `shufflePlaylist(playlistId, options?)`
+
+Shuffle a playlist in place (Fisher-Yates). The new order is stored and persisted — there is
+no shuffle mode to turn off, and no hidden original order to restore.
+
+```typescript
+// Current track stays put, everything else is reshuffled behind it
+await PlayerQueue.shufflePlaylist('playlist-123');
+
+// Shuffle everything, current track keeps playing wherever it lands
+await PlayerQueue.shufflePlaylist('playlist-123', { keepCurrentTrackFirst: false });
+```
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `playlistId` | `string` | Yes | Playlist to shuffle |
+| `options` | `ShufflePlaylistOptions` | No | See [ShufflePlaylistOptions](/docs/types#shuffleplaylistoptions) |
+
+When the shuffled playlist is the one playing, the playing track is never restarted: its
+position, buffer and playback state are untouched, and no `onChangeTrack` fires. The upcoming
+tracks are re-queued from the new order, so the next transition stays gapless as long as the
+call happens before the player's normal lead time into that transition — a shuffle in the last
+moment of a track behaves like a manual skip.
+
+Fires `onPlaylistChanged` with `'update'`. When the promise resolves, the stored playlist,
+`getActualQueue()` and `getState().currentIndex` all reflect the new order.
+
+While casting, the receiver queue is updated with the same current-preserving operations.
+If the receiver's state cannot be trusted (another sender changed the queue, or a request
+failed), the queue is reloaded at the current position instead, which is briefly audible.
 
 **Returns:** `Promise<void>`
 

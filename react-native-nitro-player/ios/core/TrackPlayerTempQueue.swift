@@ -74,23 +74,35 @@ extension TrackPlayerCore {
 
       // Run at the tail of the current burst; stale generations drop out.
       self.playerQueue.async { [weak self] in
-        guard let self, generation == self.playlistUpdateGeneration,
-          self.currentPlaylistId == playlistId,
-          let playlist = self.playlistManager.getPlaylist(playlistId: playlistId) else { return }
-
-        // If nothing is playing yet, do a full load
-        guard self.player?.currentItem != nil else {
-          self.updatePlayerQueue(tracks: playlist.tracks)
-          self.checkUpcomingTracksForUrls(lookahead: self.lookaheadCount)
-          return
-        }
-
-        // Update tracks list without interrupting playback
-        self.currentTracks = playlist.tracks
-        self.rebuildAVQueueFromCurrentPosition()
-        self.checkUpcomingTracksForUrls(lookahead: self.lookaheadCount)
+        guard let self, generation == self.playlistUpdateGeneration else { return }
+        self.syncCurrentPlaylistOnQueue(playlistId: playlistId)
       }
     }
+  }
+
+  /// Applies the stored playlist to the live queue without re-preparing the playing item.
+  func syncCurrentPlaylistOnQueue(playlistId: String) {
+    playlistUpdateGeneration &+= 1
+    guard currentPlaylistId == playlistId,
+      let playlist = playlistManager.getPlaylist(playlistId: playlistId) else { return }
+
+    // If nothing is playing yet, do a full load
+    guard isCasting || player?.currentItem != nil else {
+      updatePlayerQueue(tracks: playlist.tracks)
+      checkUpcomingTracksForUrls(lookahead: lookaheadCount)
+      return
+    }
+
+    let outcome = assignCurrentTracks(playlist.tracks)
+    if isCasting, outcome == .removed, currentTemporaryType == .none, !currentTracks.isEmpty {
+      // The receiver's current item was removed: jump to the resume slot.
+      _ = rebuildQueueFromPlaylistIndex(index: min(currentTrackIndex + 1, currentTracks.count - 1))
+    } else {
+      // No preload here: the rebuild queues the new items and currentItemDidChange preloads on the
+      // next transition. Kicking off asset loads now competes with the item that is still playing.
+      rebuildAVQueueFromCurrentPosition()
+    }
+    checkUpcomingTracksForUrls(lookahead: lookaheadCount)
   }
 
   func playNextOnQueue(trackId: String) throws {

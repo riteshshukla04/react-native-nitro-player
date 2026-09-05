@@ -75,7 +75,8 @@ extension TrackPlayerCore {
     let previousMode = currentRepeatMode
     currentRepeatMode = mode
     player?.actionAtItemEnd = .advance
-    if isCasting { castManager?.setQueueRepeatMode(mode) }
+    // A transient play-out (removed item finishing) must not loop, whatever the user picks.
+    if isCasting { castManager?.setQueueRepeatMode(isTransientPlayOut() ? .off : mode) }
     if !isCasting, previousMode != mode, player?.currentItem != nil {
       rebuildAVQueueFromCurrentPosition()
     }
@@ -308,6 +309,12 @@ extension TrackPlayerCore {
       // If more than threshold seconds in, restart current track
       queuePlayer.seek(to: .zero)
     } else if self.currentTemporaryType != .none {
+      // No playlist track to return to (all removed): restart the temp without touching its list.
+      if currentTracks.isEmpty {
+        queuePlayer.seek(to: .zero)
+        checkUpcomingTracksForUrls(lookahead: lookaheadCount)
+        return
+      }
       // Playing temporary track — remove from its list, then go back to original track
       if let trackId = queuePlayer.currentItem?.trackId {
         if currentTemporaryType == .playNext, let idx = playNextStack.firstIndex(where: { $0.id == trackId }) {
@@ -318,8 +325,8 @@ extension TrackPlayerCore {
           notifyTemporaryQueueChange()
         }
       }
-      // Go back to current original track position (skip back from temp)
-      _ = rebuildQueueFromPlaylistIndex(index: self.currentTrackIndex)
+      // Go back to current original track position (skip back from temp); cursor may be -1 (anchor removed) → resume slot 0
+      _ = rebuildQueueFromPlaylistIndex(index: max(0, self.currentTrackIndex))
     } else if self.currentTrackIndex > 0 {
       // Go to previous track in original playlist
       _ = rebuildQueueFromPlaylistIndex(index: self.currentTrackIndex - 1)
@@ -398,6 +405,7 @@ extension TrackPlayerCore {
       return
     }
 
+    playlistManager.setCurrentPlaylistId(playlistId)
     if self.currentPlaylistId != playlistId {
       NitroPlayerLogger.log("TrackPlayerCore", "🔄 Loading new playlist: \(playlistId)")
       if let playlist = self.playlistManager.getPlaylist(playlistId: playlistId) {

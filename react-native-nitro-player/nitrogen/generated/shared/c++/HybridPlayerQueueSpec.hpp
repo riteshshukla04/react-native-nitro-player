@@ -17,6 +17,8 @@
 namespace margelo::nitro::nitroplayer { struct Playlist; }
 // Forward declaration of `TrackItem` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct TrackItem; }
+// Forward declaration of `ShufflePlaylistOptions` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct ShufflePlaylistOptions; }
 // Forward declaration of `QueueOperation` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class QueueOperation; }
 
@@ -28,6 +30,7 @@ namespace margelo::nitro::nitroplayer { enum class QueueOperation; }
 #include <variant>
 #include <vector>
 #include "TrackItem.hpp"
+#include "ShufflePlaylistOptions.hpp"
 #include "QueueOperation.hpp"
 #include <functional>
 
@@ -71,6 +74,8 @@ namespace margelo::nitro::nitroplayer {
       virtual std::shared_ptr<Promise<void>> addTracksToPlaylist(const std::string& playlistId, const std::vector<TrackItem>& tracks, std::optional<double> index) = 0;
       virtual std::shared_ptr<Promise<void>> removeTrackFromPlaylist(const std::string& playlistId, const std::string& trackId) = 0;
       virtual std::shared_ptr<Promise<void>> reorderTrackInPlaylist(const std::string& playlistId, const std::string& trackId, double newIndex) = 0;
+      virtual std::shared_ptr<Promise<void>> removeTracksFromPlaylist(const std::string& playlistId, const std::vector<std::string>& trackIds) = 0;
+      virtual std::shared_ptr<Promise<void>> shufflePlaylist(const std::string& playlistId, const std::optional<ShufflePlaylistOptions>& options) = 0;
       virtual std::shared_ptr<Promise<void>> loadPlaylist(const std::string& playlistId, std::optional<double> index) = 0;
       virtual std::variant<nitro::NullType, std::string> getCurrentPlaylistId() = 0;
       virtual void onPlaylistsChanged(const std::function<void(const std::vector<Playlist>& /* playlists */, std::optional<QueueOperation> /* operation */)>& callback) = 0;
