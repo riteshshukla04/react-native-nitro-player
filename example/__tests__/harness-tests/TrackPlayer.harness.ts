@@ -13,6 +13,30 @@ describe('TrackPlayer - Comprehensive Tests', () => {
         await new Promise<void>(resolve => setTimeout(resolve, 100));
     };
 
+    /** Streaming tracks take time to start, so poll for the state instead of assuming a fixed delay. */
+    const waitForState = async (
+        matches: (state: Awaited<ReturnType<typeof TrackPlayer.getState>>) => boolean,
+        timeoutMs = 15000
+    ) => {
+        const deadline = Date.now() + timeoutMs;
+        let state = await TrackPlayer.getState();
+        while (Date.now() < deadline && !matches(state)) {
+            await new Promise<void>(resolve => setTimeout(resolve, 250));
+            state = await TrackPlayer.getState();
+        }
+        return state;
+    };
+
+    const waitForPlaying = () => waitForState(s => s.currentState === 'playing');
+
+    /** Polls until the callback list contains what we are waiting for. */
+    const waitForValue = async <T,>(values: T[], match: (v: T) => boolean, timeoutMs = 10000) => {
+        const deadline = Date.now() + timeoutMs;
+        while (Date.now() < deadline && !values.some(match)) {
+            await new Promise<void>(resolve => setTimeout(resolve, 250));
+        }
+    };
+
     // Helper to create a test track
     const createTestTrack = (id: string, title: string): TrackItem => ({
         id,
@@ -333,7 +357,8 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.pause();
             await TrackPlayer.play();
-            await waitForNextTick();
+            await waitForPlaying();
+            await waitForValue(states, state => state === 'playing');
 
             expect(states).toContain('playing');
         });
@@ -364,10 +389,11 @@ describe('TrackPlayer - Comprehensive Tests', () => {
 
             await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
-            await waitForNextTick();
+            await TrackPlayer.play();
+            await waitForPlaying();
 
             await TrackPlayer.seek(30);
-            await waitForNextTick();
+            await waitForValue(seekPositions, position => position === 30);
 
             expect(seekPositions).toContain(30);
         });
@@ -427,11 +453,11 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             await PlayerQueue.loadPlaylist(playlist1Id);
 
             await TrackPlayer.play();
-            let state = await TrackPlayer.getState();
+            let state = await waitForPlaying();
             expect(state.currentState).toBe('playing');
 
             await TrackPlayer.pause();
-            state = await TrackPlayer.getState();
+            state = await waitForState(s => s.currentState === 'paused');
             expect(state.currentState).toBe('paused');
         });
 
@@ -458,13 +484,16 @@ describe('TrackPlayer - Comprehensive Tests', () => {
         it('should seek to position', async () => {
             await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.play();
+            await waitForPlaying();
 
             await TrackPlayer.seek(30);
+            const state = await waitForState(s => s.currentPosition >= 29);
 
             // Position should be around 30 seconds
-            const state = await TrackPlayer.getState();
             expect(state.currentPosition).toBeGreaterThanOrEqual(29);
-            expect(state.currentPosition).toBeLessThanOrEqual(31);
+            expect(state.currentPosition).toBeLessThanOrEqual(35);
+            await TrackPlayer.pause();
         });
 
         it('should set repeat mode to off', async () => {
@@ -562,6 +591,9 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
 
+            await TrackPlayer.play();
+            await waitForPlaying();
+
             // Add playNext tracks (LIFO): p3-3, p3-2, p3-1
             await TrackPlayer.playNext('p3-1');
             await TrackPlayer.playNext('p3-2');
@@ -572,14 +604,16 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             const success = await TrackPlayer.skipToIndex(2);
             expect(success).toBe(true);
 
-            await waitForNextTick();
-            const state = await TrackPlayer.getState();
+            const state = await waitForState(s => s.currentTrack?.id === 'p3-2');
             expect(state.currentTrack?.id).toBe('p3-2');
         });
 
         it('should skip to index in upNext section', async () => {
             await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
+
+            await TrackPlayer.play();
+            await waitForPlaying();
 
             // Add upNext tracks (FIFO): 4, 5
             await TrackPlayer.addToUpNext('4');
@@ -590,8 +624,7 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             const success = await TrackPlayer.skipToIndex(2);
             expect(success).toBe(true);
 
-            await waitForNextTick();
-            const state = await TrackPlayer.getState();
+            const state = await waitForState(s => s.currentTrack?.id === '5');
             expect(state.currentTrack?.id).toBe('5');
         });
 
@@ -909,6 +942,299 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             await TrackPlayer.playSong('1', playlist1Id);
 
             await expect(TrackPlayer.skipToPrevious()).resolves.toBeUndefined();
+        });
+    });
+
+    describe('Temporary Queue Management', () => {
+        const settle = async () => { await waitForNextTick(); await waitForNextTick(); };
+        const ids = (tracks: TrackItem[]) => tracks.map(t => t.id);
+
+        it('should expose the playNext stack in play order', async () => {
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playNext('2');
+            await TrackPlayer.playNext('3');
+            await settle();
+
+            // LIFO: the last one added plays first.
+            expect(ids(await TrackPlayer.getPlayNextQueue())).toStrictEqual(['3', '2']);
+        });
+
+        it('should expose the upNext queue in play order', async () => {
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.addToUpNext('2');
+            await TrackPlayer.addToUpNext('3');
+            await settle();
+
+            expect(ids(await TrackPlayer.getUpNextQueue())).toStrictEqual(['2', '3']);
+        });
+
+        it('should remove a single track from the playNext stack', async () => {
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playNext('2');
+            await TrackPlayer.playNext('3');
+            await settle();
+
+            expect(await TrackPlayer.removeFromPlayNext('2')).toBe(true);
+            await settle();
+
+            expect(ids(await TrackPlayer.getPlayNextQueue())).toStrictEqual(['3']);
+        });
+
+        it('should report false when removing a track that is not queued', async () => {
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await settle();
+
+            expect(await TrackPlayer.removeFromPlayNext('2')).toBe(false);
+            expect(await TrackPlayer.removeFromUpNext('2')).toBe(false);
+        });
+
+        it('should remove a single track from the upNext queue', async () => {
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.addToUpNext('2');
+            await TrackPlayer.addToUpNext('3');
+            await settle();
+
+            expect(await TrackPlayer.removeFromUpNext('2')).toBe(true);
+            await settle();
+
+            expect(ids(await TrackPlayer.getUpNextQueue())).toStrictEqual(['3']);
+        });
+
+        it('should clear each temporary queue independently', async () => {
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playNext('2');
+            await TrackPlayer.addToUpNext('3');
+            await settle();
+
+            await TrackPlayer.clearPlayNext();
+            await settle();
+            expect(await TrackPlayer.getPlayNextQueue()).toStrictEqual([]);
+            expect(ids(await TrackPlayer.getUpNextQueue())).toStrictEqual(['3']);
+
+            await TrackPlayer.clearUpNext();
+            await settle();
+            expect(await TrackPlayer.getUpNextQueue()).toStrictEqual([]);
+        });
+
+        it('should reorder across the combined temporary queue', async () => {
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playNext('2');
+            await TrackPlayer.addToUpNext('3');
+            await settle();
+
+            // Combined order is playNext then upNext: ['2', '3'].
+            expect(await TrackPlayer.reorderTemporaryTrack('3', 0)).toBe(true);
+            await settle();
+
+            const combined = [
+                ...ids(await TrackPlayer.getPlayNextQueue()),
+                ...ids(await TrackPlayer.getUpNextQueue()),
+            ];
+            expect(combined).toStrictEqual(['3', '2']);
+        });
+
+        it('should report false when reordering a track that is not queued', async () => {
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await settle();
+
+            expect(await TrackPlayer.reorderTemporaryTrack('2', 0)).toBe(false);
+        });
+
+        it('should notify listeners whenever the temporary queue changes', async () => {
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            const snapshots: string[][] = [];
+            TrackPlayer.onTemporaryQueueChange((playNextQueue, upNextQueue) => {
+                snapshots.push([...ids(playNextQueue), ...ids(upNextQueue)]);
+            });
+            await settle();
+
+            await TrackPlayer.playNext('2');
+            await settle();
+            await TrackPlayer.clearPlayNext();
+            await settle();
+
+            expect(snapshots.some(s => s.includes('2'))).toBe(true);
+            expect(snapshots[snapshots.length - 1]).toStrictEqual([]);
+        });
+    });
+
+    describe('Playback Speed', () => {
+        it('should play back at the speed it was set to', async () => {
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.play();
+            await waitForNextTick();
+
+            await TrackPlayer.setPlaybackSpeed(1.5);
+            expect(await TrackPlayer.getPlaybackSpeed()).toBe(1.5);
+
+            await TrackPlayer.setPlaybackSpeed(1);
+            expect(await TrackPlayer.getPlaybackSpeed()).toBe(1);
+            await TrackPlayer.pause();
+        });
+    });
+
+    describe('Track Lookup', () => {
+        const ids = (tracks: TrackItem[]) => tracks.map(t => t.id);
+
+        it('should return requested tracks in the order they were asked for', async () => {
+            const found = await TrackPlayer.getTracksById(['3', '1']);
+
+            expect(ids(found)).toStrictEqual(['3', '1']);
+        });
+
+        it('should skip ids that belong to no playlist', async () => {
+            const found = await TrackPlayer.getTracksById(['1', 'no-such-track']);
+
+            expect(ids(found)).toStrictEqual(['1']);
+        });
+
+        it('should report the tracks that come after the current one', async () => {
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
+            await waitForNextTick();
+
+            const next = await TrackPlayer.getNextTracks(2);
+
+            expect(ids(next)).toStrictEqual(['2', '3']);
+        });
+
+        it('should count the playing track position within the playlist', async () => {
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playSong('3', playlist1Id);
+            await waitForNextTick();
+
+            expect(await TrackPlayer.getCurrentTrackIndex()).toBe(2);
+        });
+
+        it('should list no tracks needing urls when every url is known', async () => {
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await waitForNextTick();
+
+            expect(await TrackPlayer.getTracksNeedingUrls()).toStrictEqual([]);
+        });
+
+        it('should apply an updated track to the live queue', async () => {
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await waitForNextTick();
+            const original = (await TrackPlayer.getTracksById(['2']))[0];
+
+            await TrackPlayer.updateTracks([{ ...original, title: 'Renamed By Harness' }]);
+            await waitForNextTick();
+
+            expect((await TrackPlayer.getTracksById(['2']))[0].title).toBe('Renamed By Harness');
+            expect(PlayerQueue.getPlaylist(playlist1Id)?.tracks[1].title).toBe('Renamed By Harness');
+
+            await TrackPlayer.updateTracks([original]);
+        });
+    });
+
+    describe('Progress Reporting', () => {
+        it('should report progress that advances while playing', async () => {
+            const positions: number[] = [];
+            TrackPlayer.onPlaybackProgressChange(position => {
+                positions.push(position);
+            });
+
+            // Start from a known playable track: earlier tests can leave failed items queued.
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.play();
+            await waitForPlaying();
+            await waitForValue(positions, position => position > 0);
+            await TrackPlayer.pause();
+
+            expect(positions.length > 0).toBe(true);
+            expect(positions[positions.length - 1] > 0).toBe(true);
+        });
+    });
+
+    describe('Configuration', () => {
+        it('should accept a configuration without disturbing playback', async () => {
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playSong('2', playlist1Id);
+            await TrackPlayer.play();
+            await waitForNextTick();
+
+            await TrackPlayer.configure({ lookaheadCount: 3, showInNotification: true });
+            await waitForNextTick();
+
+            const state = await TrackPlayer.getState();
+            expect(state.currentTrack?.id).toBe('2');
+            await TrackPlayer.pause();
+        });
+    });
+
+    describe('Android Auto', () => {
+        it('should report a connection state without a head unit attached', () => {
+            // No head unit in the harness, so this must be false rather than throwing.
+            expect(TrackPlayer.isAndroidAutoConnected()).toBe(false);
+        });
+    });
+
+    describe('Lazy URL Resolution', () => {
+        it('should ask for urls of tracks that have none', async () => {
+            const lazyPlaylistId = await PlayerQueue.createPlaylist('Lazy URL Test');
+            createdPlaylistIds.push(lazyPlaylistId);
+            await PlayerQueue.addTracksToPlaylist(lazyPlaylistId, [
+                { ...createTestTrack('lazy-1', 'Lazy One'), url: '' },
+                { ...createTestTrack('lazy-2', 'Lazy Two'), url: '' },
+            ]);
+
+            const asked: string[] = [];
+            TrackPlayer.onTracksNeedUpdate(tracks => {
+                tracks.forEach(t => asked.push(t.id));
+            });
+            await waitForNextTick();
+
+            await PlayerQueue.loadPlaylist(lazyPlaylistId);
+            await waitForNextTick();
+            await waitForNextTick();
+
+            expect(asked).toContain('lazy-1');
+            expect((await TrackPlayer.getTracksNeedingUrls()).map(t => t.id)).toContain('lazy-1');
+        });
+    });
+
+    describe('Timed Metadata', () => {
+        it('should not report in-stream metadata for a plain audio file', async () => {
+            const received: string[] = [];
+            TrackPlayer.onTimedMetadata(metadata => {
+                received.push(metadata.title ?? '');
+            });
+
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.play();
+            await new Promise<void>(resolve => setTimeout(resolve, 4000));
+            await TrackPlayer.pause();
+
+            // ICY/ID3 frames only arrive from streams; an mp3 file must stay silent here.
+            expect(received).toStrictEqual([]);
+        });
+    });
+
+    describe('Android Auto Events', () => {
+        it('should not report a connection while no head unit is attached', async () => {
+            const events: boolean[] = [];
+            TrackPlayer.onAndroidAutoConnectionChange(connected => {
+                events.push(connected);
+            });
+
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await waitForNextTick();
+
+            expect(events).not.toContain(true);
+        });
+    });
+
+    describe('Notification Launch', () => {
+        it('should not report a notification launch for a normally started app', async () => {
+            const launches: boolean[] = [];
+            TrackPlayer.appStartedWithNotification(started => {
+                launches.push(started);
+            });
+            await waitForNextTick();
+
+            expect(launches).not.toContain(true);
         });
     });
 });

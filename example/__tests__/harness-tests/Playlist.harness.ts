@@ -6,8 +6,8 @@ import {
   beforeAll,
   afterEach,
 } from 'react-native-harness';
-import { PlayerQueue, TrackItem, Playlist } from 'react-native-nitro-player';
-import { sampleTracks1, sampleTracks2 } from '../../src/data/sampleTracks';
+import { PlayerQueue, TrackPlayer, TrackItem, Playlist } from 'react-native-nitro-player';
+import { sampleTracks1, sampleTracks2, sampleTracks3 } from '../../src/data/sampleTracks';
 
 // Helper to create additional test tracks
 const createTestTrack = (id: string, title: string): TrackItem => ({
@@ -887,6 +887,575 @@ describe('PlayerQueue - Comprehensive Playlist Tests', () => {
       // Loading might trigger a callback depending on implementation
       // At minimum, verify no errors occurred
       expect(PlayerQueue.getCurrentPlaylistId()).toBe(playlistId);
+    });
+  });
+
+  // Real playback, so slower than the CRUD tests above; every `it` builds its own state.
+  describe('Batch Remove & Shuffle', () => {
+    const wait = (ms = 500) => new Promise<void>(resolve => setTimeout(resolve, ms));
+
+    /** Play `trackId` and settle at `seconds` in, so a reload is detectable as a position reset. */
+    const seekAndSettle = async (seconds: number) => {
+      await TrackPlayer.seek(seconds);
+      for (let i = 0; i < 20; i++) {
+        await wait(500);
+        const state = await TrackPlayer.getState();
+        if (state.currentPosition >= seconds && state.currentState === 'playing') return;
+      }
+    };
+
+    /** Seeks close to the end and confirms the player actually got there. */
+    const seekNearEnd = async () => {
+      let duration = 0;
+      for (let i = 0; i < 40 && duration <= 0; i++) {
+        await wait(500);
+        duration = (await TrackPlayer.getState()).totalDuration;
+      }
+      if (duration <= 0) throw new Error('track duration never became known');
+      const target = Math.max(0, duration - 4);
+      await TrackPlayer.seek(target);
+      for (let i = 0; i < 20; i++) {
+        await wait(500);
+        const state = await TrackPlayer.getState();
+        if (state.currentPosition >= target - 1) return;
+      }
+      throw new Error('seek to the end of the track never landed');
+    };
+
+    /**
+     * Watches a removed track play out. It must finish exactly once: 'ended' when the player goes
+     * idle, 'looped' if the position jumps backwards, 'still-playing' if it never finishes.
+     */
+    const watchPlayOut = async (seconds = 45) => {
+      let highWater = (await TrackPlayer.getState()).currentPosition;
+      for (let i = 0; i < seconds * 2; i++) {
+        await wait(500);
+        const state = await TrackPlayer.getState();
+        if (state.currentState === 'stopped' || state.currentState === 'paused') return 'ended';
+        if (state.currentPosition + 5 < highWater) return 'looped';
+        highWater = Math.max(highWater, state.currentPosition);
+      }
+      return 'still-playing';
+    };
+
+    /** Counts onChangeTrack emissions from the moment it is called. */
+    const countTrackChanges = () => {
+      const seen: string[] = [];
+      TrackPlayer.onChangeTrack(track => {
+        seen.push(track.id);
+      });
+      return seen;
+    };
+
+    const setupPlaylist = async (tracks: TrackItem[]) => {
+      const playlistId = await PlayerQueue.createPlaylist('Shuffle/Remove Test');
+      createdPlaylistIds.push(playlistId);
+      await PlayerQueue.addTracksToPlaylist(playlistId, tracks);
+      return playlistId;
+    };
+
+    // playNext resolves ids across all playlists, so temp tracks need a home.
+    const TEMP_ID = 'test-5';
+    const setupTempSource = async () => {
+      const playlistId = await PlayerQueue.createPlaylist('Temp Source');
+      createdPlaylistIds.push(playlistId);
+      await PlayerQueue.addTracksToPlaylist(playlistId, sampleTracks3);
+      return playlistId;
+    };
+
+    /** Loads the playlist, plays `anchorId`, then plays `tempId` as a playNext track. */
+    const startTempPlayback = async (playlistId: string, anchorId: string, tempId: string) => {
+      await setupTempSource();
+      await PlayerQueue.loadPlaylist(playlistId);
+      await TrackPlayer.playSong(anchorId, playlistId);
+      await TrackPlayer.play();
+      await wait(1500);
+      await TrackPlayer.playNext(tempId);
+      await TrackPlayer.skipToNext();
+      await wait(2000);
+      const state = await TrackPlayer.getState();
+      expect(state.currentTrack?.id).toBe(tempId);
+      expect(state.currentPlayingType).toBe('play-next');
+    };
+
+    const ids = (tracks: TrackItem[]) => tracks.map(t => t.id);
+    // sampleTracks1 is ids 1-3 and sampleTracks2 is 4-5; together they give a five-track playlist.
+    const fiveTracks = [...sampleTracks1, ...sampleTracks2];
+
+    afterEach(async () => {
+      await TrackPlayer.setRepeatMode('off');
+      await TrackPlayer.pause();
+    });
+
+    // ── The core guarantee: the playing item is never touched ──────────────
+
+    /** A reload keeps the id but resets position and emits a change, so those are the proof. */
+    const expectUntouched = async (action: (playlistId: string) => Promise<void>) => {
+      const playlistId = await setupPlaylist(fiveTracks);
+      await PlayerQueue.loadPlaylist(playlistId);
+      await TrackPlayer.playSong('3', playlistId);
+      await TrackPlayer.play();
+      await seekAndSettle(30);
+
+      const before = await TrackPlayer.getState();
+      const changes = countTrackChanges();
+
+      await action(playlistId);
+      await wait(1500);
+
+      const after = await TrackPlayer.getState();
+      expect(after.currentTrack?.id).toBe('3');
+      expect(after.currentPlayingType).toBe(before.currentPlayingType);
+      expect(after.currentPosition >= 30).toBe(true);
+      expect(after.currentState).toBe('playing');
+      expect(changes.length).toBe(0);
+      return playlistId;
+    };
+
+    it('should not interrupt the current track when shuffling', async () => {
+      const playlistId = await expectUntouched(id => PlayerQueue.shufflePlaylist(id));
+
+      const stored = PlayerQueue.getPlaylist(playlistId);
+      expect(stored?.tracks[0].id).toBe('3');
+      expect((await TrackPlayer.getState()).currentIndex).toBe(0);
+      expect(ids(await TrackPlayer.getActualQueue())).toStrictEqual(ids(stored?.tracks ?? []));
+    });
+
+    it('should not interrupt the current track when shuffling without pinning', async () => {
+      const playlistId = await expectUntouched(id =>
+        PlayerQueue.shufflePlaylist(id, { keepCurrentTrackFirst: false })
+      );
+
+      const stored = PlayerQueue.getPlaylist(playlistId);
+      const expectedIndex = (stored?.tracks ?? []).findIndex(t => t.id === '3');
+      expect((await TrackPlayer.getState()).currentIndex).toBe(expectedIndex);
+      // getActualQueue is the whole logical queue, including tracks before the current one.
+      expect(ids(await TrackPlayer.getActualQueue())).toStrictEqual(ids(stored?.tracks ?? []));
+    });
+
+    it('should not interrupt the current track when batch removing other tracks', async () => {
+      const playlistId = await expectUntouched(id =>
+        PlayerQueue.removeTracksFromPlaylist(id, ['1', '2', '4', '5'])
+      );
+
+      expect(PlayerQueue.getPlaylist(playlistId)?.tracks.length).toBe(1);
+      expect(ids(await TrackPlayer.getActualQueue())).toStrictEqual(['3']);
+    });
+
+    it('should not interrupt a paused track when shuffling', async () => {
+      const playlistId = await setupPlaylist(fiveTracks);
+      await PlayerQueue.loadPlaylist(playlistId);
+      await TrackPlayer.playSong('3', playlistId);
+      await TrackPlayer.play();
+      await seekAndSettle(30);
+      await TrackPlayer.pause();
+      await wait(500);
+
+      const before = await TrackPlayer.getState();
+      const changes = countTrackChanges();
+
+      await PlayerQueue.shufflePlaylist(playlistId);
+      await wait(1500);
+
+      const after = await TrackPlayer.getState();
+      expect(after.currentTrack?.id).toBe('3');
+      expect(after.currentState).toBe('paused');
+      expect(Math.abs(after.currentPosition - before.currentPosition) < 1).toBe(true);
+      expect(changes.length).toBe(0);
+    });
+
+    it('should not interrupt a playing temporary track when shuffling', async () => {
+      const playlistId = await setupPlaylist(fiveTracks);
+      await startTempPlayback(playlistId, '3', TEMP_ID);
+      const changes = countTrackChanges();
+
+      await PlayerQueue.shufflePlaylist(playlistId);
+      await wait(1500);
+
+      const state = await TrackPlayer.getState();
+      expect(state.currentTrack?.id).toBe(TEMP_ID);
+      expect(state.currentPlayingType).toBe('play-next');
+      expect(changes.length).toBe(0);
+    });
+
+    // ── Batch remove ──────────────────────────────────────────────────────
+
+    it('should remove several tracks in one call and keep the order', async () => {
+      const playlistId = await setupPlaylist(fiveTracks);
+      await PlayerQueue.removeTracksFromPlaylist(playlistId, ['2', '4']);
+
+      expect(ids(PlayerQueue.getPlaylist(playlistId)?.tracks ?? [])).toStrictEqual(['1', '3', '5']);
+    });
+
+    it('should skip unknown ids in a batch remove', async () => {
+      const playlistId = await setupPlaylist(fiveTracks);
+      await PlayerQueue.removeTracksFromPlaylist(playlistId, ['2', 'does-not-exist']);
+
+      expect(ids(PlayerQueue.getPlaylist(playlistId)?.tracks ?? [])).toStrictEqual([
+        '1',
+        '3',
+        '4',
+        '5',
+      ]);
+    });
+
+    it('should treat an empty batch as a no-op without firing an event', async () => {
+      const playlistId = await setupPlaylist(fiveTracks);
+
+      const operations: (string | undefined)[] = [];
+      PlayerQueue.onPlaylistChanged((id, _playlist, operation) => {
+        if (id === playlistId) operations.push(operation);
+      });
+      await wait();
+
+      await PlayerQueue.removeTracksFromPlaylist(playlistId, []);
+      await wait();
+
+      expect(operations.length).toBe(0);
+      expect(PlayerQueue.getPlaylist(playlistId)?.tracks.length).toBe(5);
+    });
+
+    it('should reject a batch remove for a missing playlist', async () => {
+      let rejected = false;
+      try {
+        await PlayerQueue.removeTracksFromPlaylist('no-such-playlist', ['1']);
+      } catch {
+        rejected = true;
+      }
+      expect(rejected).toBe(true);
+    });
+
+    it('should fire exactly one remove event for a batch', async () => {
+      const playlistId = await setupPlaylist(fiveTracks);
+
+      const operations: (string | undefined)[] = [];
+      let payload: string[] = [];
+      PlayerQueue.onPlaylistChanged((id, playlist, operation) => {
+        if (id === playlistId) {
+          operations.push(operation);
+          payload = ids(playlist.tracks);
+        }
+      });
+      await wait();
+
+      await PlayerQueue.removeTracksFromPlaylist(playlistId, ['1', '2', '4']);
+      await wait();
+
+      expect(operations).toStrictEqual(['remove']);
+      expect(payload).toStrictEqual(ids(PlayerQueue.getPlaylist(playlistId)?.tracks ?? []));
+    });
+
+    it('should keep playing when tracks before the current one are removed', async () => {
+      const playlistId = await setupPlaylist(fiveTracks);
+      await PlayerQueue.loadPlaylist(playlistId);
+      await TrackPlayer.playSong('3', playlistId);
+      await TrackPlayer.play();
+      await wait(2000);
+
+      await PlayerQueue.removeTracksFromPlaylist(playlistId, ['1']);
+      await wait(1500);
+
+      const state = await TrackPlayer.getState();
+      expect(state.currentTrack?.id).toBe('3');
+      expect(state.currentIndex).toBe(1);
+      expect(ids(await TrackPlayer.getActualQueue())).toStrictEqual(['2', '3', '4', '5']);
+    });
+
+    it('should resume after the right track when the anchor is removed while a temp plays', async () => {
+      const playlistId = await setupPlaylist(fiveTracks.slice(0, 4));
+      await startTempPlayback(playlistId, '2', TEMP_ID);
+
+      await PlayerQueue.removeTracksFromPlaylist(playlistId, ['2']);
+      await wait(1500);
+
+      // The temp keeps playing; the cursor now points just before the resume slot ('3').
+      const state = await TrackPlayer.getState();
+      expect(state.currentTrack?.id).toBe(TEMP_ID);
+      expect(state.currentIndex).toBe(0);
+      expect(ids(await TrackPlayer.getActualQueue())).toStrictEqual(['1', TEMP_ID, '3', '4']);
+
+      await TrackPlayer.skipToNext();
+      await wait(2000);
+      expect((await TrackPlayer.getState()).currentTrack?.id).toBe('3');
+    });
+
+    it('should resume at the first survivor when every earlier track is removed', async () => {
+      const playlistId = await setupPlaylist(fiveTracks.slice(0, 4));
+      await startTempPlayback(playlistId, '2', TEMP_ID);
+
+      await PlayerQueue.removeTracksFromPlaylist(playlistId, ['1', '2']);
+      await wait(1500);
+
+      const state = await TrackPlayer.getState();
+      expect(state.currentTrack?.id).toBe(TEMP_ID);
+      expect(state.currentIndex).toBe(-1);
+      expect(ids(await TrackPlayer.getActualQueue())).toStrictEqual([TEMP_ID, '3', '4']);
+
+      await TrackPlayer.skipToNext();
+      await wait(2000);
+      expect((await TrackPlayer.getState()).currentTrack?.id).toBe('3');
+    });
+
+    it('should step back to the resume slot from a temp track with no anchor', async () => {
+      const playlistId = await setupPlaylist(fiveTracks.slice(0, 4));
+      await startTempPlayback(playlistId, '2', TEMP_ID);
+      await PlayerQueue.removeTracksFromPlaylist(playlistId, ['1', '2']);
+      await wait(1500);
+
+      // Past the restart threshold skipToPrevious rewinds instead of stepping back.
+      await TrackPlayer.seek(0);
+      await wait(500);
+      await TrackPlayer.skipToPrevious();
+      await wait(2500);
+
+      expect((await TrackPlayer.getState()).currentTrack?.id).toBe('3');
+    });
+
+    /** Regression for the single-remove API: it used to leave the cursor stale and skip a track. */
+    it('should not skip a track when a single remove drops the anchor under a temp', async () => {
+      const playlistId = await setupPlaylist(fiveTracks.slice(0, 4));
+      await startTempPlayback(playlistId, '2', TEMP_ID);
+
+      await PlayerQueue.removeTrackFromPlaylist(playlistId, '2');
+      await wait(1500);
+
+      expect((await TrackPlayer.getState()).currentIndex).toBe(0);
+      await TrackPlayer.skipToNext();
+      await wait(2000);
+      expect((await TrackPlayer.getState()).currentTrack?.id).toBe('3');
+    });
+
+    it('should jump to the first survivor when the playing track is removed', async () => {
+      const playlistId = await setupPlaylist(fiveTracks);
+      await PlayerQueue.loadPlaylist(playlistId);
+      await TrackPlayer.playSong('2', playlistId);
+      await TrackPlayer.play();
+      await seekAndSettle(30);
+      const changes = countTrackChanges();
+
+      await PlayerQueue.removeTracksFromPlaylist(playlistId, ['1', '2']);
+      await wait(2500);
+
+      const state = await TrackPlayer.getState();
+      expect(state.currentTrack?.id).toBe('3');
+      expect(state.currentIndex).toBe(0);
+      expect(state.currentPosition < 10).toBe(true);
+      expect(changes).toStrictEqual(['3']);
+      expect(ids(await TrackPlayer.getActualQueue())).toStrictEqual(['3', '4', '5']);
+    });
+
+    /** Regression: the removed track used to keep playing its stale tail, and looped under repeat. */
+    it('should play the queued temp track after removing every playlist track', async () => {
+      const playlistId = await setupPlaylist([fiveTracks[0]]);
+      await setupTempSource();
+      await PlayerQueue.loadPlaylist(playlistId);
+      await TrackPlayer.playSong('1', playlistId);
+      await TrackPlayer.play();
+      await wait(2000);
+      await TrackPlayer.playNext(TEMP_ID);
+      await wait(500);
+
+      await PlayerQueue.removeTrackFromPlaylist(playlistId, '1');
+      await wait(1500);
+
+      expect(PlayerQueue.getPlaylist(playlistId)?.tracks.length).toBe(0);
+      expect(ids(await TrackPlayer.getActualQueue())).toStrictEqual(['test-5']);
+
+      await TrackPlayer.skipToNext();
+      await wait(2000);
+      const state = await TrackPlayer.getState();
+      expect(state.currentTrack?.id).toBe(TEMP_ID);
+      expect(state.currentPlayingType).toBe('play-next');
+    });
+
+    // ── Shuffle ───────────────────────────────────────────────────────────
+
+    it('should shuffle into a different order with the same tracks', async () => {
+      const tracks = Array.from({ length: 30 }, (_, i) =>
+        createTestTrack(`s${i}`, `Shuffle Track ${i}`)
+      );
+      const playlistId = await setupPlaylist(tracks);
+
+      await PlayerQueue.shufflePlaylist(playlistId);
+
+      const after = ids(PlayerQueue.getPlaylist(playlistId)?.tracks ?? []);
+      expect(after.length).toBe(30);
+      expect([...after].sort()).toStrictEqual([...ids(tracks)].sort());
+      expect(after).not.toStrictEqual(ids(tracks));
+    });
+
+    it('should reject a shuffle for a missing playlist', async () => {
+      let rejected = false;
+      try {
+        await PlayerQueue.shufflePlaylist('no-such-playlist');
+      } catch {
+        rejected = true;
+      }
+      expect(rejected).toBe(true);
+    });
+
+    it('should fire exactly one update event for a shuffle', async () => {
+      const playlistId = await setupPlaylist(
+        Array.from({ length: 30 }, (_, i) => createTestTrack(`ev${i}`, `Event Track ${i}`))
+      );
+
+      const operations: (string | undefined)[] = [];
+      let payload: string[] = [];
+      PlayerQueue.onPlaylistChanged((id, playlist, operation) => {
+        if (id === playlistId) {
+          operations.push(operation);
+          payload = ids(playlist.tracks);
+        }
+      });
+      await wait();
+
+      await PlayerQueue.shufflePlaylist(playlistId);
+      await wait();
+
+      expect(operations).toStrictEqual(['update']);
+      expect(payload).toStrictEqual(ids(PlayerQueue.getPlaylist(playlistId)?.tracks ?? []));
+    });
+
+    it('should leave playback alone when shuffling a different playlist', async () => {
+      const playingId = await setupPlaylist(fiveTracks);
+      const otherId = await setupPlaylist(sampleTracks3);
+      await PlayerQueue.loadPlaylist(playingId);
+      await TrackPlayer.playSong('2', playingId);
+      await TrackPlayer.play();
+      await wait(2000);
+
+      const queueBefore = ids(await TrackPlayer.getActualQueue());
+      const otherBefore = ids(PlayerQueue.getPlaylist(otherId)?.tracks ?? []);
+
+      await PlayerQueue.shufflePlaylist(otherId);
+      await wait(1000);
+
+      expect((await TrackPlayer.getState()).currentTrack?.id).toBe('2');
+      expect(ids(await TrackPlayer.getActualQueue())).toStrictEqual(queueBefore);
+      const otherAfter = ids(PlayerQueue.getPlaylist(otherId)?.tracks ?? []);
+      expect([...otherAfter].sort()).toStrictEqual([...otherBefore].sort());
+    });
+
+    it('should keep the temp track first and continue into the new order', async () => {
+      const playlistId = await setupPlaylist(fiveTracks);
+      await startTempPlayback(playlistId, '2', TEMP_ID);
+
+      await PlayerQueue.shufflePlaylist(playlistId);
+      await wait(1500);
+
+      const stored = ids(PlayerQueue.getPlaylist(playlistId)?.tracks ?? []);
+      expect(stored[0]).toBe('2');
+      expect(ids(await TrackPlayer.getActualQueue())).toStrictEqual([
+        '2',
+        TEMP_ID,
+        ...stored.slice(1),
+      ]);
+
+      await TrackPlayer.skipToNext();
+      await wait(2000);
+      expect((await TrackPlayer.getState()).currentTrack?.id).toBe(stored[1]);
+    });
+
+    it('should shuffle with no anchor when the anchor was removed under a temp', async () => {
+      const playlistId = await setupPlaylist(fiveTracks.slice(0, 4));
+      await startTempPlayback(playlistId, '2', TEMP_ID);
+      await PlayerQueue.removeTracksFromPlaylist(playlistId, ['1', '2']);
+      await wait(1000);
+
+      await PlayerQueue.shufflePlaylist(playlistId);
+      await wait(1500);
+
+      const stored = ids(PlayerQueue.getPlaylist(playlistId)?.tracks ?? []);
+      const state = await TrackPlayer.getState();
+      expect(state.currentIndex).toBe(-1);
+      expect(state.currentTrack?.id).toBe(TEMP_ID);
+      expect(ids(await TrackPlayer.getActualQueue())).toStrictEqual([TEMP_ID, ...stored]);
+    });
+
+    // ── Repeat modes during a transient play-out ──────────────────────────
+
+    const removeAllUnderRepeat = async (mode: 'off' | 'track' | 'Playlist') => {
+      const playlistId = await setupPlaylist([fiveTracks[0]]);
+      await TrackPlayer.setRepeatMode(mode);
+      await PlayerQueue.loadPlaylist(playlistId);
+      await TrackPlayer.playSong('1', playlistId);
+      await TrackPlayer.play();
+      await wait(2000);
+
+      await seekNearEnd();
+
+      const changes = countTrackChanges();
+      await PlayerQueue.removeTracksFromPlaylist(playlistId, ['1']);
+      const outcome = await watchPlayOut();
+
+      expect(PlayerQueue.getPlaylist(playlistId)?.tracks.length).toBe(0);
+      expect(outcome).toBe('ended');
+      expect(changes.length).toBe(0);
+      expect(TrackPlayer.getRepeatMode()).toBe(mode);
+    };
+
+    it('should stop after removing every track with repeat off', async () => {
+      await removeAllUnderRepeat('off');
+    });
+
+    /** The removed track must not loop forever just because repeat-track is on. */
+    it('should stop after removing every track with repeat track', async () => {
+      await removeAllUnderRepeat('track');
+    });
+
+    it('should stop after removing every track with repeat playlist', async () => {
+      await removeAllUnderRepeat('Playlist');
+    });
+
+    it('should keep the removed track from looping when repeat is enabled mid play-out', async () => {
+      const playlistId = await setupPlaylist([fiveTracks[0]]);
+      await PlayerQueue.loadPlaylist(playlistId);
+      await TrackPlayer.playSong('1', playlistId);
+      await TrackPlayer.play();
+      await wait(2000);
+
+      await seekNearEnd();
+
+      await PlayerQueue.removeTracksFromPlaylist(playlistId, ['1']);
+      await TrackPlayer.setRepeatMode('track');
+      const outcome = await watchPlayOut();
+
+      expect(outcome).toBe('ended');
+      expect(TrackPlayer.getRepeatMode()).toBe('track');
+    });
+
+    // ── Events reach listeners registered before the playlist exists ───────
+
+    it('should notify a listener registered before the playlist was created', async () => {
+      const seen: string[] = [];
+      PlayerQueue.onPlaylistChanged(id => {
+        seen.push(id);
+      });
+      await wait();
+
+      const playlistId = await setupPlaylist(fiveTracks);
+      await wait();
+
+      expect(seen).toContain(playlistId);
+    });
+
+    it('should end a mutation burst with the queue matching the stored order', async () => {
+      const playlistId = await setupPlaylist(fiveTracks);
+      await PlayerQueue.loadPlaylist(playlistId);
+      await TrackPlayer.playSong('2', playlistId);
+      await TrackPlayer.play();
+      await wait(2000);
+
+      await Promise.all([
+        PlayerQueue.addTrackToPlaylist(playlistId, createTestTrack('burst', 'Burst')),
+        PlayerQueue.shufflePlaylist(playlistId),
+        PlayerQueue.shufflePlaylist(playlistId),
+      ]);
+      await wait(2000);
+
+      const stored = ids(PlayerQueue.getPlaylist(playlistId)?.tracks ?? []);
+      expect(ids(await TrackPlayer.getActualQueue())).toStrictEqual(stored);
+      expect((await TrackPlayer.getState()).currentTrack?.id).toBe('2');
     });
   });
 });

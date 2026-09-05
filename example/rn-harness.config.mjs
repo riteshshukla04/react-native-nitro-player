@@ -8,18 +8,25 @@ import {
 } from '@react-native-harness/platform-apple';
 
 const config = {
+  defaultRunner: 'ios',
+  // Playback tests wait on real audio; the 60s default trips mid-suite.
+  bridgeTimeout: 600000,
   entryPoint: './index.js',
   appRegistryComponentName: 'example',
   forwardClientLogs: true,
   runners: [
     androidPlatform({
       name: 'android',
-      device: androidEmulator('Pixel_6_Pro'), // Your Android emulator name
+      device: androidEmulator(process.env.HARNESS_ANDROID_AVD ?? 'Pixel_6_Pro'),
       bundleId: 'com.example', // Your Android bundle ID
     }),
     applePlatform({
       name: 'ios',
-      device: appleSimulator('iPhone 17', '26.2'), // Your iOS simulator name and version
+      // Overridable so CI can point at whichever runtime the image actually ships.
+      device: appleSimulator(
+        process.env.HARNESS_IOS_DEVICE ?? 'iPhone 17',
+        process.env.HARNESS_IOS_VERSION ?? '26.5'
+      ),
       bundleId: 'org.reactjs.native.example.example', // Your iOS bundle ID
     }),
   ],
