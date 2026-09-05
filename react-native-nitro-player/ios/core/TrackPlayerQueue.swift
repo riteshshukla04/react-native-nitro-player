@@ -218,7 +218,11 @@ extension TrackPlayerCore {
         // (rebuildAVQueueFromCurrentPosition will skip it by ID)
         playNextStack.removeSubrange(0..<targetIdx)
       }
-      rebuildAVQueueFromCurrentPosition()
+      if let player = player, currentRepeatMode == .track {
+        dropRepeatCopyBeforeManualSkip(player)
+      } else {
+        rebuildAVQueueFromCurrentPosition()
+      }
       player?.advanceToNextItem()
       return true
     }
@@ -231,7 +235,11 @@ extension TrackPlayerCore {
       if let targetIdx = upNextQueue.firstIndex(where: { $0.id == targetTrack.id }), targetIdx > 0 {
         upNextQueue.removeSubrange(0..<targetIdx)
       }
-      rebuildAVQueueFromCurrentPosition()
+      if let player = player, currentRepeatMode == .track {
+        dropRepeatCopyBeforeManualSkip(player)
+      } else {
+        rebuildAVQueueFromCurrentPosition()
+      }
       player?.advanceToNextItem()
       return true
     }

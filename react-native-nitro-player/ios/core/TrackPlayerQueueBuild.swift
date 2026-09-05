@@ -39,6 +39,17 @@ extension TrackPlayerCore {
     player.removeAllItems()
   }
 
+  /// Under repeat `track` the queue holds a copy of the current item; a manual skip must
+  /// step past it to the real next track, not replay the same one.
+  func dropRepeatCopyBeforeManualSkip(_ player: AVQueuePlayer) {
+    guard currentRepeatMode == .track else { return }
+    let items = player.items()
+    if items.count > 1, let copyId = items[1].trackId, copyId == items[0].trackId {
+      player.remove(items[1])
+    }
+    rebuildAVQueueFromCurrentPosition(skipRepeatCopy: true)
+  }
+
   func updatePlayerQueue(tracks: [TrackItem]) {
     // While casting, mirror the new queue to the Cast device instead of building
     // the local AVQueuePlayer (which would start local audio).

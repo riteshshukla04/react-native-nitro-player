@@ -10,8 +10,8 @@ import {
 
 const config = {
   defaultRunner: 'ios',
-  // Playback tests wait on real audio; the 60s default trips mid-suite.
-  bridgeTimeout: 600000,
+  // Playback tests wait on real audio; a whole suite must fit in one RPC.
+  bridgeTimeout: 1800000,
   entryPoint: './index.js',
   appRegistryComponentName: 'example',
   forwardClientLogs: true,

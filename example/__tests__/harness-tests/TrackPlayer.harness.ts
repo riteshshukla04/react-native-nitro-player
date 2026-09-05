@@ -37,14 +37,15 @@ describe('TrackPlayer - Comprehensive Tests', () => {
         }
     };
 
-    // Helper to create a test track
-    const createTestTrack = (id: string, title: string): TrackItem => ({
+    // Real audio: an unreachable URL makes every AVPlayerItem fail, and the recovery
+    // retries wedge the player for the tests that follow.
+    const createTestTrack = (id: string, title: string, song = 6): TrackItem => ({
         id,
         title,
         artist: 'Test Artist',
         album: 'Test Album',
         duration: 180.0,
-        url: `https://example.com/${id}.mp3`,
+        url: `https://www.soundhelix.com/examples/mp3/SoundHelix-Song-${song}.mp3`,
         artwork: `https://example.com/${id}.jpg`,
     });
 
@@ -66,6 +67,10 @@ describe('TrackPlayer - Comprehensive Tests', () => {
 
         createdPlaylistIds = [];
 
+        // Repeat is global: a test that leaves it on 'track' makes every later test
+        // buffer a duplicate of its own item.
+        await TrackPlayer.setRepeatMode('off');
+
         playlist1Id = await PlayerQueue.createPlaylist('Test Playlist 1', 'First test playlist');
         playlist2Id = await PlayerQueue.createPlaylist('Test Playlist 2', 'Second test playlist');
         playlist3Id = await PlayerQueue.createPlaylist('Test Playlist 3', 'Third test playlist');
@@ -75,9 +80,9 @@ describe('TrackPlayer - Comprehensive Tests', () => {
         await PlayerQueue.addTracksToPlaylist(playlist1Id, sampleTracks1);
         await PlayerQueue.addTracksToPlaylist(playlist2Id, sampleTracks2);
         await PlayerQueue.addTracksToPlaylist(playlist3Id, [
-            createTestTrack('p3-1', 'Playlist 3 Track 1'),
-            createTestTrack('p3-2', 'Playlist 3 Track 2'),
-            createTestTrack('p3-3', 'Playlist 3 Track 3'),
+            createTestTrack('p3-1', 'Playlist 3 Track 1', 6),
+            createTestTrack('p3-2', 'Playlist 3 Track 2', 7),
+            createTestTrack('p3-3', 'Playlist 3 Track 3', 8),
         ]);
     });
 

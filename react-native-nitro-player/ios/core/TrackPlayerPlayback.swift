@@ -259,13 +259,7 @@ extension TrackPlayerCore {
       return
     }
 
-    if currentRepeatMode == .track {
-      let items = queuePlayer.items()
-      if items.count > 1, let copyId = items[1].trackId, copyId == items[0].trackId {
-        queuePlayer.remove(items[1])
-      }
-      rebuildAVQueueFromCurrentPosition(skipRepeatCopy: true)
-    }
+    dropRepeatCopyBeforeManualSkip(queuePlayer)
 
     // Remove current temp track from its list before advancing
     if let trackId = queuePlayer.currentItem?.trackId {
