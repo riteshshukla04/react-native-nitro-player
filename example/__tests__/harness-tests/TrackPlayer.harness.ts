@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'react-native-harness';
 import { TrackPlayer, PlayerQueue, TrackItem } from 'react-native-nitro-player';
+import { Platform } from 'react-native';
 import { sampleTracks1, sampleTracks2 } from '../../src/data/sampleTracks';
 
 describe('TrackPlayer - Comprehensive Tests', () => {
@@ -1131,6 +1132,51 @@ describe('TrackPlayer - Comprehensive Tests', () => {
 
             await TrackPlayer.updateTracks([original]);
         });
+
+        it('should apply a same-url metadata update to the playing track without interrupting it', async () => {
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.play();
+            await waitForPlaying();
+
+            const original = (await TrackPlayer.getTracksById(['1']))[0];
+            const before = await TrackPlayer.getState();
+            let changes = 0;
+            TrackPlayer.onChangeTrack(() => {
+                changes += 1;
+            });
+
+            // Same url, new title — a language switch or a late metadata fetch.
+            await TrackPlayer.updateTracks([{ ...original, title: 'Retitled While Playing' }]);
+            await waitForNextTick();
+
+            const state = await waitForState(s => s.currentTrack?.title === 'Retitled While Playing');
+            expect(state.currentTrack?.title).toBe('Retitled While Playing');
+            expect(state.currentTrack?.id).toBe('1');
+
+            // The item itself must not be rebuilt: playback keeps running from where it was.
+            const after = await waitForState(s => s.currentPosition > before.currentPosition, 8000);
+            expect(after.currentPosition > before.currentPosition).toBe(true);
+            expect(after.currentState).toBe('playing');
+            expect(changes).toBe(0);
+
+            await TrackPlayer.updateTracks([original]);
+        });
+
+        it('should still refuse a url change for the playing track', async () => {
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.play();
+            await waitForPlaying();
+
+            const original = (await TrackPlayer.getTracksById(['1']))[0];
+            await TrackPlayer.updateTracks([
+                { ...original, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3' },
+            ]);
+            await waitForNextTick();
+
+            expect((await TrackPlayer.getTracksById(['1']))[0].url).toBe(original.url);
+        });
     });
 
     describe('Progress Reporting', () => {
@@ -1240,6 +1286,50 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             await waitForNextTick();
 
             expect(launches).not.toContain(true);
+        });
+    });
+
+    // ============================================
+    // REMOTE (MEDIA SESSION) CONTROLS
+    // ============================================
+
+    describe('Remote controls', () => {
+        /**
+         * System UI / Bluetooth drive the MediaSession, not the JS API, and the ExoPlayer
+         * timeline is only a window over the logical queue. The button press has to come from
+         * the host: scripts/remote-controls.sh watches for this line and runs
+         * `adb shell cmd media_session dispatch`.
+         */
+        const announceReady = (button: string) => console.log(`REMOTE_DISPATCH ${button}`);
+
+        it('should step to the previous track when the notification Previous is pressed', async () => {
+            if (Platform.OS !== 'android') return;
+
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playSong('2', playlist1Id);
+            await TrackPlayer.play();
+            await waitForPlaying();
+            // Past the 2s mark Previous restarts the track by design, so ask for it early.
+            await TrackPlayer.seek(0);
+
+            announceReady('previous');
+
+            const state = await waitForState(s => s.currentTrack?.id === '1', 30000);
+            expect(state.currentTrack?.id).toBe('1');
+        });
+
+        it('should step to the next track when the notification Next is pressed', async () => {
+            if (Platform.OS !== 'android') return;
+
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.play();
+            await waitForPlaying();
+
+            announceReady('next');
+
+            const state = await waitForState(s => s.currentTrack?.id === '2', 30000);
+            expect(state.currentTrack?.id).toBe('2');
         });
     });
 });
