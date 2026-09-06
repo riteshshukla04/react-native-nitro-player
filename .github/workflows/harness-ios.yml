@@ -156,4 +156,14 @@ jobs:
         env:
           HARNESS_IOS_DEVICE: ${{ env.DEVICE_MODEL }}
           HARNESS_IOS_VERSION: ${{ env.IOS_VERSION }}
-        run: bun run test:harness --harnessRunner ios
+        run: |
+          # The harness client connects to the bridge once, with no retry: if that single
+          # WebSocket connect loses a race after an app restart, the suite waits out the
+          # whole bridgeTimeout and reports nothing. Retry the run rather than the flake.
+          for attempt in 1 2; do
+            if bun run test:harness --harnessRunner ios; then exit 0; fi
+            echo "::warning::harness attempt $attempt failed, retrying"
+            xcrun simctl terminate booted org.reactjs.native.example.example || true
+            sleep 10
+          done
+          exit 1
