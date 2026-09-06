@@ -8,6 +8,8 @@
 #pragma once
 
 // Forward declarations of C++ defined types
+// Forward declaration of `AndroidAudioFocusMode` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class AndroidAudioFocusMode; }
 // Forward declaration of `CastState` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class CastState; }
 // Forward declaration of `CurrentPlayingType` to properly resolve imports.
@@ -80,6 +82,7 @@ namespace margelo::nitro::nitroplayer { struct TrackItem; }
 namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 
 // Include C++ defined types
+#include "AndroidAudioFocusMode.hpp"
 #include "CastState.hpp"
 #include "CurrentPlayingType.hpp"
 #include "DownloadConfig.hpp"

@@ -1290,6 +1290,66 @@ describe('TrackPlayer - Comprehensive Tests', () => {
     });
 
     // ============================================
+    // ANDROID AUDIO FOCUS
+    // ============================================
+
+    describe('Android audio focus', () => {
+        /**
+         * The interruption is a real one (an incoming call takes transient focus), so it has to
+         * come from the host: scripts/audio-focus-interrupt.sh watches for this line and fires
+         * `adb emu gsm call`. Without that driver the assertions below fail rather than pass
+         * quietly, which is the point — a silent pass would prove nothing.
+         */
+        const announceReady = (mode: string) => console.log(`AUDIO_FOCUS_READY ${mode}`);
+
+        const playAndSettle = async () => {
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.play();
+            const state = await waitForState(s => s.currentState === 'playing', 20000);
+            expect(state.currentState).toBe('playing');
+        };
+
+        it('should pause and resume across an interruption in the default mode', async () => {
+            if (Platform.OS !== 'android') return;
+
+            await TrackPlayer.configure({ androidAudioFocus: 'pause' });
+            await playAndSettle();
+
+            announceReady('pause');
+
+            const interrupted = await waitForState(s => s.currentState === 'paused', 40000);
+            expect(interrupted.currentState).toBe('paused');
+
+            const resumed = await waitForState(s => s.currentState === 'playing', 40000);
+            expect(resumed.currentState).toBe('playing');
+        });
+
+        it('should keep playing through an interruption in duck mode', async () => {
+            if (Platform.OS !== 'android') return;
+
+            await TrackPlayer.configure({ androidAudioFocus: 'duck' });
+            await playAndSettle();
+
+            const before = await TrackPlayer.getState();
+            announceReady('duck');
+
+            // Watch the whole interruption window: ducking lowers the volume, it never pauses.
+            const deadline = Date.now() + 30000;
+            while (Date.now() < deadline) {
+                const state = await TrackPlayer.getState();
+                expect(state.currentState).not.toBe('paused');
+                await new Promise<void>(resolve => setTimeout(resolve, 500));
+            }
+
+            const after = await TrackPlayer.getState();
+            expect(after.currentPosition > before.currentPosition).toBe(true);
+        });
+
+        it('should accept every focus mode', async () => {
+            await expect(TrackPlayer.configure({ androidAudioFocus: 'ignore' })).resolves.toBeUndefined();
+            await expect(TrackPlayer.configure({ androidAudioFocus: 'duck' })).resolves.toBeUndefined();
+            await expect(TrackPlayer.configure({ androidAudioFocus: 'pause' })).resolves.toBeUndefined();
     // REMOTE (MEDIA SESSION) CONTROLS
     // ============================================
 

@@ -24,6 +24,8 @@ namespace margelo::nitro::nitroplayer { enum class CurrentPlayingType; }
 namespace margelo::nitro::nitroplayer { enum class RepeatMode; }
 // Forward declaration of `PlayerConfig` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct PlayerConfig; }
+// Forward declaration of `AndroidAudioFocusMode` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class AndroidAudioFocusMode; }
 // Forward declaration of `Reason` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class Reason; }
 // Forward declaration of `TimedMetadata` to properly resolve imports.
@@ -42,6 +44,7 @@ namespace margelo::nitro::nitroplayer { struct TimedMetadata; }
 #include "CurrentPlayingType.hpp"
 #include "RepeatMode.hpp"
 #include "PlayerConfig.hpp"
+#include "AndroidAudioFocusMode.hpp"
 #include "Reason.hpp"
 #include <functional>
 #include "TimedMetadata.hpp"

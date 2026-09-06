@@ -22,6 +22,8 @@ import com.margelo.nitro.nitroplayer.connection.AndroidAutoConnectionDetector
 import com.margelo.nitro.nitroplayer.download.DownloadManagerCore
 import com.margelo.nitro.nitroplayer.media.ExoPlayerBuilder
 import com.margelo.nitro.nitroplayer.media.MediaLibraryManager
+import com.margelo.nitro.nitroplayer.AndroidAudioFocusMode
+import com.margelo.nitro.nitroplayer.media.AudioFocusController
 import com.margelo.nitro.nitroplayer.media.MediaSessionManager
 import com.margelo.nitro.nitroplayer.media.NitroPlayerPlaybackService
 import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
@@ -70,6 +72,13 @@ class TrackPlayerCore private constructor(
 
     @Volatile internal var currentRepeatMode: RepeatMode = RepeatMode.OFF
     internal var lookaheadCount: Int = 5
+
+    internal var audioFocusMode: AndroidAudioFocusMode = AndroidAudioFocusMode.PAUSE
+    internal var audioFocusController: AudioFocusController? = null
+
+    /** Volume the app asked for; ducking scales this instead of overwriting it. */
+    internal var userVolume: Float = 1f
+    internal var isDucked: Boolean = false
 
     internal var remoteSkipForwardIntervalMs: Long = ExoPlayerBuilder.DEFAULT_REMOTE_SKIP_INTERVAL_MS
     internal var remoteSkipBackwardIntervalMs: Long = ExoPlayerBuilder.DEFAULT_REMOTE_SKIP_INTERVAL_MS
