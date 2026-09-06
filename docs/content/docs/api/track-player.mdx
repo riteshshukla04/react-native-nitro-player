@@ -218,7 +218,14 @@ await TrackPlayer.configure({
   remoteSkipBackwardInterval: 15,
   lookaheadCount: 10,
   androidNotificationIcon: 'ic_notification', // Android-only custom notification icon
+  androidAudioFocus: 'duck', // Android-only: 'pause' (default) | 'duck' | 'ignore'
 });
+```
+
+Keep playing at a lower volume when a notification or call interrupts:
+
+```typescript
+await TrackPlayer.configure({ androidAudioFocus: 'duck' });
 ```
 
 Remote skip intervals are in seconds. iOS uses them for the AirPods/Control Center fixed skip commands and exposes remote playback rates `0.5, 1.0, 1.25, 1.5, 1.75, 2.0`. Android uses them for the Media3 seek back/forward notification buttons; no playback-rate media button is exposed there. Custom intervals apply to local playback; during a Google Cast session the receiver skips by a fixed 15 seconds.
