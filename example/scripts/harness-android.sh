@@ -11,7 +11,9 @@ set -uo pipefail
 SERIAL="${ANDROID_SERIAL:-$(adb devices | awk 'NR>1 && $2=="device" {print $1; exit}')}"
 [ -n "$SERIAL" ] || { echo "no device attached"; exit 1; }
 
-LOG=$(mktemp -t harness-android)
+# Plain mktemp: BSD and GNU disagree about -t without an XXXXXX template.
+LOG=$(mktemp)
+[ -n "$LOG" ] || { echo "mktemp failed"; exit 1; }
 CALLER=15551234567
 
 ( cd "$(dirname "$0")/.." && bun run test:harness --harnessRunner android "$@" ) 2>&1 | tee "$LOG" &
