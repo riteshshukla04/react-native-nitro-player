@@ -24,7 +24,9 @@ internal fun TrackPlayerCore.updateTracksOnQueue(tracks: List<TrackItem>) {
         val safeTracks =
             tracks.filter { track ->
                 when {
-                    track.id == currentTrackId && !currentTrackIsEmpty -> false
+                    // Same URL is a metadata-only edit (a title or artwork refresh): it reaches
+                    // the session without touching the media, so gapless is unaffected.
+                    track.id == currentTrackId && !currentTrackIsEmpty -> track.url == currentTrack?.url
 
                     // preserve gapless
                     track.id == currentTrackId && currentTrackIsEmpty -> track.url.isNotEmpty()
@@ -40,7 +42,9 @@ internal fun TrackPlayerCore.updateTracksOnQueue(tracks: List<TrackItem>) {
 
         // Replace the current MediaItem when its URL just resolved (local only — the cast branch below reloads instead).
         val currentTrackResolvedNow = currentTrackUpdate != null && currentTrackIsEmpty && currentTrackUpdate.url.isNotEmpty()
-        if (!isCastingField && currentTrackResolvedNow) {
+        val currentMetadataChanged =
+            currentTrackUpdate != null && !currentTrackIsEmpty && currentTrackUpdate.url == currentTrack?.url
+        if (!isCastingField && (currentTrackResolvedNow || currentMetadataChanged)) {
             val exoIndex = exo.currentMediaItemIndex
             if (exoIndex >= 0) {
                 val playlistId = currentPlaylistId ?: ""
