@@ -7,6 +7,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import androidx.media3.cast.CastPlayer
+import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.DefaultMediaNotificationProvider
@@ -15,6 +16,8 @@ import androidx.media3.session.MediaSessionService
 import com.google.android.gms.cast.framework.CastContext
 import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
 import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
+import com.margelo.nitro.nitroplayer.core.skipToNextOnQueue
+import com.margelo.nitro.nitroplayer.core.skipToPreviousOnQueue
 import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
 
 /**
@@ -81,10 +84,32 @@ class NitroPlayerPlaybackService : MediaSessionService() {
         // Build ExoPlayer on main looper (default)
         player = ExoPlayerBuilder.build(this)
 
+        // The timeline is a window over the logical queue, so ExoPlayer's own prev/next would
+        // only ever move inside it — remote Previous seeks to 0 instead of the previous track.
+        // Route the remote controls through the same logical skips JS uses.
+        val sessionPlayer =
+            object : ForwardingPlayer(player) {
+                override fun seekToPrevious() {
+                    trackPlayerCore?.skipToPreviousOnQueue() ?: super.seekToPrevious()
+                }
+
+                override fun seekToPreviousMediaItem() {
+                    trackPlayerCore?.skipToPreviousOnQueue() ?: super.seekToPreviousMediaItem()
+                }
+
+                override fun seekToNext() {
+                    trackPlayerCore?.skipToNextOnQueue() ?: super.seekToNext()
+                }
+
+                override fun seekToNextMediaItem() {
+                    trackPlayerCore?.skipToNextOnQueue() ?: super.seekToNextMediaItem()
+                }
+            }
+
         // Build MediaSession
         val playlistManager = PlaylistManager.getInstance(this)
         mediaSession = MediaSession
-            .Builder(this, player)
+            .Builder(this, sessionPlayer)
             .setCallback(MediaSessionCallbackFactory.create(this, playlistManager))
             .apply { buildSessionActivity()?.let { setSessionActivity(it) } }
             .build()
