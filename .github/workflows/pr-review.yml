@@ -23,6 +23,7 @@ jobs:
         with:
           private-key: ${{ secrets.VIBECODERHANS_PRIVATE_KEY }}
           api-key: ${{ secrets.CALLSTACK_AUTH_TOKEN }}
+          allow-close: true
           exclude: (^|/)nitrogen/generated/
           instructions: >-
             react-native-nitro-player is a React Native audio player library
