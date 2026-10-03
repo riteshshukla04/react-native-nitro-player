@@ -1,0 +1,31 @@
+name: VibeCoderHans PR review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    # Fork PRs don't receive repository secrets, so they are skipped.
+    if: >-
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: riteshshukla04/vibecoderhans@v1
+        with:
+          private-key: ${{ secrets.VIBECODERHANS_PRIVATE_KEY }}
+          api-key: ${{ secrets.CALLSTACK_AUTH_TOKEN }}
+          exclude: (^|/)nitrogen/generated/
+          instructions: >-
+            react-native-nitro-player is a React Native audio player library
+            built on Nitro Modules, with TypeScript, Kotlin, Swift and C++ code.
+            Watch for threading mistakes, memory leaks and behavior that differs
+            between iOS and Android.
