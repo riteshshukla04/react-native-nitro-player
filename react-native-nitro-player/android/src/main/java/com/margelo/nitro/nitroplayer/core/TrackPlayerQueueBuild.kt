@@ -46,6 +46,20 @@ internal fun TrackPlayerCore.castableUpcoming(tracks: List<TrackItem>): List<Tra
  */
 internal const val QUEUE_WINDOW_SIZE = 4
 
+/** Index of [trackId] in currentTracks; a repeated track resolves to its first occurrence at or after [from], wrapping. */
+internal fun TrackPlayerCore.currentTrackIndexOf(
+    trackId: String,
+    from: Int,
+): Int {
+    val size = currentTracks.size
+    val start = if (from in 0 until size) from else 0
+    for (k in 0 until size) {
+        val i = (start + k) % size
+        if (currentTracks[i].id == trackId) return i
+    }
+    return -1
+}
+
 internal fun TrackPlayerCore.mediaIdFor(track: TrackItem): String {
     val playlistId = currentPlaylistId ?: ""
     return if (playlistId.isNotEmpty()) "$playlistId:${track.id}" else track.id
@@ -118,7 +132,7 @@ internal fun TrackPlayerCore.rebuildQueueFromCurrentPosition() {
     // Keep the logical playlist pointer in sync after playlist mutations.
     // Without this, getActualQueue/getState can report a stale index until the next track transition.
     if (currentTemporaryType == TrackPlayerCore.TemporaryType.NONE && currentTrackId != null) {
-        val resolvedIndex = currentTracks.indexOfFirst { it.id == currentTrackId }
+        val resolvedIndex = currentTrackIndexOf(currentTrackId, currentTrackIndex)
         if (resolvedIndex >= 0) {
             currentTrackIndex = resolvedIndex
         }
@@ -268,6 +282,7 @@ internal fun TrackPlayerCore.makeMediaItem(
             .setTitle(track.title)
             .setArtist(track.artist)
             .setAlbumTitle(track.album)
+    if (track.duration > 0) metaBuilder.setDurationMs((track.duration * 1000).toLong())
 
     track.artwork?.asSecondOrNull()?.let { artworkUrl ->
         try {

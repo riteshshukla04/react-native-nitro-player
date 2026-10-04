@@ -31,6 +31,7 @@ internal class TrackPlayerEventListener(
         with(core) {
             // TRACK repeat: REPEAT_MODE_ONE fires this every loop — not a real track change
             if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT) return
+            exo.holdLazyCurrent()
 
             // Remove the track that just finished/was skipped from temp lists
             if ((
@@ -61,7 +62,9 @@ internal class TrackPlayerEventListener(
             val previousTrackIndex = currentTrackIndex
             if (currentTemporaryType == TrackPlayerCore.TemporaryType.NONE && mediaItem != null) {
                 val trackId = extractTrackId(mediaItem.mediaId)
-                val newIdx = currentTracks.indexOfFirst { it.id == trackId }
+                // Moving through the timeline lands on the next occurrence of a repeated track, not its first
+                val advancing = reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO || reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK
+                val newIdx = currentTrackIndexOf(trackId, if (advancing) currentTrackIndex + 1 else currentTrackIndex)
                 if (newIdx >= 0 && newIdx != currentTrackIndex) currentTrackIndex = newIdx
             }
             // A transient play-out ends here: restore the user's repeat mode.
@@ -137,6 +140,7 @@ internal class TrackPlayerEventListener(
         reason: Int,
     ) {
         val r = if (reason == Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST) Reason.USER_ACTION else null
+        core.updateJsKeepAlive()
         core.emitStateChange(r)
     }
 
@@ -156,7 +160,10 @@ internal class TrackPlayerEventListener(
     }
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
-        if (isPlaying) core.startProgressTicks()
+        if (isPlaying) {
+            core.startProgressTicks()
+            core.onPlaybackHealthy()
+        }
         core.emitStateChange()
     }
 
@@ -173,21 +180,7 @@ internal class TrackPlayerEventListener(
         }
     }
 
-    override fun onPlayerError(error: PlaybackException) {
-        with(core) {
-            NitroPlayerLogger.log(
-                "TrackPlayer",
-                "Player error: ${error.errorCodeName} - ${error.message}",
-            )
-            notifyPlaybackStateChange(TrackPlayerState.STOPPED, Reason.ERROR)
-            // A source error leaves ExoPlayer in IDLE; skip the dead item and
-            // re-prepare so the rest of the queue keeps playing.
-            if (exo.hasNextMediaItem()) {
-                exo.seekToNext()
-                exo.prepare()
-            }
-        }
-    }
+    override fun onPlayerError(error: PlaybackException) = core.handlePlayerError(error)
 
     override fun onAudioSessionIdChanged(audioSessionId: Int) {
         if (audioSessionId != 0) {

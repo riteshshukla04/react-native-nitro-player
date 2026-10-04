@@ -2,6 +2,7 @@
 
 package com.margelo.nitro.nitroplayer.core
 
+import android.os.SystemClock
 import androidx.media3.common.Player
 import com.margelo.nitro.nitroplayer.TrackItem
 
@@ -37,6 +38,7 @@ internal fun TrackPlayerCore.updateTracksOnQueue(tracks: List<TrackItem>) {
                 }
             }
         if (safeTracks.isEmpty()) return@run
+        safeTracks.forEach { urlRequestedAt.remove(it.id) }
 
         val affectedPlaylists: Map<String, Int> = playlistManager.updateTracks(safeTracks)
 
@@ -133,7 +135,13 @@ suspend fun TrackPlayerCore.getCurrentTrackIndex(): Int = withPlayerContext { cu
 
 // ── URL lookahead ─────────────────────────────────────────────────────────
 
-internal fun TrackPlayerCore.checkUpcomingTracksForUrls(lookahead: Int = 5) {
+// One pick fires several queue events within a few hundred ms; the app is asked once for that burst
+private const val URL_REQUEST_COALESCE_MS = 500L
+
+internal fun TrackPlayerCore.checkUpcomingTracksForUrls(
+    lookahead: Int = 5,
+    force: Boolean = false,
+) {
     val upcomingTracks =
         if (currentTrackIndex < 0) {
             currentTracks.take(lookahead)
@@ -144,5 +152,10 @@ internal fun TrackPlayerCore.checkUpcomingTracksForUrls(lookahead: Int = 5) {
     val currentNeedsUrl = currentTrack != null && currentTrack.url.isEmpty()
     val candidates = if (currentNeedsUrl) listOf(currentTrack!!) + upcomingTracks else upcomingTracks
     val needUrls = candidates.filter { it.url.isEmpty() }
-    if (needUrls.isNotEmpty()) notifyTracksNeedUpdate(needUrls, lookahead)
+    val now = SystemClock.elapsedRealtime()
+    val ask = if (force) needUrls else needUrls.filter { track -> urlRequestedAt[track.id]?.let { now - it < URL_REQUEST_COALESCE_MS } != true }
+    if (ask.isEmpty()) return
+    if (urlRequestedAt.size > 1000) urlRequestedAt.clear()
+    ask.forEach { urlRequestedAt[it.id] = now }
+    notifyTracksNeedUpdate(ask, lookahead)
 }

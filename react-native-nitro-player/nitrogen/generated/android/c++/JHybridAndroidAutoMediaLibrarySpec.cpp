@@ -13,6 +13,11 @@
 #include <NitroModules/JPromise.hpp>
 #include <NitroModules/JUnit.hpp>
 #include <string>
+#include <functional>
+#include "JFunc_void_std__string_std__string.hpp"
+#include <NitroModules/JNICallable.hpp>
+#include "JFunc_void_std__string.hpp"
+#include "JFunc_void.hpp"
 
 namespace margelo::nitro::nitroplayer {
 
@@ -76,6 +81,30 @@ namespace margelo::nitro::nitroplayer {
       });
       return __promise;
     }();
+  }
+  void JHybridAndroidAutoMediaLibrarySpec::onLoadChildren(const std::function<void(const std::string& /* requestId */, const std::string& /* parentId */)>& callback) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_std__string_std__string::javaobject> /* callback */)>("onLoadChildren_cxx");
+    method(_javaPart, JFunc_void_std__string_std__string_cxx::fromCpp(callback));
+  }
+  void JHybridAndroidAutoMediaLibrarySpec::onSearch(const std::function<void(const std::string& /* requestId */, const std::string& /* query */)>& callback) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_std__string_std__string::javaobject> /* callback */)>("onSearch_cxx");
+    method(_javaPart, JFunc_void_std__string_std__string_cxx::fromCpp(callback));
+  }
+  void JHybridAndroidAutoMediaLibrarySpec::resolveRequest(const std::string& requestId, const std::string& itemsJson) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* requestId */, jni::alias_ref<jni::JString> /* itemsJson */)>("resolveRequest");
+    method(_javaPart, jni::make_jstring(requestId), jni::make_jstring(itemsJson));
+  }
+  void JHybridAndroidAutoMediaLibrarySpec::setSessionButtons(const std::string& buttonsJson) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* buttonsJson */)>("setSessionButtons");
+    method(_javaPart, jni::make_jstring(buttonsJson));
+  }
+  void JHybridAndroidAutoMediaLibrarySpec::onSessionButtonPress(const std::function<void(const std::string& /* action */)>& callback) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_std__string::javaobject> /* callback */)>("onSessionButtonPress_cxx");
+    method(_javaPart, JFunc_void_std__string_cxx::fromCpp(callback));
+  }
+  void JHybridAndroidAutoMediaLibrarySpec::onPlaybackResumption(const std::function<void()>& callback) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void::javaobject> /* callback */)>("onPlaybackResumption_cxx");
+    method(_javaPart, JFunc_void_cxx::fromCpp(callback));
   }
 
 } // namespace margelo::nitro::nitroplayer

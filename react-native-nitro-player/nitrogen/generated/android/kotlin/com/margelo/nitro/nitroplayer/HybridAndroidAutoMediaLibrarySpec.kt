@@ -36,6 +36,50 @@ abstract class HybridAndroidAutoMediaLibrarySpec: HybridObject() {
   @DoNotStrip
   @Keep
   abstract fun clearMediaLibrary(): Promise<Unit>
+  
+  abstract fun onLoadChildren(callback: (requestId: String, parentId: String) -> Unit): Unit
+  
+  @DoNotStrip
+  @Keep
+  private fun onLoadChildren_cxx(callback: Func_void_std__string_std__string): Unit {
+    val __result = onLoadChildren(callback)
+    return __result
+  }
+  
+  abstract fun onSearch(callback: (requestId: String, query: String) -> Unit): Unit
+  
+  @DoNotStrip
+  @Keep
+  private fun onSearch_cxx(callback: Func_void_std__string_std__string): Unit {
+    val __result = onSearch(callback)
+    return __result
+  }
+  
+  @DoNotStrip
+  @Keep
+  abstract fun resolveRequest(requestId: String, itemsJson: String): Unit
+  
+  @DoNotStrip
+  @Keep
+  abstract fun setSessionButtons(buttonsJson: String): Unit
+  
+  abstract fun onSessionButtonPress(callback: (action: String) -> Unit): Unit
+  
+  @DoNotStrip
+  @Keep
+  private fun onSessionButtonPress_cxx(callback: Func_void_std__string): Unit {
+    val __result = onSessionButtonPress(callback)
+    return __result
+  }
+  
+  abstract fun onPlaybackResumption(callback: () -> Unit): Unit
+  
+  @DoNotStrip
+  @Keep
+  private fun onPlaybackResumption_cxx(callback: Func_void): Unit {
+    val __result = onPlaybackResumption(callback)
+    return __result
+  }
 
   // Default implementation of `HybridObject.toString()`
   override fun toString(): String {

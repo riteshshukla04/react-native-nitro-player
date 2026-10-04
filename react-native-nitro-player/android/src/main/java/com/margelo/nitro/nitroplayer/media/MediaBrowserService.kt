@@ -7,11 +7,13 @@ import android.net.Uri
 import android.os.Bundle
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.MediaDescriptionCompat
+import android.support.v4.media.session.MediaSessionCompat
 import androidx.media.MediaBrowserServiceCompat
 import androidx.media.utils.MediaConstants
 import com.margelo.nitro.nitroplayer.TrackItem
 import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
 import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
+import com.margelo.nitro.nitroplayer.core.onAndroidAutoBrowserConnected
 import com.margelo.nitro.nitroplayer.playlist.Playlist
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,45 +24,59 @@ import kotlinx.coroutines.launch
 class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
     companion object {
         private const val ROOT_ID = "root"
-        private const val EMPTY_ROOT_ID = "empty_root"
         private const val PLAYLIST_PREFIX = "playlist_"
+        private const val ANDROID_AUTO_PACKAGE = "com.google.android.projection.gearhead"
+        private const val PREFS_NAME = "NitroPlayerAndroidAuto"
+        private const val KEY_ENABLED = "enabled"
+        private const val KEY_SEARCH = "search"
 
-        var trackPlayerCore: TrackPlayerCore? = null
-        var mediaSessionManager: MediaSessionManager? = null
-        var isAndroidAutoEnabled: Boolean = false
         var isAndroidAutoConnected: Boolean = false
 
         @Volatile
         private var instance: NitroPlayerMediaBrowserService? = null
 
         fun getInstance(): NitroPlayerMediaBrowserService? = instance
+
+        // Persisted so a cold start from the car, before JS runs configure, still serves the library
+        fun setAndroidAutoEnabled(
+            context: Context,
+            enabled: Boolean,
+        ) {
+            prefs(context).edit().putBoolean(KEY_ENABLED, enabled).apply()
+            instance?.onPlaylistsUpdated()
+        }
+
+        // Persisted too: the car reads the root (and hides search for the whole connection) before JS registers a handler
+        fun setSearchSupported(
+            context: Context,
+            supported: Boolean,
+        ) {
+            prefs(context).edit().putBoolean(KEY_SEARCH, supported).apply()
+        }
+
+        private fun prefs(context: Context) = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
 
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private lateinit var mediaLibraryManager: MediaLibraryManager
+    private lateinit var core: TrackPlayerCore
+
+    private val isAndroidAutoEnabled: Boolean
+        get() = prefs(this).getBoolean(KEY_ENABLED, false)
 
     override fun onCreate() {
         super.onCreate()
 
         instance = this
         mediaLibraryManager = MediaLibraryManager.getInstance(applicationContext)
+        mediaLibraryManager.onLateChildren = { parentId -> notifyChildrenChanged(parentId) }
 
-        // Use the existing MediaSession from MediaSessionManager
-        // This ensures the session is already connected to the ExoPlayer
-        try {
-            val session = mediaSessionManager?.mediaSession
-            if (session != null) {
-                // Convert Media3 MediaSession to MediaSessionCompat for MediaBrowserService
-                sessionToken =
-                    android.support.v4.media.session.MediaSessionCompat.Token
-                        .fromToken(session.platformToken)
-                NitroPlayerLogger.log("MediaBrowserService", "🎵 NitroPlayerMediaBrowserService: MediaSession token set successfully")
-            } else {
-                NitroPlayerLogger.log("MediaBrowserService", "⚠️ NitroPlayerMediaBrowserService: MediaSession not available yet")
-            }
-        } catch (e: Exception) {
-            NitroPlayerLogger.log("MediaBrowserService", "❌ NitroPlayerMediaBrowserService: Error setting session token - ${e.message}")
-            e.printStackTrace()
+        // A cold start has no session yet; the connection stays pending until the token is set
+        core = TrackPlayerCore.getInstance(applicationContext)
+        serviceScope.launch {
+            val token = core.withPlayerContext { core.mediaSessionManager?.mediaSession?.platformToken } ?: return@launch
+            if (sessionToken == null) sessionToken = MediaSessionCompat.Token.fromToken(token)
+            NitroPlayerLogger.log("MediaBrowserService", "🎵 NitroPlayerMediaBrowserService: MediaSession token set")
         }
 
         NitroPlayerLogger.log("MediaBrowserService", "🚀 NitroPlayerMediaBrowserService: Service created")
@@ -69,6 +85,7 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
     override fun onDestroy() {
         super.onDestroy()
         instance = null
+        mediaLibraryManager.onLateChildren = null
         serviceScope.cancel()
         NitroPlayerLogger.log("MediaBrowserService", "🛑 NitroPlayerMediaBrowserService: Service destroyed")
     }
@@ -77,25 +94,27 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
         clientPackageName: String,
         clientUid: Int,
         rootHints: Bundle?,
-    ): BrowserRoot? {
+    ): BrowserRoot {
         NitroPlayerLogger.log("MediaBrowserService", "📂 NitroPlayerMediaBrowserService: onGetRoot called from $clientPackageName")
 
-        // Check if Android Auto is enabled
-        if (!isAndroidAutoEnabled) {
-            NitroPlayerLogger.log("MediaBrowserService", "⚠️ NitroPlayerMediaBrowserService: Android Auto not enabled")
-            return BrowserRoot(EMPTY_ROOT_ID, null)
-        }
+        if (clientPackageName == ANDROID_AUTO_PACKAGE) core.onAndroidAutoBrowserConnected()
 
-        // Allow Android Auto and other media browsers to connect
-        // Enable grid layout for playlists at root level
+        // Always the real root: enabling later only has to refresh it, not reconnect the car
         val extras =
             Bundle().apply {
                 putInt(
                     MediaConstants.DESCRIPTION_EXTRAS_KEY_CONTENT_STYLE_BROWSABLE,
                     MediaConstants.DESCRIPTION_EXTRAS_VALUE_CONTENT_STYLE_GRID_ITEM,
                 )
+                putInt(
+                    MediaConstants.DESCRIPTION_EXTRAS_KEY_CONTENT_STYLE_PLAYABLE,
+                    MediaConstants.DESCRIPTION_EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM,
+                )
+                putBoolean(
+                    MediaConstants.BROWSER_SERVICE_EXTRAS_KEY_SEARCH_SUPPORTED,
+                    prefs(this@NitroPlayerMediaBrowserService).getBoolean(KEY_SEARCH, false),
+                )
             }
-        NitroPlayerLogger.log("MediaBrowserService", "✅ NitroPlayerMediaBrowserService: Allowing connection from $clientPackageName with grid layout")
         return BrowserRoot(ROOT_ID, extras)
     }
 
@@ -104,6 +123,7 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
         result: Result<MutableList<MediaBrowserCompat.MediaItem>>,
     ) {
         NitroPlayerLogger.log("MediaBrowserService", "📂 NitroPlayerMediaBrowserService: onLoadChildren called for parentId: $parentId")
+        startJsOnDemand()
 
         if (!isAndroidAutoEnabled) {
             NitroPlayerLogger.log("MediaBrowserService", "⚠️ NitroPlayerMediaBrowserService: Android Auto not enabled, returning empty")
@@ -118,9 +138,11 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
 
                 serviceScope.launch {
                     try {
+                        if (mediaLibraryManager.getMediaLibrary() == null) mediaLibraryManager.awaitFirstPublish(MediaLibraryManager.FIRST_PUBLISH_WAIT_MS)
                         val library = mediaLibraryManager.getMediaLibrary()
+                        val rootItems = library?.rootItems?.filter { it.hasContent() }.orEmpty()
 
-                        if (library == null) {
+                        if (library == null || rootItems.isEmpty()) {
                             // Fallback: show playlists if no media library is set
                             NitroPlayerLogger.log("MediaBrowserService", "⚠️ NitroPlayerMediaBrowserService: No media library set, using fallback playlists")
                             val mediaItems = loadFallbackPlaylists()
@@ -128,11 +150,7 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
                             return@launch
                         }
 
-                        val mediaItems = mutableListOf<MediaBrowserCompat.MediaItem>()
-
-                        library.rootItems.forEach { item ->
-                            mediaItems.add(convertToMediaBrowserItem(item, library.layoutType))
-                        }
+                        val mediaItems = rootItems.map { convertToMediaBrowserItem(it, library.layoutType) }.toMutableList()
 
                         NitroPlayerLogger.log("MediaBrowserService", "✅ NitroPlayerMediaBrowserService: Returning ${mediaItems.size} root items")
                         result.sendResult(mediaItems)
@@ -152,7 +170,7 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
 
                 serviceScope.launch {
                     try {
-                        val playlist = trackPlayerCore?.getPlaylistManager()?.getPlaylist(playlistId)
+                        val playlist = core.playlistManager.getPlaylist(playlistId)
 
                         if (playlist == null) {
                             NitroPlayerLogger.log("MediaBrowserService", "⚠️ NitroPlayerMediaBrowserService: Playlist '$playlistId' not found")
@@ -162,7 +180,10 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
 
                         val mediaItems = mutableListOf<MediaBrowserCompat.MediaItem>()
 
+                        val seen = mutableSetOf<String>()
                         playlist.tracks.forEachIndexed { index, track ->
+                            // A repeated track gets its own id so picking that row plays that occurrence
+                            val trackRef = if (seen.add(track.id)) track.id else "${track.id}#$index"
                             val extras =
                                 Bundle().apply {
                                     putString("playlistId", playlistId)
@@ -173,7 +194,7 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
                             val description =
                                 MediaDescriptionCompat
                                     .Builder()
-                                    .setMediaId("$playlistId:${track.id}")
+                                    .setMediaId("$playlistId:$trackRef")
                                     .setTitle(track.title)
                                     .setSubtitle(track.artist)
                                     .setDescription(track.album)
@@ -199,17 +220,14 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
                 }
             }
 
-            parentId == EMPTY_ROOT_ID -> {
-                result.sendResult(mutableListOf())
-            }
-
             else -> {
                 // Handle custom folder IDs from media library
                 result.detach()
 
                 serviceScope.launch {
                     try {
-                        val children = mediaLibraryManager.getChildrenById(parentId)
+                        if (mediaLibraryManager.getMediaLibrary() == null) mediaLibraryManager.awaitFirstPublish(MediaLibraryManager.FIRST_PUBLISH_WAIT_MS)
+                        val children = mediaLibraryManager.getChildrenById(parentId) ?: mediaLibraryManager.loadChildren(parentId)
 
                         if (children == null) {
                             NitroPlayerLogger.log("MediaBrowserService", "⚠️ NitroPlayerMediaBrowserService: No children found for parentId: $parentId")
@@ -221,6 +239,7 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
                         val defaultLayout = library?.layoutType ?: LayoutType.LIST
                         val mediaItems =
                             children
+                                .filter { it.hasContent() }
                                 .map { item ->
                                     convertToMediaBrowserItem(item, defaultLayout)
                                 }.toMutableList()
@@ -235,6 +254,31 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
                 }
             }
         }
+    }
+
+    override fun onSearch(
+        query: String,
+        extras: Bundle?,
+        result: Result<MutableList<MediaBrowserCompat.MediaItem>>,
+    ) {
+        startJsOnDemand()
+        result.detach()
+        serviceScope.launch {
+            val items = mediaLibraryManager.search(query).orEmpty().filter { it.hasContent() }
+            val layout = mediaLibraryManager.getMediaLibrary()?.layoutType ?: LayoutType.LIST
+            result.sendResult(items.map { convertToMediaBrowserItem(it, layout) }.toMutableList())
+        }
+    }
+
+    // The car binds every media app on connect; JS starts only once content is asked for, never for SystemUI's recent-media probe
+    private fun startJsOnDemand() {
+        if (browserRootHints?.getBoolean(BrowserRoot.EXTRA_RECENT) != true) core.startJsRuntimeIfNeeded()
+    }
+
+    // Folders a client has open keep their stale children unless refreshed too
+    fun onLibraryUpdated(folderIds: List<String>) {
+        onPlaylistsUpdated()
+        folderIds.distinct().forEach { notifyChildrenChanged(it) }
     }
 
     fun onPlaylistsUpdated() {
@@ -253,6 +297,12 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
         } catch (e: Exception) {
             NitroPlayerLogger.log("MediaBrowserService", "⚠️ NitroPlayerMediaBrowserService: Error notifying playlist changed: ${e.message}")
         }
+    }
+
+    // Apps may delete the playlists a published library points at; hide those, but keep empty ones so the user still finds them
+    private fun MediaItem.hasContent(): Boolean {
+        if (mediaType != MediaType.PLAYLIST || playlistId == null) return true
+        return core.playlistManager.getPlaylist(playlistId) != null
     }
 
     /**
@@ -275,6 +325,7 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
                     MediaConstants.DESCRIPTION_EXTRAS_KEY_CONTENT_STYLE_BROWSABLE,
                     contentStyle,
                 )
+                item.groupTitle?.let { putString(MediaConstants.DESCRIPTION_EXTRAS_KEY_CONTENT_STYLE_GROUP_TITLE, it) }
             }
 
         // Determine the media ID based on item type
@@ -328,8 +379,8 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
         // and prefer surfacing the currently-loaded playlist first so the user
         // always has access to "what's playing now" while the JS side hasn't
         // published a media library yet.
-        val rawPlaylists = trackPlayerCore?.getAllPlaylists() ?: emptyList()
-        val currentId = trackPlayerCore?.getCurrentPlaylistId()
+        val rawPlaylists = core.getAllPlaylists()
+        val currentId = core.getCurrentPlaylistId()
         val uuidRegex = Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
         val dedupedByName = linkedMapOf<String, com.margelo.nitro.nitroplayer.playlist.Playlist>()

@@ -123,8 +123,10 @@ internal fun TrackPlayerCore.setVolumeOnQueue(volume: Double) {
 suspend fun TrackPlayerCore.configure(config: PlayerConfig) = withPlayerContext { configureOnQueue(config) }
 
 internal fun TrackPlayerCore.configureOnQueue(config: PlayerConfig) {
+    // JS is calling, so the keep-alive task is registered: start it now if a headless start needs it
+    updateJsKeepAlive()
     config.androidAudioFocus?.let { applyAudioFocusMode(it) }
-    config.androidAutoEnabled?.let { NitroPlayerMediaBrowserService.isAndroidAutoEnabled = it }
+    config.androidAutoEnabled?.let { NitroPlayerMediaBrowserService.setAndroidAutoEnabled(context, it) }
     config.lookaheadCount?.let { lookaheadCount = it.toInt() }
     config.androidNotificationIcon?.let { NitroPlayerPlaybackService.notificationSmallIconResName = it }
     remoteSkipIntervalMs(config.remoteSkipForwardInterval)?.let { remoteSkipForwardIntervalMs = it }

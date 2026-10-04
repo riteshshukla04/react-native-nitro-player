@@ -88,7 +88,7 @@ internal fun TrackPlayerCore.switchToLocalPlayer() {
     lastCastWaitTrackId = null
     exo = ExoPlayerCore(controller.localPlayer)
     playerListener?.let { controller.localPlayer.addListener(it) }
-    setMediaSessionPlayer(controller.localPlayer)
+    setMediaSessionPlayer(controller.localSessionPlayer)
 
     val localList = ArrayList<TrackItem>()
     currentTrack?.let { localList.add(it) }

@@ -59,9 +59,9 @@ class AndroidAutoConnectionDetector(
         try {
             val filter = IntentFilter(ACTION_CAR_CONNECTION_UPDATED)
 
-            // For Android 14+ (API 34+), we need to specify the receiver flags
+            // Exported: the broadcast comes from the Android Auto app, a NOT_EXPORTED receiver never gets it
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                context.registerReceiver(carConnectionReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+                context.registerReceiver(carConnectionReceiver, filter, Context.RECEIVER_EXPORTED)
             } else {
                 context.registerReceiver(carConnectionReceiver, filter)
             }

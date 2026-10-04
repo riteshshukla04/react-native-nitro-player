@@ -2,7 +2,6 @@ package com.margelo.nitro.nitroplayer.core
 
 import com.margelo.nitro.nitroplayer.equalizer.EqualizerCore
 import com.margelo.nitro.nitroplayer.media.MediaSessionManager
-import com.margelo.nitro.nitroplayer.media.NitroPlayerMediaBrowserService
 import com.margelo.nitro.nitroplayer.media.NitroPlayerPlaybackService
 
 /**
@@ -18,10 +17,6 @@ internal fun TrackPlayerCore.initFromService(binder: NitroPlayerPlaybackService.
         MediaSessionManager(context, binder.session, playlistManager).apply {
             setTrackPlayerCore(this@initFromService)
         }
-
-    // Give MediaBrowserService access to this core and media session
-    NitroPlayerMediaBrowserService.trackPlayerCore = this
-    NitroPlayerMediaBrowserService.mediaSessionManager = mediaSessionManager
 
     // Attach player listener
     val listener = TrackPlayerEventListener(this)

@@ -20,4 +20,22 @@ export interface AndroidAutoMediaLibrary extends HybridObject<{
    * Falls back to showing all playlists
    */
   clearMediaLibrary(): Promise<void>
+
+  /** Android Auto opened a folder published with `children: []`; answer with {@link resolveRequest}. */
+  onLoadChildren(callback: (requestId: string, parentId: string) => void): void
+
+  /** A car search, or a voice request the loaded playlists cannot match; answer with {@link resolveRequest}. */
+  onSearch(callback: (requestId: string, query: string) => void): void
+
+  /** Answers {@link onLoadChildren} / {@link onSearch} with a JSON array of MediaItem. */
+  resolveRequest(requestId: string, itemsJson: string): void
+
+  /** Replaces the session buttons with a JSON array of SessionButton. */
+  setSessionButtons(buttonsJson: string): void
+
+  /** Called with the button's `action` when a session button is pressed. */
+  onSessionButtonPress(callback: (action: string) => void): void
+
+  /** A controller asked to play with nothing loaded (car auto-play, play on connect); load the last queue now. */
+  onPlaybackResumption(callback: () => void): void
 }

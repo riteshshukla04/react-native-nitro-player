@@ -18,6 +18,14 @@
         android:name="android.hardware.audio.output"
         android:required="false" />
 
+    <!-- Visibility of Android Auto's connection-state provider; without it the car never reads as connected -->
+    <queries>
+        <provider
+            android:name="androidx.car.app.connection.provider"
+            android:authorities="androidx.car.app.connection"
+            tools:ignore="MissingClass" />
+    </queries>
+
     <application>
         <!-- Google Cast: supplies CastOptions (receiver app ID) to the Cast SDK.
              Apps shipping their own OptionsProvider must override with tools:replace. -->
