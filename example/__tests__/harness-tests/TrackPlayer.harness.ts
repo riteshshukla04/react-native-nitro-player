@@ -1350,6 +1350,10 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             await expect(TrackPlayer.configure({ androidAudioFocus: 'ignore' })).resolves.toBeUndefined();
             await expect(TrackPlayer.configure({ androidAudioFocus: 'duck' })).resolves.toBeUndefined();
             await expect(TrackPlayer.configure({ androidAudioFocus: 'pause' })).resolves.toBeUndefined();
+        });
+    });
+
+    // ============================================
     // REMOTE (MEDIA SESSION) CONTROLS
     // ============================================
 
