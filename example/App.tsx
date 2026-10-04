@@ -10,6 +10,7 @@ import { Platform, PermissionsAndroid, StatusBar } from 'react-native';
 import { TrackPlayer } from 'react-native-nitro-player';
 import AppNavigator from './src/navigation/AppNavigator';
 import BenchScreen from './src/screens/BenchScreen';
+import { registerAndroidAuto } from './src/androidAuto';
 
 const RUN_BENCH = false;
 
@@ -23,6 +24,9 @@ void TrackPlayer.configure({
   androidNotificationIcon: 'ic_notification', // Android Only
 });
 
+// Module scope, not a component: Android Auto can start the app without any UI
+registerAndroidAuto().catch((e) => console.error('Android Auto demo failed', e));
+
 TrackPlayer.appStartedWithNotification((track) => {
   console.info(`🔔 appStartedWithNotification fired! track: ${track.id} - ${track.title}`);
 });
@@ -31,10 +35,10 @@ TrackPlayer.onTracksNeedUpdate(async (tracks, lookahead) => {
   console.info(`🔄 onTracksNeedUpdate fired! ${tracks.length} tracks need URLs (lookahead: ${lookahead})`);
   console.info('Tracks:', tracks.map((t) => ({ id: t.id, title: t.title })));
   
-  // Update tracks with resolved URLs
+  // Numbered ids get distinct songs
   const updatedTracks = tracks.map((track) => ({
     ...track,
-    url: `https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3`,
+    url: `https://www.soundhelix.com/examples/mp3/SoundHelix-Song-${(Number(track.id.split('-').pop()) % 16 || 0) + 1}.mp3`,
   }));
   
   await TrackPlayer.updateTracks(updatedTracks);

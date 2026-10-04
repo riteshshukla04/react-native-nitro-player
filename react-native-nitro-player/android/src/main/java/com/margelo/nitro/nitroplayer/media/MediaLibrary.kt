@@ -41,6 +41,8 @@ data class MediaItem(
     val children: List<MediaItem>? = null,
     /** Layout type for folder items (overrides library default) */
     val layoutType: LayoutType? = null,
+    /** Group header; contiguous items sharing one are listed under it */
+    val groupTitle: String? = null,
 )
 
 /**

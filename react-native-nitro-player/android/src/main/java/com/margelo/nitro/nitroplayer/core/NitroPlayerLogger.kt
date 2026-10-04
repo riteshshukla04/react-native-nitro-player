@@ -4,8 +4,8 @@ import android.util.Log
 import com.margelo.nitro.nitroplayer.BuildConfig
 
 object NitroPlayerLogger {
-    // Determine if logging is enabled based on build config
-    val isEnabled: Boolean = BuildConfig.DEBUG
+    // Release builds log after `adb shell setprop log.tag.NitroPlayer DEBUG` and an app restart
+    val isEnabled: Boolean = BuildConfig.DEBUG || Log.isLoggable("NitroPlayer", Log.DEBUG)
 
     /**
      * Preferred overload: message lambda is only evaluated when logging is enabled.

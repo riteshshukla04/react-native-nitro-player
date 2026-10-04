@@ -38,6 +38,9 @@ export interface MediaItem {
 
   /** Layout type for folder items (overrides library default) */
   layoutType?: LayoutType
+
+  /** Group header; contiguous items sharing one are listed under it */
+  groupTitle?: string
 }
 
 /**
@@ -55,4 +58,25 @@ export interface MediaLibrary {
 
   /** Optional app icon URL */
   appIconUrl?: string
+}
+
+export type SessionButtonIcon =
+  | 'heart'
+  | 'heart_filled'
+  | 'star'
+  | 'star_filled'
+  | 'thumb_up'
+  | 'thumb_up_filled'
+  | 'plus'
+  | 'check'
+
+/** App-defined button beside the transport controls in Android Auto and the notification */
+export interface SessionButton {
+  /** Passed to the press callback */
+  action: string
+
+  /** Accessibility label */
+  title: string
+
+  icon: SessionButtonIcon
 }

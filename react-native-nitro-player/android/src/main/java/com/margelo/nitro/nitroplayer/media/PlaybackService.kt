@@ -2,12 +2,16 @@ package com.margelo.nitro.nitroplayer.media
 
 import android.app.PendingIntent
 import android.content.Intent
+import android.net.Uri
 import android.os.Binder
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import androidx.media3.cast.CastPlayer
+import androidx.media3.common.C
 import androidx.media3.common.ForwardingPlayer
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.DefaultMediaNotificationProvider
@@ -15,7 +19,10 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.google.android.gms.cast.framework.CastContext
 import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
+import com.margelo.nitro.nitroplayer.core.checkUpcomingTracksForUrls
 import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
+import com.margelo.nitro.nitroplayer.core.playFromMediaId
+import com.margelo.nitro.nitroplayer.core.playOnQueue
 import com.margelo.nitro.nitroplayer.core.skipToNextOnQueue
 import com.margelo.nitro.nitroplayer.core.skipToPreviousOnQueue
 import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
@@ -54,6 +61,7 @@ class NitroPlayerPlaybackService : MediaSessionService() {
     // ── Created in onCreate ────────────────────────────────────────────────
     private lateinit var player: ExoPlayer
     private var mediaSession: MediaSession? = null
+    private lateinit var sessionPlayer: Player
     private var notificationProvider: DefaultMediaNotificationProvider? = null
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -87,7 +95,7 @@ class NitroPlayerPlaybackService : MediaSessionService() {
         // The timeline is a window over the logical queue, so ExoPlayer's own prev/next would
         // only ever move inside it — remote Previous seeks to 0 instead of the previous track.
         // Route the remote controls through the same logical skips JS uses.
-        val sessionPlayer =
+        sessionPlayer =
             object : ForwardingPlayer(player) {
                 override fun seekToPrevious() {
                     trackPlayerCore?.skipToPreviousOnQueue() ?: super.seekToPrevious()
@@ -103,6 +111,53 @@ class NitroPlayerPlaybackService : MediaSessionService() {
 
                 override fun seekToNextMediaItem() {
                     trackPlayerCore?.skipToNextOnQueue() ?: super.seekToNextMediaItem()
+                }
+
+                // A controller's pick would otherwise load every track at once, bypassing the window and lazy URLs
+                override fun setMediaItems(
+                    mediaItems: MutableList<MediaItem>,
+                    resetPosition: Boolean,
+                ) {
+                    if (!playFromController(mediaItems, 0)) super.setMediaItems(mediaItems, resetPosition)
+                }
+
+                override fun setMediaItems(
+                    mediaItems: MutableList<MediaItem>,
+                    startIndex: Int,
+                    startPositionMs: Long,
+                ) {
+                    if (!playFromController(mediaItems, startIndex)) super.setMediaItems(mediaItems, startIndex, startPositionMs)
+                }
+
+                // Queued behind the load above, in the order the controller sent them
+                override fun prepare() {
+                    trackPlayerCore?.let { core -> core.enqueue { core.exo.prepare() } } ?: super.prepare()
+                }
+
+                override fun play() {
+                    trackPlayerCore?.let { core -> core.enqueue { core.playOnQueue() } } ?: super.play()
+                }
+
+                // Transcoded streams lack a length header, so ExoPlayer reads them as live: no bar or position in the car
+                override fun isCurrentMediaItemLive(): Boolean = super.isCurrentMediaItemLive() && knownDurationMs() == null
+
+                override fun getDuration(): Long = super.getDuration().takeIf { it != C.TIME_UNSET } ?: knownDurationMs() ?: C.TIME_UNSET
+
+                private fun knownDurationMs(): Long? = currentMediaItem?.mediaMetadata?.durationMs?.takeIf { it > 0 }
+
+                private fun playFromController(
+                    mediaItems: List<MediaItem>,
+                    startIndex: Int,
+                ): Boolean {
+                    val mediaId = mediaItems.getOrNull(maxOf(startIndex, 0))?.mediaId ?: return false
+                    if (mediaId == currentMediaItem?.mediaId && playerError == null) {
+                        // Re-picking a song still waiting for its URL asks the app for it again
+                        if (currentMediaItem?.localConfiguration?.uri == Uri.EMPTY) {
+                            trackPlayerCore?.let { core -> core.enqueue { core.checkUpcomingTracksForUrls(core.lookaheadCount, force = true) } }
+                        }
+                        return true
+                    }
+                    return trackPlayerCore?.playFromMediaId(mediaId) == true
                 }
             }
 
@@ -144,6 +199,7 @@ class NitroPlayerPlaybackService : MediaSessionService() {
                     castContext = castContext,
                     castPlayer = castPlayer,
                     localPlayer = player,
+                    localSessionPlayer = sessionPlayer,
                     mediaSession = mediaSession!!,
                     mainHandler = mainHandler,
                 )

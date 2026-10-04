@@ -16,6 +16,12 @@ namespace margelo::nitro::nitroplayer {
     registerHybrids(this, [](Prototype& prototype) {
       prototype.registerHybridMethod("setMediaLibrary", &HybridAndroidAutoMediaLibrarySpec::setMediaLibrary);
       prototype.registerHybridMethod("clearMediaLibrary", &HybridAndroidAutoMediaLibrarySpec::clearMediaLibrary);
+      prototype.registerHybridMethod("onLoadChildren", &HybridAndroidAutoMediaLibrarySpec::onLoadChildren);
+      prototype.registerHybridMethod("onSearch", &HybridAndroidAutoMediaLibrarySpec::onSearch);
+      prototype.registerHybridMethod("resolveRequest", &HybridAndroidAutoMediaLibrarySpec::resolveRequest);
+      prototype.registerHybridMethod("setSessionButtons", &HybridAndroidAutoMediaLibrarySpec::setSessionButtons);
+      prototype.registerHybridMethod("onSessionButtonPress", &HybridAndroidAutoMediaLibrarySpec::onSessionButtonPress);
+      prototype.registerHybridMethod("onPlaybackResumption", &HybridAndroidAutoMediaLibrarySpec::onPlaybackResumption);
     });
   }
 

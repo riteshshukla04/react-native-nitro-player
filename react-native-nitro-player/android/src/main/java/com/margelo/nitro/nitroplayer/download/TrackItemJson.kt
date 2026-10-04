@@ -1,5 +1,6 @@
 package com.margelo.nitro.nitroplayer.download
 
+import com.margelo.nitro.JNIOnLoad
 import com.margelo.nitro.core.AnyMap
 import com.margelo.nitro.nitroplayer.TrackItem
 import com.margelo.nitro.nitroplayer.Variant_NullType_String
@@ -8,6 +9,11 @@ import org.json.JSONObject
 // Survives process death inside the worker's inputData so a completed
 // download can be recorded even when the in-memory metadata maps are gone.
 internal object TrackItemJson {
+    // extraPayload is an AnyMap; downloads can run in a process JS never started
+    init {
+        JNIOnLoad.initializeNativeNitro()
+    }
+
     fun toJson(track: TrackItem): String =
         JSONObject()
             .apply {

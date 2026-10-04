@@ -1,5 +1,6 @@
 package com.margelo.nitro.nitroplayer.core
 
+import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 
@@ -42,7 +43,18 @@ class ExoPlayerCore(
     fun getPlaybackSpeed(): Float = player.playbackParameters.speed
 
     // ── Queue mutations ────────────────────────────────────────────────────
-    fun prepare() = player.prepare()
+    // A lazy track's empty URI fails as "Source error"; stay idle until updateTracks supplies it
+    fun prepare() {
+        if (isLazyCurrent()) return
+        player.prepare()
+    }
+
+    // A prepared player loads a new current item by itself, so idle it while that item still has no URI
+    fun holdLazyCurrent() {
+        if (isLazyCurrent() && player.playbackState != Player.STATE_IDLE) player.stop()
+    }
+
+    private fun isLazyCurrent(): Boolean = player.currentMediaItem?.localConfiguration?.uri == Uri.EMPTY
 
     fun seekToDefaultPosition(windowIndex: Int) = player.seekToDefaultPosition(windowIndex)
 
@@ -51,7 +63,10 @@ class ExoPlayerCore(
     fun setMediaItems(
         items: List<MediaItem>,
         resetPosition: Boolean = false,
-    ) = player.setMediaItems(items, resetPosition)
+    ) {
+        player.setMediaItems(items, resetPosition)
+        holdLazyCurrent()
+    }
 
     fun addMediaItems(items: List<MediaItem>) = player.addMediaItems(items)
 

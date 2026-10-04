@@ -135,6 +135,102 @@ AndroidAutoMediaLibraryHelper.clear();
 // Falls back to showing all playlists
 ```
 
+## Starting From the Car
+
+Android Auto can start your app with no UI at all: the process is killed, the driver opens your app on the head unit (or the car resumes music on connect). Nitro Player handles this natively — it creates the player and media session itself and connects the car straight away. Your app's React Native runtime starts in the background (no UI) on the first request that needs it — the driver opens your app, searches, picks a track, the car resumes music, or a track needs its [lazy URL](/docs/api/track-player#lazy-loading) — not merely because the car connected.
+
+For that to work, everything Android Auto needs must be registered at **module scope** (e.g. in `index.js` or a module it imports), not inside a component — components never mount in a headless start:
+
+```typescript
+// index.js
+import { TrackPlayer } from 'react-native-nitro-player';
+import { registerAndroidAuto } from './src/androidAuto';
+
+TrackPlayer.configure({ androidAutoEnabled: true });
+TrackPlayer.onTracksNeedUpdate(resolveUrls); // lazy URLs
+registerAndroidAuto(); // library, loaders, search, buttons
+
+AppRegistry.registerComponent(appName, () => App);
+```
+
+While a track's URL is still being resolved, the player waits for `updateTracks` instead of failing with a "Source error", and URL requests raised before your listener attached are re-sent once it does. Requests that fail because the network is down are re-sent once it is back, and picking the same waiting song again re-sends it.
+
+Some phones (Samsung One UI) stop React Native's JS timers while your app is in the background with the screen on, even while it plays. `fetch` resolves through `setTimeout`, so a `fetch`-based `onTracksNeedUpdate` never finishes there. Resolve URLs with `XMLHttpRequest` (its `onload` needs no timer) or a client built on it such as axios, and avoid `setTimeout` on that path.
+
+When the car sends play on connect ("Start music automatically"), Nitro Player waits up to 10s for your app to restore a queue and resumes it.
+
+## Loading Folders on Demand
+
+Large libraries do not fit in one published tree (Android Auto caps a single result at ~1 MB). Publish a folder with `children: []` and supply its children when the car opens it:
+
+```typescript
+AndroidAutoMediaLibraryHelper.set({
+  layoutType: 'grid',
+  rootItems: [
+    { id: 'artists', title: 'Artists', mediaType: 'folder', isPlayable: false, children: [] },
+  ],
+});
+
+AndroidAutoMediaLibraryHelper.setChildrenLoader(async (parentId) => {
+  if (parentId === 'artists') {
+    return artists.map((a) => ({
+      id: `artist:${a.id}`,
+      title: a.name,
+      mediaType: 'folder',
+      isPlayable: false,
+      children: [], // loaded on demand too
+      groupTitle: a.name[0], // section header
+    }));
+  }
+  if (parentId.startsWith('artist:')) {
+    const playlistId = await materializeArtistPlaylist(parentId.slice(7));
+    return (PlayerQueue.getPlaylist(playlistId)?.tracks ?? []).map((t) => ({
+      id: `${playlistId}:${t.id}`, // playable items: `${playlistId}:${trackId}`
+      title: t.title,
+      subtitle: t.artist,
+      mediaType: 'audio',
+      isPlayable: true,
+    }));
+  }
+  return null;
+});
+```
+
+Answer within a few seconds; after 10s the folder is shown empty, and a later answer (within a minute) makes the car reload it.
+
+## Search
+
+```typescript
+AndroidAutoMediaLibraryHelper.setSearchHandler(async (query) => {
+  const playlistId = await materializeSearchResults(query);
+  return toPlayableItems(playlistId);
+});
+```
+
+Registering a handler shows the search button in Android Auto (from the next connection). Voice requests the loaded playlists cannot match are sent to the same handler, and the first playable result is played. Results time out after 7s.
+
+## Session Buttons
+
+Add buttons next to the transport controls in Android Auto and the media notification — for example a favourite heart:
+
+```typescript
+let favourite = false;
+const showHeart = () =>
+  AndroidAutoMediaLibraryHelper.setSessionButtons([
+    { action: 'favourite', title: 'Favourite', icon: favourite ? 'heart_filled' : 'heart' },
+  ]);
+
+AndroidAutoMediaLibraryHelper.onSessionButtonPress((action) => {
+  if (action === 'favourite') {
+    favourite = !favourite;
+    showHeart();
+  }
+});
+showHeart();
+```
+
+Icons: `heart`, `heart_filled`, `star`, `star_filled`, `thumb_up`, `thumb_up_filled`, `plus`, `check`.
+
 ## Connection Detection
 
 ### Hook
@@ -206,7 +302,7 @@ When the user issues a voice command, Assistant/Gemini sends a `MediaItem` whose
 | _"Play **One More Time**"_ (title focus) | Track whose `title` matches |
 | _"Play music"_ (empty query) | Resumes the current playlist, else the first non-empty one |
 
-If nothing matches, the controller surfaces a spoken error rather than silently failing.
+If nothing matches, the query goes to your [search handler](#search) when one is registered; otherwise the controller surfaces a spoken error rather than silently failing.
 
 ### Tips for better recognition
 
@@ -225,9 +321,11 @@ If nothing matches, the controller surfaces a spoken error rather than silently 
 
 | `mediaType` | Behavior |
 |---|---|
-| `'folder'` | Browsable container — must have `children` |
+| `'folder'` | Browsable container — `children`, or `children: []` to [load on demand](#loading-folders-on-demand) |
 | `'playlist'` | Playable — links to a `PlayerQueue` playlist via `playlistId` |
-| `'audio'` | Single playable audio item |
+| `'audio'` | Single playable audio item — `id` must be `${playlistId}:${trackId}`, or `${playlistId}:${trackId}#${index}` for a song that appears more than once in the playlist |
+
+Any item can set `groupTitle`; consecutive items sharing one are listed under that header.
 
 ## Layout Options
 

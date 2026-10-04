@@ -7,6 +7,8 @@ import org.json.JSONObject
  * Parser for MediaLibrary JSON structure
  */
 object MediaLibraryParser {
+    fun itemsFromJson(json: String): List<MediaItem> = parseMediaItems(JSONArray(json))
+
     fun fromJson(json: String): MediaLibrary {
         val jsonObject = JSONObject(json)
 
@@ -68,6 +70,7 @@ object MediaLibraryParser {
             playlistId = jsonObject.optString("playlistId").takeIf { it.isNotEmpty() },
             children = children.takeIf { it.isNotEmpty() },
             layoutType = layoutType,
+            groupTitle = jsonObject.optString("groupTitle").takeIf { it.isNotEmpty() },
         )
     }
 }

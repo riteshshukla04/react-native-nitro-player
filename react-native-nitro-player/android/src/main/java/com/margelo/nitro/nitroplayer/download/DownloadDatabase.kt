@@ -1,6 +1,7 @@
 package com.margelo.nitro.nitroplayer.download
 
 import android.content.Context
+import com.margelo.nitro.JNIOnLoad
 import com.margelo.nitro.core.AnyMap
 import com.margelo.nitro.core.NullType
 import com.margelo.nitro.nitroplayer.*
@@ -56,6 +57,8 @@ class DownloadDatabase private constructor(
     private val ioScope = CoroutineScope(Dispatchers.IO.limitedParallelism(1) + SupervisorJob())
 
     init {
+        // Persisted extraPayloads are AnyMaps; a process started without JS has not loaded Nitro's JNI yet
+        JNIOnLoad.initializeNativeNitro()
         loadFromDisk()
     }
 

@@ -1,7 +1,7 @@
 // TODO: Export all HybridObjects here for the user
 
 import { NitroModules } from 'react-native-nitro-modules'
-import { Platform } from 'react-native'
+import { AppRegistry, Platform } from 'react-native'
 import type {
   PlayerQueue as PlayerQueueType,
   TrackPlayer as TrackPlayerType,
@@ -12,6 +12,14 @@ import type { AudioRoutePicker as AudioRoutePickerType } from './specs/AudioRout
 import type { Cast as CastType } from './specs/Cast.nitro'
 import type { DownloadManager as DownloadManagerType } from './specs/DownloadManager.nitro'
 import type { Equalizer as EqualizerType } from './specs/Equalizer.nitro'
+
+// Native runs this while it needs JS without a resumed activity (car, screen off): it keeps JS timers ticking
+if (Platform.OS === 'android') {
+  AppRegistry.registerHeadlessTask(
+    'NitroPlayerKeepAlive',
+    () => () => new Promise<void>(() => {})
+  )
+}
 
 export const PlayerQueue =
   NitroModules.createHybridObject<PlayerQueueType>('PlayerQueue')

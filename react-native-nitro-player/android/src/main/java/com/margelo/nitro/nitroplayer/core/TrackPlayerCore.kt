@@ -12,6 +12,11 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import com.facebook.react.ReactApplication
+import com.facebook.react.bridge.Arguments
+import com.facebook.react.bridge.ReactContext
+import com.facebook.react.jstasks.HeadlessJsTaskConfig
+import com.facebook.react.jstasks.HeadlessJsTaskContext
 import com.margelo.nitro.NitroModules
 import com.margelo.nitro.nitroplayer.Reason
 import com.margelo.nitro.nitroplayer.RepeatMode
@@ -83,6 +88,9 @@ class TrackPlayerCore private constructor(
     internal var remoteSkipForwardIntervalMs: Long = ExoPlayerBuilder.DEFAULT_REMOTE_SKIP_INTERVAL_MS
     internal var remoteSkipBackwardIntervalMs: Long = ExoPlayerBuilder.DEFAULT_REMOTE_SKIP_INTERVAL_MS
     internal var playerListener: androidx.media3.common.Player.Listener? = null
+    internal var consecutiveSourceErrors = 0
+    internal val urlRequestedAt = HashMap<String, Long>()
+    internal var networkRetryCallback: android.net.ConnectivityManager.NetworkCallback? = null
 
     // ── Temporary queue ────────────────────────────────────────────────────
     internal var playNextStack: MutableList<TrackItem> = mutableListOf()
@@ -161,7 +169,10 @@ class TrackPlayerCore private constructor(
         val anchor = old.getOrNull(currentTrackIndex)
         currentTracks = next
         if (anchor == null) return AnchorOutcome.NONE
-        val newIndex = next.indexOfFirst { it.id == anchor.id }
+        // A repeated track keeps its rank among the occurrences, so editing elsewhere does not jump to another copy
+        val rank = old.subList(0, currentTrackIndex).count { it.id == anchor.id }
+        val occurrences = next.indices.filter { next[it].id == anchor.id }
+        val newIndex = occurrences.getOrElse(rank) { occurrences.lastOrNull() ?: -1 }
         if (newIndex >= 0) {
             currentTrackIndex = newIndex
             return AnchorOutcome.KEPT
@@ -251,6 +262,7 @@ class TrackPlayerCore private constructor(
     // ── Singleton ──────────────────────────────────────────────────────────
     companion object {
         internal const val PROGRESS_INTERVAL_MS = 1000L
+        private const val KEEP_ALIVE_TASK = "NitroPlayerKeepAlive"
 
         @Volatile
         @Suppress("ktlint:standard:property-naming")
@@ -393,6 +405,34 @@ class TrackPlayerCore private constructor(
         }
     }
 
+    /** Lazy URLs come from JS; a process started by the car or a controller has no runtime until started. */
+    internal fun startJsRuntimeIfNeeded() {
+        val host = (context as? ReactApplication)?.reactHost ?: return
+        if (host.currentReactContext == null) host.start()
+    }
+
+    private var keepAliveTask: Pair<ReactContext, Int>? = null
+
+    /** Without a resumed activity (car, screen off) RN pauses JS timers; a headless task keeps them running while JS may be needed. */
+    internal fun updateJsKeepAlive() {
+        val wanted = isAndroidAutoConnectedField || (isExoInitialized && exo.playWhenReady)
+        val reactContext = (context as? ReactApplication)?.reactHost?.currentReactContext
+        keepAliveTask?.let { (taskContext, taskId) ->
+            val tasks = HeadlessJsTaskContext.getInstance(taskContext)
+            if (wanted && taskContext === reactContext && tasks.isTaskRunning(taskId)) return
+            if (tasks.isTaskRunning(taskId)) tasks.finishTask(taskId)
+            keepAliveTask = null
+        }
+        if (!wanted || reactContext == null || !reactContext.hasActiveReactInstance()) return
+        try {
+            val config = HeadlessJsTaskConfig(KEEP_ALIVE_TASK, Arguments.createMap(), 0, true)
+            keepAliveTask = reactContext to HeadlessJsTaskContext.getInstance(reactContext).startTask(config)
+            NitroPlayerLogger.log("TrackPlayerCore") { "keep-alive task started: ${keepAliveTask?.second}" }
+        } catch (e: Exception) {
+            NitroPlayerLogger.log("TrackPlayerCore") { "keep-alive task not started: ${e.message}" }
+        }
+    }
+
     // ── Simple read-only accessors ─────────────────────────────────────────
 
     fun isAndroidAutoConnected(): Boolean = isAndroidAutoConnectedField
@@ -421,7 +461,12 @@ class TrackPlayerCore private constructor(
 
     fun removeOnPlaybackProgressChangeListener(id: Long): Boolean = onProgressListeners.remove(id)
 
-    fun addOnTracksNeedUpdateListener(cb: (List<TrackItem>, Int) -> Unit): Long = onTracksNeedUpdateListeners.add(cb)
+    fun addOnTracksNeedUpdateListener(cb: (List<TrackItem>, Int) -> Unit): Long {
+        val id = onTracksNeedUpdateListeners.add(cb)
+        // Requests raised before JS was listening (headless start) are otherwise lost
+        enqueue { checkUpcomingTracksForUrls(lookaheadCount, force = true) }
+        return id
+    }
 
     fun removeOnTracksNeedUpdateListener(id: Long): Boolean = onTracksNeedUpdateListeners.remove(id)
 

@@ -1,10 +1,13 @@
 package com.margelo.nitro.nitroplayer.media
 
 import android.content.Context
+import android.os.Bundle
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaSession
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionCommands
 import com.margelo.nitro.nitroplayer.R
 import com.margelo.nitro.nitroplayer.TrackItem
 import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
@@ -45,6 +48,36 @@ class MediaSessionManager(
     private var remoteSkipForwardIntervalMs: Long = DEFAULT_REMOTE_SKIP_INTERVAL_MS
     private var remoteSkipBackwardIntervalMs: Long = DEFAULT_REMOTE_SKIP_INTERVAL_MS
 
+    /** App-defined button; [icon] is a CommandButton.ICON_* constant. */
+    data class SessionButton(
+        val action: String,
+        val title: String,
+        val icon: Int,
+    )
+
+    private var sessionButtons: List<SessionButton> = emptyList()
+
+    @Volatile var onSessionButtonPress: ((action: String) -> Unit)? = null
+
+    fun sessionCommands(): SessionCommands =
+        MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS
+            .buildUpon()
+            .apply { sessionButtons.forEach { add(SessionCommand(it.action, Bundle.EMPTY)) } }
+            .build()
+
+    fun handlesSessionButton(action: String): Boolean = sessionButtons.any { it.action == action }
+
+    fun setSessionButtons(buttons: List<SessionButton>) {
+        sessionButtons = buttons
+        val session = mediaSession ?: return
+        // A controller only shows or presses a button whose command it was granted; the notification one feeds Android Auto
+        val commands = sessionCommands()
+        (session.connectedControllers + listOfNotNull(session.mediaNotificationControllerInfo)).distinct().forEach {
+            session.setAvailableCommands(it, commands, MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS)
+        }
+        updateMediaButtonPreferences()
+    }
+
     init {
         updateMediaButtonPreferences()
     }
@@ -82,9 +115,18 @@ class MediaSessionManager(
         // Preferences replace Media3's default layout — prev/next must be declared or they vanish.
         // Compact only shows BACK / play-pause / FORWARD, so the ±N skips go to OVERFLOW; left in
         // the forward slot they push Next out of the compact notification entirely.
-        val preserved = session.mediaButtonPreferences.filterNot { it.isManagedButton() }
+        val preserved = session.mediaButtonPreferences.filterNot { it.isManagedButton() || it.sessionCommand != null }
+        val custom =
+            sessionButtons.map {
+                CommandButton
+                    .Builder(it.icon)
+                    .setDisplayName(it.title)
+                    .setSessionCommand(SessionCommand(it.action, Bundle.EMPTY))
+                    .setSlots(CommandButton.SLOT_OVERFLOW)
+                    .build()
+            }
         session.setMediaButtonPreferences(
-            listOf(previousTrackButton(), nextTrackButton(), skipBackButton(), skipForwardButton()) + preserved,
+            listOf(previousTrackButton(), nextTrackButton()) + custom + listOf(skipBackButton(), skipForwardButton()) + preserved,
         )
     }
 

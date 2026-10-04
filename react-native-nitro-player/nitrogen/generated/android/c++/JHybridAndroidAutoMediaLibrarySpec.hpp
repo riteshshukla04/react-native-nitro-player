@@ -56,6 +56,12 @@ namespace margelo::nitro::nitroplayer {
     // Methods
     std::shared_ptr<Promise<void>> setMediaLibrary(const std::string& libraryJson) override;
     std::shared_ptr<Promise<void>> clearMediaLibrary() override;
+    void onLoadChildren(const std::function<void(const std::string& /* requestId */, const std::string& /* parentId */)>& callback) override;
+    void onSearch(const std::function<void(const std::string& /* requestId */, const std::string& /* query */)>& callback) override;
+    void resolveRequest(const std::string& requestId, const std::string& itemsJson) override;
+    void setSessionButtons(const std::string& buttonsJson) override;
+    void onSessionButtonPress(const std::function<void(const std::string& /* action */)>& callback) override;
+    void onPlaybackResumption(const std::function<void()>& callback) override;
 
   private:
     jni::global_ref<JHybridAndroidAutoMediaLibrarySpec::JavaPart> _javaPart;

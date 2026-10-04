@@ -1,6 +1,7 @@
 package com.margelo.nitro.nitroplayer.playlist
 
 import android.content.Context
+import com.margelo.nitro.JNIOnLoad
 import com.margelo.nitro.core.AnyMap
 import com.margelo.nitro.nitroplayer.QueueOperation
 import com.margelo.nitro.nitroplayer.TrackItem
@@ -59,6 +60,8 @@ class PlaylistManager private constructor(
     }
 
     init {
+        // Persisted extraPayloads are AnyMaps; a process started without JS has not loaded Nitro's JNI yet
+        JNIOnLoad.initializeNativeNitro()
         // Synchronous so no mutation can race a late async load and be clobbered
         loadPlaylistsFromFile()
     }
@@ -135,6 +138,18 @@ class PlaylistManager private constructor(
      * Get a playlist by ID
      */
     fun getPlaylist(playlistId: String): Playlist? = playlists[playlistId]
+
+    /** "trackId" or, for a repeated track, "trackId#index" as the car browser lists it; -1 when it is not in the playlist. */
+    fun indexOfTrackRef(
+        playlistId: String,
+        trackRef: String,
+    ): Int {
+        val tracks = playlists[playlistId]?.tracks ?: return -1
+        val exact = tracks.indexOfFirst { it.id == trackRef }
+        if (exact >= 0) return exact
+        val index = trackRef.substringAfterLast('#', "").toIntOrNull() ?: return -1
+        return index.takeIf { tracks.getOrNull(it)?.id == trackRef.substringBeforeLast('#') } ?: -1
+    }
 
     /**
      * Get all playlists

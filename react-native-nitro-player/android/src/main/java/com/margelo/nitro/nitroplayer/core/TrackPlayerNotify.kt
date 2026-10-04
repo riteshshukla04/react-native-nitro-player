@@ -43,7 +43,12 @@ internal fun TrackPlayerCore.notifyTracksNeedUpdate(
     tracks: List<TrackItem>,
     lookahead: Int,
 ) {
+    NitroPlayerLogger.log("TrackPlayer") { "tracksNeedUpdate: ${tracks.size} track(s), listening=${!onTracksNeedUpdateListeners.isEmpty}" }
+    startJsRuntimeIfNeeded()
+    updateJsKeepAlive()
     onTracksNeedUpdateListeners.forEach { it(tracks, lookahead) }
+    // A lookup that hits a dead network usually fails in the app; ask again once it is back
+    awaitNetworkThenRetry(afterLoss = isNetworkValidated())
 }
 
 internal fun TrackPlayerCore.notifyTimedMetadata(metadata: TimedMetadata) {

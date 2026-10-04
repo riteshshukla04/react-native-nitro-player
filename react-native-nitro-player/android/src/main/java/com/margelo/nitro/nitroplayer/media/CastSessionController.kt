@@ -35,6 +35,8 @@ class CastSessionController(
     private val castContext: CastContext,
     val castPlayer: CastPlayer,
     val localPlayer: Player,
+    /** What the session drives locally — wraps [localPlayer] to route remote commands through the core. */
+    val localSessionPlayer: Player,
     val mediaSession: MediaSession,
     private val mainHandler: Handler,
 ) {

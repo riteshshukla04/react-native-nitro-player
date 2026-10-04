@@ -3,18 +3,22 @@
 package com.margelo.nitro.nitroplayer.media
 
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.provider.MediaStore
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Player
+import androidx.media3.common.Timeline
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.SettableFuture
 import com.margelo.nitro.nitroplayer.TrackItem
 import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
-import com.margelo.nitro.nitroplayer.core.loadPlaylist
 import com.margelo.nitro.nitroplayer.playlist.Playlist
 import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
 import kotlinx.coroutines.CoroutineScope
@@ -43,7 +47,8 @@ object MediaSessionCallbackFactory {
                 MediaSession.ConnectionResult
                     .AcceptedResultBuilder(session)
                     .setAvailableSessionCommands(
-                        MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS,
+                        service.trackPlayerCore?.mediaSessionManager?.sessionCommands()
+                            ?: MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS,
                     ).setAvailablePlayerCommands(
                         MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS,
                     ).build()
@@ -74,7 +79,7 @@ object MediaSessionCallbackFactory {
                             val playlistId = mediaId.substring(0, colonIdx)
                             val trackId = mediaId.substring(colonIdx + 1)
                             val playlist = playlistManager.getPlaylist(playlistId)
-                            val track = playlist?.tracks?.find { it.id == trackId }
+                            val track = playlist?.tracks?.getOrNull(playlistManager.indexOfTrackRef(playlistId, trackId))
                             if (track != null) {
                                 updated.add(createMediaItem(track, mediaId))
                             } else {
@@ -105,10 +110,7 @@ object MediaSessionCallbackFactory {
                 // it against loaded playlists before falling through.
                 val voiceMatch = resolveVoiceSearch(mediaItems, playlistManager)
                 if (voiceMatch != null) {
-                    val (playlistId, items, trackIndex) = voiceMatch
-                    service.trackPlayerCore?.let { core ->
-                        scope.launch { core.loadPlaylist(playlistId, trackIndex) }
-                    }
+                    val (_, items, trackIndex) = voiceMatch
                     return Futures.immediateFuture(
                         MediaSession.MediaItemsWithStartPosition(items, trackIndex, startPositionMs),
                     )
@@ -127,15 +129,15 @@ object MediaSessionCallbackFactory {
                         val trackId = firstMediaId.substring(colonIdx + 1)
                         val playlist = playlistManager.getPlaylist(playlistId)
                         if (playlist != null) {
-                            val trackIndex = playlist.tracks.indexOfFirst { it.id == trackId }
+                            val trackIndex = playlistManager.indexOfTrackRef(playlistId, trackId)
                             if (trackIndex >= 0) {
-                                service.trackPlayerCore?.let { core ->
-                                    scope.launch { core.loadPlaylist(playlistId, trackIndex) }
-                                }
+                                val seen = mutableSetOf<String>()
                                 val playlistMediaItems =
                                     playlist.tracks
-                                        .map { track -> createMediaItem(track, "$playlistId:${track.id}") }
-                                        .toMutableList()
+                                        .mapIndexed { i, track ->
+                                            val ref = if (seen.add(track.id)) track.id else "${track.id}#$i"
+                                            createMediaItem(track, "$playlistId:$ref")
+                                        }.toMutableList()
                                 return Futures.immediateFuture(
                                     MediaSession.MediaItemsWithStartPosition(
                                         playlistMediaItems,
@@ -150,19 +152,51 @@ object MediaSessionCallbackFactory {
                     NitroPlayerLogger.log("MediaSessionCallback") { "Error in onSetMediaItems: ${e.message}" }
                 }
 
-                // If a voice query was issued but found nothing, return an
-                // explicit failure so the controller (Assistant) surfaces a
-                // spoken error instead of silently no-oping. Without this the
-                // Auto QA bot reports "no music played or error message shown".
-                if (mediaItems.isNotEmpty() && mediaItems[0].requestMetadata.searchQuery != null) {
-                    return Futures.immediateFailedFuture(
-                        UnsupportedOperationException("No matching tracks for voice search"),
-                    )
-                }
+                // No match in loaded playlists: try the app's search, else fail so Assistant speaks an error
+                val voiceQuery = mediaItems.firstOrNull()?.requestMetadata?.searchQuery
+                if (voiceQuery != null) return searchAndPlay(service, playlistManager, scope, voiceQuery, startPositionMs)
 
                 return Futures.immediateFuture(
                     MediaSession.MediaItemsWithStartPosition(mediaItems, startIndex, startPositionMs),
                 )
+            }
+
+            // Car "start music automatically" on a cold start: play what the app restores once its JS is up
+            override fun onPlaybackResumption(
+                mediaSession: MediaSession,
+                controller: MediaSession.ControllerInfo,
+                isForPlayback: Boolean,
+            ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+                service.trackPlayerCore?.startJsRuntimeIfNeeded()
+                MediaLibraryManager.getInstance(service).requestResumption()
+                val future = SettableFuture.create<MediaSession.MediaItemsWithStartPosition>()
+                val player = mediaSession.player
+                val handler = Handler(Looper.getMainLooper())
+                lateinit var listener: Player.Listener
+                lateinit var timeout: Runnable
+                val finish = {
+                    player.removeListener(listener)
+                    handler.removeCallbacks(timeout)
+                    val item = player.currentMediaItem
+                    if (item != null) {
+                        future.set(MediaSession.MediaItemsWithStartPosition(listOf(item), 0, player.currentPosition))
+                    } else {
+                        future.setException(UnsupportedOperationException("Nothing to resume"))
+                    }
+                }
+                listener =
+                    object : Player.Listener {
+                        override fun onTimelineChanged(
+                            timeline: Timeline,
+                            reason: Int,
+                        ) {
+                            if (player.currentMediaItem != null) finish()
+                        }
+                    }
+                timeout = Runnable { finish() }
+                player.addListener(listener)
+                handler.postDelayed(timeout, RESUMPTION_TIMEOUT_MS)
+                return future
             }
 
             override fun onCustomCommand(
@@ -170,10 +204,54 @@ object MediaSessionCallbackFactory {
                 controller: MediaSession.ControllerInfo,
                 customCommand: SessionCommand,
                 args: android.os.Bundle,
-            ): ListenableFuture<SessionResult> =
-                Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+            ): ListenableFuture<SessionResult> {
+                val manager = service.trackPlayerCore?.mediaSessionManager
+                if (manager?.handlesSessionButton(customCommand.customAction) == true) {
+                    manager.onSessionButtonPress?.invoke(customCommand.customAction)
+                }
+                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+            }
         }
     }
+
+    // Asks the app's search, which can look past the loaded playlists; plays the first result naming a playlist track
+    private fun searchAndPlay(
+        service: NitroPlayerPlaybackService,
+        playlistManager: PlaylistManager,
+        scope: CoroutineScope,
+        query: String,
+        startPositionMs: Long,
+    ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+        val future = SettableFuture.create<MediaSession.MediaItemsWithStartPosition>()
+        scope.launch {
+            val match =
+                MediaLibraryManager
+                    .getInstance(service)
+                    .search(query)
+                    ?.firstNotNullOfOrNull { resolveTrack(it.id, playlistManager) }
+            if (match == null) {
+                future.setException(UnsupportedOperationException("No matching tracks for voice search"))
+                return@launch
+            }
+            val (playlist, index) = match
+            val items = playlist.tracks.map { createMediaItem(it, "${playlist.id}:${it.id}") }
+            future.set(MediaSession.MediaItemsWithStartPosition(items, index, startPositionMs))
+        }
+        return future
+    }
+
+    private fun resolveTrack(
+        mediaId: String,
+        playlistManager: PlaylistManager,
+    ): Pair<Playlist, Int>? {
+        val colonIndex = mediaId.indexOf(':')
+        if (colonIndex <= 0) return null
+        val playlist = playlistManager.getPlaylist(mediaId.substring(0, colonIndex)) ?: return null
+        val index = playlistManager.indexOfTrackRef(playlist.id, mediaId.substring(colonIndex + 1))
+        return if (index >= 0) playlist to index else null
+    }
+
+    private const val RESUMPTION_TIMEOUT_MS = 10_000L
 
     private data class VoiceMatch(
         val playlistId: String,
