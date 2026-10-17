@@ -129,6 +129,7 @@ interface PlayerConfig {
   showInNotification?: boolean;   // Default: true
   remoteSkipForwardInterval?: number;   // Default: 15 — seconds
   remoteSkipBackwardInterval?: number;  // Default: 15 — seconds
+  preferRemoteSkipIntervals?: boolean;  // Default: false — iOS shows skip-interval buttons instead of next/previous
   lookaheadCount?: number;        // Default: 5 — tracks to preload URLs for
   androidNotificationIcon?: string; // Android only — host-app drawable name for the notification small icon (white monochrome)
   androidAudioFocus?: AndroidAudioFocusMode; // Default: 'pause' — Android only

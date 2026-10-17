@@ -28,6 +28,7 @@ class MediaSessionManager {
   private var showInNotification: Bool = true
   private var remoteSkipForwardInterval: Double = Constants.defaultRemoteSkipInterval
   private var remoteSkipBackwardInterval: Double = Constants.defaultRemoteSkipInterval
+  private var preferRemoteSkipIntervals = false
 
   // Tracks the artwork URL currently shown so we can discard stale async loads
   private var lastArtworkUrl: String?
@@ -56,10 +57,14 @@ class MediaSessionManager {
     showInNotification: Bool?,
     remoteSkipForwardInterval: Double?,
     remoteSkipBackwardInterval: Double?,
+    preferRemoteSkipIntervals: Bool?,
     playbackSpeed: Double?
   ) {
     if let showInNotification = showInNotification {
       self.showInNotification = showInNotification
+    }
+    if let preferRemoteSkipIntervals = preferRemoteSkipIntervals {
+      self.preferRemoteSkipIntervals = preferRemoteSkipIntervals
     }
     if let playbackSpeed = sanitizedPositive(playbackSpeed) {
       cachedPlaybackSpeed = playbackSpeed
@@ -321,8 +326,9 @@ class MediaSessionManager {
 
     commandCenter.nextTrackCommand.isEnabled = hasCurrentTrack && isNotLast
     commandCenter.previousTrackCommand.isEnabled = hasCurrentTrack
-    commandCenter.skipForwardCommand.isEnabled = hasCurrentTrack
-    commandCenter.skipBackwardCommand.isEnabled = hasCurrentTrack
+    // iOS shows enabled skip-interval commands in place of next/previous, so they stay off unless the app prefers them
+    commandCenter.skipForwardCommand.isEnabled = hasCurrentTrack && preferRemoteSkipIntervals
+    commandCenter.skipBackwardCommand.isEnabled = hasCurrentTrack && preferRemoteSkipIntervals
     commandCenter.changePlaybackRateCommand.isEnabled = hasCurrentTrack
     commandCenter.changePlaybackPositionCommand.isEnabled = hasCurrentTrack && hasDuration
   }

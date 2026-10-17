@@ -83,6 +83,10 @@ export interface PlayerConfig {
    */
   remoteSkipBackwardInterval?: number
   /**
+   * iOS only, ignored on Android: the lock screen, Control Center and CarPlay side buttons skip by the remote skip intervals instead of changing track (default: false)
+   */
+  preferRemoteSkipIntervals?: boolean
+  /**
    * Number of upcoming tracks to preload URLs for (default: 5)
    * Higher values = more proactive loading, but more network requests
    */
