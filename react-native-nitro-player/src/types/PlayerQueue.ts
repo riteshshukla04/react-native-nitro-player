@@ -83,7 +83,7 @@ export interface PlayerConfig {
    */
   remoteSkipBackwardInterval?: number
   /**
-   * Show the skip-interval buttons instead of next/previous track on iOS lock screen, Control Center and CarPlay, which fit only one pair (default: false)
+   * iOS only, ignored on Android: the lock screen, Control Center and CarPlay side buttons skip by the remote skip intervals instead of changing track (default: false)
    */
   preferRemoteSkipIntervals?: boolean
   /**
