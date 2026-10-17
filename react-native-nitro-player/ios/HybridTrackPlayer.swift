@@ -100,7 +100,8 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
         showInNotification: config.showInNotification,
         lookaheadCount: config.lookaheadCount.map { Int($0) },
         remoteSkipForwardInterval: config.remoteSkipForwardInterval,
-        remoteSkipBackwardInterval: config.remoteSkipBackwardInterval
+        remoteSkipBackwardInterval: config.remoteSkipBackwardInterval,
+        preferRemoteSkipIntervals: config.preferRemoteSkipIntervals
       )
     }
   }

@@ -104,7 +104,8 @@ extension TrackPlayerCore {
   func configureOnQueue(
     androidAutoEnabled: Bool?, carPlayEnabled: Bool?,
     showInNotification: Bool?, lookaheadCount: Int?,
-    remoteSkipForwardInterval: Double?, remoteSkipBackwardInterval: Double?
+    remoteSkipForwardInterval: Double?, remoteSkipBackwardInterval: Double?,
+    preferRemoteSkipIntervals: Bool?
   ) {
     if let la = lookaheadCount {
       self.lookaheadCount = la
@@ -118,6 +119,7 @@ extension TrackPlayerCore {
         showInNotification: showInNotification,
         remoteSkipForwardInterval: remoteSkipForwardInterval,
         remoteSkipBackwardInterval: remoteSkipBackwardInterval,
+        preferRemoteSkipIntervals: preferRemoteSkipIntervals,
         playbackSpeed: playbackSpeed
       )
     }
@@ -125,14 +127,16 @@ extension TrackPlayerCore {
   func configure(
     androidAutoEnabled: Bool?, carPlayEnabled: Bool?,
     showInNotification: Bool?, lookaheadCount: Int?,
-    remoteSkipForwardInterval: Double?, remoteSkipBackwardInterval: Double?
+    remoteSkipForwardInterval: Double?, remoteSkipBackwardInterval: Double?,
+    preferRemoteSkipIntervals: Bool?
   ) async {
     await withPlayerQueueNoThrow {
       self.configureOnQueue(
         androidAutoEnabled: androidAutoEnabled, carPlayEnabled: carPlayEnabled,
         showInNotification: showInNotification, lookaheadCount: lookaheadCount,
         remoteSkipForwardInterval: remoteSkipForwardInterval,
-        remoteSkipBackwardInterval: remoteSkipBackwardInterval)
+        remoteSkipBackwardInterval: remoteSkipBackwardInterval,
+        preferRemoteSkipIntervals: preferRemoteSkipIntervals)
     }
   }
 

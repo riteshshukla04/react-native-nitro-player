@@ -18,7 +18,7 @@ public extension PlayerConfig {
   /**
    * Create a new instance of `PlayerConfig`.
    */
-  init(androidAutoEnabled: Bool?, carPlayEnabled: Bool?, showInNotification: Bool?, remoteSkipForwardInterval: Double?, remoteSkipBackwardInterval: Double?, lookaheadCount: Double?, androidNotificationIcon: String?, androidAudioFocus: AndroidAudioFocusMode?) {
+  init(androidAutoEnabled: Bool?, carPlayEnabled: Bool?, showInNotification: Bool?, remoteSkipForwardInterval: Double?, remoteSkipBackwardInterval: Double?, preferRemoteSkipIntervals: Bool?, lookaheadCount: Double?, androidNotificationIcon: String?, androidAudioFocus: AndroidAudioFocusMode?) {
     self.init({ () -> bridge.std__optional_bool_ in
       if let __unwrappedValue = androidAutoEnabled {
         return bridge.create_std__optional_bool_(__unwrappedValue)
@@ -46,6 +46,12 @@ public extension PlayerConfig {
     }(), { () -> bridge.std__optional_double_ in
       if let __unwrappedValue = remoteSkipBackwardInterval {
         return bridge.create_std__optional_double_(__unwrappedValue)
+      } else {
+        return .init()
+      }
+    }(), { () -> bridge.std__optional_bool_ in
+      if let __unwrappedValue = preferRemoteSkipIntervals {
+        return bridge.create_std__optional_bool_(__unwrappedValue)
       } else {
         return .init()
       }
@@ -123,6 +129,18 @@ public extension PlayerConfig {
     return { () -> Double? in
       if bridge.has_value_std__optional_double_(self.__remoteSkipBackwardInterval) {
         let __unwrapped = bridge.get_std__optional_double_(self.__remoteSkipBackwardInterval)
+        return __unwrapped
+      } else {
+        return nil
+      }
+    }()
+  }
+  
+  @inline(__always)
+  var preferRemoteSkipIntervals: Bool? {
+    return { () -> Bool? in
+      if bridge.has_value_std__optional_bool_(self.__preferRemoteSkipIntervals) {
+        let __unwrapped = bridge.get_std__optional_bool_(self.__preferRemoteSkipIntervals)
         return __unwrapped
       } else {
         return nil
