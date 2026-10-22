@@ -1,4 +1,4 @@
-import type { AnyMap } from 'react-native-nitro-modules'
+import type { AnyJSON } from 'react-native-nitro-modules'
 
 export type CurrentPlayingType =
   | 'playlist'
@@ -13,7 +13,7 @@ export interface TrackItem {
   duration: number
   url: string
   artwork?: string | null
-  extraPayload?: AnyMap
+  extraPayload?: Record<string, AnyJSON>
 }
 
 export interface Playlist {

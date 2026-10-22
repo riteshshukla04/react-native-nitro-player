@@ -1,17 +1,14 @@
-// TODO: Export all HybridObjects here for the user
-
-import { NitroModules } from 'react-native-nitro-modules'
 import { AppRegistry, Platform } from 'react-native'
-import type {
-  PlayerQueue as PlayerQueueType,
-  TrackPlayer as TrackPlayerType,
+import {
+  PlayerQueue as HybridPlayerQueue,
+  TrackPlayer as HybridTrackPlayer,
 } from './specs/TrackPlayer.nitro'
-import type { AndroidAutoMediaLibrary as AndroidAutoMediaLibraryType } from './specs/AndroidAutoMediaLibrary.nitro'
-import type { AudioDevices as AudioDevicesType } from './specs/AudioDevices.nitro'
-import type { AudioRoutePicker as AudioRoutePickerType } from './specs/AudioRoutePicker.nitro'
-import type { Cast as CastType } from './specs/Cast.nitro'
-import type { DownloadManager as DownloadManagerType } from './specs/DownloadManager.nitro'
-import type { Equalizer as EqualizerType } from './specs/Equalizer.nitro'
+import { AndroidAutoMediaLibrary as HybridAndroidAutoMediaLibrary } from './specs/AndroidAutoMediaLibrary.nitro'
+import { AudioDevices as HybridAudioDevices } from './specs/AudioDevices.nitro'
+import { AudioRoutePicker as HybridAudioRoutePicker } from './specs/AudioRoutePicker.nitro'
+import { Cast as HybridCast } from './specs/Cast.nitro'
+import { DownloadManager as HybridDownloadManager } from './specs/DownloadManager.nitro'
+import { Equalizer as HybridEqualizer } from './specs/Equalizer.nitro'
 
 // Native runs this while it needs JS without a resumed activity (car, screen off): it keeps JS timers ticking
 if (Platform.OS === 'android') {
@@ -21,41 +18,30 @@ if (Platform.OS === 'android') {
   )
 }
 
-export const PlayerQueue =
-  NitroModules.createHybridObject<PlayerQueueType>('PlayerQueue')
-export const TrackPlayer =
-  NitroModules.createHybridObject<TrackPlayerType>('TrackPlayer')
+// One instance per JS runtime: each instance removes its native listeners when the runtime tears it down
+export const PlayerQueue = new HybridPlayerQueue()
+export const TrackPlayer = new HybridTrackPlayer()
 
 // Android-only: Android Auto Media Library
 export const AndroidAutoMediaLibrary =
-  Platform.OS === 'android'
-    ? NitroModules.createHybridObject<AndroidAutoMediaLibraryType>(
-        'AndroidAutoMediaLibrary'
-      )
-    : null
+  Platform.OS === 'android' ? new HybridAndroidAutoMediaLibrary() : null
 
-// Android-only: Audio Devices
+// Android-only: Audio Devices (static methods, no instance)
 export const AudioDevices =
-  Platform.OS === 'android'
-    ? NitroModules.createHybridObject<AudioDevicesType>('AudioDevices')
-    : null
+  Platform.OS === 'android' ? HybridAudioDevices : null
 
-// iOS-only: Audio Route Picker
+// iOS-only: Audio Route Picker (static methods, no instance)
 export const AudioRoutePicker =
-  Platform.OS === 'ios'
-    ? NitroModules.createHybridObject<AudioRoutePickerType>('AudioRoutePicker')
-    : null
+  Platform.OS === 'ios' ? HybridAudioRoutePicker : null
 
 // Google Cast (iOS + Android)
-export const Cast = NitroModules.createHybridObject<CastType>('Cast')
+export const Cast = new HybridCast()
 
 // Download Manager
-export const DownloadManager =
-  NitroModules.createHybridObject<DownloadManagerType>('DownloadManager')
+export const DownloadManager = new HybridDownloadManager()
 
 // Equalizer
-export const Equalizer =
-  NitroModules.createHybridObject<EqualizerType>('Equalizer')
+export const Equalizer = new HybridEqualizer()
 
 // Export hooks
 export * from './hooks'
