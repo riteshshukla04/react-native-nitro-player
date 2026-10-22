@@ -9,7 +9,8 @@ import Foundation
 import NitroModules
 
 /// Manages file operations for downloaded tracks
-final class DownloadFileManager {
+// Only immutable state; `FileManager.default` is documented as thread-safe.
+final class DownloadFileManager: @unchecked Sendable {
 
   // MARK: - Singleton
 

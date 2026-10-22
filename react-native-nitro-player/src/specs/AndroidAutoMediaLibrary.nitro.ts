@@ -1,12 +1,18 @@
-import type { HybridObject } from 'react-native-nitro-modules'
+import { Android, type HybridObject } from 'react-native-nitro-modules'
+
+export * from '#nitro/AndroidAutoMediaLibrary'
 
 /**
  * Android Auto Media Library Manager
  * Android-only HybridObject for managing Android Auto media browser structure
  */
-export interface AndroidAutoMediaLibrary extends HybridObject<{
-  android: 'kotlin'
-}> {
+@Android({
+  language: 'kotlin',
+  implementation: { className: 'HybridAndroidAutoMediaLibrary' },
+})
+export declare class AndroidAutoMediaLibrary extends HybridObject {
+  constructor()
+
   /**
    * Set the Android Auto media library structure
    * This defines what folders and playlists appear in Android Auto

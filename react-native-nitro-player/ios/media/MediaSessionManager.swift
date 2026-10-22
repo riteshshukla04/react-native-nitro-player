@@ -11,7 +11,8 @@ import MediaPlayer
 import NitroModules
 import UIKit
 
-class MediaSessionManager {
+// State is only touched on the main thread; `refresh()` hops there.
+class MediaSessionManager: @unchecked Sendable {
   // MARK: - Constants
 
   private enum Constants {
@@ -307,7 +308,8 @@ class MediaSessionManager {
         info[MPNowPlayingInfoPropertyPlaybackRate] = 0.0
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
       }
-      Task { await core.seek(position: positionEvent.positionTime) }
+      let position = positionEvent.positionTime
+      Task { await core.seek(position: position) }
       return .success
     }
   }
@@ -365,7 +367,7 @@ class MediaSessionManager {
     lastArtworkUrl = nil
   }
 
-  private func loadArtwork(url: String, completion: @escaping (UIImage?) -> Void) {
+  private func loadArtwork(url: String, completion: @escaping @Sendable (UIImage?) -> Void) {
     if let cached = artworkCache.object(forKey: url as NSString) {
       completion(cached)
       return

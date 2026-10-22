@@ -1,4 +1,4 @@
-import type { HybridObject } from 'react-native-nitro-modules'
+import { Android, iOS, type HybridObject } from 'react-native-nitro-modules'
 import type {
   QueueOperation,
   Reason,
@@ -11,10 +11,20 @@ import type {
   ShufflePlaylistOptions,
 } from '../types/PlayerQueue'
 
-export interface PlayerQueue extends HybridObject<{
-  android: 'kotlin'
-  ios: 'swift'
-}> {
+export * from '#nitro/PlayerQueue'
+export * from '#nitro/TrackPlayer'
+
+@iOS({
+  language: 'swift',
+  implementation: { className: 'HybridPlayerQueue' },
+})
+@Android({
+  language: 'kotlin',
+  implementation: { className: 'HybridPlayerQueue' },
+})
+export declare class PlayerQueue extends HybridObject {
+  constructor()
+
   // Playlist management
   createPlaylist(
     name: string,
@@ -78,10 +88,17 @@ export interface PlayerQueue extends HybridObject<{
 
 export type RepeatMode = 'off' | 'Playlist' | 'track'
 
-export interface TrackPlayer extends HybridObject<{
-  android: 'kotlin'
-  ios: 'swift'
-}> {
+@iOS({
+  language: 'swift',
+  implementation: { className: 'HybridTrackPlayer' },
+})
+@Android({
+  language: 'kotlin',
+  implementation: { className: 'HybridTrackPlayer' },
+})
+export declare class TrackPlayer extends HybridObject {
+  constructor()
+
   play(): Promise<void>
   pause(): Promise<void>
   playSong(songId: string, fromPlaylist?: string): Promise<void>

@@ -9,7 +9,8 @@ import Foundation
 import NitroModules
 
 /// Core download manager using URLSession background transfers
-final class DownloadManagerCore: NSObject {
+// State is guarded by `queue`.
+final class DownloadManagerCore: NSObject, @unchecked Sendable {
 
   // MARK: - Singleton
 
@@ -68,9 +69,9 @@ final class DownloadManagerCore: NSObject {
 
   // Keyed so HybridDownloadManager.deinit can remove its registrations instead
   // of leaking closures into dead JS runtimes across reloads
-  private var progressCallbacks: [(UUID, (DownloadProgress) -> Void)] = []
-  private var stateChangeCallbacks: [(UUID, (String, String, DownloadState, DownloadError?) -> Void)] = []
-  private var completeCallbacks: [(UUID, (DownloadedTrack) -> Void)] = []
+  private var progressCallbacks: [(UUID, @Sendable (DownloadProgress) -> Void)] = []
+  private var stateChangeCallbacks: [(UUID, @Sendable (String, String, DownloadState, DownloadError?) -> Void)] = []
+  private var completeCallbacks: [(UUID, @Sendable (DownloadedTrack) -> Void)] = []
 
   // MARK: - Thread Safety
 
@@ -512,7 +513,7 @@ final class DownloadManagerCore: NSObject {
   // MARK: - Callbacks
 
   @discardableResult
-  func addProgressCallback(_ callback: @escaping (DownloadProgress) -> Void) -> UUID {
+  func addProgressCallback(_ callback: @escaping @Sendable (DownloadProgress) -> Void) -> UUID {
     let id = UUID()
     queue.async(flags: .barrier) {
       self.progressCallbacks.append((id, callback))
@@ -528,7 +529,7 @@ final class DownloadManagerCore: NSObject {
 
   @discardableResult
   func addStateChangeCallback(
-    _ callback: @escaping (String, String, DownloadState, DownloadError?) -> Void
+    _ callback: @escaping @Sendable (String, String, DownloadState, DownloadError?) -> Void
   ) -> UUID {
     let id = UUID()
     queue.async(flags: .barrier) {
@@ -544,7 +545,7 @@ final class DownloadManagerCore: NSObject {
   }
 
   @discardableResult
-  func addCompleteCallback(_ callback: @escaping (DownloadedTrack) -> Void) -> UUID {
+  func addCompleteCallback(_ callback: @escaping @Sendable (DownloadedTrack) -> Void) -> UUID {
     let id = UUID()
     queue.async(flags: .barrier) {
       self.completeCallbacks.append((id, callback))
@@ -712,7 +713,7 @@ final class DownloadManagerCore: NSObject {
 
     var extraPayloadDict: [String: Any]? = nil
     if let extraPayload = track.extraPayload {
-      extraPayloadDict = extraPayload.toDictionary()
+      extraPayloadDict = extraPayload.toJSONObject()
     }
 
     return TrackItemRecord(
@@ -730,21 +731,7 @@ final class DownloadManagerCore: NSObject {
   private func recordToTrackItem(_ record: TrackItemRecord) -> TrackItem {
     let artwork: Variant_NullType_String? = record.artwork.map { .second($0) }
 
-    var extraPayload: AnyMap? = nil
-    if let extraPayloadDict = record.extraPayload {
-      extraPayload = AnyMap()
-      for (key, value) in extraPayloadDict {
-        if let stringValue = value as? String {
-          extraPayload?.setString(key: key, value: stringValue)
-        } else if let doubleValue = value as? Double {
-          extraPayload?.setDouble(key: key, value: doubleValue)
-        } else if let intValue = value as? Int {
-          extraPayload?.setDouble(key: key, value: Double(intValue))
-        } else if let boolValue = value as? Bool {
-          extraPayload?.setBoolean(key: key, value: boolValue)
-        }
-      }
-    }
+    let extraPayload = record.extraPayload.map { [String: AnyJSON](jsonObject: $0) }
 
     return TrackItem(
       id: record.id,

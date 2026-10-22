@@ -11,7 +11,8 @@ import Foundation
 import MediaToolbox
 import NitroModules
 
-class EqualizerCore {
+// Gains are guarded by `gainsLock`; the listener registries synchronize themselves.
+class EqualizerCore: @unchecked Sendable {
   // MARK: - Singleton
 
   static let shared = EqualizerCore()

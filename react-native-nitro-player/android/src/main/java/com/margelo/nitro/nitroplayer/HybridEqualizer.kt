@@ -73,8 +73,8 @@ class HybridEqualizer : HybridEqualizerSpec() {
         listenerIds.add("band" to core.addOnBandChangeListener(callback))
     }
 
-    override fun onPresetChange(callback: (presetName: Variant_NullType_String?) -> Unit) {
-        listenerIds.add("preset" to core.addOnPresetChangeListener(callback))
+    override fun onPresetChange(callback: (presetName: Variant_NullType_String) -> Unit) {
+        listenerIds.add("preset" to core.addOnPresetChangeListener { callback(it ?: Variant_NullType_String.create(NullType.NULL)) })
     }
 
     override fun dispose() {

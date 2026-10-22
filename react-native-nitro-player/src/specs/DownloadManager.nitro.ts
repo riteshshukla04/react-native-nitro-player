@@ -1,4 +1,4 @@
-import type { HybridObject } from 'react-native-nitro-modules'
+import { Android, iOS, type HybridObject } from 'react-native-nitro-modules'
 import type { TrackItem } from '../types/PlayerQueue'
 import type {
   DownloadConfig,
@@ -13,10 +13,19 @@ import type {
   PlaybackSource,
 } from '../types/DownloadTypes'
 
-export interface DownloadManager extends HybridObject<{
-  android: 'kotlin'
-  ios: 'swift'
-}> {
+export * from '#nitro/DownloadManager'
+
+@iOS({
+  language: 'swift',
+  implementation: { className: 'HybridDownloadManager' },
+})
+@Android({
+  language: 'kotlin',
+  implementation: { className: 'HybridDownloadManager' },
+})
+export declare class DownloadManager extends HybridObject {
+  constructor()
+
   /**
    * Configure the download manager
    */

@@ -1,4 +1,6 @@
-import type { HybridObject } from 'react-native-nitro-modules'
+import { Android, type HybridObject } from 'react-native-nitro-modules'
+
+export * from '#nitro/AudioDevices'
 
 export type TAudioDevice = {
   id: number
@@ -7,13 +9,17 @@ export type TAudioDevice = {
   isActive: boolean
 }
 
-export interface AudioDevices extends HybridObject<{ android: 'kotlin' }> {
+@Android({
+  language: 'kotlin',
+  implementation: { className: 'HybridAudioDevices' },
+})
+export declare class AudioDevices extends HybridObject {
   /**
    * Get the list of audio devices
    *
    * @returns The list of audio devices
    */
-  getAudioDevices(): TAudioDevice[]
+  static getAudioDevices(): TAudioDevice[]
 
   /**
    * Set the audio device
@@ -21,5 +27,5 @@ export interface AudioDevices extends HybridObject<{ android: 'kotlin' }> {
    * @param deviceId - The ID of the audio device
    * @returns Promise that resolves when the device has been set
    */
-  setAudioDevice(deviceId: number): Promise<void>
+  static setAudioDevice(deviceId: number): Promise<void>
 }

@@ -17,7 +17,7 @@ import MediaPlayer
 import GoogleCast
 #endif
 
-final class CastSessionManager: NSObject {
+final class CastSessionManager: NSObject, @unchecked Sendable {
   weak var core: TrackPlayerCore?
 
   private var isConfigured = false

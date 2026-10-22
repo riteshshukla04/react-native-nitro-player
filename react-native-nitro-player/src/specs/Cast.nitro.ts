@@ -1,4 +1,6 @@
-import type { HybridObject } from 'react-native-nitro-modules'
+import { Android, iOS, type HybridObject } from 'react-native-nitro-modules'
+
+export * from '#nitro/Cast'
 
 /**
  * The current Google Cast connection state.
@@ -24,10 +26,17 @@ export type CastState =
  * is suppressed automatically. The existing {@link TrackPlayer} API keeps
  * working unchanged — this object only exposes the Cast-specific surface.
  */
-export interface Cast extends HybridObject<{
-  android: 'kotlin'
-  ios: 'swift'
-}> {
+@iOS({
+  language: 'swift',
+  implementation: { className: 'HybridCast' },
+})
+@Android({
+  language: 'kotlin',
+  implementation: { className: 'HybridCast' },
+})
+export declare class Cast extends HybridObject {
+  constructor()
+
   /**
    * Initialize the Cast framework. Must be called once early in app startup
    * (before the first Cast interaction). Safe to call multiple times.

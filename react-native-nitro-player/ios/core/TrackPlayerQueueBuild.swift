@@ -481,11 +481,8 @@ extension TrackPlayerCore {
   /// These are passed to AVURLAsset so authenticated remote streams can be played.
   /// Returns nil when no string headers are present.
   func httpHeaders(for track: TrackItem) -> [String: String]? {
-    // AnyMap.toDictionary() returns nested objects as [String: Any?] (optional values),
-    // so cast to that and unwrap each value rather than [String: Any].
-    guard let payload = track.extraPayload?.toDictionary(),
-      let headersValue = payload["headers"],
-      let raw = headersValue as? [String: Any?]
+    guard let payload = track.extraPayload?.toJSONObject(),
+      let raw = payload["headers"] as? [String: Any]
     else { return nil }
 
     var headers: [String: String] = [:]

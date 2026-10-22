@@ -3,19 +3,8 @@ import Foundation
 import NitroModules
 import UIKit
 
-class HybridAudioRoutePicker: HybridAudioRoutePickerSpec {
-
-  // Approximate memory footprint of this instance's reference
-  private func getSizeOf(_ object: AnyObject) -> Int {
-    // For class instances, MemoryLayout reports the size of the reference (pointer)
-    return MemoryLayout.size(ofValue: object)
-  }
-
-  var memorySize: Int {
-    return getSizeOf(self)
-  }
-
-  func showRoutePicker() throws {
+final class HybridAudioRoutePicker: HybridAudioRoutePickerSpec {
+  static func showRoutePicker() throws {
     DispatchQueue.main.async {
       // Create AVRoutePickerView
       let routePickerView = AVRoutePickerView()
