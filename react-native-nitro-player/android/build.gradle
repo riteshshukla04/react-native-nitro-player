@@ -5,7 +5,7 @@ buildscript {
   }
 
   dependencies {
-    classpath "com.android.tools.build:gradle:8.13.0"
+    classpath "com.android.tools.build:gradle:9.3.1"
   }
 }
 
@@ -14,18 +14,12 @@ def reactNativeArchitectures() {
   return value ? value.split(",") : ["armeabi-v7a", "x86", "x86_64", "arm64-v8a"]
 }
 
-def isNewArchitectureEnabled() {
-  return rootProject.hasProperty("newArchEnabled") && rootProject.getProperty("newArchEnabled") == "true"
-}
-
 apply plugin: "com.android.library"
 apply plugin: 'org.jetbrains.kotlin.android'
 apply from: '../nitrogen/generated/android/NitroPlayer+autolinking.gradle'
 apply from: "./fix-prefab.gradle"
 
-if (isNewArchitectureEnabled()) {
-  apply plugin: "com.facebook.react"
-}
+apply plugin: "com.facebook.react"
 
 def getExtOrDefault(name) {
   return rootProject.ext.has(name) ? rootProject.ext.get(name) : project.properties["NitroPlayer_" + name]
@@ -44,7 +38,6 @@ android {
   defaultConfig {
     minSdkVersion getExtOrIntegerDefault("minSdkVersion")
     targetSdkVersion getExtOrIntegerDefault("targetSdkVersion")
-    buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", isNewArchitectureEnabled().toString()
     // Keep the Cast OptionsProvider (referenced reflectively from the manifest) under R8.
     consumerProguardFiles "consumer-rules.pro"
 
@@ -77,6 +70,7 @@ android {
             "META-INF",
             "META-INF/**",
             "**/libc++_shared.so",
+            "**/libNitroModules.so",
             "**/libfbjni.so",
             "**/libjsi.so",
             "**/libfolly_json.so",
@@ -115,12 +109,7 @@ android {
 
   sourceSets {
     main {
-      if (isNewArchitectureEnabled()) {
-        java.srcDirs += [
-          // React Codegen files
-          "${project.buildDir}/generated/source/codegen/java"
-        ]
-      }
+      java.srcDirs += ["${project.buildDir}/generated/source/codegen/java"]
     }
   }
 }
@@ -133,10 +122,8 @@ repositories {
 
 def media3_version = "1.9.0"
 dependencies {
-  // For < 0.71, this will be from the local maven repo
-  // For > 0.71, this will be replaced by `com.facebook.react:react-android:$version` by react gradle plugin
-  //noinspection GradleDynamicVersion
-  implementation "com.facebook.react:react-native:+"
+  // The React Native Gradle plugin supplies the version.
+  implementation "com.facebook.react:react-android"
 
   // Add a dependency on NitroModules
   implementation project(":react-native-nitro-modules")
