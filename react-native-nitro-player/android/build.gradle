@@ -143,6 +143,7 @@ dependencies {
   implementation "androidx.mediarouter:mediarouter:1.7.0"
 
   // WorkManager for background downloads.
-  implementation "androidx.work:work-runtime-ktx:2.10.5" // Latest version of 2.10
+  // 2.10.x crashes R8-minified release builds on AGP 9: R8 strips the WorkDatabase_Impl constructor.
+  implementation "androidx.work:work-runtime-ktx:2.12.0"
 }
 
