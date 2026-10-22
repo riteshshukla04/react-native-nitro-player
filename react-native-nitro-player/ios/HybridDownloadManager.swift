@@ -18,9 +18,9 @@ final class HybridDownloadManager: HybridDownloadManagerSpec {
 
   // MARK: - Initialization
 
-  override init() {
+  override init() throws {
     core = DownloadManagerCore.shared
-    super.init()
+    try super.init()
   }
 
   // MARK: - Configuration
@@ -35,59 +35,59 @@ final class HybridDownloadManager: HybridDownloadManagerSpec {
 
   // MARK: - Download Operations
 
-  func downloadTrack(track: TrackItem, playlistId: String?) throws -> Promise<String> {
-    return Promise.async {
-      return self.core.downloadTrack(track: track, playlistId: playlistId)
+  func downloadTrack(track: TrackItem, playlistId: String?) throws -> any Promise<String> {
+    return .async { [core] in
+      return core.downloadTrack(track: track, playlistId: playlistId)
     }
   }
 
-  func downloadPlaylist(playlistId: String, tracks: [TrackItem]) throws -> Promise<[String]> {
-    return Promise.async {
-      return self.core.downloadPlaylist(playlistId: playlistId, tracks: tracks)
+  func downloadPlaylist(playlistId: String, tracks: [TrackItem]) throws -> any Promise<[String]> {
+    return .async { [core] in
+      return core.downloadPlaylist(playlistId: playlistId, tracks: tracks)
     }
   }
 
   // MARK: - Download Control
 
-  func pauseDownload(downloadId: String) throws -> Promise<Void> {
-    return Promise.async {
-      self.core.pauseDownload(downloadId: downloadId)
+  func pauseDownload(downloadId: String) throws -> any Promise<Void> {
+    return .async { [core] in
+      core.pauseDownload(downloadId: downloadId)
     }
   }
 
-  func resumeDownload(downloadId: String) throws -> Promise<Void> {
-    return Promise.async {
-      self.core.resumeDownload(downloadId: downloadId)
+  func resumeDownload(downloadId: String) throws -> any Promise<Void> {
+    return .async { [core] in
+      core.resumeDownload(downloadId: downloadId)
     }
   }
 
-  func cancelDownload(downloadId: String) throws -> Promise<Void> {
-    return Promise.async {
-      self.core.cancelDownload(downloadId: downloadId)
+  func cancelDownload(downloadId: String) throws -> any Promise<Void> {
+    return .async { [core] in
+      core.cancelDownload(downloadId: downloadId)
     }
   }
 
-  func retryDownload(downloadId: String) throws -> Promise<Void> {
-    return Promise.async {
-      self.core.retryDownload(downloadId: downloadId)
+  func retryDownload(downloadId: String) throws -> any Promise<Void> {
+    return .async { [core] in
+      core.retryDownload(downloadId: downloadId)
     }
   }
 
-  func pauseAllDownloads() throws -> Promise<Void> {
-    return Promise.async {
-      self.core.pauseAllDownloads()
+  func pauseAllDownloads() throws -> any Promise<Void> {
+    return .async { [core] in
+      core.pauseAllDownloads()
     }
   }
 
-  func resumeAllDownloads() throws -> Promise<Void> {
-    return Promise.async {
-      self.core.resumeAllDownloads()
+  func resumeAllDownloads() throws -> any Promise<Void> {
+    return .async { [core] in
+      core.resumeAllDownloads()
     }
   }
 
-  func cancelAllDownloads() throws -> Promise<Void> {
-    return Promise.async {
-      self.core.cancelAllDownloads()
+  func cancelAllDownloads() throws -> any Promise<Void> {
+    return .async { [core] in
+      core.cancelAllDownloads()
     }
   }
 
@@ -118,47 +118,47 @@ final class HybridDownloadManager: HybridDownloadManagerSpec {
 
   // MARK: - Downloaded Content Queries
 
-  func isTrackDownloaded(trackId: String) throws -> Promise<Bool> {
-    Promise.async { self.core.isTrackDownloaded(trackId: trackId) }
+  func isTrackDownloaded(trackId: String) throws -> any Promise<Bool> {
+    .async { [core] in core.isTrackDownloaded(trackId: trackId) }
   }
 
-  func isPlaylistDownloaded(playlistId: String) throws -> Promise<Bool> {
-    Promise.async { self.core.isPlaylistDownloaded(playlistId: playlistId) }
+  func isPlaylistDownloaded(playlistId: String) throws -> any Promise<Bool> {
+    .async { [core] in core.isPlaylistDownloaded(playlistId: playlistId) }
   }
 
-  func isPlaylistPartiallyDownloaded(playlistId: String) throws -> Promise<Bool> {
-    Promise.async { self.core.isPlaylistPartiallyDownloaded(playlistId: playlistId) }
+  func isPlaylistPartiallyDownloaded(playlistId: String) throws -> any Promise<Bool> {
+    .async { [core] in core.isPlaylistPartiallyDownloaded(playlistId: playlistId) }
   }
 
-  func getDownloadedTrack(trackId: String) throws -> Promise<Variant_NullType_DownloadedTrack> {
-    Promise.async {
-      if let track = self.core.getDownloadedTrack(trackId: trackId) {
+  func getDownloadedTrack(trackId: String) throws -> any Promise<Variant_NullType_DownloadedTrack> {
+    .async { [core] in
+      if let track = core.getDownloadedTrack(trackId: trackId) {
         return Variant_NullType_DownloadedTrack.second(track)
       }
       return Variant_NullType_DownloadedTrack.first(NullType.null)
     }
   }
 
-  func getAllDownloadedTracks() throws -> Promise<[DownloadedTrack]> {
-    Promise.async { self.core.getAllDownloadedTracks() }
+  func getAllDownloadedTracks() throws -> any Promise<[DownloadedTrack]> {
+    .async { [core] in core.getAllDownloadedTracks() }
   }
 
-  func getDownloadedPlaylist(playlistId: String) throws -> Promise<Variant_NullType_DownloadedPlaylist> {
-    Promise.async {
-      if let playlist = self.core.getDownloadedPlaylist(playlistId: playlistId) {
+  func getDownloadedPlaylist(playlistId: String) throws -> any Promise<Variant_NullType_DownloadedPlaylist> {
+    .async { [core] in
+      if let playlist = core.getDownloadedPlaylist(playlistId: playlistId) {
         return Variant_NullType_DownloadedPlaylist.second(playlist)
       }
       return Variant_NullType_DownloadedPlaylist.first(NullType.null)
     }
   }
 
-  func getAllDownloadedPlaylists() throws -> Promise<[DownloadedPlaylist]> {
-    Promise.async { self.core.getAllDownloadedPlaylists() }
+  func getAllDownloadedPlaylists() throws -> any Promise<[DownloadedPlaylist]> {
+    .async { [core] in core.getAllDownloadedPlaylists() }
   }
 
-  func getLocalPath(trackId: String) throws -> Promise<Variant_NullType_String> {
-    Promise.async {
-      if let path = self.core.getLocalPath(trackId: trackId) {
+  func getLocalPath(trackId: String) throws -> any Promise<Variant_NullType_String> {
+    .async { [core] in
+      if let path = core.getLocalPath(trackId: trackId) {
         return Variant_NullType_String.second(path)
       }
       return Variant_NullType_String.first(NullType.null)
@@ -167,34 +167,34 @@ final class HybridDownloadManager: HybridDownloadManagerSpec {
 
   // MARK: - Deletion
 
-  func deleteDownloadedTrack(trackId: String) throws -> Promise<Void> {
-    return Promise.async {
-      self.core.deleteDownloadedTrack(trackId: trackId)
+  func deleteDownloadedTrack(trackId: String) throws -> any Promise<Void> {
+    return .async { [core] in
+      core.deleteDownloadedTrack(trackId: trackId)
     }
   }
 
-  func deleteDownloadedPlaylist(playlistId: String) throws -> Promise<Void> {
-    return Promise.async {
-      self.core.deleteDownloadedPlaylist(playlistId: playlistId)
+  func deleteDownloadedPlaylist(playlistId: String) throws -> any Promise<Void> {
+    return .async { [core] in
+      core.deleteDownloadedPlaylist(playlistId: playlistId)
     }
   }
 
-  func deleteAllDownloads() throws -> Promise<Void> {
-    return Promise.async {
-      self.core.deleteAllDownloads()
+  func deleteAllDownloads() throws -> any Promise<Void> {
+    return .async { [core] in
+      core.deleteAllDownloads()
     }
   }
 
   // MARK: - Storage Management
 
-  func getStorageInfo() throws -> Promise<DownloadStorageInfo> {
-    return Promise.async {
-      return self.core.getStorageInfo()
+  func getStorageInfo() throws -> any Promise<DownloadStorageInfo> {
+    return .async { [core] in
+      return core.getStorageInfo()
     }
   }
 
-  func syncDownloads() throws -> Promise<Double> {
-    Promise.async { Double(self.core.syncDownloads()) }
+  func syncDownloads() throws -> any Promise<Double> {
+    .async { [core] in Double(core.syncDownloads()) }
   }
 
   // MARK: - Playback Source Preference
@@ -207,8 +207,8 @@ final class HybridDownloadManager: HybridDownloadManagerSpec {
     return core.getPlaybackSourcePreference()
   }
 
-  func getEffectiveUrl(track: TrackItem) throws -> Promise<String> {
-    Promise.async { self.core.getEffectiveUrl(track: track) }
+  func getEffectiveUrl(track: TrackItem) throws -> any Promise<String> {
+    .async { [core] in core.getEffectiveUrl(track: track) }
   }
 
   // MARK: - Event Callbacks
@@ -217,21 +217,21 @@ final class HybridDownloadManager: HybridDownloadManagerSpec {
   private var stateChangeCallbackIds: [UUID] = []
   private var completeCallbackIds: [UUID] = []
 
-  func onDownloadProgress(callback: @escaping (DownloadProgress) -> Void) throws {
+  func onDownloadProgress(callback: any Callback<(DownloadProgress), Void>) throws {
     NitroPlayerLogger.log("HybridDownloadManager", "onDownloadProgress callback registered")
-    progressCallbackIds.append(core.addProgressCallback(callback))
+    progressCallbackIds.append(core.addProgressCallback { callback($0) })
   }
 
   func onDownloadStateChange(
-    callback: @escaping (String, String, DownloadState, DownloadError?) -> Void
+    callback: any Callback<(String, String, DownloadState, DownloadError?), Void>
   ) throws {
     NitroPlayerLogger.log("HybridDownloadManager", "onDownloadStateChange callback registered")
-    stateChangeCallbackIds.append(core.addStateChangeCallback(callback))
+    stateChangeCallbackIds.append(core.addStateChangeCallback { callback($0, $1, $2, $3) })
   }
 
-  func onDownloadComplete(callback: @escaping (DownloadedTrack) -> Void) throws {
+  func onDownloadComplete(callback: any Callback<(DownloadedTrack), Void>) throws {
     NitroPlayerLogger.log("HybridDownloadManager", "onDownloadComplete callback registered")
-    completeCallbackIds.append(core.addCompleteCallback(callback))
+    completeCallbackIds.append(core.addCompleteCallback { callback($0) })
   }
 
   deinit {

@@ -16,15 +16,15 @@ final class HybridEqualizer: HybridEqualizerSpec {
 
   // MARK: - Initialization
 
-  override init() {
+  override init() throws {
     core = EqualizerCore.shared
-    super.init()
+    try super.init()
   }
 
   // MARK: - Enable/Disable
 
-  func setEnabled(enabled: Bool) throws -> Promise<Void> {
-    Promise.async { _ = self.core.setEnabled(enabled) }
+  func setEnabled(enabled: Bool) throws -> any Promise<Void> {
+    .async { [core] in _ = core.setEnabled(enabled) }
   }
 
   func isEnabled() throws -> Bool {
@@ -33,16 +33,16 @@ final class HybridEqualizer: HybridEqualizerSpec {
 
   // MARK: - Band Control
 
-  func getBands() throws -> Promise<[EqualizerBand]> {
-    Promise.async { self.core.getBands() }
+  func getBands() throws -> any Promise<[EqualizerBand]> {
+    .async { [core] in core.getBands() }
   }
 
-  func setBandGain(bandIndex: Double, gainDb: Double) throws -> Promise<Void> {
-    Promise.async { _ = self.core.setBandGain(bandIndex: Int(bandIndex), gainDb: gainDb) }
+  func setBandGain(bandIndex: Double, gainDb: Double) throws -> any Promise<Void> {
+    .async { [core] in _ = core.setBandGain(bandIndex: Int(bandIndex), gainDb: gainDb) }
   }
 
-  func setAllBandGains(gains: [Double]) throws -> Promise<Void> {
-    Promise.async { _ = self.core.setAllBandGains(gains) }
+  func setAllBandGains(gains: [Double]) throws -> any Promise<Void> {
+    .async { [core] in _ = core.setAllBandGains(gains) }
   }
 
   func getBandRange() throws -> GainRange {
@@ -63,8 +63,8 @@ final class HybridEqualizer: HybridEqualizerSpec {
     core.getCustomPresets()
   }
 
-  func applyPreset(presetName: String) throws -> Promise<Void> {
-    Promise.async { _ = self.core.applyPreset(presetName) }
+  func applyPreset(presetName: String) throws -> any Promise<Void> {
+    .async { [core] in _ = core.applyPreset(presetName) }
   }
 
   func getCurrentPresetName() throws -> Variant_NullType_String {
@@ -74,38 +74,38 @@ final class HybridEqualizer: HybridEqualizerSpec {
     return .first(NullType.null)
   }
 
-  func saveCustomPreset(name: String) throws -> Promise<Void> {
-    Promise.async { _ = self.core.saveCustomPreset(name) }
+  func saveCustomPreset(name: String) throws -> any Promise<Void> {
+    .async { [core] in _ = core.saveCustomPreset(name) }
   }
 
-  func deleteCustomPreset(name: String) throws -> Promise<Void> {
-    Promise.async { _ = self.core.deleteCustomPreset(name) }
+  func deleteCustomPreset(name: String) throws -> any Promise<Void> {
+    .async { [core] in _ = core.deleteCustomPreset(name) }
   }
 
   // MARK: - State
 
-  func getState() throws -> Promise<EqualizerState> {
-    Promise.async { self.core.getState() }
+  func getState() throws -> any Promise<EqualizerState> {
+    .async { [core] in core.getState() }
   }
 
-  func reset() throws -> Promise<Void> {
-    Promise.async { self.core.reset() }
+  func reset() throws -> any Promise<Void> {
+    .async { [core] in core.reset() }
   }
 
   // MARK: - Event listeners (v2 — store IDs for cleanup)
 
-  func onEnabledChange(callback: @escaping (_ enabled: Bool) -> Void) throws {
-    let id = core.addOnEnabledChangeListener(callback)
+  func onEnabledChange(callback: any Callback<(Bool), Void>) throws {
+    let id = core.addOnEnabledChangeListener { callback($0) }
     listenerIds.append(("onEnabledChange", id))
   }
 
-  func onBandChange(callback: @escaping (_ bands: [EqualizerBand]) -> Void) throws {
-    let id = core.addOnBandChangeListener(callback)
+  func onBandChange(callback: any Callback<([EqualizerBand]), Void>) throws {
+    let id = core.addOnBandChangeListener { callback($0) }
     listenerIds.append(("onBandChange", id))
   }
 
-  func onPresetChange(callback: @escaping (_ presetName: Variant_NullType_String?) -> Void) throws {
-    let id = core.addOnPresetChangeListener(callback)
+  func onPresetChange(callback: any Callback<(Variant_NullType_String), Void>) throws {
+    let id = core.addOnPresetChangeListener { callback($0 ?? .first(.null)) }
     listenerIds.append(("onPresetChange", id))
   }
 

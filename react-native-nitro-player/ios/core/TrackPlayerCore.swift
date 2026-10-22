@@ -11,7 +11,8 @@ import Network
 import NitroModules
 import ObjectiveC
 
-class TrackPlayerCore: NSObject {
+// Player state is confined to `playerQueue`.
+class TrackPlayerCore: NSObject, @unchecked Sendable {
   // MARK: - Constants
   enum Constants {
     static let skipToPreviousThreshold: Double = 2.0
@@ -177,7 +178,7 @@ class TrackPlayerCore: NSObject {
 
   // MARK: - withPlayerQueue (async bridge to player thread)
 
-  internal func withPlayerQueue<T>(_ block: @escaping () throws -> T) async throws -> T {
+  internal func withPlayerQueue<T>(_ block: @escaping @Sendable () throws -> T) async throws -> T {
     if DispatchQueue.getSpecific(key: playerQueueKey) == true { return try block() }
     return try await withCheckedThrowingContinuation { cont in
       playerQueue.async {
@@ -188,7 +189,7 @@ class TrackPlayerCore: NSObject {
   }
 
   @discardableResult
-  internal func withPlayerQueueNoThrow<T>(_ block: @escaping () -> T) async -> T {
+  internal func withPlayerQueueNoThrow<T>(_ block: @escaping @Sendable () -> T) async -> T {
     if DispatchQueue.getSpecific(key: playerQueueKey) == true { return block() }
     return await withCheckedContinuation { cont in
       playerQueue.async { cont.resume(returning: block()) }
@@ -326,10 +327,11 @@ extension Array {
   }
 }
 
-// Associated object for AVPlayerItem trackId
-private var trackIdKey: UInt8 = 0
+// Associated object for AVPlayerItem trackId; only its address is used
+nonisolated(unsafe) private var trackIdKey: UInt8 = 0
 extension AVPlayerItem {
-  var trackId: String? {
+  // The player reads and writes this on `playerQueue`; the associated-object runtime is thread-safe.
+  nonisolated var trackId: String? {
     get { objc_getAssociatedObject(self, &trackIdKey) as? String }
     set { objc_setAssociatedObject(self, &trackIdKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
   }
