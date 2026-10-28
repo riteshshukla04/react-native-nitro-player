@@ -64,6 +64,8 @@ yarn-error.log
 
 # testing
 /coverage
+/.build/
+/.swiftpm/
 
 # Yarn
 .yarn/*

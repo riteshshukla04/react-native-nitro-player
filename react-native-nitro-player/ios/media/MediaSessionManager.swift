@@ -238,19 +238,31 @@ class MediaSessionManager {
       return .success
     }
 
-    // Next track
+    // Headphones can send next/previous even when the lock screen shows interval skips.
     commandCenter.nextTrackCommand.isEnabled = false
     commandCenter.nextTrackCommand.addTarget { [weak self] _ in
-      guard let core = self?.trackPlayerCore else { return .commandFailed }
-      Task { await core.skipToNext() }
+      guard let self = self, let core = self.trackPlayerCore else { return .commandFailed }
+      let preferIntervals = self.preferRemoteSkipIntervals
+      let interval = self.remoteSkipForwardInterval
+      Task {
+        await RemoteTrackCommands.next(
+          preferIntervals: preferIntervals, interval: interval,
+          seek: { await core.seekBy(offset: $0) }, skip: { await core.skipToNext() })
+      }
       return .success
     }
 
     // Previous track
     commandCenter.previousTrackCommand.isEnabled = false
     commandCenter.previousTrackCommand.addTarget { [weak self] _ in
-      guard let core = self?.trackPlayerCore else { return .commandFailed }
-      Task { await core.skipToPrevious() }
+      guard let self = self, let core = self.trackPlayerCore else { return .commandFailed }
+      let preferIntervals = self.preferRemoteSkipIntervals
+      let interval = self.remoteSkipBackwardInterval
+      Task {
+        await RemoteTrackCommands.previous(
+          preferIntervals: preferIntervals, interval: interval,
+          seek: { await core.seekBy(offset: $0) }, skip: { await core.skipToPrevious() })
+      }
       return .success
     }
 
@@ -324,7 +336,9 @@ class MediaSessionManager {
     let playerDuration = state.totalDuration
     let hasDuration = playerDuration > 0 && !playerDuration.isNaN && !playerDuration.isInfinite
 
-    commandCenter.nextTrackCommand.isEnabled = hasCurrentTrack && isNotLast
+    commandCenter.nextTrackCommand.isEnabled = RemoteTrackCommands.nextEnabled(
+      hasTrack: hasCurrentTrack, preferIntervals: preferRemoteSkipIntervals, isLastTrack: !isNotLast
+    )
     commandCenter.previousTrackCommand.isEnabled = hasCurrentTrack
     // iOS shows enabled skip-interval commands in place of next/previous, so they stay off unless the app prefers them
     commandCenter.skipForwardCommand.isEnabled = hasCurrentTrack && preferRemoteSkipIntervals
