@@ -410,7 +410,20 @@ class DownloadManagerCore private constructor(
     ) {
         // fallbackTrack comes from the worker's persisted inputData — the
         // in-memory maps are empty when the worker completes in a fresh process.
-        val track = trackMetadata[trackId] ?: fallbackTrack ?: return
+        val track = trackMetadata[trackId] ?: fallbackTrack
+        if (track == null) {
+            // Never leave a task polling forever or occupy a concurrency slot
+            // when persisted work predates the metadata fallback.
+            activeTasks[downloadId]?.let { metadata ->
+                metadata.state = DownloadState.COMPLETED
+                metadata.completedAt = System.currentTimeMillis().toDouble()
+            }
+            activeTasks.remove(downloadId)
+            releaseDownloadSlot(downloadId)
+            NitroPlayerLogger.log(TAG, "onComplete: missing metadata for $trackId - download not registered")
+            notifyStateChange(downloadId, trackId, DownloadState.COMPLETED, null)
+            return
+        }
         val playlistId = playlistAssociations[downloadId]
         val storageLocation = config.storageLocation ?: StorageLocation.PRIVATE
         val fileSize = fileManager.getFileSize(localPath)
