@@ -138,6 +138,9 @@ dependencies {
   //noinspection GradleDynamicVersion
   implementation "com.facebook.react:react-native:+"
 
+  testImplementation "junit:junit:4.13.2"
+  testImplementation "org.mockito:mockito-core:5.18.0"
+
   // Add a dependency on NitroModules
   implementation project(":react-native-nitro-modules")
 
