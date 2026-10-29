@@ -1,4 +1,4 @@
-#include "NitroPlayerOnLoad.hpp"
+#include <NitroPlayer/private/NitroPlayerOnLoad.hpp>
 
 #include <jni.h>
 #include <fbjni/fbjni.h>

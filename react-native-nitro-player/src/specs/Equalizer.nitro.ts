@@ -1,4 +1,4 @@
-import type { HybridObject } from 'react-native-nitro-modules'
+import { Android, iOS, type HybridObject } from 'react-native-nitro-modules'
 import type {
   EqualizerBand,
   EqualizerPreset,
@@ -6,10 +6,19 @@ import type {
   GainRange,
 } from '../types/EqualizerTypes'
 
-export interface Equalizer extends HybridObject<{
-  android: 'kotlin'
-  ios: 'swift'
-}> {
+export * from '#nitro/Equalizer'
+
+@iOS({
+  language: 'swift',
+  implementation: { className: 'HybridEqualizer' },
+})
+@Android({
+  language: 'kotlin',
+  implementation: { className: 'HybridEqualizer' },
+})
+export declare class Equalizer extends HybridObject {
+  constructor()
+
   // === Enable/Disable ===
   /** Enable or disable the equalizer */
   setEnabled(enabled: boolean): Promise<void>

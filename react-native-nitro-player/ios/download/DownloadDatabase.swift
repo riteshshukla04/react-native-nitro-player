@@ -9,7 +9,8 @@ import Foundation
 import NitroModules
 
 /// Manages persistence of downloaded track metadata using file storage
-final class DownloadDatabase {
+// State is guarded by `queue` and `existenceCacheLock`.
+final class DownloadDatabase: @unchecked Sendable {
 
   // MARK: - Singleton
 
@@ -537,7 +538,7 @@ final class DownloadDatabase {
   private func trackItemToRecord(_ track: TrackItem) -> TrackItemRecord {
     var extraPayloadDict: [String: Any]? = nil
     if let extraPayload = track.extraPayload {
-      extraPayloadDict = extraPayload.toDictionary()
+      extraPayloadDict = extraPayload.toJSONObject()
     }
 
     return TrackItemRecord(
@@ -553,21 +554,7 @@ final class DownloadDatabase {
   }
 
   private func recordToTrackItem(_ record: TrackItemRecord) -> TrackItem {
-    var extraPayload: AnyMap? = nil
-    if let extraPayloadDict = record.extraPayload {
-      extraPayload = AnyMap()
-      for (key, value) in extraPayloadDict {
-        if let stringValue = value as? String {
-          extraPayload?.setString(key: key, value: stringValue)
-        } else if let doubleValue = value as? Double {
-          extraPayload?.setDouble(key: key, value: doubleValue)
-        } else if let intValue = value as? Int {
-          extraPayload?.setDouble(key: key, value: Double(intValue))
-        } else if let boolValue = value as? Bool {
-          extraPayload?.setBoolean(key: key, value: boolValue)
-        }
-      }
-    }
+    let extraPayload = record.extraPayload.map { [String: AnyJSON](jsonObject: $0) }
 
     return TrackItem(
       id: record.id,

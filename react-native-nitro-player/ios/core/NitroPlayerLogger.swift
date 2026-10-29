@@ -9,9 +9,9 @@ import Foundation
 
 class NitroPlayerLogger {
     #if DEBUG
-    static var isEnabled = true
+    static let isEnabled = true
     #else
-    static var isEnabled = false
+    static let isEnabled = false
     #endif
 
     static func log(_ header: String = "NitroPlayer", _ message: @autoclosure () -> String) {

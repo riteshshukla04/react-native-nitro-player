@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
-const reactNativeJestPreset = require('react-native/jest-preset');
+const reactNativeJestPreset = require('@react-native/jest-preset');
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 

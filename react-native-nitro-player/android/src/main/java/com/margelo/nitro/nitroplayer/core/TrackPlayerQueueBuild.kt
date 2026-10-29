@@ -9,6 +9,7 @@ import androidx.media3.common.Player
 import com.margelo.nitro.nitroplayer.Reason
 import com.margelo.nitro.nitroplayer.RepeatMode
 import com.margelo.nitro.nitroplayer.TrackItem
+import com.margelo.nitro.nitroplayer.toJSONObject
 
 /**
  * Queue-building helpers — called exclusively on the player thread.
@@ -298,11 +299,13 @@ internal fun TrackPlayerCore.makeMediaItem(
     // injected into the request for this URL. Applies to remote streams only — see ExoPlayerBuilder.
     track.extraPayload?.let { payload ->
         try {
-            val headersRaw = payload.toHashMap()["headers"]
-            if (headersRaw is Map<*, *>) {
+            val headersRaw = payload.toJSONObject().optJSONObject("headers")
+            if (headersRaw != null) {
                 val headers =
                     headersRaw
-                        .mapNotNull { (k, v) -> if (k is String && v is String) k to v else null }
+                        .keys()
+                        .asSequence()
+                        .mapNotNull { k -> (headersRaw.get(k) as? String)?.let { k to it } }
                         .toMap()
                 if (headers.isNotEmpty()) {
                     com.margelo.nitro.nitroplayer.media.AuthAwareHttpDataSourceFactory

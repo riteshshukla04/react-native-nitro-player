@@ -13,13 +13,13 @@ final class HybridCast: HybridCastSpec {
   private let core: TrackPlayerCore
   private var listenerIds: [Int64] = []
 
-  override init() {
+  override init() throws {
     core = TrackPlayerCore.shared
-    super.init()
+    try super.init()
   }
 
-  func configure(receiverApplicationId: String?) throws -> Promise<Void> {
-    Promise.async { self.core.castConfigure(receiverApplicationId: receiverApplicationId) }
+  func configure(receiverApplicationId: String?) throws -> any Promise<Void> {
+    .async { [core] in core.castConfigure(receiverApplicationId: receiverApplicationId) }
   }
 
   func isCasting() throws -> Bool {
@@ -41,17 +41,17 @@ final class HybridCast: HybridCastSpec {
     core.castShowPicker()
   }
 
-  func endCastSession() throws -> Promise<Void> {
-    Promise.async { self.core.castEndSession() }
+  func endCastSession() throws -> any Promise<Void> {
+    .async { [core] in core.castEndSession() }
   }
 
-  func onCastStateChange(callback: @escaping (CastState, Variant_NullType_String?) -> Void) throws {
+  func onCastStateChange(callback: any Callback<(CastState, Variant_NullType_String), Void>) throws {
     // Replace any prior listener so JS reloads don't accumulate handlers.
     for id in listenerIds { core.removeOnCastStateChangeListener(id: id) }
     listenerIds.removeAll()
 
     let id = core.addOnCastStateChangeListener { state, deviceName in
-      callback(state, deviceName.map { .second($0) })
+      callback(state, deviceName.map { .second($0) } ?? .first(.null))
     }
     listenerIds.append(id)
   }

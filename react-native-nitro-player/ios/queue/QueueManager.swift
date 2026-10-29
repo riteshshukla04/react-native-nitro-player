@@ -20,7 +20,8 @@ private class ListenerWrapper {
 
 /// QueueManager is a singleton that manages the queue state across the app session.
 /// It provides thread-safe access to the queue and notifies listeners of queue changes.
-class QueueManager {
+// Listeners are guarded by `listenersQueue`.
+class QueueManager: @unchecked Sendable {
   private let queue = Queue()
   private var listeners: [ListenerWrapper] = []
   private let listenersQueue = DispatchQueue(label: "com.margelo.nitro.nitroplayer.listeners")

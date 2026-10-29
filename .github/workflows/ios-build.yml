@@ -9,13 +9,14 @@ on:
       - 'react-native-nitro-player/ios/**'
       - 'example/ios/**'
       - 'bun.lock'
-      - '**/Podfile'
-      - '**/Podfile.lock'
+      - 'react-native-nitro-player/Package.swift'
+      - 'react-native-nitro-player/nitrogen/**'
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: macos-latest
+    # Nitro v1 needs Swift 6.4, which ships with Xcode 27.
+    runs-on: xcode-27
 
     steps:
       - name: Checkout code
@@ -35,27 +36,21 @@ jobs:
         run: |
           bun install
 
-      - name: Setup Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.2'
-          bundler-cache: true
-
-      - name: Setup xcode
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: '26'
-
-      - name: Install CocoaPods
-        working-directory: example/ios
+      - name: Select Xcode
         run: |
-          bundle install
-          RCT_USE_RN_DEP=1 RCT_USE_PREBUILT_RNCORE=1 bundle exec pod install
+          sudo xcode-select -s /Applications/Xcode_27.1.app/Contents/Developer
+          xcodebuild -version
+
+      - name: Resolve Swift packages
+        working-directory: example
+        run: npx react-native spm update --yes
 
       - name: Build iOS
         working-directory: example/ios
         run: |
           xcodebuild build \
-            -workspace example.xcworkspace \
+            -project example.xcodeproj \
             -scheme example \
-            -sdk iphonesimulator
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO

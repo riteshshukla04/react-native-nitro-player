@@ -9,7 +9,8 @@ import Foundation
 import NitroModules
 
 /// Manages multiple playlists using AVPlayer's native playlist functionality
-class PlaylistManager {
+// State is guarded by `queue`.
+class PlaylistManager: @unchecked Sendable {
   private var playlists: [String: PlaylistModel] = [:]
   private var listeners: [(String, ([PlaylistModel], QueueOperation?) -> Void)] = []
   private var playlistListeners: [String: [(String, (PlaylistModel, QueueOperation?) -> Void)]] =
@@ -511,7 +512,7 @@ class PlaylistManager {
               trackDict["artwork"] = ""
             }
             if let extraPayload = track.extraPayload {
-              trackDict["extraPayload"] = extraPayload.toDictionary()
+              trackDict["extraPayload"] = extraPayload.toJSONObject()
             }
             return trackDict
           },
@@ -593,21 +594,7 @@ class PlaylistManager {
             !$0.isEmpty ? Variant_NullType_String.second($0) : nil
           }
 
-          var extraPayload: AnyMap? = nil
-          if let extraPayloadDict = trackDict["extraPayload"] as? [String: Any] {
-            extraPayload = AnyMap()
-            for (key, value) in extraPayloadDict {
-              if let stringValue = value as? String {
-                extraPayload?.setString(key: key, value: stringValue)
-              } else if let doubleValue = value as? Double {
-                extraPayload?.setDouble(key: key, value: doubleValue)
-              } else if let intValue = value as? Int {
-                extraPayload?.setDouble(key: key, value: Double(intValue))
-              } else if let boolValue = value as? Bool {
-                extraPayload?.setBoolean(key: key, value: boolValue)
-              }
-            }
-          }
+          let extraPayload = (trackDict["extraPayload"] as? [String: Any]).map { [String: AnyJSON](jsonObject: $0) }
 
           return TrackItem(
             id: id,

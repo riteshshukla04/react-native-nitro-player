@@ -1,13 +1,13 @@
 package com.margelo.nitro.nitroplayer.download
 
 import android.content.Context
-import com.margelo.nitro.JNIOnLoad
-import com.margelo.nitro.core.AnyMap
 import com.margelo.nitro.core.NullType
 import com.margelo.nitro.nitroplayer.*
 import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
 import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
 import com.margelo.nitro.nitroplayer.storage.NitroPlayerStorage
+import com.margelo.nitro.nitroplayer.toAnyJSONMap
+import com.margelo.nitro.nitroplayer.toJSONObject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Dispatchers
@@ -57,8 +57,6 @@ class DownloadDatabase private constructor(
     private val ioScope = CoroutineScope(Dispatchers.IO.limitedParallelism(1) + SupervisorJob())
 
     init {
-        // Persisted extraPayloads are AnyMaps; a process started without JS has not loaded Nitro's JNI yet
-        JNIOnLoad.initializeNativeNitro()
         loadFromDisk()
     }
 
@@ -434,11 +432,7 @@ class DownloadDatabase private constructor(
 
     // Conversion Helpers
     private fun trackItemToRecord(track: TrackItem): TrackItemRecord {
-        val extraPayloadJson =
-            track.extraPayload?.let { payload ->
-                val extraPayloadMap = payload.toHashMap()
-                JSONObject(extraPayloadMap)
-            }
+        val extraPayloadJson = track.extraPayload?.toJSONObject()
 
         return TrackItemRecord(
             id = track.id,
@@ -460,20 +454,7 @@ class DownloadDatabase private constructor(
                 null
             }
 
-        val extraPayload: AnyMap? =
-            record.extraPayload?.let { extraPayloadJson ->
-                val map = AnyMap()
-                val keyIterator = extraPayloadJson.keys()
-                while (keyIterator.hasNext()) {
-                    val key = keyIterator.next()
-                    when (val value = extraPayloadJson.get(key)) {
-                        is String -> map.setString(key, value)
-                        is Number -> map.setDouble(key, value.toDouble())
-                        is Boolean -> map.setBoolean(key, value)
-                    }
-                }
-                map
-            }
+        val extraPayload = record.extraPayload?.toAnyJSONMap()
 
         return TrackItem(
             id = record.id,

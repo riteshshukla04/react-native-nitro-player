@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "classes": {
+    "AndroidAutoMediaLibrary": {
+      "android": {
+        "implementation": {
+          "className": "HybridAndroidAutoMediaLibrary"
+        },
+        "language": "kotlin"
+      }
+    },
+    "AudioDevices": {
+      "android": {
+        "implementation": {
+          "className": "HybridAudioDevices"
+        },
+        "language": "kotlin"
+      }
+    },
+    "AudioRoutePicker": {
+      "ios": {
+        "implementation": {
+          "className": "HybridAudioRoutePicker"
+        },
+        "language": "swift"
+      }
+    },
+    "Cast": {
+      "android": {
+        "implementation": {
+          "className": "HybridCast"
+        },
+        "language": "kotlin"
+      },
+      "ios": {
+        "implementation": {
+          "className": "HybridCast"
+        },
+        "language": "swift"
+      }
+    },
+    "DownloadManager": {
+      "android": {
+        "implementation": {
+          "className": "HybridDownloadManager"
+        },
+        "language": "kotlin"
+      },
+      "ios": {
+        "implementation": {
+          "className": "HybridDownloadManager"
+        },
+        "language": "swift"
+      }
+    },
+    "Equalizer": {
+      "android": {
+        "implementation": {
+          "className": "HybridEqualizer"
+        },
+        "language": "kotlin"
+      },
+      "ios": {
+        "implementation": {
+          "className": "HybridEqualizer"
+        },
+        "language": "swift"
+      }
+    },
+    "PlayerQueue": {
+      "android": {
+        "implementation": {
+          "className": "HybridPlayerQueue"
+        },
+        "language": "kotlin"
+      },
+      "ios": {
+        "implementation": {
+          "className": "HybridPlayerQueue"
+        },
+        "language": "swift"
+      }
+    },
+    "TrackPlayer": {
+      "android": {
+        "implementation": {
+          "className": "HybridTrackPlayer"
+        },
+        "language": "kotlin"
+      },
+      "ios": {
+        "implementation": {
+          "className": "HybridTrackPlayer"
+        },
+        "language": "swift"
+      }
+    }
+  }
+}
