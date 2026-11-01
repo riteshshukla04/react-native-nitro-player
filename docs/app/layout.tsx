@@ -1,5 +1,5 @@
 import './global.css';
-import { RootProvider } from 'fumadocs-ui/provider';
+import { RootProvider } from 'fumadocs-ui/provider/next';
 import DefaultSearchDialog from 'fumadocs-ui/components/dialog/search-default';
 import { JetBrains_Mono, IBM_Plex_Sans } from 'next/font/google';
 import type { ReactNode } from 'react';
