@@ -50,10 +50,15 @@ internal fun TrackPlayerCore.skipToNextOnQueue() {
         checkUpcomingTracksForUrls(lookaheadCount)
     } else if (currentRepeatMode == RepeatMode.PLAYLIST && currentTracks.isNotEmpty()) {
         // Manual skip at the last track wraps, matching natural-end behavior and iOS.
-        // The timeline already holds the wrap locally, but not while casting or for a single track,
-        // where wrapping restarts it. playFromIndexInternal keeps playWhenReady, so a paused
-        // queue stays paused.
-        playFromIndexInternal(0)
+        // The local timeline already holds the wrap; this covers casting (exo is the CastPlayer,
+        // whose queue has no wrap prefix) and a single track. A lone playlist track restarts in
+        // place, same as skipToPrevious; otherwise playFromIndexInternal keeps playWhenReady,
+        // so a paused queue stays paused.
+        if (currentTracks.size == 1 && currentTemporaryType == TrackPlayerCore.TemporaryType.NONE) {
+            exo.seekTo(0)
+        } else {
+            playFromIndexInternal(0)
+        }
         checkUpcomingTracksForUrls(lookaheadCount)
     }
 }

@@ -567,56 +567,79 @@ describe('TrackPlayer - Comprehensive Tests', () => {
         });
 
         it('should not wrap skipToNext at the last track with repeat off', async () => {
+            await TrackPlayer.setRepeatMode('off');
             await PlayerQueue.loadPlaylist(playlist3Id);
             await TrackPlayer.playSong('p3-3', playlist3Id);
+            await waitForPlaying();
+            await TrackPlayer.seek(30);
+            await waitForState(s => s.currentPosition >= 29);
 
             await TrackPlayer.skipToNext();
-            await waitForNextTick();
 
-            const state = await TrackPlayer.getState();
+            // A wrap is a queue rebuild plus async callbacks, so give it a bounded window to show up
+            const state = await waitForState(s => s.currentTrack?.id !== 'p3-3', 3000);
             expect(state.currentTrack?.id).toBe('p3-3');
+            expect(state.currentPosition).toBeGreaterThanOrEqual(29);
+            await TrackPlayer.pause();
         });
 
         it('should not wrap skipToPrevious at the first track with repeat off', async () => {
+            await TrackPlayer.setRepeatMode('off');
             await PlayerQueue.loadPlaylist(playlist3Id);
             await TrackPlayer.playSong('p3-1', playlist3Id);
 
             await TrackPlayer.skipToPrevious();
-            await waitForNextTick();
 
-            const state = await TrackPlayer.getState();
+            const state = await waitForState(s => s.currentTrack?.id !== 'p3-1', 3000);
             expect(state.currentTrack?.id).toBe('p3-1');
         });
 
-        it('should restart a single-track queue in both directions', async () => {
+        it('should restart a single-track queue on skipToNext', async () => {
             const singleId = await PlayerQueue.createPlaylist('Single Track', 'One track');
             createdPlaylistIds.push(singleId);
             await PlayerQueue.addTracksToPlaylist(singleId, [createTestTrack('solo', 'Solo Track', 6)]);
             await PlayerQueue.loadPlaylist(singleId);
             await TrackPlayer.setRepeatMode('Playlist');
             await TrackPlayer.playSong('solo', singleId);
+            await waitForPlaying();
+            await TrackPlayer.seek(30);
+            await waitForState(s => s.currentPosition >= 29);
 
             await TrackPlayer.skipToNext();
-            let state = await waitForState(s => s.currentTrack?.id === 'solo');
-            expect(state.currentTrack?.id).toBe('solo');
 
-            await TrackPlayer.skipToPrevious();
-            state = await waitForState(s => s.currentTrack?.id === 'solo');
+            // Without the wrap this is a no-op and the position stays past 29s
+            const state = await waitForState(s => s.currentPosition < 5);
             expect(state.currentTrack?.id).toBe('solo');
+            expect(state.currentPosition).toBeLessThan(5);
+            await TrackPlayer.pause();
         });
 
-        it('should keep a paused queue paused when wrapping', async () => {
+        it('should keep a paused queue paused when wrapping with skipToNext', async () => {
             await PlayerQueue.loadPlaylist(playlist3Id);
             await TrackPlayer.setRepeatMode('Playlist');
             await TrackPlayer.playSong('p3-3', playlist3Id);
             await TrackPlayer.pause();
 
             await TrackPlayer.skipToNext();
-            const state = await waitForState(s => s.currentTrack?.id === 'p3-1');
-            await waitForNextTick();
+            await waitForState(s => s.currentTrack?.id === 'p3-1');
+            const state = await waitForState(s => s.currentState === 'paused');
 
             expect(state.currentTrack?.id).toBe('p3-1');
-            expect((await TrackPlayer.getState()).currentState).not.toBe('playing');
+            expect(state.currentState).toBe('paused');
+        });
+
+        it('should keep a paused queue paused when wrapping with skipToPrevious', async () => {
+            await PlayerQueue.loadPlaylist(playlist3Id);
+            await TrackPlayer.setRepeatMode('Playlist');
+            await TrackPlayer.playSong('p3-1', playlist3Id);
+            await TrackPlayer.pause();
+
+            await TrackPlayer.skipToPrevious();
+            await waitForState(s => s.currentTrack?.id === 'p3-3');
+            const state = await waitForState(s => s.currentState === 'paused');
+
+            expect(state.currentTrack?.id).toBe('p3-3');
+            expect(state.currentState).toBe('paused');
         });
     });
 
