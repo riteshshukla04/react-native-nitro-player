@@ -170,7 +170,7 @@ extension TrackPlayerCore {
           // buffer, which stalls immediately.
           self.clearStallRecovery()
         } else if player.timeControlStatus == .waitingToPlayAtSpecifiedRate,
-          self.intendedToPlay, let item = player.currentItem {
+          self.intendedToPlay, !self.isCasting, let item = player.currentItem {
           // Waiting with stall waiting on (preroll, or after a stall) posts no stall
           // notification, so watch for a silent connection from here as well.
           self.armStallWatchdog(for: item)
@@ -278,8 +278,9 @@ extension TrackPlayerCore {
       // paused (or a stall notification is racing a pause), do NOT arm the recovery
       // flag — the `isPlaybackLikelyToKeepUp` observer fires only on change, so a flag
       // set here while paused could never be cleared and would wedge state on .buffering.
-      // Never resume into an active audio-session interruption either.
-      guard self.intendedToPlay, !self.isInterrupted else { return }
+      // Never resume into an active audio-session interruption either, nor restart the
+      // local player while a Cast device is playing (casting pauses it but keeps the intent).
+      guard self.intendedToPlay, !self.isInterrupted, !self.isCasting else { return }
       // Deliberately not gated on `timeControlStatus`: the notification and the status
       // change are separate events, so the status may still read `.playing` here for a
       // real stall. If a late notification re-arms recovery while already playing, the
@@ -317,40 +318,63 @@ extension TrackPlayerCore {
   func clearStallRecovery() {
     player?.automaticallyWaitsToMinimizeStalling = false
     isRecoveringFromStall = false
+    stallWatchdogRecoveries = 0
   }
 
   /// Watches an item that should be playing but is waiting on data (after a stall, or while
-  /// prerolling with stall waiting on). If its buffer makes no progress for a whole
-  /// `stallWatchdogDelay` window — the connection went silent without an error — recreate it
-  /// on a fresh connection via `recoverFailedItem`, which resumes at the last position and
-  /// surfaces an error once its retry budget runs out. A slow but progressing download just
-  /// re-arms, so it is never thrown away. Must be called on `playerQueue`.
+  /// prerolling with stall waiting on). If no media arrives for a whole `stallWatchdogDelay`
+  /// window — the connection went silent without an error — recreate it on a fresh connection
+  /// via `recoverFailedItem`, which resumes at the last position. A slow but progressing
+  /// download just re-arms, so it is never thrown away. After `maxFailedItemRetries`
+  /// recreations without playback resuming, playback stops with an error. Must be called on
+  /// `playerQueue`.
   func armStallWatchdog(for item: AVPlayerItem) {
-    stallWatchdogGeneration += 1
-    let generation = stallWatchdogGeneration
-    let bufferedAtArm = bufferedEnd(of: item)
-    playerQueue.asyncAfter(deadline: .now() + Constants.stallWatchdogDelay) { [weak self] in
+    stallWatchdog?.cancel()
+    let bufferedAtArm = bufferedRanges(of: item)
+    let watchdog = DispatchWorkItem { [weak self] in
       guard let self, let player = self.player,
-        generation == self.stallWatchdogGeneration,
-        self.intendedToPlay, !self.isInterrupted,
-        player.currentItem === item, player.timeControlStatus != .playing
+        self.intendedToPlay, !self.isInterrupted, !self.isCasting,
+        player.currentItem === item, player.timeControlStatus != .playing,
+        // A failed item is already being recreated by its status observer.
+        item.status != .failed
       else { return }
-      if self.bufferedEnd(of: item) > bufferedAtArm {
+      let buffered = self.bufferedRanges(of: item)
+      // Media arrived (the loaded ranges moved), or none has arrived yet: a slow first byte,
+      // such as a server starting a transcode, is not a silent connection, and the request
+      // fails on its own if the server never answers.
+      if buffered != bufferedAtArm || buffered.isEmpty {
         self.armStallWatchdog(for: item)
         return
       }
+      guard self.stallWatchdogRecoveries < Constants.maxFailedItemRetries else {
+        NitroPlayerLogger.log("TrackPlayerCore",
+          "❌ No buffer progress after \(self.stallWatchdogRecoveries) recreations — giving up")
+        self.stallWatchdogRecoveries = 0
+        self.isRecoveringFromStall = false
+        self.intendedToPlay = false
+        // The item hasn't failed, so stop it from starting later if media does arrive. Queue
+        // the error after the pause's own KVO state emits so `.stopped` is the final state.
+        player.pause()
+        self.playerQueue.async { [weak self] in self?.notifyPlaybackStateChange(.stopped, .error) }
+        return
+      }
+      self.stallWatchdogRecoveries += 1
       NitroPlayerLogger.log("TrackPlayerCore",
         "⏱️ No buffer progress for \(Int(Constants.stallWatchdogDelay))s — recreating item")
-      self.recoverFailedItem(item)
+      self.recoverFailedItem(item, countsAgainstRetryBudget: false)
     }
+    stallWatchdog = watchdog
+    playerQueue.asyncAfter(deadline: .now() + Constants.stallWatchdogDelay, execute: watchdog)
   }
 
-  /// End of the furthest loaded time range, in seconds — grows while media is arriving.
-  private func bufferedEnd(of item: AVPlayerItem) -> Double {
+  /// Loaded time ranges as start/end seconds; they change whenever media arrives.
+  private func bufferedRanges(of item: AVPlayerItem) -> [Double] {
     item.loadedTimeRanges
-      .map { CMTimeRangeGetEnd($0.timeRangeValue).seconds }
+      .flatMap { value -> [Double] in
+        let range = value.timeRangeValue
+        return [range.start.seconds, CMTimeRangeGetEnd(range).seconds]
+      }
       .filter { $0.isFinite }
-      .max() ?? 0
   }
 
   func currentItemDidChange() {
@@ -372,8 +396,9 @@ extension TrackPlayerCore {
       lastKnownPosition = 0
       // A new track is not a stall recovery — drop any stale flag from the old item.
       isRecoveringFromStall = false
-      // Fresh failure-retry budget for the new track.
+      // Fresh failure-retry and stall-watchdog budgets for the new track.
       failedItemRetryCounts.removeAll()
+      stallWatchdogRecoveries = 0
     }
 
     guard let player, let currentItem = player.currentItem else {
@@ -594,11 +619,12 @@ extension TrackPlayerCore {
         guard let self, let player = self.player else { return }
         guard player.currentItem === item else { return }
         NitroPlayerLogger.log("TrackPlayerCore", "▶️ Buffer likely to keep up")
-        // Recover from a stall: AVPlayer will NOT auto-resume because
-        // automaticallyWaitsToMinimizeStalling is false — re-issue play() ourselves.
+        // Recover from a stall. The stall handler re-enabled stall waiting, so AVPlayer would
+        // resume by itself; play() now just skips its remaining wait. Never while casting:
+        // the local player stays silent then.
         if self.isRecoveringFromStall {
           self.isRecoveringFromStall = false
-          if self.intendedToPlay && player.timeControlStatus != .playing {
+          if self.intendedToPlay && !self.isCasting && player.timeControlStatus != .playing {
             NitroPlayerLogger.log("TrackPlayerCore", "🔁 Buffer refilled — resuming playback after stall")
             player.playImmediately(atRate: Float(self.currentPlaybackSpeed))
           }

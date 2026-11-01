@@ -37,11 +37,14 @@ extension TrackPlayerCore {
     let currentTrackIsEmpty = currentTrack.map {
       $0.url.isEmpty && !DownloadManagerCore.shared.isTrackDownloaded(trackId: $0.id)
     } ?? false
-    // The current track's player item has failed (e.g. an expired streaming URL).
-    // Unlike a healthy current track, a failed one MUST accept a fresh URL so that
-    // recoverFailedItem can rebuild it from updated track data.
-    let currentItemFailed = self.player?.currentItem?.status == .failed
-      && self.player?.currentItem?.trackId == currentTrackId
+    // The current track's player item has failed (e.g. an expired streaming URL), or is
+    // stalled awaiting recovery (the stall watchdog recreates it and asks for a fresh URL).
+    // Unlike a healthy current track, such an item MUST accept a fresh URL so that
+    // recoverFailedItem can rebuild it from updated track data; nothing is playing, so
+    // gapless is not at stake.
+    let currentItemFailed = self.player?.currentItem?.trackId == currentTrackId
+      && (self.player?.currentItem?.status == .failed
+        || (self.isRecoveringFromStall && self.player?.timeControlStatus != .playing))
 
     let safeTracks = tracks.filter { track in
       switch true {
