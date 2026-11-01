@@ -109,6 +109,16 @@ extension TrackPlayerCore {
     guard let player, let currentItem = player.currentItem else { return }
     guard player.rate > 0 else { return }
 
+    // Self-heal stall recovery. A late stall notification processed after playback has
+    // already resumed re-arms recovery with no further `.playing` transition to clear it,
+    // which would leave stall waiting on (no gapless) for the rest of the session. Time is
+    // advancing here, so playback is real.
+    if player.timeControlStatus == .playing,
+      isRecoveringFromStall || player.automaticallyWaitsToMinimizeStalling {
+      player.automaticallyWaitsToMinimizeStalling = false
+      isRecoveringFromStall = false
+    }
+
     let position = currentItem.currentTime().seconds
     let rawDuration = currentItem.duration.seconds
     let duration = (rawDuration > 0 && !rawDuration.isNaN && !rawDuration.isInfinite) ? rawDuration : 0.0
@@ -268,8 +278,8 @@ extension TrackPlayerCore {
       guard self.intendedToPlay, !self.isInterrupted else { return }
       // Deliberately not gated on `timeControlStatus`: the notification and the status
       // change are separate events, so the status may still read `.playing` here for a
-      // real stall. Re-arming on a late notification only leaves stall waiting on until
-      // the next `.playing`, which is far cheaper than missing a stall.
+      // real stall. If a late notification re-arms recovery while already playing, the
+      // periodic observer (handleBoundaryTimeCrossed) clears it within a second.
       self.isRecoveringFromStall = true
       // The buffer may have already refilled before this notification was
       // processed. `isPlaybackLikelyToKeepUp` fires only on change, so its
