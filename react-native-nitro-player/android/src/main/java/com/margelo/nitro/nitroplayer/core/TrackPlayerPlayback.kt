@@ -48,6 +48,21 @@ internal fun TrackPlayerCore.skipToNextOnQueue() {
     if (exo.hasNextMediaItem()) {
         exo.seekToNext()
         checkUpcomingTracksForUrls(lookaheadCount)
+    } else if (currentRepeatMode == RepeatMode.PLAYLIST && currentTracks.isNotEmpty()) {
+        // Manual skip at the last track wraps, matching natural-end behavior and iOS.
+        // The local timeline already holds the wrap; this covers casting (exo is the CastPlayer,
+        // whose queue has no wrap prefix) and a single track. A lone playlist track restarts in
+        // place, same as skipToPrevious; otherwise playFromIndexInternal keeps playWhenReady,
+        // so a paused queue stays paused. rebuildQueueFromCurrentPosition() above already put
+        // every remaining playNext/upNext item on the timeline and there is still no next item,
+        // so the only temp track left is the playing one; like natural end (STATE_ENDED) and iOS,
+        // the wrap leaves it for playlist track 0 (playFromIndexInternal clears both temp lists).
+        if (currentTracks.size == 1 && currentTemporaryType == TrackPlayerCore.TemporaryType.NONE) {
+            exo.seekTo(0)
+        } else {
+            playFromIndexInternal(0)
+        }
+        checkUpcomingTracksForUrls(lookaheadCount)
     }
 }
 
@@ -69,10 +84,18 @@ internal fun TrackPlayerCore.skipToPreviousOnQueue() {
             playFromIndexInternal(currentTrackIndex - 1)
         }
 
+        currentTrackIndex == 0 && currentRepeatMode == RepeatMode.PLAYLIST && currentTracks.size > 1 -> {
+            // At the first track under playlist repeat, wrap to the last. Temp tracks never get
+            // here (the currentTemporaryType arm above owns them). A single track falls through
+            // to the restart below, same result without rebuilding the queue.
+            playFromIndexInternal(currentTracks.size - 1)
+        }
+
         else -> {
             exo.seekTo(0)
         }
     }
+    // One lookahead refresh for every arm above, the wrap included
     checkUpcomingTracksForUrls(lookaheadCount)
 }
 

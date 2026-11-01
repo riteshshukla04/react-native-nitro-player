@@ -328,6 +328,9 @@ extension TrackPlayerCore {
     } else if self.currentTrackIndex > 0 {
       // Go to previous track in original playlist
       _ = rebuildQueueFromPlaylistIndex(index: self.currentTrackIndex - 1)
+    } else if currentTrackIndex == 0, currentRepeatMode == .playlist, currentTracks.count > 1 {
+      // At the first track under playlist repeat, wrap to the last
+      _ = rebuildQueueFromPlaylistIndex(index: currentTracks.count - 1)
     } else {
       // Already at first track, restart it
       queuePlayer.seek(to: .zero)

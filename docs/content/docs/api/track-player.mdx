@@ -59,6 +59,8 @@ await TrackPlayer.playSong('track-123', 'playlist-456');
 
 Skip to the next track. Follows the queue priority: playNext stack → upNext queue → playlist.
 
+At the last track, wraps to the first when repeat mode is `'Playlist'` (with a single-track queue, this restarts the track); otherwise does nothing.
+
 ```typescript
 await TrackPlayer.skipToNext();
 ```
@@ -69,7 +71,9 @@ await TrackPlayer.skipToNext();
 
 ### `skipToPrevious()`
 
-Skip to the previous track.
+Skip to the previous track. If more than 2 seconds into the current track, restarts it instead.
+
+At the first track, wraps to the last when repeat mode is `'Playlist'`; otherwise, or with a single-track queue, restarts the current track.
 
 ```typescript
 await TrackPlayer.skipToPrevious();
@@ -189,6 +193,10 @@ await TrackPlayer.setRepeatMode('track');
 | Param | Type | Required | Description |
 |---|---|---|---|
 | `mode` | `RepeatMode` | Yes | `'off'` \| `'Playlist'` \| `'track'` |
+
+<Callout type="warn">
+On Android while casting, `'Playlist'` repeat doesn't yet loop the queue when the last track ends on its own. `skipToNext()` at the last track still wraps.
+</Callout>
 
 **Returns:** `Promise<void>`
 
