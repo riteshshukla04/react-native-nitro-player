@@ -1271,11 +1271,8 @@ describe('TrackPlayer - Comprehensive Tests', () => {
                 await PlayerQueue.loadPlaylist(repeatPlaylistId);
 
                 // Poll rather than sleep: the lookahead fires asynchronously after the load.
-                const askedFor = (id: string) => askedPayloads.some(ids => ids.includes(id));
-                const deadline = Date.now() + 5000;
-                while (Date.now() < deadline && !(askedFor('repeat-1') && askedFor('repeat-mid'))) {
-                    await new Promise<void>(resolve => setTimeout(resolve, 100));
-                }
+                await waitForValue(askedPayloads, ids => ids.includes('repeat-1'), 5000);
+                await waitForValue(askedPayloads, ids => ids.includes('repeat-mid'), 5000);
 
                 // The lookahead sees every queued copy, but each payload asks for an id once.
                 expect(askedPayloads.length).toBeGreaterThan(0);
@@ -1331,6 +1328,55 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             const actualQueue = await TrackPlayer.getActualQueue();
             expect(actualQueue.map(t => t.id)).toStrictEqual(['repeat-1', 'repeat-mid', 'repeat-1', 'repeat-mid']);
             expect(actualQueue.map(t => t.url)).toStrictEqual(tracks.map(t => t.url));
+        });
+
+        it('should stay on the playing copy of a repeated track when another track resolves', async () => {
+            const repeated = createTestTrack('copy-1', 'Repeated', 6);
+            const lazy = { ...createTestTrack('copy-lazy', 'Lazy'), url: '' };
+            const copyPlaylistId = await PlayerQueue.createPlaylist('Repeated Copy Test');
+            createdPlaylistIds.push(copyPlaylistId);
+            await PlayerQueue.addTracksToPlaylist(copyPlaylistId, [
+                repeated,
+                createTestTrack('copy-mid', 'Between', 7),
+                repeated,
+                lazy,
+            ]);
+            await PlayerQueue.loadPlaylist(copyPlaylistId);
+
+            // Step onto the second copy the way playback reaches it, one track at a time.
+            await TrackPlayer.skipToNext();
+            await waitForState(s => s.currentIndex === 1);
+            await TrackPlayer.skipToNext();
+            let state = await waitForState(s => s.currentIndex === 2);
+            expect(state.currentTrack?.id).toBe('copy-1');
+            expect(state.currentIndex).toBe(2);
+
+            // Resolving another track re-syncs the queue; it must not jump back to the first copy.
+            await TrackPlayer.updateTracks([{ ...lazy, url: createTestTrack('copy-lazy', '', 8).url }]);
+            await waitForNextTick();
+
+            state = await TrackPlayer.getState();
+            expect(state.currentTrack?.id).toBe('copy-1');
+            expect(state.currentIndex).toBe(2);
+            expect((await TrackPlayer.getNextTracks(5)).map(t => t.id)).toStrictEqual(['copy-lazy']);
+        });
+
+        it('should resolve a playNext copy of a lazy track', async () => {
+            const lazy = { ...createTestTrack('next-lazy', 'Lazy Next'), url: '' };
+            const nextPlaylistId = await PlayerQueue.createPlaylist('PlayNext Copy Test');
+            createdPlaylistIds.push(nextPlaylistId);
+            await PlayerQueue.addTracksToPlaylist(nextPlaylistId, [createTestTrack('next-first', 'First'), lazy]);
+            await PlayerQueue.loadPlaylist(nextPlaylistId);
+            await TrackPlayer.playNext('next-lazy');
+            await waitForNextTick();
+
+            const url = createTestTrack('next-lazy', '', 7).url;
+            await TrackPlayer.updateTracks([{ ...lazy, url }]);
+            await waitForNextTick();
+
+            // Both the playNext copy and the playlist copy took the update.
+            const copies = (await TrackPlayer.getActualQueue()).filter(t => t.id === 'next-lazy');
+            expect(copies.map(t => t.url)).toStrictEqual([url, url]);
         });
     });
 

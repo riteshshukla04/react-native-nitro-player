@@ -334,6 +334,7 @@ extension TrackPlayerCore {
     let isRepeatLoop =
       currentRepeatMode == .track && currentItem.trackId != nil
       && currentItem.trackId == lastCurrentItemTrackId
+    let previousItemTrackId = lastCurrentItemTrackId
     lastCurrentItemTrackId = currentItem.trackId
 
     #if DEBUG
@@ -383,8 +384,18 @@ extension TrackPlayerCore {
       NitroPlayerLogger.log("TrackPlayerCore", "🔍 Looking up trackId '\(trackId)' in currentTracks...")
       NitroPlayerLogger.log("TrackPlayerCore", "   Current index BEFORE lookup: \(currentTrackIndex)")
 
+      let previousTemporaryType = currentTemporaryType
       currentTemporaryType = determineCurrentTemporaryType()
       NitroPlayerLogger.log("TrackPlayerCore", "   🎯 Track type: \(currentTemporaryType)")
+
+      // A repeated track resolves to the copy playback reached, not its first one. An item
+      // that already matches the index (a jump, a replace, a repeat loop) keeps it; moving on
+      // through the queue, including onto a back-to-back copy, searches past it.
+      let matchesIndex = currentTracks[safe: currentTrackIndex]?.id == trackId
+      let ontoNextCopy = currentTracks[safe: currentTrackIndex + 1]?.id == trackId
+        && !(isRecoveryReplace || isRepeatLoop || isBackendTransfer)
+        && (previousItemTrackId == trackId || previousTemporaryType != .none)
+      let indexHint = matchesIndex && !ontoNextCopy ? currentTrackIndex : currentTrackIndex + 1
 
       if currentTemporaryType != .none {
         var tempTrack: TrackItem?
@@ -400,7 +411,7 @@ extension TrackPlayerCore {
             notifyTrackChange(track, .skip)
           }
         }
-      } else if let index = currentTracks.firstIndex(where: { $0.id == trackId }) {
+      } else if let index = currentTrackIndexOf(trackId, from: indexHint) {
         NitroPlayerLogger.log("TrackPlayerCore", "   ✅ Found track at index: \(index)")
         NitroPlayerLogger.log("TrackPlayerCore", "   Setting currentTrackIndex from \(currentTrackIndex) to \(index)")
 

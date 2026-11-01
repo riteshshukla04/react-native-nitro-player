@@ -127,8 +127,10 @@ export interface TrackPlayer extends HybridObject<{
    * Matches by track.id and updates all properties (url, artwork, title, etc.)
    * Note: Empty string "" is valid for TrackItem.url when adding tracks, to support lazy
    * loading. An update, however, only applies if it carries a URL; entries with "" are skipped.
-   * Every queue position holding a track's id receives the update. If the same id
-   * appears more than once, the last entry with a URL wins.
+   * Every queue position holding a track's id receives the update, including playNext/upNext
+   * copies. Exception: once the currently playing track has a URL, an update that changes it is
+   * skipped for every copy (gapless); same-URL metadata updates still apply. If the same id
+   * appears more than once, the last applicable entry with a URL wins.
    * @param tracks Array of full TrackItem objects to update
    * @returns Promise that resolves when updates complete
    */

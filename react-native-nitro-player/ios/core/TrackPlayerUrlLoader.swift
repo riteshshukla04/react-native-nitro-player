@@ -45,19 +45,19 @@ extension TrackPlayerCore {
 
     let applicableTracks = tracks.filter { track in
       switch true {
+      case track.url.isEmpty:
+        // Checked first so an entry without a URL can never win the dedupe below and
+        // blank out every copy of a track.
+        NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Skipping track with empty URL: \(track.id)")
+        return false
       case track.id == currentTrackId && (currentTrackIsEmpty || currentItemFailed):
-        NitroPlayerLogger.log("TrackPlayerCore",
-          "🔄 Updating current track (\(currentItemFailed ? "failed item" : "no URL")): \(track.id)")
-        return !track.url.isEmpty
-      case track.id == currentTrackId && track.url == currentTrack?.url && !track.url.isEmpty:
+        return true
+      case track.id == currentTrackId && track.url == currentTrack?.url:
         // Same URL is a metadata-only edit (a title or artwork refresh); the item is untouched.
         return true
       case track.id == currentTrackId:
         NitroPlayerLogger.log("TrackPlayerCore",
           "⚠️ Skipping URL change for currently playing track: \(track.id) (preserves gapless)")
-        return false
-      case track.url.isEmpty:
-        NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Skipping track with empty URL: \(track.id)")
         return false
       default:
         return true
@@ -66,14 +66,15 @@ extension TrackPlayerCore {
 
     // A queue can hold the same track more than once, so a payload may repeat an id.
     // Keep the last applicable update per id so every step below applies the same track.
-    // Every branch above already rejects an empty URL (it never equals the current track's
-    // non-empty URL); filtering again here keeps the guarantee if those branches change, so
-    // an entry without a URL can never win and blank out every copy of a track.
-    let tracksWithUrls = applicableTracks.filter { !$0.url.isEmpty }
-    let safeTracks = tracksWithUrls.distinctKeepingLast(by: \.id)
-    if safeTracks.count != tracksWithUrls.count {
+    let safeTracks = applicableTracks.distinctKeepingLast(by: \.id)
+    if safeTracks.count != applicableTracks.count {
       NitroPlayerLogger.log("TrackPlayerCore",
-        "ℹ️ updateTracks repeated \(tracksWithUrls.count - safeTracks.count) track id(s); last update per id applied")
+        "ℹ️ updateTracks repeated \(applicableTracks.count - safeTracks.count) track id(s); last update per id applied")
+    }
+    if let currentTrackId, currentTrackIsEmpty || currentItemFailed,
+      safeTracks.contains(where: { $0.id == currentTrackId }) {
+      NitroPlayerLogger.log("TrackPlayerCore",
+        "🔄 Updating current track (\(currentItemFailed ? "failed item" : "no URL")): \(currentTrackId)")
     }
 
     guard !safeTracks.isEmpty else {
@@ -93,6 +94,12 @@ extension TrackPlayerCore {
     // Update in PlaylistManager
     let affectedPlaylists = self.playlistManager.updateTracks(tracks: safeTracks)
 
+    // playNext/upNext hold their own copies of queued tracks; give them the same update.
+    let updatesById = Dictionary(safeTracks.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last })
+    let tempQueuesUpdated = (playNextStack + upNextQueue).contains { updatedTrackIds.contains($0.id) }
+    playNextStack = playNextStack.map { updatesById[$0.id] ?? $0 }
+    upNextQueue = upNextQueue.map { updatesById[$0.id] ?? $0 }
+
     // Replace the current AVPlayerItem when its URL just resolved (local only — cast reloads below instead).
     // Look up the FRESH track — the pre-update snapshot's URL is empty by definition here.
     if !self.isCasting, currentTrackIsEmpty,
@@ -104,15 +111,15 @@ extension TrackPlayerCore {
       }
     }
 
-    // Rebuild queue if current playlist was affected
-    if let currentId = self.currentPlaylistId,
-      let updateCount = affectedPlaylists[currentId]
-    {
+    // Rebuild queue if the current playlist or a temporary queue was affected
+    let currentPlaylistUpdateCount = self.currentPlaylistId.flatMap { affectedPlaylists[$0] }
+    if currentPlaylistUpdateCount != nil || tempQueuesUpdated {
       NitroPlayerLogger.log("TrackPlayerCore",
-        "🔄 Rebuilding queue - \(updateCount) tracks updated in current playlist")
+        "🔄 Rebuilding queue - \(currentPlaylistUpdateCount ?? 0) tracks updated in current playlist")
 
       // Sync currentTracks from the freshly-updated PlaylistManager
-      if let updatedPlaylist = self.playlistManager.getPlaylist(playlistId: currentId) {
+      if currentPlaylistUpdateCount != nil, let currentId = self.currentPlaylistId,
+        let updatedPlaylist = self.playlistManager.getPlaylist(playlistId: currentId) {
         self.assignCurrentTracks(updatedPlaylist.tracks)
         NitroPlayerLogger.log("TrackPlayerCore",
           "📥 Synced currentTracks from PlaylistManager (\(self.currentTracks.count) tracks)")
