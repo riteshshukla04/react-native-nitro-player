@@ -1259,6 +1259,10 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             await PlayerQueue.loadPlaylist(repeatPlaylistId);
             await waitForNextTick();
 
+            // The repeated track is also the current one, so the update below takes the
+            // "current track has no URL" path that replaces the active player item.
+            expect((await TrackPlayer.getState()).currentTrack?.id).toBe('repeat-1');
+
             // Each id is asked for once, however many times it is queued.
             expect((await TrackPlayer.getTracksNeedingUrls()).map(t => t.id)).toStrictEqual([
                 'repeat-1',
@@ -1279,6 +1283,11 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             expect(tracks[0].url).toBe(createTestTrack('repeat-1', '', 8).url);
             expect(tracks[2].url).toBe(tracks[0].url);
             expect((await TrackPlayer.getTracksNeedingUrls()).map(t => t.id)).toStrictEqual(['repeat-mid']);
+
+            // The player's current track took the same update as the queue.
+            const { currentTrack } = await TrackPlayer.getState();
+            expect(currentTrack?.title).toBe('Last Update');
+            expect(currentTrack?.url).toBe(tracks[0].url);
         });
     });
 
