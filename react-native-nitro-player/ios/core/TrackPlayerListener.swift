@@ -115,8 +115,7 @@ extension TrackPlayerCore {
     // advancing here, so playback is real.
     if player.timeControlStatus == .playing,
       isRecoveringFromStall || player.automaticallyWaitsToMinimizeStalling {
-      player.automaticallyWaitsToMinimizeStalling = false
-      isRecoveringFromStall = false
+      clearStallRecovery()
       emitStateChange()
     }
 
@@ -169,8 +168,12 @@ extension TrackPlayerCore {
           // safe to disable stall waiting for gapless inter-track transitions — doing it
           // at readyToPlay (header parsed, nothing buffered) starts playback on an empty
           // buffer, which stalls immediately.
-          player.automaticallyWaitsToMinimizeStalling = false
-          self.isRecoveringFromStall = false
+          self.clearStallRecovery()
+        } else if player.timeControlStatus == .waitingToPlayAtSpecifiedRate,
+          self.intendedToPlay, let item = player.currentItem {
+          // Waiting with stall waiting on (preroll, or after a stall) posts no stall
+          // notification, so watch for a silent connection from here as well.
+          self.armStallWatchdog(for: item)
         }
         self.emitStateChange()
       } else if keyPath == "currentItem" {
@@ -308,23 +311,46 @@ extension TrackPlayerCore {
     }
   }
 
-  /// If a re-armed stall never reaches `.playing` (e.g. the connection went silent without
-  /// an error), recreate the item on a fresh connection via `recoverFailedItem`, which
-  /// resumes at the last position and surfaces an error once its retry budget runs out.
-  /// Must be called on `playerQueue`.
+  /// Clears stall-recovery state once playback is actually flowing: disables stall waiting
+  /// for gapless inter-track transitions and drops the recovery flag. Must be called on
+  /// `playerQueue`.
+  func clearStallRecovery() {
+    player?.automaticallyWaitsToMinimizeStalling = false
+    isRecoveringFromStall = false
+  }
+
+  /// Watches an item that should be playing but is waiting on data (after a stall, or while
+  /// prerolling with stall waiting on). If its buffer makes no progress for a whole
+  /// `stallWatchdogDelay` window — the connection went silent without an error — recreate it
+  /// on a fresh connection via `recoverFailedItem`, which resumes at the last position and
+  /// surfaces an error once its retry budget runs out. A slow but progressing download just
+  /// re-arms, so it is never thrown away. Must be called on `playerQueue`.
   func armStallWatchdog(for item: AVPlayerItem) {
     stallWatchdogGeneration += 1
     let generation = stallWatchdogGeneration
+    let bufferedAtArm = bufferedEnd(of: item)
     playerQueue.asyncAfter(deadline: .now() + Constants.stallWatchdogDelay) { [weak self] in
       guard let self, let player = self.player,
         generation == self.stallWatchdogGeneration,
-        self.isRecoveringFromStall, self.intendedToPlay, !self.isInterrupted,
+        self.intendedToPlay, !self.isInterrupted,
         player.currentItem === item, player.timeControlStatus != .playing
       else { return }
+      if self.bufferedEnd(of: item) > bufferedAtArm {
+        self.armStallWatchdog(for: item)
+        return
+      }
       NitroPlayerLogger.log("TrackPlayerCore",
-        "⏱️ Still stalled after \(Int(Constants.stallWatchdogDelay))s — recreating item")
+        "⏱️ No buffer progress for \(Int(Constants.stallWatchdogDelay))s — recreating item")
       self.recoverFailedItem(item)
     }
+  }
+
+  /// End of the furthest loaded time range, in seconds — grows while media is arriving.
+  private func bufferedEnd(of item: AVPlayerItem) -> Double {
+    item.loadedTimeRanges
+      .map { CMTimeRangeGetEnd($0.timeRangeValue).seconds }
+      .filter { $0.isFinite }
+      .max() ?? 0
   }
 
   func currentItemDidChange() {
