@@ -15,17 +15,13 @@ import com.margelo.nitro.nitroplayer.TrackItem
 
 suspend fun TrackPlayerCore.updateTracks(tracks: List<TrackItem>) = withPlayerContext { updateTracksOnQueue(tracks) }
 
-internal fun TrackPlayerCore.updateTracksOnQueue(updates: List<TrackItem>) {
-    // A queue can hold the same track more than once, so a payload may repeat an id.
-    // Keep one update per id (last wins) so every step below applies the same track.
-    val tracks = updates.asReversed().distinctBy { it.id }.asReversed()
+internal fun TrackPlayerCore.updateTracksOnQueue(tracks: List<TrackItem>) {
     run {
         val currentTrack = getCurrentTrack()
         val currentTrackId = currentTrack?.id
         val currentTrackIsEmpty = currentTrack?.url.isNullOrEmpty()
-        val currentTrackUpdate = if (currentTrackId != null) tracks.find { it.id == currentTrackId } else null
 
-        val safeTracks =
+        val applicableTracks =
             tracks.filter { track ->
                 when {
                     // Same URL is a metadata-only edit (a title or artwork refresh): it reaches
@@ -40,7 +36,17 @@ internal fun TrackPlayerCore.updateTracksOnQueue(updates: List<TrackItem>) {
                     else -> true
                 }
             }
+        // A queue can hold the same track more than once, so a payload may repeat an id.
+        // Keep the last applicable update per id so every step below applies the same track,
+        // and an entry that was filtered out above can't displace a valid one.
+        val safeTracks = applicableTracks.asReversed().distinctBy { it.id }.asReversed()
+        if (safeTracks.size != applicableTracks.size) {
+            NitroPlayerLogger.log("TrackPlayerCore") {
+                "updateTracks repeated ${applicableTracks.size - safeTracks.size} track id(s); last update per id applied"
+            }
+        }
         if (safeTracks.isEmpty()) return@run
+        val currentTrackUpdate = currentTrackId?.let { id -> safeTracks.find { it.id == id } }
         safeTracks.forEach { urlRequestedAt.remove(it.id) }
 
         val affectedPlaylists: Map<String, Int> = playlistManager.updateTracks(safeTracks)

@@ -28,16 +28,8 @@ extension TrackPlayerCore {
 
   // MARK: - Internal
 
-  func updateTracksInternal(tracks updates: [TrackItem]) {
-    NitroPlayerLogger.log("TrackPlayerCore", "🔄 updateTracks: \(updates.count) updates")
-
-    // A queue can hold the same track more than once, so a payload may repeat an id.
-    // Keep one update per id (last wins) so every step below applies the same track.
-    var lastIndexById: [String: Int] = [:]
-    for (index, track) in updates.enumerated() { lastIndexById[track.id] = index }
-    let tracks = updates.enumerated()
-      .filter { lastIndexById[$0.element.id] == $0.offset }
-      .map(\.element)
+  func updateTracksInternal(tracks: [TrackItem]) {
+    NitroPlayerLogger.log("TrackPlayerCore", "🔄 updateTracks: \(tracks.count) updates")
 
     let currentTrack = self.getCurrentTrack()
     let currentTrackId = currentTrack?.id
@@ -51,7 +43,7 @@ extension TrackPlayerCore {
     let currentItemFailed = self.player?.currentItem?.status == .failed
       && self.player?.currentItem?.trackId == currentTrackId
 
-    let safeTracks = tracks.filter { track in
+    let applicableTracks = tracks.filter { track in
       switch true {
       case track.id == currentTrackId && (currentTrackIsEmpty || currentItemFailed):
         NitroPlayerLogger.log("TrackPlayerCore",
@@ -70,6 +62,15 @@ extension TrackPlayerCore {
       default:
         return true
       }
+    }
+
+    // A queue can hold the same track more than once, so a payload may repeat an id.
+    // Keep the last applicable update per id so every step below applies the same track,
+    // and an entry that was filtered out above can't displace a valid one.
+    let safeTracks = Array(applicableTracks.reversed().uniqued(by: \.id).reversed())
+    if safeTracks.count != applicableTracks.count {
+      NitroPlayerLogger.log("TrackPlayerCore",
+        "ℹ️ updateTracks repeated \(applicableTracks.count - safeTracks.count) track id(s); last update per id applied")
     }
 
     guard !safeTracks.isEmpty else {
@@ -180,11 +181,9 @@ extension TrackPlayerCore {
 
     // Only return tracks that truly can't play: empty remote URL AND not downloaded locally.
     // A queue can hold the same track more than once; ask for each id only once.
-    var seen = Set<String>()
-    return playlist.tracks.filter {
-      $0.url.isEmpty && !DownloadManagerCore.shared.isTrackDownloaded(trackId: $0.id)
-        && seen.insert($0.id).inserted
-    }
+    return playlist.tracks
+      .filter { $0.url.isEmpty && !DownloadManagerCore.shared.isTrackDownloaded(trackId: $0.id) }
+      .uniqued(by: \.id)
   }
 
   /// Walks the queue structure directly instead of materializing the whole queue —

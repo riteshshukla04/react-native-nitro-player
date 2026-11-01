@@ -1245,6 +1245,7 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             expect((await TrackPlayer.getTracksNeedingUrls()).map(t => t.id)).toContain('lazy-1');
         });
 
+        // Runs in both the Harness iOS and Harness Android CI jobs, so it pins both platforms.
         it('should resolve a track that is queued more than once', async () => {
             const repeated = { ...createTestTrack('repeat-1', 'Repeated'), url: '' };
             const repeatPlaylistId = await PlayerQueue.createPlaylist('Repeated Track Test');
@@ -1264,16 +1265,19 @@ describe('TrackPlayer - Comprehensive Tests', () => {
                 'repeat-mid',
             ]);
 
-            // A payload that repeats an id used to crash iOS; the last entry for an id wins.
+            // A payload that repeats an id used to crash iOS. The last applicable entry for an id
+            // wins, and a trailing stale entry (no URL) must not displace a resolved one.
             await TrackPlayer.updateTracks([
                 { ...repeated, url: createTestTrack('repeat-1', '', 7).url, title: 'First Update' },
                 { ...repeated, url: createTestTrack('repeat-1', '', 8).url, title: 'Last Update' },
+                { ...repeated, url: '', title: 'Stale' },
             ]);
             await waitForNextTick();
 
             const tracks = PlayerQueue.getPlaylist(repeatPlaylistId)?.tracks ?? [];
             expect(tracks.map(t => t.title)).toStrictEqual(['Last Update', 'Between', 'Last Update']);
-            expect(tracks[0].url).toBe(tracks[2].url);
+            expect(tracks[0].url).toBe(createTestTrack('repeat-1', '', 8).url);
+            expect(tracks[2].url).toBe(tracks[0].url);
             expect((await TrackPlayer.getTracksNeedingUrls()).map(t => t.id)).toStrictEqual(['repeat-mid']);
         });
     });
