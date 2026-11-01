@@ -232,9 +232,10 @@ extension TrackPlayerCore {
     } ?? false
     let candidateTracks = currentNeedsUrl ? [currentTrack!] + upcomingTracks : upcomingTracks
 
-    let tracksNeedingUrls = candidateTracks.filter {
-      $0.url.isEmpty && !DownloadManagerCore.shared.isTrackDownloaded(trackId: $0.id)
-    }
+    // The same track can be queued back to back; ask for each id only once.
+    let tracksNeedingUrls = candidateTracks
+      .filter { $0.url.isEmpty && !DownloadManagerCore.shared.isTrackDownloaded(trackId: $0.id) }
+      .uniqued(by: \.id)
 
     if !tracksNeedingUrls.isEmpty {
       NitroPlayerLogger.log("TrackPlayerCore", "⚠️ \(tracksNeedingUrls.count) upcoming tracks need URLs")

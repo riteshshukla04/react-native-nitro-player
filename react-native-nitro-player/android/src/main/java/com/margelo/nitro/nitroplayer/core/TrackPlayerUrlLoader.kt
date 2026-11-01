@@ -161,7 +161,8 @@ internal fun TrackPlayerCore.checkUpcomingTracksForUrls(
     val currentTrack = getCurrentTrack()
     val currentNeedsUrl = currentTrack != null && currentTrack.url.isEmpty()
     val candidates = if (currentNeedsUrl) listOf(currentTrack!!) + upcomingTracks else upcomingTracks
-    val needUrls = candidates.filter { it.url.isEmpty() }
+    // The same track can be queued back to back; ask for each id only once.
+    val needUrls = candidates.filter { it.url.isEmpty() }.distinctBy { it.id }
     val now = SystemClock.elapsedRealtime()
     val ask = if (force) needUrls else needUrls.filter { track -> urlRequestedAt[track.id]?.let { now - it < URL_REQUEST_COALESCE_MS } != true }
     if (ask.isEmpty()) return

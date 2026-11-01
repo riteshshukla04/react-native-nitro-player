@@ -1248,13 +1248,11 @@ describe('TrackPlayer - Comprehensive Tests', () => {
         // Runs in both the Harness iOS and Harness Android CI jobs, so it pins both platforms.
         it('should resolve a track that is queued more than once', async () => {
             const repeated = { ...createTestTrack('repeat-1', 'Repeated'), url: '' };
+            const between = { ...createTestTrack('repeat-mid', 'Between'), url: '' };
             const repeatPlaylistId = await PlayerQueue.createPlaylist('Repeated Track Test');
             createdPlaylistIds.push(repeatPlaylistId);
-            await PlayerQueue.addTracksToPlaylist(repeatPlaylistId, [
-                repeated,
-                { ...createTestTrack('repeat-mid', 'Between'), url: '' },
-                repeated,
-            ]);
+            // repeat-1 is repeated and current; repeat-mid is repeated and not current.
+            await PlayerQueue.addTracksToPlaylist(repeatPlaylistId, [repeated, between, repeated, between]);
 
             await PlayerQueue.loadPlaylist(repeatPlaylistId);
             await waitForNextTick();
@@ -1270,19 +1268,29 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             ]);
 
             // A payload that repeats an id used to crash iOS. The last applicable entry for an id
-            // wins, and a trailing stale entry (no URL) must not displace a resolved one.
+            // wins, and a trailing entry without a URL is never applied, so it can't displace one.
             await TrackPlayer.updateTracks([
                 { ...repeated, url: createTestTrack('repeat-1', '', 7).url, title: 'First Update' },
                 { ...repeated, url: createTestTrack('repeat-1', '', 8).url, title: 'Last Update' },
-                { ...repeated, url: '', title: 'Stale' },
+                { ...repeated, url: '', title: 'No URL' },
+                { ...between, url: createTestTrack('repeat-mid', '', 9).url, title: 'Between First' },
+                { ...between, url: createTestTrack('repeat-mid', '', 10).url, title: 'Between Last' },
+                { ...between, url: '', title: 'No URL' },
             ]);
             await waitForNextTick();
 
             const tracks = PlayerQueue.getPlaylist(repeatPlaylistId)?.tracks ?? [];
-            expect(tracks.map(t => t.title)).toStrictEqual(['Last Update', 'Between', 'Last Update']);
+            expect(tracks.map(t => t.title)).toStrictEqual([
+                'Last Update',
+                'Between Last',
+                'Last Update',
+                'Between Last',
+            ]);
             expect(tracks[0].url).toBe(createTestTrack('repeat-1', '', 8).url);
             expect(tracks[2].url).toBe(tracks[0].url);
-            expect((await TrackPlayer.getTracksNeedingUrls()).map(t => t.id)).toStrictEqual(['repeat-mid']);
+            expect(tracks[1].url).toBe(createTestTrack('repeat-mid', '', 10).url);
+            expect(tracks[3].url).toBe(tracks[1].url);
+            expect(await TrackPlayer.getTracksNeedingUrls()).toStrictEqual([]);
 
             // The player's current track took the same update as the queue.
             const { currentTrack } = await TrackPlayer.getState();
