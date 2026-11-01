@@ -1,4 +1,3 @@
-import CarPlay
 import React
 import ReactAppDependencyProvider
 import React_RCTAppDelegate
@@ -6,42 +5,32 @@ import UIKit
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
-  var window: UIWindow?
+  let reactNativeDelegate = ReactNativeDelegate()
+  lazy var reactNativeFactory = RCTReactNativeFactory(delegate: reactNativeDelegate)
 
-  var reactNativeDelegate: ReactNativeDelegate?
-  var reactNativeFactory: RCTReactNativeFactory?
+  private var launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+
+  // Windows are owned by the scene delegates declared in Info.plist (PhoneSceneDelegate,
+  // CarPlaySceneDelegate). The React root is shared so whichever scene connects first boots
+  // the JS runtime — CarPlay can launch the app without the phone UI ever appearing.
+  lazy var reactRootViewController: UIViewController = {
+    let rootView = reactNativeFactory.rootViewFactory.view(
+      withModuleName: "example",
+      initialProperties: nil,
+      launchOptions: launchOptions
+    )
+    let rootViewController = reactNativeDelegate.createRootViewController()
+    reactNativeDelegate.setRootView(rootView, toRootViewController: rootViewController)
+    return rootViewController
+  }()
 
   func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
-    let delegate = ReactNativeDelegate()
-    let factory = RCTReactNativeFactory(delegate: delegate)
-    delegate.dependencyProvider = RCTAppDependencyProvider()
-
-    reactNativeDelegate = delegate
-    reactNativeFactory = factory
-
-    window = UIWindow(frame: UIScreen.main.bounds)
-
-    factory.startReactNative(
-      withModuleName: "example",
-      in: window,
-      launchOptions: launchOptions
-    )
-
-    // Setup CarPlay if available
-    if #available(iOS 14.0, *) {
-      setupCarPlay()
-    }
-
+    self.launchOptions = launchOptions
+    reactNativeDelegate.dependencyProvider = RCTAppDependencyProvider()
     return true
-  }
-
-  @available(iOS 14.0, *)
-  private func setupCarPlay() {
-    // CarPlay will be handled automatically through CPTemplateApplicationSceneDelegate
-    // when the user connects to CarPlay
   }
 }
 
