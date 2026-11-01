@@ -539,6 +539,33 @@ open class HybridTrackPlayerSpec_cxx {
   }
   
   @inline(__always)
+  public final func setNotificationButtonState(state: NotificationButtonState) -> bridge.Result_void_ {
+    do {
+      try self.__implementation.setNotificationButtonState(state: state)
+      return bridge.create_Result_void_()
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_void_(__exceptionPtr)
+    }
+  }
+  
+  @inline(__always)
+  public final func onNotificationButtonPress(callback: bridge.Func_void_std__string_TrackItem_NotificationButtonEvent) -> bridge.Result_void_ {
+    do {
+      try self.__implementation.onNotificationButtonPress(callback: { () -> (String, TrackItem, NotificationButtonEvent) -> Void in
+        let __wrappedFunction = bridge.wrap_Func_void_std__string_TrackItem_NotificationButtonEvent(callback)
+        return { (__buttonId: String, __track: TrackItem, __event: NotificationButtonEvent) -> Void in
+          __wrappedFunction.call(std.string(__buttonId), __track, __event)
+        }
+      }())
+      return bridge.create_Result_void_()
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_void_(__exceptionPtr)
+    }
+  }
+  
+  @inline(__always)
   public final func setVolume(volume: Double) -> bridge.Result_std__shared_ptr_Promise_void___ {
     do {
       let __result = try self.__implementation.setVolume(volume: volume)

@@ -5,6 +5,7 @@ import type {
   Reason,
   TimedMetadata,
 } from '../types/PlayerQueue'
+import type { NotificationButtonEvent } from '../types/NotificationButtons'
 
 type PlaybackStateCallback = (state: TrackPlayerState, reason?: Reason) => void
 type TrackChangeCallback = (track: TrackItem, reason?: Reason) => void
@@ -20,6 +21,11 @@ type TemporaryQueueCallback = (
   upNextQueue: TrackItem[]
 ) => void
 type AndroidAutoConnectionCallback = (connected: boolean) => void
+type NotificationButtonPressCallback = (
+  buttonId: string,
+  track: TrackItem,
+  event: NotificationButtonEvent
+) => void
 
 /**
  * Internal subscription manager that allows multiple hooks to subscribe
@@ -44,6 +50,9 @@ class CallbackSubscriptionManager {
   private isPlaybackProgressRegistered = false
   private isSeekRegistered = false
   private isTimedMetadataRegistered = false
+  private notificationButtonPressSubscribers =
+    new Set<NotificationButtonPressCallback>()
+  private isNotificationButtonPressRegistered = false
   private isTemporaryQueueRegistered = false
 
   /**
@@ -341,6 +350,46 @@ class CallbackSubscriptionManager {
 
     return () => {
       this.timedMetadataSubscribers.delete(callback)
+    }
+  }
+
+  /**
+   * Subscribe to presses on buttons from `PlayerConfig.notificationButtons`
+   * @returns Unsubscribe function
+   */
+  subscribeToNotificationButtonPress(
+    callback: NotificationButtonPressCallback
+  ): () => void {
+    this.notificationButtonPressSubscribers.add(callback)
+    this.ensureNotificationButtonPressRegistered()
+
+    return () => {
+      this.notificationButtonPressSubscribers.delete(callback)
+    }
+  }
+
+  private ensureNotificationButtonPressRegistered(): void {
+    if (this.isNotificationButtonPressRegistered) return
+
+    try {
+      TrackPlayer.onNotificationButtonPress((buttonId, track, event) => {
+        this.notificationButtonPressSubscribers.forEach((subscriber) => {
+          try {
+            subscriber(buttonId, track, event)
+          } catch (error) {
+            console.error(
+              '[CallbackManager] Error in notification button subscriber:',
+              error
+            )
+          }
+        })
+      })
+      this.isNotificationButtonPressRegistered = true
+    } catch (error) {
+      console.error(
+        '[CallbackManager] Failed to register notification button callback:',
+        error
+      )
     }
   }
 

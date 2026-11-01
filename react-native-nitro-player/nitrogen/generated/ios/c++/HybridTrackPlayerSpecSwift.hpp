@@ -26,10 +26,26 @@ namespace margelo::nitro::nitroplayer { enum class RepeatMode; }
 namespace margelo::nitro::nitroplayer { struct PlayerConfig; }
 // Forward declaration of `AndroidAudioFocusMode` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class AndroidAudioFocusMode; }
+// Forward declaration of `NotificationButtons` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct NotificationButtons; }
+// Forward declaration of `AndroidNotificationButton` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct AndroidNotificationButton; }
+// Forward declaration of `IOSNotificationButtons` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct IOSNotificationButtons; }
+// Forward declaration of `LockScreenButton` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct LockScreenButton; }
+// Forward declaration of `LockScreenCommand` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class LockScreenCommand; }
+// Forward declaration of `CarPlayButton` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct CarPlayButton; }
 // Forward declaration of `Reason` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class Reason; }
 // Forward declaration of `TimedMetadata` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct TimedMetadata; }
+// Forward declaration of `NotificationButtonState` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct NotificationButtonState; }
+// Forward declaration of `NotificationButtonEvent` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct NotificationButtonEvent; }
 
 #include <NitroModules/Promise.hpp>
 #include <string>
@@ -45,9 +61,17 @@ namespace margelo::nitro::nitroplayer { struct TimedMetadata; }
 #include "RepeatMode.hpp"
 #include "PlayerConfig.hpp"
 #include "AndroidAudioFocusMode.hpp"
+#include "NotificationButtons.hpp"
+#include "AndroidNotificationButton.hpp"
+#include "IOSNotificationButtons.hpp"
+#include "LockScreenButton.hpp"
+#include "LockScreenCommand.hpp"
+#include "CarPlayButton.hpp"
 #include "Reason.hpp"
 #include <functional>
 #include "TimedMetadata.hpp"
+#include "NotificationButtonState.hpp"
+#include "NotificationButtonEvent.hpp"
 
 #include "NitroPlayer-Swift-Cxx-Umbrella.hpp"
 
@@ -260,6 +284,18 @@ namespace margelo::nitro::nitroplayer {
       }
       auto __value = std::move(__result.value());
       return __value;
+    }
+    inline void setNotificationButtonState(const NotificationButtonState& state) override {
+      auto __result = _swiftPart.setNotificationButtonState(std::forward<decltype(state)>(state));
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+    }
+    inline void onNotificationButtonPress(const std::function<void(const std::string& /* buttonId */, const TrackItem& /* track */, const NotificationButtonEvent& /* event */)>& callback) override {
+      auto __result = _swiftPart.onNotificationButtonPress(callback);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
     }
     inline std::shared_ptr<Promise<void>> setVolume(double volume) override {
       auto __result = _swiftPart.setVolume(std::forward<decltype(volume)>(volume));

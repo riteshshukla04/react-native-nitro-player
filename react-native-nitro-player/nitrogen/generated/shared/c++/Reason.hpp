@@ -29,11 +29,11 @@ namespace margelo::nitro::nitroplayer {
    * An enum which can be represented as a JavaScript union (Reason).
    */
   enum class Reason {
-    USER_ACTION      SWIFT_NAME(userAction) = 0,
-    SKIP      SWIFT_NAME(skip) = 1,
-    END      SWIFT_NAME(end) = 2,
-    ERROR      SWIFT_NAME(error) = 3,
-    REPEAT      SWIFT_NAME(repeat) = 4,
+    REPEAT      SWIFT_NAME(repeat) = 0,
+    USER_ACTION      SWIFT_NAME(userAction) = 1,
+    SKIP      SWIFT_NAME(skip) = 2,
+    END      SWIFT_NAME(end) = 3,
+    ERROR      SWIFT_NAME(error) = 4,
   } CLOSED_ENUM;
 
 } // namespace margelo::nitro::nitroplayer
@@ -46,22 +46,22 @@ namespace margelo::nitro {
     static inline margelo::nitro::nitroplayer::Reason fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
       std::string unionValue = JSIConverter<std::string>::fromJSI(runtime, arg);
       switch (hashString(unionValue.c_str(), unionValue.size())) {
+        case hashString("repeat"): return margelo::nitro::nitroplayer::Reason::REPEAT;
         case hashString("user_action"): return margelo::nitro::nitroplayer::Reason::USER_ACTION;
         case hashString("skip"): return margelo::nitro::nitroplayer::Reason::SKIP;
         case hashString("end"): return margelo::nitro::nitroplayer::Reason::END;
         case hashString("error"): return margelo::nitro::nitroplayer::Reason::ERROR;
-        case hashString("repeat"): return margelo::nitro::nitroplayer::Reason::REPEAT;
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert \"" + unionValue + "\" to enum Reason - invalid value!");
       }
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, margelo::nitro::nitroplayer::Reason arg) {
       switch (arg) {
+        case margelo::nitro::nitroplayer::Reason::REPEAT: return JSIConverter<std::string>::toJSI(runtime, "repeat");
         case margelo::nitro::nitroplayer::Reason::USER_ACTION: return JSIConverter<std::string>::toJSI(runtime, "user_action");
         case margelo::nitro::nitroplayer::Reason::SKIP: return JSIConverter<std::string>::toJSI(runtime, "skip");
         case margelo::nitro::nitroplayer::Reason::END: return JSIConverter<std::string>::toJSI(runtime, "end");
         case margelo::nitro::nitroplayer::Reason::ERROR: return JSIConverter<std::string>::toJSI(runtime, "error");
-        case margelo::nitro::nitroplayer::Reason::REPEAT: return JSIConverter<std::string>::toJSI(runtime, "repeat");
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert Reason to JS - invalid value: "
                                     + std::to_string(static_cast<int>(arg)) + "!");
@@ -73,11 +73,11 @@ namespace margelo::nitro {
       }
       std::string unionValue = JSIConverter<std::string>::fromJSI(runtime, value);
       switch (hashString(unionValue.c_str(), unionValue.size())) {
+        case hashString("repeat"):
         case hashString("user_action"):
         case hashString("skip"):
         case hashString("end"):
         case hashString("error"):
-        case hashString("repeat"):
           return true;
         default:
           return false;

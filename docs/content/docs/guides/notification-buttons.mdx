@@ -1,0 +1,136 @@
+---
+title: Notification Buttons
+description: Add favorite, refresh and other buttons to the notification, lock screen, Android Auto and CarPlay
+---
+
+Add your own buttons next to the play controls in the system media controls: the Android notification and lock screen, Android Auto, the iOS Lock Screen and Control Center, and CarPlay. Presses come back to JS with the track that was showing.
+
+## Configure
+
+```typescript
+import { TrackPlayer } from 'react-native-nitro-player';
+
+await TrackPlayer.configure({
+  notificationButtons: {
+    android: [
+      { id: 'favorite', title: 'Favorite', icon: 'heart', activeIcon: 'heart_filled' },
+      { id: 'serverRefresh', title: 'Refresh from server', icon: 'sync' },
+    ],
+    ios: {
+      lockScreen: [{ id: 'favorite', title: 'Favorite', command: 'like' }],
+      carPlay: [
+        { id: 'favorite', icon: 'heart', activeIcon: 'heart.fill' },
+        { id: 'serverRefresh', icon: 'arrow.clockwise' },
+      ],
+    },
+  },
+});
+```
+
+- Give a button the same `id` on every surface: presses from any of them reach the same handler and share the button's state.
+- Calling `configure` again with `notificationButtons` replaces the buttons. Leaving it out keeps them; empty lists remove them.
+- `configure` rejects an unknown icon, a repeated `id`, or a repeated iOS `command`.
+
+## Handle presses
+
+```typescript
+TrackPlayer.onNotificationButtonPress(async (buttonId, track, event) => {
+  if (buttonId === 'favorite') {
+    try {
+      await api.setFavorite(track.id, event.isActive ?? false);
+    } catch {
+      // The icon already flipped: undo it
+      TrackPlayer.setNotificationButtonState({
+        buttonId,
+        trackIds: [track.id],
+        isActive: !event.isActive,
+      });
+    }
+  }
+
+  if (buttonId === 'serverRefresh') {
+    const fresh = await api.fetchTrack(track.id);
+    await TrackPlayer.updateTracks([fresh]); // the notification picks up the new title and artwork
+  }
+});
+```
+
+In components, `useOnNotificationButtonPress(handler)` does the same and can be used in several places at once.
+
+`track` is the track the button was showing for, so a press just after a skip goes to the right song. `event` says what changed:
+
+| Field | Set for |
+|---|---|
+| `isActive` | Toggles: Android and CarPlay buttons with an `activeIcon`, and iOS `like`, `dislike`, `bookmark`, `shuffle`. It is the new state, and the icon has already changed |
+| `rating` | iOS `rating`: 0–5 |
+| `repeatMode` | iOS `repeat`. The player has already switched to this mode |
+
+One-tap buttons get an empty `event`.
+
+## Toggle state
+
+Toggles start inactive for every track. Tell the player which tracks are active, for example right after loading a queue:
+
+```typescript
+TrackPlayer.setNotificationButtonState({
+  buttonId: 'favorite',
+  trackIds: likedTrackIds,
+  isActive: true,
+});
+```
+
+The player keeps the state per track, so skipping shows the next track's state straight away without a round trip to JS. Leave out `trackIds` for state that belongs to the whole session, such as shuffle; taps then flip it for every track.
+
+The state lives in memory: set it again after the app restarts.
+
+## Android
+
+`icon` and `activeIcon` take one of the built-in names below, or the name of a drawable in your app's `res/drawable` (e.g. `ic_server_refresh`). Use a single-colour vector drawable: the system tints it.
+
+`album`, `artist`, `block`, `bookmark`, `bookmark_filled`, `check_circle`, `check_circle_filled`, `closed_captions`, `closed_captions_off`, `fast_forward`, `feed`, `flag`, `flag_filled`, `heart`, `heart_filled`, `minus`, `minus_circle`, `minus_circle_filled`, `next`, `pause`, `play`, `playback_speed`, `playback_speed_0_5`, `playback_speed_0_8`, `playback_speed_1_0`, `playback_speed_1_2`, `playback_speed_1_5`, `playback_speed_1_8`, `playback_speed_2_0`, `playlist_add`, `playlist_remove`, `plus`, `plus_circle`, `plus_circle_filled`, `previous`, `quality`, `queue_add`, `queue_next`, `queue_remove`, `radio`, `repeat_all`, `repeat_off`, `repeat_one`, `rewind`, `settings`, `share`, `shuffle_off`, `shuffle_on`, `shuffle_star`, `signal`, `skip_back`, `skip_back_5`, `skip_back_10`, `skip_back_15`, `skip_back_30`, `skip_forward`, `skip_forward_5`, `skip_forward_10`, `skip_forward_15`, `skip_forward_30`, `star`, `star_filled`, `stop`, `subtitles`, `subtitles_off`, `sync`, `thumb_down`, `thumb_down_filled`, `thumb_up`, `thumb_up_filled`, `volume_down`, `volume_off`, `volume_up`.
+
+The type `AndroidButtonIcon` lists them for autocomplete.
+
+| Where | What shows |
+|---|---|
+| Notification and lock screen, Android 13+ | The first **two** buttons of the list, next to previous, play/pause and next. The ±N second skip buttons come after yours, so they drop out first |
+| Compact notification | Not shown: it only has previous, play/pause and next |
+| Android 12 and below | Up to five actions in total when expanded |
+| Android Auto | More of the list, with the rest in an overflow menu |
+
+`title` is not drawn next to the icon. It is read out by TalkBack and Android Auto may show it in its overflow menu.
+
+## iOS
+
+The Lock Screen and Control Center don't take custom icons. Each entry in `lockScreen` turns on a control that iOS draws itself:
+
+| `command` | What it does | Shown on iOS 27 |
+|---|---|---|
+| `like` | Like toggle | Yes: a star on the Lock Screen, Notification Center and Control Center players |
+| `dislike` | Dislike toggle | No |
+| `bookmark` | Bookmark toggle. Older API | No |
+| `rating` | 0–5 stars. Older API | No |
+| `repeat` | Repeat mode. The player switches mode itself | No |
+| `shuffle` | Shuffle toggle | No |
+
+Tested on an iPhone 13 with iOS 27.0.1: `like` draws a star to the left of the controls, filled while active. The other commands are accepted and handled, but iOS 27 draws nothing for them on the Lock Screen or in Control Center, alone or combined; other surfaces or iOS versions may use them. `title` is text iOS may show for the control, for example to VoiceOver.
+
+CarPlay's Now Playing screen takes any image: `icon` is an SF Symbol name or an image in your asset catalog. CarPlay shows the first five buttons. They need your app to have a CarPlay scene (a `CPTemplateApplicationSceneDelegate`, for example through react-native-carplay); the player only touches CarPlay while that scene is connected. Setting CarPlay buttons replaces any Now Playing buttons your app sets itself; leave `carPlay` out to keep yours.
+
+## Migrating from session buttons
+
+`AndroidAutoMediaLibraryHelper.setSessionButtons` and `onSessionButtonPress` are deprecated and still work. Their buttons show after the ones from `notificationButtons`.
+
+```typescript
+// Before
+AndroidAutoMediaLibraryHelper.setSessionButtons([
+  { action: 'favourite', title: 'Favourite', icon: favourite ? 'heart_filled' : 'heart' },
+]);
+
+// After: one config, and the player swaps the icon per track
+await TrackPlayer.configure({
+  notificationButtons: {
+    android: [{ id: 'favourite', title: 'Favourite', icon: 'heart', activeIcon: 'heart_filled' }],
+  },
+});
+```

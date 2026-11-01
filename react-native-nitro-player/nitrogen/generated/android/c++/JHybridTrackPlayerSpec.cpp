@@ -21,10 +21,26 @@ namespace margelo::nitro::nitroplayer { enum class RepeatMode; }
 namespace margelo::nitro::nitroplayer { struct PlayerConfig; }
 // Forward declaration of `AndroidAudioFocusMode` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class AndroidAudioFocusMode; }
+// Forward declaration of `NotificationButtons` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct NotificationButtons; }
+// Forward declaration of `AndroidNotificationButton` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct AndroidNotificationButton; }
+// Forward declaration of `IOSNotificationButtons` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct IOSNotificationButtons; }
+// Forward declaration of `LockScreenButton` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct LockScreenButton; }
+// Forward declaration of `LockScreenCommand` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class LockScreenCommand; }
+// Forward declaration of `CarPlayButton` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct CarPlayButton; }
 // Forward declaration of `Reason` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class Reason; }
 // Forward declaration of `TimedMetadata` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct TimedMetadata; }
+// Forward declaration of `NotificationButtonState` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct NotificationButtonState; }
+// Forward declaration of `NotificationButtonEvent` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct NotificationButtonEvent; }
 
 #include <NitroModules/Promise.hpp>
 #include <NitroModules/JPromise.hpp>
@@ -53,6 +69,18 @@ namespace margelo::nitro::nitroplayer { struct TimedMetadata; }
 #include "JPlayerConfig.hpp"
 #include "AndroidAudioFocusMode.hpp"
 #include "JAndroidAudioFocusMode.hpp"
+#include "NotificationButtons.hpp"
+#include "JNotificationButtons.hpp"
+#include "AndroidNotificationButton.hpp"
+#include "JAndroidNotificationButton.hpp"
+#include "IOSNotificationButtons.hpp"
+#include "JIOSNotificationButtons.hpp"
+#include "LockScreenButton.hpp"
+#include "JLockScreenButton.hpp"
+#include "LockScreenCommand.hpp"
+#include "JLockScreenCommand.hpp"
+#include "CarPlayButton.hpp"
+#include "JCarPlayButton.hpp"
 #include "Reason.hpp"
 #include <functional>
 #include "JFunc_void_TrackItem_std__optional_Reason_.hpp"
@@ -66,6 +94,11 @@ namespace margelo::nitro::nitroplayer { struct TimedMetadata; }
 #include "JTimedMetadata.hpp"
 #include "JFunc_void_TrackItem.hpp"
 #include "JFunc_void_bool.hpp"
+#include "NotificationButtonState.hpp"
+#include "JNotificationButtonState.hpp"
+#include "NotificationButtonEvent.hpp"
+#include "JFunc_void_std__string_TrackItem_NotificationButtonEvent.hpp"
+#include "JNotificationButtonEvent.hpp"
 #include "JFunc_void_std__vector_TrackItem__double.hpp"
 #include "JFunc_void_std__vector_TrackItem__std__vector_TrackItem_.hpp"
 
@@ -346,6 +379,14 @@ namespace margelo::nitro::nitroplayer {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jboolean()>("isAndroidAutoConnected");
     auto __result = method(_javaPart);
     return static_cast<bool>(__result);
+  }
+  void JHybridTrackPlayerSpec::setNotificationButtonState(const NotificationButtonState& state) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<JNotificationButtonState> /* state */)>("setNotificationButtonState");
+    method(_javaPart, JNotificationButtonState::fromCpp(state));
+  }
+  void JHybridTrackPlayerSpec::onNotificationButtonPress(const std::function<void(const std::string& /* buttonId */, const TrackItem& /* track */, const NotificationButtonEvent& /* event */)>& callback) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_std__string_TrackItem_NotificationButtonEvent::javaobject> /* callback */)>("onNotificationButtonPress_cxx");
+    method(_javaPart, JFunc_void_std__string_TrackItem_NotificationButtonEvent_cxx::fromCpp(callback));
   }
   std::shared_ptr<Promise<void>> JHybridTrackPlayerSpec::setVolume(double volume) {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(double /* volume */)>("setVolume");

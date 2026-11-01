@@ -16,11 +16,11 @@ import com.facebook.proguard.annotations.DoNotStrip
 @DoNotStrip
 @Keep
 enum class Reason(@DoNotStrip @Keep val value: Int) {
-  USER_ACTION(0),
-  SKIP(1),
-  END(2),
-  ERROR(3),
-  REPEAT(4);
+  REPEAT(0),
+  USER_ACTION(1),
+  SKIP(2),
+  END(3),
+  ERROR(4);
 
   companion object
 }

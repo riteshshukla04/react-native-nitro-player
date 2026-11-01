@@ -1,5 +1,6 @@
 package com.margelo.nitro.nitroplayer.core
 
+import com.margelo.nitro.nitroplayer.NotificationButtonEvent
 import com.margelo.nitro.nitroplayer.Reason
 import com.margelo.nitro.nitroplayer.TimedMetadata
 import com.margelo.nitro.nitroplayer.TrackItem
@@ -59,6 +60,14 @@ internal fun TrackPlayerCore.notifyTemporaryQueueChange() {
     val pn = playNextStack.toList()
     val un = upNextQueue.toList()
     onTemporaryQueueChangeListeners.forEach { it(pn, un) }
+}
+
+internal fun TrackPlayerCore.notifyNotificationButtonPress(
+    buttonId: String,
+    track: TrackItem,
+    event: NotificationButtonEvent,
+) {
+    onNotificationButtonPressListeners.forEach { it(buttonId, track, event) }
 }
 
 internal fun TrackPlayerCore.notifyAndroidAutoConnection(connected: Boolean) {

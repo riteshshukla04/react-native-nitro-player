@@ -29,16 +29,6 @@ const playable = (playlistId: string, track: TrackItem): MediaItem => ({
   mediaType: 'audio',
 });
 
-let favourite = false;
-const showHeart = () =>
-  AndroidAutoMediaLibraryHelper.setSessionButtons([
-    {
-      action: 'favourite',
-      title: 'Favourite',
-      icon: favourite ? 'heart_filled' : 'heart',
-    },
-  ]);
-
 async function demoPlaylistId(): Promise<string> {
   const { currentPlaylistId } = await TrackPlayer.getState();
   const existing = PlayerQueue.getAllPlaylists().find(
@@ -101,10 +91,4 @@ export async function registerAndroidAuto() {
       )
       .map((t) => playable(playlistId, t))
   );
-
-  AndroidAutoMediaLibraryHelper.onSessionButtonPress(() => {
-    favourite = !favourite;
-    showHeart();
-  });
-  showHeart();
 }

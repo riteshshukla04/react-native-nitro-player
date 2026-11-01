@@ -11,9 +11,22 @@
 #include "PlayerConfig.hpp"
 
 #include "AndroidAudioFocusMode.hpp"
+#include "AndroidNotificationButton.hpp"
+#include "CarPlayButton.hpp"
+#include "IOSNotificationButtons.hpp"
 #include "JAndroidAudioFocusMode.hpp"
+#include "JAndroidNotificationButton.hpp"
+#include "JCarPlayButton.hpp"
+#include "JIOSNotificationButtons.hpp"
+#include "JLockScreenButton.hpp"
+#include "JLockScreenCommand.hpp"
+#include "JNotificationButtons.hpp"
+#include "LockScreenButton.hpp"
+#include "LockScreenCommand.hpp"
+#include "NotificationButtons.hpp"
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace margelo::nitro::nitroplayer {
 
@@ -52,6 +65,8 @@ namespace margelo::nitro::nitroplayer {
       jni::local_ref<jni::JString> androidNotificationIcon = this->getFieldValue(fieldAndroidNotificationIcon);
       static const auto fieldAndroidAudioFocus = clazz->getField<JAndroidAudioFocusMode>("androidAudioFocus");
       jni::local_ref<JAndroidAudioFocusMode> androidAudioFocus = this->getFieldValue(fieldAndroidAudioFocus);
+      static const auto fieldNotificationButtons = clazz->getField<JNotificationButtons>("notificationButtons");
+      jni::local_ref<JNotificationButtons> notificationButtons = this->getFieldValue(fieldNotificationButtons);
       return PlayerConfig(
         androidAutoEnabled != nullptr ? std::make_optional(static_cast<bool>(androidAutoEnabled->value())) : std::nullopt,
         carPlayEnabled != nullptr ? std::make_optional(static_cast<bool>(carPlayEnabled->value())) : std::nullopt,
@@ -61,7 +76,8 @@ namespace margelo::nitro::nitroplayer {
         preferRemoteSkipIntervals != nullptr ? std::make_optional(static_cast<bool>(preferRemoteSkipIntervals->value())) : std::nullopt,
         lookaheadCount != nullptr ? std::make_optional(lookaheadCount->value()) : std::nullopt,
         androidNotificationIcon != nullptr ? std::make_optional(androidNotificationIcon->toStdString()) : std::nullopt,
-        androidAudioFocus != nullptr ? std::make_optional(androidAudioFocus->toCpp()) : std::nullopt
+        androidAudioFocus != nullptr ? std::make_optional(androidAudioFocus->toCpp()) : std::nullopt,
+        notificationButtons != nullptr ? std::make_optional(notificationButtons->toCpp()) : std::nullopt
       );
     }
 
@@ -71,7 +87,7 @@ namespace margelo::nitro::nitroplayer {
      */
     [[maybe_unused]]
     static jni::local_ref<JPlayerConfig::javaobject> fromCpp(const PlayerConfig& value) {
-      using JSignature = JPlayerConfig(jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JDouble>, jni::alias_ref<jni::JDouble>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JDouble>, jni::alias_ref<jni::JString>, jni::alias_ref<JAndroidAudioFocusMode>);
+      using JSignature = JPlayerConfig(jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JDouble>, jni::alias_ref<jni::JDouble>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JDouble>, jni::alias_ref<jni::JString>, jni::alias_ref<JAndroidAudioFocusMode>, jni::alias_ref<JNotificationButtons>);
       static const auto clazz = javaClassStatic();
       static const auto create = clazz->getStaticMethod<JSignature>("fromCpp");
       return create(
@@ -84,7 +100,8 @@ namespace margelo::nitro::nitroplayer {
         value.preferRemoteSkipIntervals.has_value() ? jni::JBoolean::valueOf(value.preferRemoteSkipIntervals.value()) : nullptr,
         value.lookaheadCount.has_value() ? jni::JDouble::valueOf(value.lookaheadCount.value()) : nullptr,
         value.androidNotificationIcon.has_value() ? jni::make_jstring(value.androidNotificationIcon.value()) : nullptr,
-        value.androidAudioFocus.has_value() ? JAndroidAudioFocusMode::fromCpp(value.androidAudioFocus.value()) : nullptr
+        value.androidAudioFocus.has_value() ? JAndroidAudioFocusMode::fromCpp(value.androidAudioFocus.value()) : nullptr,
+        value.notificationButtons.has_value() ? JNotificationButtons::fromCpp(value.notificationButtons.value()) : nullptr
       );
     }
   };

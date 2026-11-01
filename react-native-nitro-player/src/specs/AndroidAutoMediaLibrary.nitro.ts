@@ -30,10 +30,16 @@ export interface AndroidAutoMediaLibrary extends HybridObject<{
   /** Answers {@link onLoadChildren} / {@link onSearch} with a JSON array of MediaItem. */
   resolveRequest(requestId: string, itemsJson: string): void
 
-  /** Replaces the session buttons with a JSON array of SessionButton. */
+  /**
+   * Replaces the session buttons with a JSON array of SessionButton.
+   * @deprecated Use `notificationButtons` in `TrackPlayer.configure` and `TrackPlayer.onNotificationButtonPress`.
+   */
   setSessionButtons(buttonsJson: string): void
 
-  /** Called with the button's `action` when a session button is pressed. */
+  /**
+   * Called with the button's `action` when a session button is pressed.
+   * @deprecated Use `TrackPlayer.onNotificationButtonPress`.
+   */
   onSessionButtonPress(callback: (action: string) => void): void
 
   /** A controller asked to play with nothing loaded (car auto-play, play on connect); load the last queue now. */

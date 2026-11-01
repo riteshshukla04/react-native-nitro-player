@@ -1,4 +1,5 @@
 import type { AnyMap } from 'react-native-nitro-modules'
+import type { NotificationButtons } from './NotificationButtons'
 
 export type CurrentPlayingType =
   | 'playlist'
@@ -96,4 +97,10 @@ export interface PlayerConfig {
 
   /** How Android reacts when another app takes audio focus (default: 'pause'). */
   androidAudioFocus?: AndroidAudioFocusMode
+
+  /**
+   * Extra buttons in the notification, lock screen, Android Auto and CarPlay. Replaces the
+   * previous buttons; leave it out to keep them. Rejects an unknown icon or a repeated id or command.
+   */
+  notificationButtons?: NotificationButtons
 }

@@ -93,7 +93,9 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
   }
 
   func configure(config: PlayerConfig) throws -> Promise<Void> {
-    enqueue {
+    enqueueThrowing {
+      // Checked first: a bad button config rejects before anything else is applied
+      let notificationButtons = try config.notificationButtons.map { try IOSButtonConfig($0.ios) }
       self.core.configureOnQueue(
         androidAutoEnabled: config.androidAutoEnabled,
         carPlayEnabled: config.carPlayEnabled,
@@ -101,9 +103,29 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
         lookaheadCount: config.lookaheadCount.map { Int($0) },
         remoteSkipForwardInterval: config.remoteSkipForwardInterval,
         remoteSkipBackwardInterval: config.remoteSkipBackwardInterval,
-        preferRemoteSkipIntervals: config.preferRemoteSkipIntervals
+        preferRemoteSkipIntervals: config.preferRemoteSkipIntervals,
+        notificationButtons: notificationButtons
       )
     }
+  }
+
+  // MARK: - Notification buttons
+
+  func setNotificationButtonState(state: NotificationButtonState) throws {
+    // Through the player queue, so it lands after any configure() called before it
+    core.playerQueue.async { [core] in
+      DispatchQueue.main.async {
+        core.mediaSessionManager?.setNotificationButtonState(
+          buttonId: state.buttonId, trackIds: state.trackIds, isActive: state.isActive)
+      }
+    }
+  }
+
+  func onNotificationButtonPress(
+    callback: @escaping (_ buttonId: String, _ track: TrackItem, _ event: NotificationButtonEvent) -> Void
+  ) throws {
+    let id = core.addOnNotificationButtonPressListener(callback)
+    listenerIds.append(("onNotificationButtonPress", id))
   }
 
   // MARK: - Queue / State reads
@@ -248,6 +270,7 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
       case "onTracksNeedUpdate":      _ = core.removeOnTracksNeedUpdateListener(id: id)
       case "onTemporaryQueueChange":  _ = core.removeOnTemporaryQueueChangeListener(id: id)
       case "onTimedMetadata":         _ = core.removeOnTimedMetadataListener(id: id)
+      case "onNotificationButtonPress": _ = core.removeOnNotificationButtonPressListener(id: id)
       default: break
       }
     }

@@ -10,6 +10,10 @@ import type {
   TimedMetadata,
   ShufflePlaylistOptions,
 } from '../types/PlayerQueue'
+import type {
+  NotificationButtonEvent,
+  NotificationButtonState,
+} from '../types/NotificationButtons'
 
 export interface PlayerQueue extends HybridObject<{
   android: 'kotlin'
@@ -120,6 +124,25 @@ export interface TrackPlayer extends HybridObject<{
   appStartedWithNotification(callback: (track: TrackItem) => void): void
   onAndroidAutoConnectionChange(callback: (connected: boolean) => void): void
   isAndroidAutoConnected(): boolean
+
+  /**
+   * Sets whether a toggle from `PlayerConfig.notificationButtons` shows as active.
+   * Tracks start inactive; skipping shows the new track's state without a round trip to JS.
+   */
+  setNotificationButtonState(state: NotificationButtonState): void
+
+  /**
+   * Fires when a button from `PlayerConfig.notificationButtons` is pressed, with the track it
+   * was showing for. Toggles have already flipped their icon; `event` says what changed.
+   */
+  onNotificationButtonPress(
+    callback: (
+      buttonId: string,
+      track: TrackItem,
+      event: NotificationButtonEvent
+    ) => void
+  ): void
+
   setVolume(volume: number): Promise<void>
 
   /**

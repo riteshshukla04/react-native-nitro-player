@@ -227,8 +227,11 @@ await TrackPlayer.configure({
   lookaheadCount: 10,
   androidNotificationIcon: 'ic_notification', // Android-only custom notification icon
   androidAudioFocus: 'duck', // Android-only: 'pause' (default) | 'duck' | 'ignore'
+  notificationButtons: { android: [{ id: 'favorite', title: 'Favorite', icon: 'heart', activeIcon: 'heart_filled' }] },
 });
 ```
+
+`notificationButtons` adds buttons to the notification, lock screen, Android Auto and CarPlay: see [Notification Buttons](/docs/guides/notification-buttons).
 
 Keep playing at a lower volume when a notification or call interrupts:
 
@@ -607,6 +610,34 @@ TrackPlayer.onAndroidAutoConnectionChange((connected) => {
   console.log(`Android Auto: ${connected ? 'connected' : 'disconnected'}`);
 });
 ```
+
+---
+
+### `onNotificationButtonPress(callback)`
+
+Called when a button from `notificationButtons` is pressed, with the track it was showing for. Toggles have already flipped their icon; `event` says what changed. See [Notification Buttons](/docs/guides/notification-buttons).
+
+```typescript
+TrackPlayer.onNotificationButtonPress((buttonId, track, event) => {
+  if (buttonId === 'favorite') saveFavorite(track.id, event.isActive ?? false);
+});
+```
+
+---
+
+### `setNotificationButtonState(state)`
+
+Sets whether a toggle from `notificationButtons` shows as active, for some tracks or (without `trackIds`) for every track. Tracks start inactive.
+
+```typescript
+TrackPlayer.setNotificationButtonState({ buttonId: 'favorite', trackIds: likedIds, isActive: true });
+```
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `state.buttonId` | `string` | Yes | The button's `id` |
+| `state.trackIds` | `string[]` | No | Tracks to set; leave out to set every track |
+| `state.isActive` | `boolean` | Yes | Show the active icon |
 
 ---
 
