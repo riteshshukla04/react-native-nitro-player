@@ -15,8 +15,8 @@ extension TrackPlayerCore {
     player = AVQueuePlayer()
 
     // Start with stall-waiting enabled so the first track buffers before playing.
-    // Once the first item is ready (readyToPlay), this is flipped to false for
-    // gapless inter-track transitions (see setupCurrentItemObservers).
+    // Once playback actually starts (timeControlStatus == .playing), this is flipped
+    // to false for gapless inter-track transitions (see observeValue).
     player?.automaticallyWaitsToMinimizeStalling = true
 
     // Set action at item end to advance for gapless playback
@@ -27,7 +27,7 @@ extension TrackPlayerCore {
       player?.audiovisualBackgroundPlaybackPolicy = .continuesIfPossible
     }
 
-    NitroPlayerLogger.log("TrackPlayerCore", "🎵 Gapless playback configured - automaticallyWaitsToMinimizeStalling=true (flipped to false on first readyToPlay)")
+    NitroPlayerLogger.log("TrackPlayerCore", "🎵 Gapless playback configured - automaticallyWaitsToMinimizeStalling=true (flipped to false once playback starts)")
 
     // Listen for EQ enabled/disabled changes so we can update ALL items in
     // the queue atomically, keeping the audio pipeline configuration uniform.
@@ -153,6 +153,14 @@ extension TrackPlayerCore {
         self.emitStateChange()
       } else if keyPath == "timeControlStatus" {
         NitroPlayerLogger.log("TrackPlayerCore", "👀 TimeControlStatus changed to: \(player.timeControlStatus.rawValue)")
+        if player.timeControlStatus == .playing {
+          // Audio is actually flowing, so the buffer has real data in it. Only now is it
+          // safe to disable stall waiting for gapless inter-track transitions — doing it
+          // at readyToPlay (header parsed, nothing buffered) starts playback on an empty
+          // buffer, which stalls immediately.
+          player.automaticallyWaitsToMinimizeStalling = false
+          self.isRecoveringFromStall = false
+        }
         self.emitStateChange()
       } else if keyPath == "currentItem" {
         NitroPlayerLogger.log("TrackPlayerCore", "👀 Current item changed")
@@ -244,8 +252,10 @@ extension TrackPlayerCore {
 
   /// Fires when playback stalls because media did not arrive in time (buffer underrun).
   /// AVQueuePlayer runs with `automaticallyWaitsToMinimizeStalling = false` during playback
-  /// (see `setupCurrentItemObservers`) so it will NOT resume on its own — we mark a recovery
-  /// flag and re-issue play() once `isPlaybackLikelyToKeepUp` flips back to true.
+  /// (see the `timeControlStatus` KVO) so it will NOT resume on its own. We re-enable stall
+  /// waiting and request playback, so AVPlayer resumes once the buffer is likely to keep up
+  /// OR is full — the latter matters when throughput is below the bitrate (hi-res FLAC on
+  /// cellular), where `isPlaybackLikelyToKeepUp` may never become true.
   @objc func playerItemPlaybackStalled(_ notification: Notification) {
     playerQueue.async { [weak self] in
       guard let self, let player = self.player, let currentItem = player.currentItem else { return }
@@ -268,6 +278,11 @@ extension TrackPlayerCore {
       } else {
         NitroPlayerLogger.log("TrackPlayerCore",
           "⚠️ Playback stalled (buffer underrun) — will auto-resume once the buffer refills")
+        // AVPlayer drops the rate to 0 on a stall and, while paused, stops loading once its
+        // buffer is full. Without stall waiting nothing would ever restart it if
+        // `isPlaybackLikelyToKeepUp` stays false, so let AVPlayer wait and resume itself.
+        player.automaticallyWaitsToMinimizeStalling = true
+        player.rate = Float(self.currentPlaybackSpeed)
       }
       self.emitStateChange()
     }
@@ -485,8 +500,6 @@ extension TrackPlayerCore {
           // only on a genuine track change (currentItemDidChange) or a real network
           // restore (handleNetworkRestored).
           self?.setupBoundaryTimeObserver()
-          // First item is buffered and ready — disable stall waiting for gapless inter-track transitions
-          self?.player?.automaticallyWaitsToMinimizeStalling = false
           // Update now playing info now that duration is available (captured on playerQueue)
           self?.refreshMediaSession()
         } else if item.status == .failed {

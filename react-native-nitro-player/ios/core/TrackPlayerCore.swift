@@ -80,9 +80,9 @@ class TrackPlayerCore: NSObject {
   // MARK: - Stall & network recovery
   // Whether the user/app wants playback ongoing (true after play(), false after pause()).
   internal var intendedToPlay = false
-  // Set when AVPlayer stalls on a buffer underrun; cleared once the buffer refills.
+  // Set when AVPlayer stalls on a buffer underrun; cleared once playback resumes.
   // Needed because automaticallyWaitsToMinimizeStalling == false means AVPlayer
-  // will NOT auto-resume after a stall — we must re-issue play() ourselves.
+  // will NOT auto-resume after a stall — the stall handler re-enables waiting so it can.
   internal var isRecoveringFromStall = false
   // True while an audio-session interruption (phone call, Siri, other app) is active.
   // Recovery must NOT resume playback during this window even though `intendedToPlay`
