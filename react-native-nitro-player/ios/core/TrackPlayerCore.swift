@@ -326,18 +326,6 @@ extension Array {
   }
 }
 
-// Order-preserving dedupe that keeps the first element per key (Kotlin's distinctBy)
-extension Sequence {
-  func uniqued<Key: Hashable>(by key: (Element) -> Key) -> [Element] {
-    var seen = Set<Key>()
-    var result: [Element] = []
-    for element in self where seen.insert(key(element)).inserted {
-      result.append(element)
-    }
-    return result
-  }
-}
-
 // Associated object for AVPlayerItem trackId
 private var trackIdKey: UInt8 = 0
 extension AVPlayerItem {

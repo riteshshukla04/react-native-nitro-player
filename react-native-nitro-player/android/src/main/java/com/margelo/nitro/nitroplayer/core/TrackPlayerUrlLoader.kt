@@ -38,10 +38,11 @@ internal fun TrackPlayerCore.updateTracksOnQueue(tracks: List<TrackItem>) {
             }
         // A queue can hold the same track more than once, so a payload may repeat an id.
         // Keep the last applicable update per id so every step below applies the same track.
-        // The empty-URL filter is redundant with the branches above but enforces the invariant
-        // structurally: an entry without a URL can never win and blank out every copy of a track.
+        // Every branch above already rejects an empty URL (it never equals the current track's
+        // non-empty URL); filtering again here keeps the guarantee if those branches change, so
+        // an entry without a URL can never win and blank out every copy of a track.
         val tracksWithUrls = applicableTracks.filter { it.url.isNotEmpty() }
-        val safeTracks = tracksWithUrls.asReversed().distinctBy { it.id }.asReversed()
+        val safeTracks = tracksWithUrls.distinctByKeepingLast { it.id }
         if (safeTracks.size != tracksWithUrls.size) {
             NitroPlayerLogger.log("TrackPlayerCore") {
                 "updateTracks repeated ${tracksWithUrls.size - safeTracks.size} track id(s); last update per id applied"
@@ -172,3 +173,6 @@ internal fun TrackPlayerCore.checkUpcomingTracksForUrls(
     ask.forEach { urlRequestedAt[it.id] = now }
     notifyTracksNeedUpdate(ask, lookahead)
 }
+
+/** Order-preserving dedupe that keeps the last element per key (the counterpart of [distinctBy]). */
+private inline fun <T, K> List<T>.distinctByKeepingLast(selector: (T) -> K): List<T> = asReversed().distinctBy(selector).reversed()

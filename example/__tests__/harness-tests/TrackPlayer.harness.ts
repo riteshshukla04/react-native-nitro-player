@@ -1257,8 +1257,13 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             // Listeners can't be removed, so this one stops recording once the test ends.
             let recording = true;
             const askedPayloads: string[][] = [];
+            // Checked as each payload arrives, so a late duplicate can't slip past the assertions.
+            const payloadsWithRepeats: string[][] = [];
             TrackPlayer.onTracksNeedUpdate(tracks => {
-                if (recording) askedPayloads.push(tracks.map(t => t.id));
+                if (!recording) return;
+                const ids = tracks.map(t => t.id);
+                askedPayloads.push(ids);
+                if (new Set(ids).size !== ids.length) payloadsWithRepeats.push(ids);
             });
             try {
                 await waitForNextTick();
@@ -1273,12 +1278,13 @@ describe('TrackPlayer - Comprehensive Tests', () => {
                 }
 
                 // The lookahead sees every queued copy, but each payload asks for an id once.
+                expect(askedPayloads.length).toBeGreaterThan(0);
                 expect(askedPayloads.flat()).toContain('repeat-1');
                 expect(askedPayloads.flat()).toContain('repeat-mid');
-                askedPayloads.forEach(ids => expect(ids).toStrictEqual([...new Set(ids)]));
             } finally {
                 recording = false;
             }
+            expect(payloadsWithRepeats).toStrictEqual([]);
 
             // The repeated track is also the current one, so the update below takes the
             // "current track has no URL" path that replaces the active player item.
@@ -1319,6 +1325,12 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             const { currentTrack } = await TrackPlayer.getState();
             expect(currentTrack?.title).toBe('Last Update');
             expect(currentTrack?.url).toBe(tracks[0].url);
+
+            // The player's own track list (which its native items are built from) matches at
+            // every position, not just the playlist copy checked above.
+            const actualQueue = await TrackPlayer.getActualQueue();
+            expect(actualQueue.map(t => t.id)).toStrictEqual(['repeat-1', 'repeat-mid', 'repeat-1', 'repeat-mid']);
+            expect(actualQueue.map(t => t.url)).toStrictEqual(tracks.map(t => t.url));
         });
     });
 

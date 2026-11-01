@@ -66,10 +66,11 @@ extension TrackPlayerCore {
 
     // A queue can hold the same track more than once, so a payload may repeat an id.
     // Keep the last applicable update per id so every step below applies the same track.
-    // The empty-URL filter is redundant with the branches above but enforces the invariant
-    // structurally: an entry without a URL can never win and blank out every copy of a track.
+    // Every branch above already rejects an empty URL (it never equals the current track's
+    // non-empty URL); filtering again here keeps the guarantee if those branches change, so
+    // an entry without a URL can never win and blank out every copy of a track.
     let tracksWithUrls = applicableTracks.filter { !$0.url.isEmpty }
-    let safeTracks = Array(tracksWithUrls.reversed().uniqued(by: \.id).reversed())
+    let safeTracks = tracksWithUrls.distinctKeepingLast(by: \.id)
     if safeTracks.count != tracksWithUrls.count {
       NitroPlayerLogger.log("TrackPlayerCore",
         "ℹ️ updateTracks repeated \(tracksWithUrls.count - safeTracks.count) track id(s); last update per id applied")
@@ -185,7 +186,7 @@ extension TrackPlayerCore {
     // A queue can hold the same track more than once; ask for each id only once.
     return playlist.tracks
       .filter { $0.url.isEmpty && !DownloadManagerCore.shared.isTrackDownloaded(trackId: $0.id) }
-      .uniqued(by: \.id)
+      .distinctKeepingFirst(by: \.id)
   }
 
   /// Walks the queue structure directly instead of materializing the whole queue —
@@ -237,11 +238,28 @@ extension TrackPlayerCore {
     // The same track can be queued back to back; ask for each id only once.
     let tracksNeedingUrls = candidateTracks
       .filter { $0.url.isEmpty && !DownloadManagerCore.shared.isTrackDownloaded(trackId: $0.id) }
-      .uniqued(by: \.id)
+      .distinctKeepingFirst(by: \.id)
 
     if !tracksNeedingUrls.isEmpty {
       NitroPlayerLogger.log("TrackPlayerCore", "⚠️ \(tracksNeedingUrls.count) upcoming tracks need URLs")
       notifyTracksNeedUpdate(tracks: tracksNeedingUrls, lookahead: lookahead)
     }
+  }
+}
+
+// Order-preserving dedupe by key, named for which duplicate survives.
+// Mirrors Kotlin's distinctBy (first) and distinctByKeepingLast in TrackPlayerUrlLoader.kt.
+extension Sequence {
+  fileprivate func distinctKeepingFirst<Key: Hashable>(by key: (Element) -> Key) -> [Element] {
+    var seen = Set<Key>()
+    var result: [Element] = []
+    for element in self where seen.insert(key(element)).inserted {
+      result.append(element)
+    }
+    return result
+  }
+
+  fileprivate func distinctKeepingLast<Key: Hashable>(by key: (Element) -> Key) -> [Element] {
+    Array(reversed().distinctKeepingFirst(by: key).reversed())
   }
 }
