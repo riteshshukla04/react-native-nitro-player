@@ -194,6 +194,10 @@ await TrackPlayer.setRepeatMode('track');
 |---|---|---|---|
 | `mode` | `RepeatMode` | Yes | `'off'` \| `'Playlist'` \| `'track'` |
 
+<Callout type="warn">
+On Android while casting, `'Playlist'` repeat doesn't yet loop the queue when the last track ends on its own. `skipToNext()` at the last track still wraps.
+</Callout>
+
 **Returns:** `Promise<void>`
 
 ---

@@ -542,6 +542,11 @@ describe('TrackPlayer - Comprehensive Tests', () => {
     // ============================================
 
     describe('Playlist repeat wrapping', () => {
+        afterEach(async () => {
+            await TrackPlayer.setRepeatMode('off');
+            await TrackPlayer.pause();
+        });
+
         it('should wrap skipToNext from the last track to the first', async () => {
             await PlayerQueue.loadPlaylist(playlist3Id);
             await TrackPlayer.setRepeatMode('Playlist');
