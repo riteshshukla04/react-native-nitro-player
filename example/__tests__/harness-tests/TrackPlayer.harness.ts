@@ -1244,6 +1244,38 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             expect(asked).toContain('lazy-1');
             expect((await TrackPlayer.getTracksNeedingUrls()).map(t => t.id)).toContain('lazy-1');
         });
+
+        it('should resolve a track that is queued more than once', async () => {
+            const repeated = { ...createTestTrack('repeat-1', 'Repeated'), url: '' };
+            const repeatPlaylistId = await PlayerQueue.createPlaylist('Repeated Track Test');
+            createdPlaylistIds.push(repeatPlaylistId);
+            await PlayerQueue.addTracksToPlaylist(repeatPlaylistId, [
+                repeated,
+                { ...createTestTrack('repeat-mid', 'Between'), url: '' },
+                repeated,
+            ]);
+
+            await PlayerQueue.loadPlaylist(repeatPlaylistId);
+            await waitForNextTick();
+
+            // Each id is asked for once, however many times it is queued.
+            expect((await TrackPlayer.getTracksNeedingUrls()).map(t => t.id)).toStrictEqual([
+                'repeat-1',
+                'repeat-mid',
+            ]);
+
+            // A payload that repeats an id used to crash iOS; the last entry for an id wins.
+            await TrackPlayer.updateTracks([
+                { ...repeated, url: createTestTrack('repeat-1', '', 7).url, title: 'First Update' },
+                { ...repeated, url: createTestTrack('repeat-1', '', 8).url, title: 'Last Update' },
+            ]);
+            await waitForNextTick();
+
+            const tracks = PlayerQueue.getPlaylist(repeatPlaylistId)?.tracks ?? [];
+            expect(tracks.map(t => t.title)).toStrictEqual(['Last Update', 'Between', 'Last Update']);
+            expect(tracks[0].url).toBe(tracks[2].url);
+            expect((await TrackPlayer.getTracksNeedingUrls()).map(t => t.id)).toStrictEqual(['repeat-mid']);
+        });
     });
 
     describe('Timed Metadata', () => {

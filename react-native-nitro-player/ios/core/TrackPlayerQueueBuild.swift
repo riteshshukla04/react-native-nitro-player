@@ -147,6 +147,10 @@ extension TrackPlayerCore {
 
     #if DEBUG
     let trackById = Dictionary(tracks.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last })
+    if trackById.count != tracks.count {
+      NitroPlayerLogger.log("TrackPlayerCore",
+        "ℹ️ Queue repeats \(tracks.count - trackById.count) track id(s); entries below share data by id")
+    }
     NitroPlayerLogger.log("TrackPlayerCore", "\n🔍 VERIFICATION - Player now has \(existingPlayer.items().count) items:")
     for (index, item) in existingPlayer.items().enumerated() {
       if let trackId = item.trackId, let track = trackById[trackId] {

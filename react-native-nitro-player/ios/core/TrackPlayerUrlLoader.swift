@@ -28,8 +28,16 @@ extension TrackPlayerCore {
 
   // MARK: - Internal
 
-  func updateTracksInternal(tracks: [TrackItem]) {
-    NitroPlayerLogger.log("TrackPlayerCore", "🔄 updateTracks: \(tracks.count) updates")
+  func updateTracksInternal(tracks updates: [TrackItem]) {
+    NitroPlayerLogger.log("TrackPlayerCore", "🔄 updateTracks: \(updates.count) updates")
+
+    // A queue can hold the same track more than once, so a payload may repeat an id.
+    // Keep one update per id (last wins) so every step below applies the same track.
+    var lastIndexById: [String: Int] = [:]
+    for (index, track) in updates.enumerated() { lastIndexById[track.id] = index }
+    let tracks = updates.enumerated()
+      .filter { lastIndexById[$0.element.id] == $0.offset }
+      .map(\.element)
 
     let currentTrack = self.getCurrentTrack()
     let currentTrackId = currentTrack?.id
@@ -171,8 +179,11 @@ extension TrackPlayerCore {
     else { return [] }
 
     // Only return tracks that truly can't play: empty remote URL AND not downloaded locally.
+    // A queue can hold the same track more than once; ask for each id only once.
+    var seen = Set<String>()
     return playlist.tracks.filter {
       $0.url.isEmpty && !DownloadManagerCore.shared.isTrackDownloaded(trackId: $0.id)
+        && seen.insert($0.id).inserted
     }
   }
 

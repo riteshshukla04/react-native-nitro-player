@@ -15,7 +15,10 @@ import com.margelo.nitro.nitroplayer.TrackItem
 
 suspend fun TrackPlayerCore.updateTracks(tracks: List<TrackItem>) = withPlayerContext { updateTracksOnQueue(tracks) }
 
-internal fun TrackPlayerCore.updateTracksOnQueue(tracks: List<TrackItem>) {
+internal fun TrackPlayerCore.updateTracksOnQueue(updates: List<TrackItem>) {
+    // A queue can hold the same track more than once, so a payload may repeat an id.
+    // Keep one update per id (last wins) so every step below applies the same track.
+    val tracks = updates.asReversed().distinctBy { it.id }.asReversed()
     run {
         val currentTrack = getCurrentTrack()
         val currentTrackId = currentTrack?.id
@@ -88,7 +91,8 @@ suspend fun TrackPlayerCore.getTracksNeedingUrls(): List<TrackItem> = withPlayer
 
 internal fun TrackPlayerCore.getTracksNeedingUrlsInternal(): List<TrackItem> {
     val pid = currentPlaylistId ?: return emptyList()
-    return playlistManager.getPlaylist(pid)?.tracks?.filter { it.url.isEmpty() } ?: emptyList()
+    // A queue can hold the same track more than once; ask for each id only once.
+    return playlistManager.getPlaylist(pid)?.tracks?.filter { it.url.isEmpty() }?.distinctBy { it.id } ?: emptyList()
 }
 
 suspend fun TrackPlayerCore.getNextTracks(count: Int): List<TrackItem> = withPlayerContext { getNextTracksInternal(count) }
