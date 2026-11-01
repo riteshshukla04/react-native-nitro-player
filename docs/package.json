@@ -12,21 +12,22 @@
     "postinstall": "fumadocs-mdx"
   },
   "dependencies": {
-    "@opennextjs/cloudflare": "^1.18.0",
-    "fumadocs-core": "^15.8.5",
-    "fumadocs-mdx": "^13.0.8",
-    "fumadocs-ui": "^15.8.5",
-    "next": "^15.3.1",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "@opennextjs/cloudflare": "^1.20.15",
+    "fumadocs-core": "^16.17.9",
+    "fumadocs-mdx": "^14.3.2",
+    "fumadocs-ui": "^16.17.9",
+    "next": "^16.4.3",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "typescript": "^5.8.3",
-    "@tailwindcss/postcss": "^4.1.4",
-    "tailwindcss": "^4.1.4",
-    "postcss": "^8.5.3"
+    "@tailwindcss/postcss": "^4.3.3",
+    "tailwindcss": "^4.3.3",
+    "postcss": "^8.5.3",
+    "wrangler": "^4.156.0"
   }
 }
