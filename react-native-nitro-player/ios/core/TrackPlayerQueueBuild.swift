@@ -146,7 +146,11 @@ extension TrackPlayerCore {
     }
 
     #if DEBUG
-    let trackById = Dictionary(uniqueKeysWithValues: tracks.map { ($0.id, $0) })
+    let trackById = Dictionary(tracks.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last })
+    if trackById.count != tracks.count {
+      NitroPlayerLogger.log("TrackPlayerCore",
+        "ℹ️ Queue repeats \(tracks.count - trackById.count) track id(s); entries below share data by id")
+    }
     NitroPlayerLogger.log("TrackPlayerCore", "\n🔍 VERIFICATION - Player now has \(existingPlayer.items().count) items:")
     for (index, item) in existingPlayer.items().enumerated() {
       if let trackId = item.trackId, let track = trackById[trackId] {
@@ -321,7 +325,7 @@ extension TrackPlayerCore {
     // (e.g. reorder). Without this, the remaining-tracks slice uses the stale index,
     // causing wrong tracks to play after skip/next.
     if currentTemporaryType == .none,
-      let newIndex = currentTracks.firstIndex(where: { $0.id == playingTrackId }) {
+      let newIndex = currentTrackIndexOf(playingTrackId, from: currentTrackIndex) {
       currentTrackIndex = newIndex
     }
 
@@ -400,34 +404,33 @@ extension TrackPlayerCore {
 
     // Surgical path (changedTrackIds provided, e.g. from updateTracks)
     if let changedIds = changedTrackIds {
-      var reusableByTrackId: [String: AVPlayerItem] = [:]
-      for item in upcomingItems {
-        if let trackId = item.trackId, !changedIds.contains(trackId) {
-          reusableByTrackId[trackId] = item
-        }
-      }
-
+      // A repeated track can have several buffered copies; reuse them in queue order.
+      var reusableByTrackId: [String: [AVPlayerItem]] = [:]
       let desiredIdSet = Set(desiredIds)
       for item in upcomingItems {
         guard let trackId = item.trackId else { continue }
         if changedIds.contains(trackId) || !desiredIdSet.contains(trackId) {
           player.remove(item)
+        } else {
+          reusableByTrackId[trackId, default: []].append(item)
         }
       }
 
       var lastAnchor: AVPlayerItem? = currentItem
-      for (offset, trackId) in desiredIds.enumerated() {
-        if let reusable = reusableByTrackId[trackId] {
+      var preserved = 0
+      for (offset, track) in newQueueTracks.enumerated() {
+        if let reusable = reusableByTrackId[track.id]?.first {
+          reusableByTrackId[track.id]?.removeFirst()
           lastAnchor = reusable
-        } else if let track = newQueueTracks.first(where: { $0.id == trackId }),
-          let newItem = createGaplessPlayerItem(for: track, isPreload: offset < Constants.gaplessPreloadCount)
-        {
+          preserved += 1
+        } else if let newItem = createGaplessPlayerItem(for: track, isPreload: offset < Constants.gaplessPreloadCount) {
           player.insert(newItem, after: lastAnchor)
           lastAnchor = newItem
         }
       }
+      // Buffered copies beyond how many times the queue now repeats that track.
+      for item in reusableByTrackId.values.joined() { player.remove(item) }
 
-      let preserved = reusableByTrackId.count
       let inserted = desiredIds.count - preserved
       NitroPlayerLogger.log("TrackPlayerCore",
         "🔄 Surgical rebuild: preserved \(preserved) buffered items, inserted \(inserted) new items")

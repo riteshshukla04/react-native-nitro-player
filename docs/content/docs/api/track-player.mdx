@@ -256,6 +256,8 @@ const queue = await TrackPlayer.getActualQueue();
 
 Update entire track objects across all playlists. Matches by `track.id` and updates all properties (url, artwork, title, etc.). Useful for lazy loading URLs.
 
+Every queue position holding a track's `id` receives the update, including copies added with `playNext` or `addToUpNext`. The track that is currently playing is the exception: once it has a URL, an update that changes that URL is skipped for every copy of it, to keep playback gapless (on iOS a new URL is still accepted if its player item has failed). Updates that keep its URL, such as a new title or artwork, still apply. If `tracks` contains the same `id` more than once, the last entry that can be applied wins. Entries without a URL are never applied, so they can't replace an earlier entry that has one.
+
 ```typescript
 await TrackPlayer.updateTracks([
   { ...track, url: 'https://new-url.mp3' }
@@ -409,7 +411,7 @@ For tracks with empty URLs (e.g., DRM or token-based streams), Nitro Player supp
 
 ### `getTracksNeedingUrls()`
 
-Get tracks in the current playlist that have missing or empty URLs.
+Get tracks in the current playlist that have missing or empty URLs. Each `id` appears once, even if that track is queued more than once, so the result doesn't line up with queue positions.
 
 ```typescript
 const tracks = await TrackPlayer.getTracksNeedingUrls();
@@ -462,7 +464,7 @@ TrackPlayer.onTracksNeedUpdate((tracks, lookahead) => {
 
 | Param | Type | Description |
 |---|---|---|
-| `tracks` | `TrackItem[]` | Tracks needing URLs |
+| `tracks` | `TrackItem[]` | Tracks needing URLs, one entry per `id` |
 | `lookahead` | `number` | Configured lookahead count |
 
 ---

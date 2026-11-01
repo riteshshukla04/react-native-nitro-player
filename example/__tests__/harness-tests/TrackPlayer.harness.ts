@@ -1244,6 +1244,140 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             expect(asked).toContain('lazy-1');
             expect((await TrackPlayer.getTracksNeedingUrls()).map(t => t.id)).toContain('lazy-1');
         });
+
+        // Runs in both the Harness iOS and Harness Android CI jobs, so it pins both platforms.
+        it('should resolve a track that is queued more than once', async () => {
+            const repeated = { ...createTestTrack('repeat-1', 'Repeated'), url: '' };
+            const between = { ...createTestTrack('repeat-mid', 'Between'), url: '' };
+            const repeatPlaylistId = await PlayerQueue.createPlaylist('Repeated Track Test');
+            createdPlaylistIds.push(repeatPlaylistId);
+            // repeat-1 is repeated and current; repeat-mid is repeated and not current.
+            await PlayerQueue.addTracksToPlaylist(repeatPlaylistId, [repeated, between, repeated, between]);
+
+            // Listeners can't be removed, so this one stops recording once the test ends.
+            let recording = true;
+            const askedPayloads: string[][] = [];
+            // Checked as each payload arrives, so a late duplicate can't slip past the assertions.
+            const payloadsWithRepeats: string[][] = [];
+            TrackPlayer.onTracksNeedUpdate(tracks => {
+                if (!recording) return;
+                const ids = tracks.map(t => t.id);
+                askedPayloads.push(ids);
+                if (new Set(ids).size !== ids.length) payloadsWithRepeats.push(ids);
+            });
+            try {
+                await waitForNextTick();
+
+                await PlayerQueue.loadPlaylist(repeatPlaylistId);
+
+                // Poll rather than sleep: the lookahead fires asynchronously after the load.
+                await waitForValue(askedPayloads, ids => ids.includes('repeat-1'), 5000);
+                await waitForValue(askedPayloads, ids => ids.includes('repeat-mid'), 5000);
+
+                // The lookahead sees every queued copy, but each payload asks for an id once.
+                expect(askedPayloads.length).toBeGreaterThan(0);
+                expect(askedPayloads.flat()).toContain('repeat-1');
+                expect(askedPayloads.flat()).toContain('repeat-mid');
+            } finally {
+                recording = false;
+            }
+            expect(payloadsWithRepeats).toStrictEqual([]);
+
+            // The repeated track is also the current one, so the update below takes the
+            // "current track has no URL" path that replaces the active player item.
+            expect((await TrackPlayer.getState()).currentTrack?.id).toBe('repeat-1');
+
+            // Each id is asked for once, however many times it is queued.
+            expect((await TrackPlayer.getTracksNeedingUrls()).map(t => t.id)).toStrictEqual([
+                'repeat-1',
+                'repeat-mid',
+            ]);
+
+            // A payload that repeats an id used to crash iOS. The last applicable entry for an id
+            // wins, and a trailing entry without a URL is never applied, so it can't displace one.
+            await TrackPlayer.updateTracks([
+                { ...repeated, url: createTestTrack('repeat-1', '', 7).url, title: 'First Update' },
+                { ...repeated, url: createTestTrack('repeat-1', '', 8).url, title: 'Last Update' },
+                { ...repeated, url: '', title: 'No URL' },
+                { ...between, url: createTestTrack('repeat-mid', '', 9).url, title: 'Between First' },
+                { ...between, url: createTestTrack('repeat-mid', '', 10).url, title: 'Between Last' },
+                { ...between, url: '', title: 'No URL' },
+            ]);
+            await waitForNextTick();
+
+            const tracks = PlayerQueue.getPlaylist(repeatPlaylistId)?.tracks ?? [];
+            expect(tracks.map(t => t.title)).toStrictEqual([
+                'Last Update',
+                'Between Last',
+                'Last Update',
+                'Between Last',
+            ]);
+            expect(tracks[0].url).toBe(createTestTrack('repeat-1', '', 8).url);
+            expect(tracks[2].url).toBe(tracks[0].url);
+            expect(tracks[1].url).toBe(createTestTrack('repeat-mid', '', 10).url);
+            expect(tracks[3].url).toBe(tracks[1].url);
+            expect(await TrackPlayer.getTracksNeedingUrls()).toStrictEqual([]);
+
+            // The player's current track took the same update as the queue.
+            const { currentTrack } = await TrackPlayer.getState();
+            expect(currentTrack?.title).toBe('Last Update');
+            expect(currentTrack?.url).toBe(tracks[0].url);
+
+            // The player's own track list (which its native items are built from) matches at
+            // every position, not just the playlist copy checked above.
+            const actualQueue = await TrackPlayer.getActualQueue();
+            expect(actualQueue.map(t => t.id)).toStrictEqual(['repeat-1', 'repeat-mid', 'repeat-1', 'repeat-mid']);
+            expect(actualQueue.map(t => t.url)).toStrictEqual(tracks.map(t => t.url));
+        });
+
+        it('should stay on the playing copy of a repeated track when another track resolves', async () => {
+            const repeated = createTestTrack('copy-1', 'Repeated', 6);
+            const lazy = { ...createTestTrack('copy-lazy', 'Lazy'), url: '' };
+            const copyPlaylistId = await PlayerQueue.createPlaylist('Repeated Copy Test');
+            createdPlaylistIds.push(copyPlaylistId);
+            await PlayerQueue.addTracksToPlaylist(copyPlaylistId, [
+                repeated,
+                createTestTrack('copy-mid', 'Between', 7),
+                repeated,
+                lazy,
+            ]);
+            await PlayerQueue.loadPlaylist(copyPlaylistId);
+
+            // Step onto the second copy the way playback reaches it, one track at a time.
+            await TrackPlayer.skipToNext();
+            await waitForState(s => s.currentIndex === 1);
+            await TrackPlayer.skipToNext();
+            let state = await waitForState(s => s.currentIndex === 2);
+            expect(state.currentTrack?.id).toBe('copy-1');
+            expect(state.currentIndex).toBe(2);
+
+            // Resolving another track re-syncs the queue; it must not jump back to the first copy.
+            await TrackPlayer.updateTracks([{ ...lazy, url: createTestTrack('copy-lazy', '', 8).url }]);
+            await waitForNextTick();
+
+            state = await TrackPlayer.getState();
+            expect(state.currentTrack?.id).toBe('copy-1');
+            expect(state.currentIndex).toBe(2);
+            expect((await TrackPlayer.getNextTracks(5)).map(t => t.id)).toStrictEqual(['copy-lazy']);
+        });
+
+        it('should resolve a playNext copy of a lazy track', async () => {
+            const lazy = { ...createTestTrack('next-lazy', 'Lazy Next'), url: '' };
+            const nextPlaylistId = await PlayerQueue.createPlaylist('PlayNext Copy Test');
+            createdPlaylistIds.push(nextPlaylistId);
+            await PlayerQueue.addTracksToPlaylist(nextPlaylistId, [createTestTrack('next-first', 'First'), lazy]);
+            await PlayerQueue.loadPlaylist(nextPlaylistId);
+            await TrackPlayer.playNext('next-lazy');
+            await waitForNextTick();
+
+            const url = createTestTrack('next-lazy', '', 7).url;
+            await TrackPlayer.updateTracks([{ ...lazy, url }]);
+            await waitForNextTick();
+
+            // Both the playNext copy and the playlist copy took the update.
+            const copies = (await TrackPlayer.getActualQueue()).filter(t => t.id === 'next-lazy');
+            expect(copies.map(t => t.url)).toStrictEqual([url, url]);
+        });
     });
 
     describe('Timed Metadata', () => {

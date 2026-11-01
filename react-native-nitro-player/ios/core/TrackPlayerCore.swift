@@ -301,7 +301,10 @@ extension TrackPlayerCore {
     let anchor = old[safe: currentTrackIndex]
     currentTracks = next
     guard let anchor else { return .none }
-    if let newIndex = next.firstIndex(where: { $0.id == anchor.id }) {
+    // A repeated track keeps its rank among the occurrences, so editing elsewhere does not jump to another copy.
+    let rank = old[..<currentTrackIndex].filter { $0.id == anchor.id }.count
+    let occurrences = next.indices.filter { next[$0].id == anchor.id }
+    if let newIndex = occurrences[safe: rank] ?? occurrences.last {
       currentTrackIndex = newIndex
       return .kept
     }
@@ -310,6 +313,18 @@ extension TrackPlayerCore {
     let resume = followerId.flatMap { id in next.firstIndex { $0.id == id } } ?? next.count
     currentTrackIndex = resume - 1
     return .removed
+  }
+
+  /// Index of `trackId` in currentTracks, searching forward from `from` and wrapping, so a
+  /// repeated track resolves to the copy at or after the hint rather than its first one.
+  func currentTrackIndexOf(_ trackId: String, from: Int) -> Int? {
+    let count = currentTracks.count
+    let start = (0..<count).contains(from) ? from : 0
+    for offset in 0..<count {
+      let index = (start + offset) % count
+      if currentTracks[index].id == trackId { return index }
+    }
+    return nil
   }
 
   /// True while the playing item was removed from the playlist and is finishing.
