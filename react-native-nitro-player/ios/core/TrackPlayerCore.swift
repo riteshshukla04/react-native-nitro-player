@@ -33,6 +33,8 @@ class TrackPlayerCore: NSObject {
     // Stall & failure recovery
     static let maxFailedItemRetries: Int = 3
     static let failedItemRetryDelay: TimeInterval = 2.0
+    /// How long a re-armed stall may wait for `.playing` before the item is recreated.
+    static let stallWatchdogDelay: TimeInterval = 20.0
   }
 
   // MARK: - Thread infrastructure
@@ -98,6 +100,8 @@ class TrackPlayerCore: NSObject {
   internal var lastKnownPosition: Double = 0
   // Per-track retry budget for recreating AVPlayerItems that hit status == .failed.
   internal var failedItemRetryCounts: [String: Int] = [:]
+  // Bumped on every stall so only the latest stall's watchdog can act.
+  internal var stallWatchdogGeneration = 0
   // Monitors network path changes (VPN toggle, Wi-Fi band switch) to drive recovery.
   internal var pathMonitor: NWPathMonitor?
   // Starts unsatisfied so the first genuine `.satisfied` update is treated as a

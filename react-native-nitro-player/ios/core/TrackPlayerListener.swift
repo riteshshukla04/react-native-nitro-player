@@ -117,6 +117,7 @@ extension TrackPlayerCore {
       isRecoveringFromStall || player.automaticallyWaitsToMinimizeStalling {
       player.automaticallyWaitsToMinimizeStalling = false
       isRecoveringFromStall = false
+      emitStateChange()
     }
 
     let position = currentItem.currentTime().seconds
@@ -279,7 +280,8 @@ extension TrackPlayerCore {
       // Deliberately not gated on `timeControlStatus`: the notification and the status
       // change are separate events, so the status may still read `.playing` here for a
       // real stall. If a late notification re-arms recovery while already playing, the
-      // periodic observer (handleBoundaryTimeCrossed) clears it within a second.
+      // periodic time observer (handleBoundaryTimeCrossed, every 1–5 s on playerQueue)
+      // clears it on its next tick.
       self.isRecoveringFromStall = true
       // The buffer may have already refilled before this notification was
       // processed. `isPlaybackLikelyToKeepUp` fires only on change, so its
@@ -300,8 +302,28 @@ extension TrackPlayerCore {
         player.rate = Float(self.currentPlaybackSpeed)
         NitroPlayerLogger.log("TrackPlayerCore",
           "⏳ Stall waiting re-enabled — timeControlStatus: \(player.timeControlStatus.rawValue)")
+        self.armStallWatchdog(for: currentItem)
       }
       self.emitStateChange()
+    }
+  }
+
+  /// If a re-armed stall never reaches `.playing` (e.g. the connection went silent without
+  /// an error), recreate the item on a fresh connection via `recoverFailedItem`, which
+  /// resumes at the last position and surfaces an error once its retry budget runs out.
+  /// Must be called on `playerQueue`.
+  func armStallWatchdog(for item: AVPlayerItem) {
+    stallWatchdogGeneration += 1
+    let generation = stallWatchdogGeneration
+    playerQueue.asyncAfter(deadline: .now() + Constants.stallWatchdogDelay) { [weak self] in
+      guard let self, let player = self.player,
+        generation == self.stallWatchdogGeneration,
+        self.isRecoveringFromStall, self.intendedToPlay, !self.isInterrupted,
+        player.currentItem === item, player.timeControlStatus != .playing
+      else { return }
+      NitroPlayerLogger.log("TrackPlayerCore",
+        "⏱️ Still stalled after \(Int(Constants.stallWatchdogDelay))s — recreating item")
+      self.recoverFailedItem(item)
     }
   }
 
