@@ -288,7 +288,8 @@ extension TrackPlayerCore {
     return true
   }
 
-  /// skipToPrevious while casting: restart after the threshold, otherwise step back through temp/original tracks.
+  /// skipToPrevious while casting: restart after the threshold, otherwise step back through temp/original tracks
+  /// (wrapping to the last track under playlist repeat).
   func skipToPreviousCastInternal() {
     let position = castManager?.lastKnownRemotePosition ?? 0
     if position > Constants.skipToPreviousThreshold {
@@ -318,6 +319,9 @@ extension TrackPlayerCore {
       notifyTemporaryQueueChange()
     } else if currentTrackIndex > 0 {
       currentTrackIndex -= 1
+    } else if currentRepeatMode == .playlist, currentTracks.count > 1 {
+      // At the first track under playlist repeat, wrap to the last
+      currentTrackIndex = currentTracks.count - 1
     } else {
       castManager?.seek(to: 0)
       return

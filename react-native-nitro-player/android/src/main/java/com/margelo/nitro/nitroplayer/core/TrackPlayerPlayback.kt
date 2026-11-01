@@ -48,6 +48,11 @@ internal fun TrackPlayerCore.skipToNextOnQueue() {
     if (exo.hasNextMediaItem()) {
         exo.seekToNext()
         checkUpcomingTracksForUrls(lookaheadCount)
+    } else if (currentRepeatMode == RepeatMode.PLAYLIST && currentTracks.isNotEmpty()) {
+        // Manual skip at the last track wraps, matching natural-end behavior.
+        // The timeline already holds the wrap locally, but not while casting or for a single track.
+        playFromIndexInternal(0)
+        checkUpcomingTracksForUrls(lookaheadCount)
     }
 }
 
@@ -67,6 +72,11 @@ internal fun TrackPlayerCore.skipToPreviousOnQueue() {
 
         currentTrackIndex > 0 -> {
             playFromIndexInternal(currentTrackIndex - 1)
+        }
+
+        currentRepeatMode == RepeatMode.PLAYLIST && currentTracks.size > 1 -> {
+            // At the first track under playlist repeat, wrap to the last
+            playFromIndexInternal(currentTracks.size - 1)
         }
 
         else -> {
