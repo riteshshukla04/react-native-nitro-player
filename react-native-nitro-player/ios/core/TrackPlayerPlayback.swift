@@ -309,12 +309,13 @@ extension TrackPlayerCore {
 
     let currentTime = queuePlayer.currentTime()
     if currentTime.seconds > Constants.skipToPreviousThreshold {
-      // If more than threshold seconds in, restart current track
-      queuePlayer.seek(to: .zero)
+      // If more than threshold seconds in, restart current track. Through seekInternal so the
+      // lock screen's elapsed time resets too; a bare seek left it counting from the old position.
+      seekInternal(position: 0)
     } else if self.currentTemporaryType != .none {
       // No playlist track to return to (all removed): restart the temp without touching its list.
       if currentTracks.isEmpty {
-        queuePlayer.seek(to: .zero)
+        seekInternal(position: 0)
         checkUpcomingTracksForUrls(lookahead: lookaheadCount)
         return
       }
@@ -338,7 +339,7 @@ extension TrackPlayerCore {
       _ = rebuildQueueFromPlaylistIndex(index: currentTracks.count - 1)
     } else {
       // Already at first track, restart it
-      queuePlayer.seek(to: .zero)
+      seekInternal(position: 0)
     }
 
     checkUpcomingTracksForUrls(lookahead: lookaheadCount)
