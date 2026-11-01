@@ -319,9 +319,10 @@ extension TrackPlayerCore {
       notifyTemporaryQueueChange()
     } else if currentTrackIndex > 0 {
       currentTrackIndex -= 1
-    } else if currentRepeatMode == .playlist, currentTracks.count > 1 {
-      // At the first track under playlist repeat, wrap to the last (temp tracks were handled above;
-      // the reload below goes by track id and keeps the paused state via intendedToPlay)
+    } else if currentTrackIndex == 0, currentRepeatMode == .playlist, currentTracks.count > 1 {
+      // At the first track under playlist repeat, wrap to the last (temp tracks were handled above).
+      // The reload below finds the target by track id and passes autoplay: intendedToPlay, like the
+      // step-back above; not yet verified on a receiver.
       currentTrackIndex = currentTracks.count - 1
     } else {
       castManager?.seek(to: 0)

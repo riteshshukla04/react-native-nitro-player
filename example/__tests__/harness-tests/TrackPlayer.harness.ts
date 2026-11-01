@@ -571,6 +571,23 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             expect(state.currentIndex).toBe(2);
         });
 
+        it('should wrap from a temporary track at the end to the first playlist track', async () => {
+            await PlayerQueue.loadPlaylist(playlist3Id);
+            await TrackPlayer.setRepeatMode('Playlist');
+            await TrackPlayer.playSong('p3-3', playlist3Id);
+            await TrackPlayer.playNext('4');
+
+            await TrackPlayer.skipToNext();
+            await waitForState(s => s.currentTrack?.id === '4');
+
+            await TrackPlayer.skipToNext();
+            const state = await waitForState(s => s.currentTrack?.id === 'p3-1');
+            expect(state.currentTrack?.id).toBe('p3-1');
+            expect(state.currentIndex).toBe(0);
+            const queue = await TrackPlayer.getActualQueue();
+            expect(queue.some(t => t.id === '4')).toBe(false);
+        });
+
         it('should not wrap skipToNext at the last track with repeat off', async () => {
             await TrackPlayer.setRepeatMode('off');
             await PlayerQueue.loadPlaylist(playlist3Id);
@@ -581,8 +598,9 @@ describe('TrackPlayer - Comprehensive Tests', () => {
 
             await TrackPlayer.skipToNext();
 
-            // A wrap is a queue rebuild plus async callbacks, so give it a bounded window to show up
-            const state = await waitForState(s => s.currentTrack?.id !== 'p3-3', 3000);
+            // A wrap is a queue rebuild plus async callbacks, so give it time to show up
+            await new Promise<void>(resolve => setTimeout(resolve, 3000));
+            const state = await TrackPlayer.getState();
             expect(state.currentTrack?.id).toBe('p3-3');
             expect(state.currentPosition).toBeGreaterThanOrEqual(29);
             await TrackPlayer.pause();
@@ -595,7 +613,8 @@ describe('TrackPlayer - Comprehensive Tests', () => {
 
             await TrackPlayer.skipToPrevious();
 
-            const state = await waitForState(s => s.currentTrack?.id !== 'p3-1', 3000);
+            await new Promise<void>(resolve => setTimeout(resolve, 3000));
+            const state = await TrackPlayer.getState();
             expect(state.currentTrack?.id).toBe('p3-1');
         });
 
@@ -640,6 +659,9 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             await TrackPlayer.playSong('p3-1', playlist3Id);
             await waitForPlaying();
             await TrackPlayer.pause();
+            // Stay under the 2-second restart threshold so the skip wraps
+            await TrackPlayer.seek(0);
+            await waitForState(s => s.currentPosition < 2);
 
             await TrackPlayer.skipToPrevious();
             await waitForState(s => s.currentTrack?.id === 'p3-3');
