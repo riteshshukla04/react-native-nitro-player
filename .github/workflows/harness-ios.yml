@@ -147,9 +147,9 @@ jobs:
       - name: Install and warm up the app
         run: |
           xcrun simctl install booted example/ios/build/Build/Products/Debug-iphonesimulator/example.app
-          xcrun simctl launch booted org.reactjs.native.example.example
+          xcrun simctl launch booted com.cosmonautical.rnnp-example
           sleep 20
-          xcrun simctl terminate booted org.reactjs.native.example.example || true
+          xcrun simctl terminate booted com.cosmonautical.rnnp-example || true
 
       - name: Run Harness E2E tests
         working-directory: example
@@ -163,7 +163,7 @@ jobs:
           for attempt in 1 2; do
             if bun run test:harness --harnessRunner ios; then exit 0; fi
             echo "::warning::harness attempt $attempt failed, retrying"
-            xcrun simctl terminate booted org.reactjs.native.example.example || true
+            xcrun simctl terminate booted com.cosmonautical.rnnp-example || true
             sleep 10
           done
           exit 1
