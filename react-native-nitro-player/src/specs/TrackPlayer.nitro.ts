@@ -126,6 +126,9 @@ export interface TrackPlayer extends HybridObject<{
    * Update entire track objects across all playlists
    * Matches by track.id and updates all properties (url, artwork, title, etc.)
    * Note: Empty string "" is valid for TrackItem.url to support lazy loading
+   * Every queue position holding a track's id receives the update. If the same id
+   * appears more than once, the last entry with a usable URL wins; entries without
+   * a URL are never applied.
    * @param tracks Array of full TrackItem objects to update
    * @returns Promise that resolves when updates complete
    */
@@ -140,7 +143,9 @@ export interface TrackPlayer extends HybridObject<{
 
   /**
    * Get tracks with missing/empty URLs from current playlist
-   * @returns Promise resolving to array of tracks needing URLs
+   * Each id appears once even if the track is queued more than once, so the
+   * result does not line up with queue positions.
+   * @returns Promise resolving to array of tracks needing URLs, one per id
    */
   getTracksNeedingUrls(): Promise<TrackItem[]>
 
@@ -161,7 +166,7 @@ export interface TrackPlayer extends HybridObject<{
   /**
    * Register callback that fires when tracks will be needed soon
    * Useful for proactive URL resolution in Android Auto/CarPlay
-   * @param callback Function called with tracks needing URLs and lookahead count
+   * @param callback Function called with tracks needing URLs (one per id) and lookahead count
    */
   onTracksNeedUpdate(
     callback: (tracks: TrackItem[], lookahead: number) => void
