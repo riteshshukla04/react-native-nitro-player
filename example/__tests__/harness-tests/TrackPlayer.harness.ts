@@ -537,6 +537,89 @@ describe('TrackPlayer - Comprehensive Tests', () => {
         });
     });
 
+    // ============================================
+    // PLAYLIST REPEAT WRAPPING
+    // ============================================
+
+    describe('Playlist repeat wrapping', () => {
+        it('should wrap skipToNext from the last track to the first', async () => {
+            await PlayerQueue.loadPlaylist(playlist3Id);
+            await TrackPlayer.setRepeatMode('Playlist');
+            await TrackPlayer.playSong('p3-3', playlist3Id);
+
+            await TrackPlayer.skipToNext();
+
+            const state = await waitForState(s => s.currentTrack?.id === 'p3-1');
+            expect(state.currentTrack?.id).toBe('p3-1');
+            expect(state.currentIndex).toBe(0);
+        });
+
+        it('should wrap skipToPrevious from the first track to the last', async () => {
+            await PlayerQueue.loadPlaylist(playlist3Id);
+            await TrackPlayer.setRepeatMode('Playlist');
+            await TrackPlayer.playSong('p3-1', playlist3Id);
+
+            await TrackPlayer.skipToPrevious();
+
+            const state = await waitForState(s => s.currentTrack?.id === 'p3-3');
+            expect(state.currentTrack?.id).toBe('p3-3');
+            expect(state.currentIndex).toBe(2);
+        });
+
+        it('should not wrap skipToNext at the last track with repeat off', async () => {
+            await PlayerQueue.loadPlaylist(playlist3Id);
+            await TrackPlayer.playSong('p3-3', playlist3Id);
+
+            await TrackPlayer.skipToNext();
+            await waitForNextTick();
+
+            const state = await TrackPlayer.getState();
+            expect(state.currentTrack?.id).toBe('p3-3');
+        });
+
+        it('should not wrap skipToPrevious at the first track with repeat off', async () => {
+            await PlayerQueue.loadPlaylist(playlist3Id);
+            await TrackPlayer.playSong('p3-1', playlist3Id);
+
+            await TrackPlayer.skipToPrevious();
+            await waitForNextTick();
+
+            const state = await TrackPlayer.getState();
+            expect(state.currentTrack?.id).toBe('p3-1');
+        });
+
+        it('should restart a single-track queue in both directions', async () => {
+            const singleId = await PlayerQueue.createPlaylist('Single Track', 'One track');
+            createdPlaylistIds.push(singleId);
+            await PlayerQueue.addTracksToPlaylist(singleId, [createTestTrack('solo', 'Solo Track', 6)]);
+            await PlayerQueue.loadPlaylist(singleId);
+            await TrackPlayer.setRepeatMode('Playlist');
+            await TrackPlayer.playSong('solo', singleId);
+
+            await TrackPlayer.skipToNext();
+            let state = await waitForState(s => s.currentTrack?.id === 'solo');
+            expect(state.currentTrack?.id).toBe('solo');
+
+            await TrackPlayer.skipToPrevious();
+            state = await waitForState(s => s.currentTrack?.id === 'solo');
+            expect(state.currentTrack?.id).toBe('solo');
+        });
+
+        it('should keep a paused queue paused when wrapping', async () => {
+            await PlayerQueue.loadPlaylist(playlist3Id);
+            await TrackPlayer.setRepeatMode('Playlist');
+            await TrackPlayer.playSong('p3-3', playlist3Id);
+            await TrackPlayer.pause();
+
+            await TrackPlayer.skipToNext();
+            const state = await waitForState(s => s.currentTrack?.id === 'p3-1');
+            await waitForNextTick();
+
+            expect(state.currentTrack?.id).toBe('p3-1');
+            expect((await TrackPlayer.getState()).currentState).not.toBe('playing');
+        });
+    });
+
     // // ============================================
     // // STATE MANAGEMENT
     // // ============================================
