@@ -1254,8 +1254,20 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             // repeat-1 is repeated and current; repeat-mid is repeated and not current.
             await PlayerQueue.addTracksToPlaylist(repeatPlaylistId, [repeated, between, repeated, between]);
 
+            const askedPayloads: string[][] = [];
+            TrackPlayer.onTracksNeedUpdate(tracks => {
+                askedPayloads.push(tracks.map(t => t.id));
+            });
+            await waitForNextTick();
+
             await PlayerQueue.loadPlaylist(repeatPlaylistId);
             await waitForNextTick();
+            await waitForNextTick();
+
+            // The lookahead sees every queued copy, but each payload asks for an id once.
+            expect(askedPayloads.flat()).toContain('repeat-1');
+            expect(askedPayloads.flat()).toContain('repeat-mid');
+            askedPayloads.forEach(ids => expect(ids).toStrictEqual([...new Set(ids)]));
 
             // The repeated track is also the current one, so the update below takes the
             // "current track has no URL" path that replaces the active player item.
