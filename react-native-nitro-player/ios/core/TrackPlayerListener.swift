@@ -266,10 +266,10 @@ extension TrackPlayerCore {
       // set here while paused could never be cleared and would wedge state on .buffering.
       // Never resume into an active audio-session interruption either.
       guard self.intendedToPlay, !self.isInterrupted else { return }
-      // A late notification for an item that has already resumed must not re-arm
-      // recovery or re-enable stall waiting mid-playback — only the next `.playing`
-      // transition would turn waiting off again, costing a gapless boundary.
-      guard player.timeControlStatus != .playing else { return }
+      // Deliberately not gated on `timeControlStatus`: the notification and the status
+      // change are separate events, so the status may still read `.playing` here for a
+      // real stall. Re-arming on a late notification only leaves stall waiting on until
+      // the next `.playing`, which is far cheaper than missing a stall.
       self.isRecoveringFromStall = true
       // The buffer may have already refilled before this notification was
       // processed. `isPlaybackLikelyToKeepUp` fires only on change, so its
