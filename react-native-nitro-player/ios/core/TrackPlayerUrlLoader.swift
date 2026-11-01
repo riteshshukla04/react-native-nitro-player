@@ -43,6 +43,8 @@ extension TrackPlayerCore {
     let currentItemFailed = self.player?.currentItem?.status == .failed
       && self.player?.currentItem?.trackId == currentTrackId
 
+    // Every branch that keeps an entry requires a non-empty URL. The last-wins dedupe below
+    // relies on this: an entry without a URL must never be able to win for its id.
     let applicableTracks = tracks.filter { track in
       switch true {
       case track.id == currentTrackId && (currentTrackIsEmpty || currentItemFailed):

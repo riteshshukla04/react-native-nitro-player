@@ -1263,8 +1263,13 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             await waitForNextTick();
 
             await PlayerQueue.loadPlaylist(repeatPlaylistId);
-            await waitForNextTick();
-            await waitForNextTick();
+
+            // Poll rather than sleep: the lookahead fires asynchronously after the load.
+            const askedFor = (id: string) => askedPayloads.some(ids => ids.includes(id));
+            const deadline = Date.now() + 5000;
+            while (Date.now() < deadline && !(askedFor('repeat-1') && askedFor('repeat-mid'))) {
+                await new Promise<void>(resolve => setTimeout(resolve, 100));
+            }
 
             // The lookahead sees every queued copy, but each payload asks for an id once.
             expect(askedPayloads.flat()).toContain('repeat-1');

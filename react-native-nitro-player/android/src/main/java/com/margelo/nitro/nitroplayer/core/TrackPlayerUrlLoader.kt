@@ -21,6 +21,9 @@ internal fun TrackPlayerCore.updateTracksOnQueue(tracks: List<TrackItem>) {
         val currentTrackId = currentTrack?.id
         val currentTrackIsEmpty = currentTrack?.url.isNullOrEmpty()
 
+        // Every branch that keeps an entry requires a non-empty URL (the current URL is non-empty
+        // when matched). The last-wins dedupe below relies on this: an entry without a URL must
+        // never be able to win for its id.
         val applicableTracks =
             tracks.filter { track ->
                 when {
