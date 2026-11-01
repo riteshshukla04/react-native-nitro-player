@@ -264,7 +264,12 @@ extension TrackPlayerCore {
       // paused (or a stall notification is racing a pause), do NOT arm the recovery
       // flag — the `isPlaybackLikelyToKeepUp` observer fires only on change, so a flag
       // set here while paused could never be cleared and would wedge state on .buffering.
-      guard self.intendedToPlay else { return }
+      // Never resume into an active audio-session interruption either.
+      guard self.intendedToPlay, !self.isInterrupted else { return }
+      // A late notification for an item that has already resumed must not re-arm
+      // recovery or re-enable stall waiting mid-playback — only the next `.playing`
+      // transition would turn waiting off again, costing a gapless boundary.
+      guard player.timeControlStatus != .playing else { return }
       self.isRecoveringFromStall = true
       // The buffer may have already refilled before this notification was
       // processed. `isPlaybackLikelyToKeepUp` fires only on change, so its
@@ -283,6 +288,8 @@ extension TrackPlayerCore {
         // `isPlaybackLikelyToKeepUp` stays false, so let AVPlayer wait and resume itself.
         player.automaticallyWaitsToMinimizeStalling = true
         player.rate = Float(self.currentPlaybackSpeed)
+        NitroPlayerLogger.log("TrackPlayerCore",
+          "⏳ Stall waiting re-enabled — timeControlStatus: \(player.timeControlStatus.rawValue)")
       }
       self.emitStateChange()
     }
