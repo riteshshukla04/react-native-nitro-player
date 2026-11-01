@@ -68,11 +68,11 @@ extension TrackPlayerCore {
     // Keep the last applicable update per id so every step below applies the same track.
     // The empty-URL filter is redundant with the branches above but enforces the invariant
     // structurally: an entry without a URL can never win and blank out every copy of a track.
-    let safeTracks = Array(
-      applicableTracks.filter { !$0.url.isEmpty }.reversed().uniqued(by: \.id).reversed())
-    if safeTracks.count != applicableTracks.count {
+    let tracksWithUrls = applicableTracks.filter { !$0.url.isEmpty }
+    let safeTracks = Array(tracksWithUrls.reversed().uniqued(by: \.id).reversed())
+    if safeTracks.count != tracksWithUrls.count {
       NitroPlayerLogger.log("TrackPlayerCore",
-        "ℹ️ updateTracks repeated \(applicableTracks.count - safeTracks.count) track id(s); last update per id applied")
+        "ℹ️ updateTracks repeated \(tracksWithUrls.count - safeTracks.count) track id(s); last update per id applied")
     }
 
     guard !safeTracks.isEmpty else {

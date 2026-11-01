@@ -40,10 +40,11 @@ internal fun TrackPlayerCore.updateTracksOnQueue(tracks: List<TrackItem>) {
         // Keep the last applicable update per id so every step below applies the same track.
         // The empty-URL filter is redundant with the branches above but enforces the invariant
         // structurally: an entry without a URL can never win and blank out every copy of a track.
-        val safeTracks = applicableTracks.filter { it.url.isNotEmpty() }.asReversed().distinctBy { it.id }.asReversed()
-        if (safeTracks.size != applicableTracks.size) {
+        val tracksWithUrls = applicableTracks.filter { it.url.isNotEmpty() }
+        val safeTracks = tracksWithUrls.asReversed().distinctBy { it.id }.asReversed()
+        if (safeTracks.size != tracksWithUrls.size) {
             NitroPlayerLogger.log("TrackPlayerCore") {
-                "updateTracks repeated ${applicableTracks.size - safeTracks.size} track id(s); last update per id applied"
+                "updateTracks repeated ${tracksWithUrls.size - safeTracks.size} track id(s); last update per id applied"
             }
         }
         if (safeTracks.isEmpty()) return@run
