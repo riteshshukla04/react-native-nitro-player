@@ -129,9 +129,9 @@ jobs:
             -scheme example \
             -sdk iphonesimulator \
             -configuration Debug \
-            -destination 'platform=iOS Simulator,name=${{ env.DEVICE_MODEL }}' \
+            -destination 'generic/platform=iOS Simulator' \
             -showBuildTimingSummary \
-            ONLY_ACTIVE_ARCH=YES \
+            ARCHS=arm64 \
             build \
             CODE_SIGNING_ALLOWED=NO | xcbeautify --renderer github-actions
 
