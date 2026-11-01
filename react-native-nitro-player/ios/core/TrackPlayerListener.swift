@@ -258,6 +258,10 @@ extension TrackPlayerCore {
       let position = currentItem.currentTime().seconds
       let duration = currentItem.duration.seconds
       NitroPlayerLogger.log("TrackPlayerCore", "🎯 Time jumped (seek detected) - position: \(Int(position))s")
+      // Every seek lands here, including while waiting with time frozen (when the periodic
+      // observer doesn't update it), so a stall recovery resumes at the seek target rather
+      // than rewinding or jumping back to where the user seeked from.
+      if position.isFinite && position >= 0 { self.lastKnownPosition = position }
       self.notifySeek(position, duration)
       self.isManuallySeeked = true
       self.handleBoundaryTimeCrossed()
@@ -476,6 +480,13 @@ extension TrackPlayerCore {
 
     // Setup KVO observers for current item
     setupCurrentItemObservers(item: currentItem)
+
+    // An item that takes over while the player is already waiting (a recovery replace, a
+    // skip while buffering) produces no new `.waitingToPlayAtSpecifiedRate` KVO edge, and the
+    // previous item's watchdog no longer applies, so watch the new item from here.
+    if intendedToPlay, !isCasting, player.timeControlStatus != .playing {
+      armStallWatchdog(for: currentItem)
+    }
 
     // A Cast disconnect rebuilds around the receiver's track; none of those transitions is a change.
     let isBackendTransfer = backendTransferTargetId != nil
