@@ -33,6 +33,9 @@ class TrackPlayerCore: NSObject {
     // Stall & failure recovery
     static let maxFailedItemRetries: Int = 3
     static let failedItemRetryDelay: TimeInterval = 2.0
+    /// How long a waiting item may go without receiving any media before it is recreated.
+    /// Each window in which media arrives re-arms it, so a slow download is never cut off.
+    static let stallWatchdogDelay: TimeInterval = 20.0
   }
 
   // MARK: - Thread infrastructure
@@ -80,9 +83,9 @@ class TrackPlayerCore: NSObject {
   // MARK: - Stall & network recovery
   // Whether the user/app wants playback ongoing (true after play(), false after pause()).
   internal var intendedToPlay = false
-  // Set when AVPlayer stalls on a buffer underrun; cleared once the buffer refills.
+  // Set when AVPlayer stalls on a buffer underrun; cleared once playback resumes.
   // Needed because automaticallyWaitsToMinimizeStalling == false means AVPlayer
-  // will NOT auto-resume after a stall — we must re-issue play() ourselves.
+  // will NOT auto-resume after a stall — the stall handler re-enables waiting so it can.
   internal var isRecoveringFromStall = false
   // True while an audio-session interruption (phone call, Siri, other app) is active.
   // Recovery must NOT resume playback during this window even though `intendedToPlay`
@@ -98,6 +101,11 @@ class TrackPlayerCore: NSObject {
   internal var lastKnownPosition: Double = 0
   // Per-track retry budget for recreating AVPlayerItems that hit status == .failed.
   internal var failedItemRetryCounts: [String: Int] = [:]
+  // The pending stall watchdog; re-arming cancels the previous one so only the latest can act.
+  internal var stallWatchdog: DispatchWorkItem?
+  // Watchdog recreations since playback last actually ran. Reset on `.playing` and on a
+  // track change, so separate stalls in one long track don't add up to a give-up.
+  internal var stallWatchdogRecoveries = 0
   // Monitors network path changes (VPN toggle, Wi-Fi band switch) to drive recovery.
   internal var pathMonitor: NWPathMonitor?
   // Starts unsatisfied so the first genuine `.satisfied` update is treated as a

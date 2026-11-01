@@ -16,8 +16,10 @@ extension TrackPlayerCore {
   /// Recreates a current AVPlayerItem that reached `status == .failed`.
   /// A failed item cannot be revived, so we build a fresh one from the same
   /// track URL, seek back to the last known position and resume if intended.
+  /// The stall watchdog also uses it for an item whose connection went silent; it passes
+  /// `countsAgainstRetryBudget: false` because it keeps its own budget.
   /// Must be called on `playerQueue`.
-  func recoverFailedItem(_ item: AVPlayerItem) {
+  func recoverFailedItem(_ item: AVPlayerItem, countsAgainstRetryBudget: Bool = true) {
     guard let player else { return }
     guard player.currentItem === item else {
       NitroPlayerLogger.log("TrackPlayerCore", "⚠️ Failed item is not the current item — ignoring")
@@ -34,18 +36,20 @@ extension TrackPlayerCore {
     }
 
     let attempts = (failedItemRetryCounts[trackId] ?? 0) + 1
-    guard attempts <= Constants.maxFailedItemRetries else {
-      NitroPlayerLogger.log("TrackPlayerCore",
-        "❌ '\(track.title)' failed \(attempts - 1)x — giving up")
-      failedItemRetryCounts.removeValue(forKey: trackId)
-      isRecoveringFromStall = false
-      // Don't silently resurrect a track the user already saw fail: clear the play
-      // intent so a later network-restore path doesn't auto-resume it.
-      intendedToPlay = false
-      notifyPlaybackStateChange(.stopped, .error)
-      return
+    if countsAgainstRetryBudget {
+      guard attempts <= Constants.maxFailedItemRetries else {
+        NitroPlayerLogger.log("TrackPlayerCore",
+          "❌ '\(track.title)' failed \(attempts - 1)x — giving up")
+        failedItemRetryCounts.removeValue(forKey: trackId)
+        isRecoveringFromStall = false
+        // Don't silently resurrect a track the user already saw fail: clear the play
+        // intent so a later network-restore path doesn't auto-resume it.
+        intendedToPlay = false
+        notifyPlaybackStateChange(.stopped, .error)
+        return
+      }
+      failedItemRetryCounts[trackId] = attempts
     }
-    failedItemRetryCounts[trackId] = attempts
 
     // Resume from the furthest-known position: the failed item's own playhead is
     // usually more current than the last periodic boundary-observer tick.
@@ -54,9 +58,10 @@ extension TrackPlayerCore {
     // Keep lastKnownPosition aligned so a re-failure during recovery resumes here too.
     lastKnownPosition = resumePosition
 
+    let budget = countsAgainstRetryBudget
+      ? "attempt \(attempts)/\(Constants.maxFailedItemRetries)" : "stall watchdog"
     NitroPlayerLogger.log("TrackPlayerCore",
-      "🔁 Recreating failed item '\(track.title)' "
-        + "(attempt \(attempts)/\(Constants.maxFailedItemRetries), resume @ \(Int(resumePosition))s)")
+      "🔁 Recreating item '\(track.title)' (\(budget), resume @ \(Int(resumePosition))s)")
 
     // The failure may be a stale/expired streaming URL. Ask the JS layer for a fresh
     // one; if it arrives before the retry fires, updateTracks replaces the item
@@ -75,6 +80,18 @@ extension TrackPlayerCore {
       // swapped in a fresh-URL item — while we waited.
       guard player.currentItem === item else {
         NitroPlayerLogger.log("TrackPlayerCore", "⏭️ Current item changed before retry — aborting recovery")
+        return
+      }
+      // A Cast session took over while we waited: the local player stays silent.
+      if self.isCasting {
+        NitroPlayerLogger.log("TrackPlayerCore", "⏭️ Casting started before retry — aborting recovery")
+        self.isRecoveringFromStall = false
+        return
+      }
+      // A stalled item (the stall watchdog's case, not a failed one) may have resumed on its
+      // own while we waited; recreating it now would cut off audio that is playing.
+      if item.status != .failed && player.timeControlStatus == .playing {
+        NitroPlayerLogger.log("TrackPlayerCore", "⏭️ Playback resumed before retry — aborting recovery")
         return
       }
       // Re-resolve the track so we pick up any URL refreshed during the wait.
