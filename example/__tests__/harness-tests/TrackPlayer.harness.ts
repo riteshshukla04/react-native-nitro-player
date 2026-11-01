@@ -602,7 +602,7 @@ describe('TrackPlayer - Comprehensive Tests', () => {
         it('should restart a single-track queue on skipToNext', async () => {
             const singleId = await PlayerQueue.createPlaylist('Single Track', 'One track');
             createdPlaylistIds.push(singleId);
-            await PlayerQueue.addTracksToPlaylist(singleId, [createTestTrack('solo', 'Solo Track', 6)]);
+            await PlayerQueue.addTracksToPlaylist(singleId, [createTestTrack('solo', 'Solo Track')]);
             await PlayerQueue.loadPlaylist(singleId);
             await TrackPlayer.setRepeatMode('Playlist');
             await TrackPlayer.playSong('solo', singleId);
@@ -623,6 +623,7 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             await PlayerQueue.loadPlaylist(playlist3Id);
             await TrackPlayer.setRepeatMode('Playlist');
             await TrackPlayer.playSong('p3-3', playlist3Id);
+            await waitForPlaying();
             await TrackPlayer.pause();
 
             await TrackPlayer.skipToNext();
@@ -637,6 +638,7 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             await PlayerQueue.loadPlaylist(playlist3Id);
             await TrackPlayer.setRepeatMode('Playlist');
             await TrackPlayer.playSong('p3-1', playlist3Id);
+            await waitForPlaying();
             await TrackPlayer.pause();
 
             await TrackPlayer.skipToPrevious();

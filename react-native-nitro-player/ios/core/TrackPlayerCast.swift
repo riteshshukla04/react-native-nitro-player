@@ -320,7 +320,8 @@ extension TrackPlayerCore {
     } else if currentTrackIndex > 0 {
       currentTrackIndex -= 1
     } else if currentRepeatMode == .playlist, currentTracks.count > 1 {
-      // At the first track under playlist repeat, wrap to the last
+      // At the first track under playlist repeat, wrap to the last (temp tracks were handled above;
+      // the reload below goes by track id and keeps the paused state via intendedToPlay)
       currentTrackIndex = currentTracks.count - 1
     } else {
       castManager?.seek(to: 0)

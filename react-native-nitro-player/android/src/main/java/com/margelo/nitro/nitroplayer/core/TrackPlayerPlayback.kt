@@ -53,7 +53,9 @@ internal fun TrackPlayerCore.skipToNextOnQueue() {
         // The local timeline already holds the wrap; this covers casting (exo is the CastPlayer,
         // whose queue has no wrap prefix) and a single track. A lone playlist track restarts in
         // place, same as skipToPrevious; otherwise playFromIndexInternal keeps playWhenReady,
-        // so a paused queue stays paused.
+        // so a paused queue stays paused. The top-up above already queued every remaining
+        // playNext/upNext item, so the only temp track left here is the playing one; like
+        // natural end (STATE_ENDED) and iOS, wrapping leaves it for playlist track 0.
         if (currentTracks.size == 1 && currentTemporaryType == TrackPlayerCore.TemporaryType.NONE) {
             exo.seekTo(0)
         } else {
@@ -82,8 +84,9 @@ internal fun TrackPlayerCore.skipToPreviousOnQueue() {
         }
 
         currentRepeatMode == RepeatMode.PLAYLIST && currentTracks.size > 1 -> {
-            // At the first track under playlist repeat, wrap to the last. A single track
-            // falls through to the restart below, same result without rebuilding the queue.
+            // At the first track under playlist repeat, wrap to the last. Temp tracks never get
+            // here (the currentTemporaryType arm above owns them). A single track falls through
+            // to the restart below, same result without rebuilding the queue.
             playFromIndexInternal(currentTracks.size - 1)
         }
 
