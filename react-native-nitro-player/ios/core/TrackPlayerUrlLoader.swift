@@ -43,8 +43,6 @@ extension TrackPlayerCore {
     let currentItemFailed = self.player?.currentItem?.status == .failed
       && self.player?.currentItem?.trackId == currentTrackId
 
-    // Every branch that keeps an entry requires a non-empty URL. The last-wins dedupe below
-    // relies on this: an entry without a URL must never be able to win for its id.
     let applicableTracks = tracks.filter { track in
       switch true {
       case track.id == currentTrackId && (currentTrackIsEmpty || currentItemFailed):
@@ -67,9 +65,11 @@ extension TrackPlayerCore {
     }
 
     // A queue can hold the same track more than once, so a payload may repeat an id.
-    // Keep the last applicable update per id so every step below applies the same track,
-    // and an entry that was filtered out above can't displace a valid one.
-    let safeTracks = Array(applicableTracks.reversed().uniqued(by: \.id).reversed())
+    // Keep the last applicable update per id so every step below applies the same track.
+    // The empty-URL filter is redundant with the branches above but enforces the invariant
+    // structurally: an entry without a URL can never win and blank out every copy of a track.
+    let safeTracks = Array(
+      applicableTracks.filter { !$0.url.isEmpty }.reversed().uniqued(by: \.id).reversed())
     if safeTracks.count != applicableTracks.count {
       NitroPlayerLogger.log("TrackPlayerCore",
         "ℹ️ updateTracks repeated \(applicableTracks.count - safeTracks.count) track id(s); last update per id applied")
