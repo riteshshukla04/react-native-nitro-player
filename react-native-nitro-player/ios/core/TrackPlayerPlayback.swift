@@ -80,6 +80,8 @@ extension TrackPlayerCore {
     if !isCasting, previousMode != mode, player?.currentItem != nil {
       rebuildAVQueueFromCurrentPosition()
     }
+    // The lock screen's repeat button shows the current mode
+    if previousMode != mode { refreshMediaSession() }
     NitroPlayerLogger.log("TrackPlayerCore", "🔁 setRepeatMode: \(mode)")
   }
   func setRepeatMode(mode: RepeatMode) async {
@@ -105,7 +107,7 @@ extension TrackPlayerCore {
     androidAutoEnabled: Bool?, carPlayEnabled: Bool?,
     showInNotification: Bool?, lookaheadCount: Int?,
     remoteSkipForwardInterval: Double?, remoteSkipBackwardInterval: Double?,
-    preferRemoteSkipIntervals: Bool?
+    preferRemoteSkipIntervals: Bool?, notificationButtons: IOSButtonConfig? = nil
   ) {
     if let la = lookaheadCount {
       self.lookaheadCount = la
@@ -122,6 +124,9 @@ extension TrackPlayerCore {
         preferRemoteSkipIntervals: preferRemoteSkipIntervals,
         playbackSpeed: playbackSpeed
       )
+      if let notificationButtons = notificationButtons {
+        self?.mediaSessionManager?.setNotificationButtons(notificationButtons)
+      }
     }
   }
   func configure(

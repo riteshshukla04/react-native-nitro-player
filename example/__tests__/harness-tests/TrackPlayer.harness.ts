@@ -1215,6 +1215,84 @@ describe('TrackPlayer - Comprehensive Tests', () => {
         });
     });
 
+    describe('Notification Buttons', () => {
+        const validButtons = {
+            android: [
+                { id: 'favorite', title: 'Favorite', icon: 'heart', activeIcon: 'heart_filled' },
+                { id: 'refresh', title: 'Refresh', icon: 'sync' },
+            ],
+            ios: {
+                lockScreen: [{ id: 'favorite', command: 'like' as const }],
+                carPlay: [{ id: 'favorite', icon: 'heart', activeIcon: 'heart.fill' }],
+            },
+        };
+
+        afterEach(async () => {
+            await TrackPlayer.configure({ notificationButtons: {} });
+        });
+
+        it('should accept buttons and state while playing', async () => {
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playSong('2', playlist1Id);
+            await TrackPlayer.configure({ notificationButtons: validButtons });
+            TrackPlayer.setNotificationButtonState({ buttonId: 'favorite', trackIds: ['2'], isActive: true });
+            TrackPlayer.setNotificationButtonState({ buttonId: 'favorite', isActive: false });
+            await waitForNextTick();
+
+            const state = await TrackPlayer.getState();
+            expect(state.currentTrack?.id).toBe('2');
+            await TrackPlayer.pause();
+        });
+
+        it('should reject an unknown Android icon', async () => {
+            if (Platform.OS !== 'android') return;
+            await expect(
+                TrackPlayer.configure({
+                    notificationButtons: { android: [{ id: 'x', title: 'X', icon: 'not_an_icon_or_drawable' }] },
+                })
+            ).rejects.toThrow();
+        });
+
+        it('should reject a repeated Android id', async () => {
+            if (Platform.OS !== 'android') return;
+            await expect(
+                TrackPlayer.configure({
+                    notificationButtons: {
+                        android: [
+                            { id: 'x', title: 'X', icon: 'heart' },
+                            { id: 'x', title: 'Y', icon: 'star' },
+                        ],
+                    },
+                })
+            ).rejects.toThrow();
+        });
+
+        it('should reject a repeated iOS Lock Screen command', async () => {
+            if (Platform.OS !== 'ios') return;
+            await expect(
+                TrackPlayer.configure({
+                    notificationButtons: {
+                        ios: {
+                            lockScreen: [
+                                { id: 'a', command: 'like' },
+                                { id: 'b', command: 'like' },
+                            ],
+                        },
+                    },
+                })
+            ).rejects.toThrow();
+        });
+
+        it('should reject an unknown CarPlay icon', async () => {
+            if (Platform.OS !== 'ios') return;
+            await expect(
+                TrackPlayer.configure({
+                    notificationButtons: { ios: { carPlay: [{ id: 'x', icon: 'not.a.symbol.or.asset' }] } },
+                })
+            ).rejects.toThrow();
+        });
+    });
+
     describe('Android Auto', () => {
         it('should report a connection state without a head unit attached', () => {
             // No head unit in the harness, so this must be false rather than throwing.

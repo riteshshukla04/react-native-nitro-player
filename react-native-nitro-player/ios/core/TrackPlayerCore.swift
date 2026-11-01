@@ -122,6 +122,7 @@ class TrackPlayerCore: NSObject {
   internal let onTemporaryQueueChangeListeners = ListenerRegistry<([TrackItem], [TrackItem]) -> Void>()
   internal let onTimedMetadataListeners       = ListenerRegistry<(TimedMetadata) -> Void>()
   internal let onCastStateChangeListeners     = ListenerRegistry<(CastState, String?) -> Void>()
+  internal let onNotificationButtonPressListeners = ListenerRegistry<(String, TrackItem, NotificationButtonEvent) -> Void>()
 
   // MARK: - Google Cast
   /// Owns the GoogleCast session; created on the main thread in init. Cast features
@@ -251,6 +252,13 @@ class TrackPlayerCore: NSObject {
   }
   @discardableResult func removeOnCastStateChangeListener(id: Int64) -> Bool {
     onCastStateChangeListeners.remove(id: id)
+  }
+
+  @discardableResult func addOnNotificationButtonPressListener(_ cb: @escaping (String, TrackItem, NotificationButtonEvent) -> Void) -> Int64 {
+    onNotificationButtonPressListeners.add(cb)
+  }
+  @discardableResult func removeOnNotificationButtonPressListener(id: Int64) -> Bool {
+    onNotificationButtonPressListeners.remove(id: id)
   }
 
   // MARK: - Simple accessors

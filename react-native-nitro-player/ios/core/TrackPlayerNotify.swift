@@ -27,11 +27,16 @@ extension TrackPlayerCore {
     let state = getStateInternal()
     let metrics = actualQueueMetrics()
     let playbackSpeed = currentPlaybackSpeed
+    let repeatMode = currentRepeatMode
     DispatchQueue.main.async { [weak self] in
       self?.mediaSessionManager?.updateFromPlayerQueue(
         track: track, state: state, queueCount: metrics.count,
-        positionInQueue: metrics.position, playbackSpeed: playbackSpeed)
+        positionInQueue: metrics.position, playbackSpeed: playbackSpeed, repeatMode: repeatMode)
     }
+  }
+
+  func notifyNotificationButtonPress(_ buttonId: String, _ track: TrackItem, _ event: NotificationButtonEvent) {
+    onNotificationButtonPressListeners.forEach { $0(buttonId, track, event) }
   }
 
   func notifySeek(_ position: Double, _ duration: Double) {

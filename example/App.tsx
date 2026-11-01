@@ -11,6 +11,7 @@ import { TrackPlayer } from 'react-native-nitro-player';
 import AppNavigator from './src/navigation/AppNavigator';
 import BenchScreen from './src/screens/BenchScreen';
 import { registerAndroidAuto } from './src/androidAuto';
+import { registerNotificationButtons } from './src/notificationButtons';
 
 const RUN_BENCH = false;
 
@@ -26,6 +27,7 @@ void TrackPlayer.configure({
 
 // Module scope, not a component: Android Auto can start the app without any UI
 registerAndroidAuto().catch((e) => console.error('Android Auto demo failed', e));
+registerNotificationButtons().catch((e) => console.error('Notification buttons demo failed', e));
 
 TrackPlayer.appStartedWithNotification((track) => {
   console.info(`🔔 appStartedWithNotification fired! track: ${track.id} - ${track.title}`);

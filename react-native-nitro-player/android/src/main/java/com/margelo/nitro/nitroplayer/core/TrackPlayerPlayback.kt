@@ -12,6 +12,7 @@ import com.margelo.nitro.nitroplayer.RepeatMode
 import com.margelo.nitro.nitroplayer.TrackPlayerState
 import com.margelo.nitro.nitroplayer.media.NitroPlayerMediaBrowserService
 import com.margelo.nitro.nitroplayer.media.NitroPlayerPlaybackService
+import com.margelo.nitro.nitroplayer.media.resolveNotificationButtons
 
 /**
  * Playback control — all public functions are suspend and execute on the player thread
@@ -123,6 +124,8 @@ internal fun TrackPlayerCore.setVolumeOnQueue(volume: Double) {
 suspend fun TrackPlayerCore.configure(config: PlayerConfig) = withPlayerContext { configureOnQueue(config) }
 
 internal fun TrackPlayerCore.configureOnQueue(config: PlayerConfig) {
+    // Resolved first: a bad button config rejects before anything else is applied
+    val notificationButtons = config.notificationButtons?.let { resolveNotificationButtons(context, it.android?.toList().orEmpty()) }
     // JS is calling, so the keep-alive task is registered: start it now if a headless start needs it
     updateJsKeepAlive()
     config.androidAudioFocus?.let { applyAudioFocusMode(it) }
@@ -139,6 +142,7 @@ internal fun TrackPlayerCore.configureOnQueue(config: PlayerConfig) {
         remoteSkipForwardIntervalMs,
         remoteSkipBackwardIntervalMs,
     )
+    notificationButtons?.let { mediaSessionManager?.setNotificationButtons(it) }
 }
 
 // Resolved from the cast controller: mid-cast `exo` is the CastPlayer, whose increments are fixed

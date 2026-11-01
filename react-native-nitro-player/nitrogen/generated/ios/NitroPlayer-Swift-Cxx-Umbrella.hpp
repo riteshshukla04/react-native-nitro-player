@@ -10,6 +10,10 @@
 // Forward declarations of C++ defined types
 // Forward declaration of `AndroidAudioFocusMode` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class AndroidAudioFocusMode; }
+// Forward declaration of `AndroidNotificationButton` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct AndroidNotificationButton; }
+// Forward declaration of `CarPlayButton` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct CarPlayButton; }
 // Forward declaration of `CastState` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class CastState; }
 // Forward declaration of `CurrentPlayingType` to properly resolve imports.
@@ -54,6 +58,18 @@ namespace margelo::nitro::nitroplayer { class HybridEqualizerSpec; }
 namespace margelo::nitro::nitroplayer { class HybridPlayerQueueSpec; }
 // Forward declaration of `HybridTrackPlayerSpec` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { class HybridTrackPlayerSpec; }
+// Forward declaration of `IOSNotificationButtons` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct IOSNotificationButtons; }
+// Forward declaration of `LockScreenButton` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct LockScreenButton; }
+// Forward declaration of `LockScreenCommand` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class LockScreenCommand; }
+// Forward declaration of `NotificationButtonEvent` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct NotificationButtonEvent; }
+// Forward declaration of `NotificationButtonState` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct NotificationButtonState; }
+// Forward declaration of `NotificationButtons` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct NotificationButtons; }
 // Forward declaration of `PlaybackSource` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class PlaybackSource; }
 // Forward declaration of `PlayerConfig` to properly resolve imports.
@@ -83,6 +99,8 @@ namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 
 // Include C++ defined types
 #include "AndroidAudioFocusMode.hpp"
+#include "AndroidNotificationButton.hpp"
+#include "CarPlayButton.hpp"
 #include "CastState.hpp"
 #include "CurrentPlayingType.hpp"
 #include "DownloadConfig.hpp"
@@ -105,6 +123,12 @@ namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 #include "HybridEqualizerSpec.hpp"
 #include "HybridPlayerQueueSpec.hpp"
 #include "HybridTrackPlayerSpec.hpp"
+#include "IOSNotificationButtons.hpp"
+#include "LockScreenButton.hpp"
+#include "LockScreenCommand.hpp"
+#include "NotificationButtonEvent.hpp"
+#include "NotificationButtonState.hpp"
+#include "NotificationButtons.hpp"
 #include "PlaybackSource.hpp"
 #include "PlayerConfig.hpp"
 #include "PlayerState.hpp"

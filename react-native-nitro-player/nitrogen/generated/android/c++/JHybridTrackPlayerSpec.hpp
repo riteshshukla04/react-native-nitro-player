@@ -76,6 +76,8 @@ namespace margelo::nitro::nitroplayer {
     void appStartedWithNotification(const std::function<void(const TrackItem& /* track */)>& callback) override;
     void onAndroidAutoConnectionChange(const std::function<void(bool /* connected */)>& callback) override;
     bool isAndroidAutoConnected() override;
+    void setNotificationButtonState(const NotificationButtonState& state) override;
+    void onNotificationButtonPress(const std::function<void(const std::string& /* buttonId */, const TrackItem& /* track */, const NotificationButtonEvent& /* event */)>& callback) override;
     std::shared_ptr<Promise<void>> setVolume(double volume) override;
     std::shared_ptr<Promise<void>> updateTracks(const std::vector<TrackItem>& tracks) override;
     std::shared_ptr<Promise<std::vector<TrackItem>>> getTracksById(const std::vector<std::string>& trackIds) override;

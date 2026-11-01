@@ -122,6 +122,8 @@ class TrackPlayerCore private constructor(
         ListenerRegistry<(com.margelo.nitro.nitroplayer.CastState, String?) -> Unit>()
     internal val onNotificationLaunchListeners =
         ListenerRegistry<(TrackItem) -> Unit>()
+    internal val onNotificationButtonPressListeners =
+        ListenerRegistry<(String, TrackItem, com.margelo.nitro.nitroplayer.NotificationButtonEvent) -> Unit>()
 
     // ── Google Cast ──────────────────────────────────────────────────────────
 
@@ -485,6 +487,10 @@ class TrackPlayerCore private constructor(
     fun addOnCastStateChangeListener(cb: (com.margelo.nitro.nitroplayer.CastState, String?) -> Unit): Long = onCastStateChangeListeners.add(cb)
 
     fun removeOnCastStateChangeListener(id: Long): Boolean = onCastStateChangeListeners.remove(id)
+
+    fun addOnNotificationButtonPressListener(cb: (String, TrackItem, com.margelo.nitro.nitroplayer.NotificationButtonEvent) -> Unit): Long = onNotificationButtonPressListeners.add(cb)
+
+    fun removeOnNotificationButtonPressListener(id: Long): Boolean = onNotificationButtonPressListeners.remove(id)
 
     // ── Notification-launch detection ─────────────────────────────────────
 

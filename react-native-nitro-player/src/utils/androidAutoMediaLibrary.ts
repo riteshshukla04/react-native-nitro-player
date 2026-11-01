@@ -89,12 +89,18 @@ export const AndroidAutoMediaLibraryHelper = {
     )
   },
 
-  /** Buttons beside the transport controls in Android Auto and the notification; call again to change their state. */
+  /**
+   * Buttons beside the transport controls in Android Auto and the notification; call again to change their state.
+   * @deprecated Use `notificationButtons` in `TrackPlayer.configure`: per-track toggles, every Android icon, iOS and CarPlay.
+   */
   setSessionButtons: (buttons: SessionButton[]): void => {
     AndroidAutoMediaLibraryModule?.setSessionButtons(JSON.stringify(buttons))
   },
 
-  /** Called with the pressed button's `action`. */
+  /**
+   * Called with the pressed button's `action`.
+   * @deprecated Use `TrackPlayer.onNotificationButtonPress`.
+   */
   onSessionButtonPress: (callback: (action: string) => void): void => {
     AndroidAutoMediaLibraryModule?.onSessionButtonPress(callback)
   },

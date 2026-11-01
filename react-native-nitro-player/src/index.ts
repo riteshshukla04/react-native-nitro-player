@@ -67,6 +67,7 @@ export type { CastButtonProps } from './components/CastButton'
 // Export types
 export type { CastState } from './specs/Cast.nitro'
 export * from './types/PlayerQueue'
+export * from './types/NotificationButtons'
 export * from './types/AndroidAutoMediaLibrary'
 export * from './types/DownloadTypes'
 export * from './types/EqualizerTypes'
