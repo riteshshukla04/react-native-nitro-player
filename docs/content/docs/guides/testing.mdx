@@ -1,0 +1,45 @@
+---
+title: Testing
+description: Mock Nitro Player in Jest without writing the mocks yourself
+---
+
+Nitro Player talks to native code, so it can't run under Jest as-is. The package ships a ready-made mock: every native method is a `jest.fn()` that resolves to an empty value, and every hook returns its initial state.
+
+## Setup
+
+Add this to a file listed in `setupFiles` or `setupFilesAfterEnv`:
+
+```typescript
+jest.mock('react-native-nitro-player', () =>
+  require('react-native-nitro-player/mock')
+);
+```
+
+Jest needs to transform the package. React Native's Jest preset already does this for `react-native-*` packages. If you have your own `transformIgnorePatterns`, keep `react-native-nitro-player` in the transformed list.
+
+## Overriding values
+
+The mocks are ordinary `jest.fn()`s, so you can override them per test:
+
+```typescript
+import { TrackPlayer, PlayerQueue, useNowPlaying } from 'react-native-nitro-player';
+
+TrackPlayer.getCurrentTrackIndex.mockResolvedValue(2);
+PlayerQueue.getCurrentPlaylistId.mockReturnValue('playlist-1');
+useNowPlaying.mockReturnValue({ ...useNowPlaying(), currentState: 'playing' });
+
+expect(TrackPlayer.play).toHaveBeenCalled();
+```
+
+For type-safe access, import from the mock directly:
+
+```typescript
+import { TrackPlayer } from 'react-native-nitro-player/mock';
+
+TrackPlayer.skipToIndex.mockResolvedValueOnce(false); // typed against the real signature
+```
+
+## Notes
+
+- `AndroidAutoMediaLibrary`, `AudioDevices` and `AudioRoutePicker` are `null` on the platform that doesn't support them. In the mock they are always objects, so tests on either platform can assert on them. Use `jest.replaceProperty` if you need to test the `null` case.
+- The mock is typechecked against the native specs, so it covers every method and export in the version you install.
