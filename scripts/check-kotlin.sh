@@ -4,6 +4,8 @@ set -e
 
 KOTLIN_DIRS=(
   "react-native-nitro-player/android/src/main/java"
+  "react-native-nitro-player/android/src/cast/java"
+  "react-native-nitro-player/android/src/nocast/java"
   "example/android/app/src/main/java"
 )
 

@@ -35,6 +35,16 @@ def getExtOrIntegerDefault(name) {
   return rootProject.ext.has(name) ? rootProject.ext.get(name) : (project.properties["NitroPlayer_" + name]).toInteger()
 }
 
+// Google Cast support. Set `nitroPlayerCastEnabled = false` in the root project's ext
+// (or pass -PnitroPlayerCastEnabled=false) to build without the proprietary Cast SDK,
+// e.g. for F-Droid. Cast APIs then become inert no-ops.
+def isCastEnabled() {
+  def value = rootProject.ext.has("nitroPlayerCastEnabled")
+    ? rootProject.ext.get("nitroPlayerCastEnabled")
+    : rootProject.findProperty("nitroPlayerCastEnabled")
+  return value == null ? true : value.toString().toBoolean()
+}
+
 android {
   namespace "com.margelo.nitro.nitroplayer"
 
@@ -121,6 +131,8 @@ android {
           "${project.buildDir}/generated/source/codegen/java"
         ]
       }
+      // Cast SDK-backed sources, or no-op stubs with the same API when Cast is disabled.
+      java.srcDirs += [isCastEnabled() ? "src/cast/java" : "src/nocast/java"]
     }
   }
 }
@@ -151,9 +163,11 @@ dependencies {
 
   // Google Cast: CastPlayer (drop-in Media3 Player), the Cast framework and the
   // MediaRouter chooser/controller dialogs used by Cast.showCastPicker().
-  implementation "androidx.media3:media3-cast:$media3_version"
-  implementation "com.google.android.gms:play-services-cast-framework:21.5.0"
-  implementation "androidx.mediarouter:mediarouter:1.7.0"
+  if (isCastEnabled()) {
+    implementation "androidx.media3:media3-cast:$media3_version"
+    implementation "com.google.android.gms:play-services-cast-framework:21.5.0"
+    implementation "androidx.mediarouter:mediarouter:1.7.0"
+  }
 
   // WorkManager for background downloads.
   implementation "androidx.work:work-runtime-ktx:2.10.5" // Latest version of 2.10
