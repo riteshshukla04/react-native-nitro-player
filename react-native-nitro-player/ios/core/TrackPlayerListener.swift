@@ -320,7 +320,9 @@ extension TrackPlayerCore {
   /// for gapless inter-track transitions and drops the recovery flag. Must be called on
   /// `playerQueue`.
   func clearStallRecovery() {
-    player?.automaticallyWaitsToMinimizeStalling = false
+    if player?.automaticallyWaitsToMinimizeStalling == true {
+      player?.automaticallyWaitsToMinimizeStalling = false
+    }
     isRecoveringFromStall = false
     stallWatchdogRecoveries = 0
   }
