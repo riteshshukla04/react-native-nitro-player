@@ -44,17 +44,14 @@ on the same network.
 
 The Cast SDK is proprietary Google Play services code, which some distribution
 channels (e.g. F-Droid) don't accept. To leave it out of an Android build, set
-`nitroPlayerCastEnabled` in your root `android/build.gradle`:
+`nitroPlayerCastEnabled` in your app's `android/gradle.properties`:
 
-```groovy
-buildscript {
-    ext {
-        nitroPlayerCastEnabled = false
-    }
-}
+```properties
+nitroPlayerCastEnabled=false
 ```
 
-or pass `-PnitroPlayerCastEnabled=false` to Gradle. The library then compiles
+or pass `-PnitroPlayerCastEnabled=false` to Gradle (handy for a one-off flavor
+build in CI). The library then compiles
 without `play-services-cast-framework`, `media3-cast` and `mediarouter`, and the
 `Cast` API stays callable as inert no-ops: `getCastState()` reports
 `'no_devices_available'`, `isCasting()` is `false`, and `showCastPicker()` does

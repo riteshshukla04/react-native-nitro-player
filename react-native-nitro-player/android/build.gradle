@@ -35,13 +35,11 @@ def getExtOrIntegerDefault(name) {
   return rootProject.ext.has(name) ? rootProject.ext.get(name) : (project.properties["NitroPlayer_" + name]).toInteger()
 }
 
-// Google Cast support. Set `nitroPlayerCastEnabled = false` in the root project's ext
+// Google Cast support. Set `nitroPlayerCastEnabled=false` in the app's android/gradle.properties
 // (or pass -PnitroPlayerCastEnabled=false) to build without the proprietary Cast SDK,
-// e.g. for F-Droid. Cast APIs then become inert no-ops.
+// e.g. for F-Droid. Cast APIs then become inert no-ops. Defaults to NitroPlayer_castEnabled.
 def isCastEnabled() {
-  def value = rootProject.ext.has("nitroPlayerCastEnabled")
-    ? rootProject.ext.get("nitroPlayerCastEnabled")
-    : rootProject.findProperty("nitroPlayerCastEnabled")
+  def value = rootProject.findProperty("nitroPlayerCastEnabled") ?: project.properties["NitroPlayer_castEnabled"]
   return value == null ? true : value.toString().toBoolean()
 }
 
