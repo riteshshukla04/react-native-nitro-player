@@ -1,0 +1,62 @@
+---
+title: Testing
+description: Mock Nitro Player in Jest without writing the mocks yourself
+---
+
+Nitro Player talks to native code, so it can't run under Jest as-is. The package ships a ready-made mock: every native method is a `jest.fn()` that resolves to an empty value, and every hook returns its initial state.
+
+## Setup
+
+Add this to a file listed in `setupFiles` or `setupFilesAfterEnv`:
+
+```typescript
+jest.mock('react-native-nitro-player', () =>
+  require('react-native-nitro-player/mock')
+);
+```
+
+Jest needs to transform the package. React Native's Jest preset already does this for `react-native-*` packages. If you have your own `transformIgnorePatterns`, keep `react-native-nitro-player` in the transformed list.
+
+### With `resetMocks` or `jest.resetAllMocks()`
+
+Resetting a mock also removes its default implementation, so methods would return `undefined` instead of a Promise. Restore the defaults before each test:
+
+```typescript
+import { resetNitroPlayerMock } from 'react-native-nitro-player/mock';
+
+beforeEach(() => resetNitroPlayerMock());
+```
+
+`resetNitroPlayerMock()` also clears recorded calls, so you can use it in place of `clearMocks`.
+
+## Overriding values
+
+Import from `react-native-nitro-player/mock` in test files. Your app code imports from `react-native-nitro-player` and gets the same objects, and the test sees them typed as mocks:
+
+```typescript
+import { TrackPlayer, PlayerQueue, useNowPlaying } from 'react-native-nitro-player/mock';
+
+TrackPlayer.getCurrentTrackIndex.mockResolvedValue(2);
+PlayerQueue.getCurrentPlaylistId.mockReturnValue('playlist-1');
+useNowPlaying.mockReturnValue({
+  currentTrack: null,
+  currentPosition: 0,
+  totalDuration: 0,
+  currentState: 'playing',
+  currentPlaylistId: null,
+  currentIndex: -1,
+  currentPlayingType: 'not-playing',
+});
+
+expect(TrackPlayer.play).toHaveBeenCalled();
+```
+
+Arguments and return values are typed against the real signatures, so `TrackPlayer.skipToIndex.mockResolvedValueOnce('yes')` fails to compile.
+
+Each hook returns the same object on every render, so callbacks such as `usePlaylist().refreshPlaylists` keep their identity. They're safe in effect dependencies, and you can assert on them directly.
+
+## Notes
+
+- `AndroidAutoMediaLibrary`, `AudioDevices` and `AudioRoutePicker` are `null` on the platform that doesn't support them. In the mock they are always objects, so tests on either platform can assert on them. To test the `null` case, use `jest.replaceProperty(require('react-native-nitro-player/mock'), 'AudioDevices', null)`. Hooks are mocked separately and don't read these objects, so override the hook as well, for example `useAudioDevices.mockReturnValue({ devices: [] })`.
+- `AndroidAutoMediaLibraryHelper.isAvailable()` returns `false`, so Android Auto code paths stay off unless a test opts in with `mockReturnValue(true)`.
+- The mock is typechecked against the native specs, so it covers every method and export in the version you install.

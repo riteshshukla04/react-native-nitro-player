@@ -4,6 +4,7 @@
     "queue-management",
     "offline-playback",
     "android-auto",
-    "notification-buttons"
+    "notification-buttons",
+    "testing"
   ]
 }

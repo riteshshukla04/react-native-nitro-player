@@ -19,3 +19,4 @@ react-native.config.js
 .eslintrc.js
 index.js
 
+react-native-nitro-player/mock.js
