@@ -2,3 +2,8 @@
 # instantiated by the Cast framework via reflection, so R8 must not remove/rename it.
 -keep class com.margelo.nitro.nitroplayer.media.NitroCastOptionsProvider { *; }
 -keep class * implements com.google.android.gms.cast.framework.OptionsProvider { *; }
+
+# WorkManager uses Room 2.6, whose keep rule omits the constructor needed
+# by reflection. R8 full mode removes it unless it is explicitly kept.
+# AndroidX fix: e4765e38e27a3f4d86188b996df97a52403dff46.
+-keep class * extends androidx.room.RoomDatabase { void <init>(); }
