@@ -1,3 +1,4 @@
+export { callbackManager } from './callbackManager'
 export { useOnChangeTrack } from './useOnChangeTrack'
 export type { TrackChangeResult } from './useOnChangeTrack'
 export { useOnPlaybackStateChange } from './useOnPlaybackStateChange'
