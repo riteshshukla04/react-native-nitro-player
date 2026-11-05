@@ -36,6 +36,7 @@ npm install react-native-nitro-modules
 | `usePlaylist`                 | Both     | Manages playlist state, providing access to all playlists and tracks.           |
 | `useEqualizer`                | Both     | Controls the 5-band equalizer, including presets and individual band gains.     |
 | `useAndroidAutoConnection`    | Both     | Monitors Android Auto connection status.                                        |
+| `useCarPlayConnection`        | iOS      | Monitors CarPlay connection status.                                             |
 | `useAudioDevices`             | Android  | Returns list of available audio output devices.                                 |
 | `useDownloadProgress`         | Both     | Tracks download progress for tracks. Returns progress map and overall status.   |
 | `useDownloadedTracks`         | Both     | Returns all downloaded tracks and playlists with query helpers.                 |
@@ -96,6 +97,8 @@ Mutations return **`Promise<void>`** (or **`Promise<string>`** for `createPlayli
 | `Cast.isCasting()` / `useIsCasting()`    | iOS & Android | Whether playback is routed to a Cast device. |
 | `AndroidAutoMediaLibraryHelper.set(...)` | Android  | Sets custom folder structure for Android Auto.    |
 | `AndroidAutoMediaLibraryHelper.clear()`  | Android  | Resets Android Auto structure to default.         |
+| `CarPlayHelper.set(...)`                 | iOS      | Sets CarPlay tabs, lists, grids and Now Playing.  |
+| `CarPlayHelper.reload(templateId?)`      | iOS      | Loads lazy CarPlay templates again.               |
 
 ### DownloadManager Methods
 
@@ -1236,6 +1239,25 @@ AndroidAutoMediaLibraryHelper.set({
 - List layout is best for song lists
 - Only available on Android (use `isAvailable()` to check)
 
+## CarPlay
+
+Add the CarPlay scene to `Info.plist` with `NitroPlayerCarPlaySceneDelegate` as its delegate (no Swift changes), then describe the screens from JS at module scope. CarPlay plays through the same player as your app, starts your JS when the car opens the app without its phone UI, and keeps lists filled from `PlayerQueue` in sync.
+
+```typescript
+import { CarPlayHelper } from 'react-native-nitro-player'
+
+CarPlayHelper.set({
+  templates: [
+    { type: 'list', id: 'library', title: 'Library', source: 'playlists', tab: { systemItem: 'favorites' } },
+    { type: 'grid', id: 'browse', title: 'Browse', buttons: [{ id: 'jazz', title: 'Jazz', image: 'music.quarternote.3', loadTemplate: true }] },
+    { type: 'list', id: 'queue', title: 'Queue', source: 'queue', tab: { title: 'Queue', image: 'list.bullet' } },
+  ],
+  nowPlaying: { upNextTitle: 'Queue', albumArtist: true },
+})
+```
+
+See the [CarPlay guide](https://nitroplayer.riteshshukla.in/docs/guides/carplay) for the Info.plist entry, artwork grids and cards, actions, lazy screens, translated texts and Now Playing buttons.
+
 ## Features
 
 - ✅ **Playlist Management**: Create, update, and manage multiple playlists
@@ -1245,7 +1267,7 @@ AndroidAutoMediaLibraryHelper.set({
 - ✅ **React Hooks**: Built-in hooks for reactive state management
 - ✅ **Event Listeners**: Listen to track changes, state changes, and more
 - ✅ **Android Auto Support**: Control playback from Android Auto with customizable UI
-- ✅ **CarPlay Support**: Control playback from CarPlay (iOS)
+- ✅ **CarPlay Support**: Tabs, lists, artwork grids, cards, grids and Now Playing buttons driven from JS, working without the app open (iOS)
 - ✅ **Notification Controls**: Show playback controls in notifications
 - ✅ **Progress Tracking**: Real-time playback progress updates
 - ✅ **Offline Downloads**: Download tracks and playlists for offline playback

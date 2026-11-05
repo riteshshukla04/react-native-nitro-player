@@ -36,6 +36,7 @@ target_sources(
   ../nitrogen/generated/shared/c++/HybridAndroidAutoMediaLibrarySpec.cpp
   ../nitrogen/generated/shared/c++/HybridAudioDevicesSpec.cpp
   ../nitrogen/generated/shared/c++/HybridAudioRoutePickerSpec.cpp
+  ../nitrogen/generated/shared/c++/HybridCarPlaySpec.cpp
   ../nitrogen/generated/shared/c++/HybridCastSpec.cpp
   ../nitrogen/generated/shared/c++/HybridDownloadManagerSpec.cpp
   ../nitrogen/generated/shared/c++/HybridEqualizerSpec.cpp

@@ -188,21 +188,44 @@ class MediaSessionManager {
         })
       else { return }
       let trackId = cachedTrack?.id
-      let icons = carPlayButtons.map { button -> String in
-        guard let activeIcon = button.activeIcon,
-          buttonStates.isActive(button.id, trackId: trackId)
-        else { return button.icon }
-        return activeIcon
+      let looks = carPlayButtons.map { button -> String in
+        let isActive = buttonStates.isActive(button.id, trackId: trackId)
+        switch button.type ?? .image {
+        case .image:
+          guard let activeIcon = button.activeIcon, isActive else { return button.icon ?? "" }
+          return activeIcon
+        case .repeat: return cachedRepeatMode.stringValue
+        case .playbackrate, .more: return ""
+        case .shuffle, .addtolibrary: return isActive ? "on" : "off"
+        }
       }
       // Refreshes run on every state change; only push when what CarPlay shows changes
-      let shown = zip(carPlayButtons, icons).map { "\($0.id)=\($1)" }
+      let shown = zip(carPlayButtons, looks).map { "\($0.id)=\($1)" }
       guard force || shown != carPlayButtonsShown else { return }
       carPlayButtonsShown = shown
-      let buttons = zip(carPlayButtons, icons).compactMap { button, icon -> CPNowPlayingButton? in
-        guard let image = IOSButtonConfig.image(named: icon) else { return nil }
+      let buttons = zip(carPlayButtons, looks).compactMap { button, look -> CPNowPlayingButton? in
         let id = button.id
-        return CPNowPlayingImageButton(image: image) { [weak self] _ in
-          self?.onCarPlayButtonPress(id)
+        let handler: (CPNowPlayingButton) -> Void = { [weak self] _ in self?.onCarPlayButtonPress(id) }
+        switch button.type ?? .image {
+        case .image:
+          guard let image = IOSButtonConfig.image(named: look) else { return nil }
+          return CPNowPlayingImageButton(image: image, handler: handler)
+        case .shuffle:
+          let shuffle = CPNowPlayingShuffleButton(handler: handler)
+          shuffle.isSelected = look == "on"
+          return shuffle
+        case .addtolibrary:
+          let addToLibrary = CPNowPlayingAddToLibraryButton(handler: handler)
+          addToLibrary.isSelected = look == "on"
+          return addToLibrary
+        case .repeat:
+          let repeatButton = CPNowPlayingRepeatButton(handler: handler)
+          repeatButton.isSelected = cachedRepeatMode != .off
+          return repeatButton
+        case .playbackrate:
+          return CPNowPlayingPlaybackRateButton(handler: handler)
+        case .more:
+          return CPNowPlayingMoreButton(handler: handler)
         }
       }
       CPNowPlayingTemplate.shared.updateNowPlayingButtons(buttons)
@@ -213,12 +236,43 @@ class MediaSessionManager {
     guard let button = carPlayButtons.first(where: { $0.id == buttonId }),
       let track = cachedTrack
     else { return }
-    guard button.activeIcon != nil else {
+    switch button.type ?? .image {
+    case .image where button.activeIcon != nil, .shuffle, .addtolibrary:
+      _ = pressToggle(buttonId, isActive: !buttonStates.isActive(buttonId, trackId: track.id))
+    case .repeat:
+      let mode = Self.nextRepeatMode(after: cachedRepeatMode)
+      cachedRepeatMode = mode
+      refreshInternal()
+      guard let core = trackPlayerCore else { return }
+      Task {
+        await core.setRepeatMode(mode: mode)
+        core.notifyNotificationButtonPress(
+          buttonId, track, NotificationButtonEvent(isActive: nil, rating: nil, repeatMode: mode))
+      }
+    case .playbackrate:
+      let rates = Constants.supportedPlaybackRates.map(Double.init)
+      let current = rates.firstIndex { abs($0 - cachedPlaybackSpeed) < 0.01 } ?? rates.firstIndex(of: 1.0) ?? 0
+      let speed = rates[(current + 1) % rates.count]
+      // The next press may come before the player reports the new speed
+      cachedPlaybackSpeed = speed
+      guard let core = trackPlayerCore else { return }
+      Task {
+        try? await core.setPlaybackSpeed(speed)
+        core.notifyNotificationButtonPress(
+          buttonId, track, NotificationButtonEvent(isActive: nil, rating: nil, repeatMode: nil))
+      }
+    default:
       trackPlayerCore?.notifyNotificationButtonPress(
         buttonId, track, NotificationButtonEvent(isActive: nil, rating: nil, repeatMode: nil))
-      return
     }
-    _ = pressToggle(buttonId, isActive: !buttonStates.isActive(buttonId, trackId: track.id))
+  }
+
+  private static func nextRepeatMode(after mode: RepeatMode) -> RepeatMode {
+    switch mode {
+    case .off: return .playlist
+    case .playlist: return .track
+    default: return .off
+    }
   }
 
   // MARK: - Refresh using cached values (main thread only)

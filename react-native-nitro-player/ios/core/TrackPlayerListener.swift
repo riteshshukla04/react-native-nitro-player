@@ -12,20 +12,7 @@ extension TrackPlayerCore {
 
   func setupPlayer() {
     // Must be called on playerQueue
-    player = AVQueuePlayer()
-
-    // Start with stall-waiting enabled so the first track buffers before playing.
-    // Once playback actually starts (timeControlStatus == .playing), this is flipped
-    // to false for gapless inter-track transitions (see observeValue).
-    player?.automaticallyWaitsToMinimizeStalling = true
-
-    // Set action at item end to advance for gapless playback
-    player?.actionAtItemEnd = .advance
-
-    // Configure for high-quality audio playback with minimal latency
-    if #available(iOS 15.0, *) {
-      player?.audiovisualBackgroundPlaybackPolicy = .continuesIfPossible
-    }
+    player = makeQueuePlayer()
 
     NitroPlayerLogger.log("TrackPlayerCore", "🎵 Gapless playback configured - automaticallyWaitsToMinimizeStalling=true (flipped to false once playback starts)")
 
@@ -53,13 +40,32 @@ extension TrackPlayerCore {
     startNetworkMonitoring()
   }
 
+  func makeQueuePlayer() -> AVQueuePlayer {
+    let player = AVQueuePlayer()
+
+    // Start with stall-waiting enabled so the first track buffers before playing.
+    // Once playback actually starts (timeControlStatus == .playing), this is flipped
+    // to false for gapless inter-track transitions (see observeValue).
+    player.automaticallyWaitsToMinimizeStalling = true
+
+    // Set action at item end to advance for gapless playback
+    player.actionAtItemEnd = .advance
+
+    // Configure for high-quality audio playback with minimal latency
+    if #available(iOS 15.0, *) {
+      player.audiovisualBackgroundPlaybackPolicy = .continuesIfPossible
+    }
+    return player
+  }
+
+  static let observedPlayerKeyPaths = ["status", "rate", "timeControlStatus", "currentItem"]
+
   func setupPlayerObservers() {
     guard let player else { return }
 
-    player.addObserver(self, forKeyPath: "status", options: [.new], context: nil)
-    player.addObserver(self, forKeyPath: "rate", options: [.new], context: nil)
-    player.addObserver(self, forKeyPath: "timeControlStatus", options: [.new], context: nil)
-    player.addObserver(self, forKeyPath: "currentItem", options: [.new], context: nil)
+    for keyPath in Self.observedPlayerKeyPaths {
+      player.addObserver(self, forKeyPath: keyPath, options: [.new], context: nil)
+    }
 
     NotificationCenter.default.addObserver(self, selector: #selector(playerItemDidPlayToEndTime(_:)),
       name: .AVPlayerItemDidPlayToEndTime, object: nil)
@@ -119,8 +125,8 @@ extension TrackPlayerCore {
       emitStateChange()
     }
 
-    let position = currentItem.currentTime().seconds
-    let rawDuration = currentItem.duration.seconds
+    let position = reportedPosition(of: currentItem)
+    let rawDuration = currentItem.readyDurationSeconds
     let duration = (rawDuration > 0 && !rawDuration.isNaN && !rawDuration.isInfinite) ? rawDuration : 0.0
 
     // Remember the position so we can resume here if the item has to be recreated.
@@ -155,8 +161,10 @@ extension TrackPlayerCore {
         NitroPlayerLogger.log("TrackPlayerCore", "👀 Player status changed to: \(player.status.rawValue)")
         if player.status == .readyToPlay { self.emitStateChange() }
         else if player.status == .failed {
-          NitroPlayerLogger.log("TrackPlayerCore", "❌ Player failed")
-          self.notifyPlaybackStateChange(.stopped, .error)
+          NitroPlayerLogger.log("TrackPlayerCore", "❌ Player failed — \(player.error.map { "\($0)" } ?? "no error")")
+          if !self.scheduleFailedPlayerReplacement() {
+            self.notifyPlaybackStateChange(.stopped, .error)
+          }
         }
       } else if keyPath == "rate" {
         NitroPlayerLogger.log("TrackPlayerCore", "👀 Rate changed to: \(player.rate)")
@@ -164,6 +172,7 @@ extension TrackPlayerCore {
       } else if keyPath == "timeControlStatus" {
         NitroPlayerLogger.log("TrackPlayerCore", "👀 TimeControlStatus changed to: \(player.timeControlStatus.rawValue)")
         if player.timeControlStatus == .playing {
+          self.failedPlayerReplacements = 0
           // Audio is actually flowing, so the buffer has real data in it. Only now is it
           // safe to disable stall waiting for gapless inter-track transitions — doing it
           // at readyToPlay (header parsed, nothing buffered) starts playback on an empty
@@ -256,7 +265,7 @@ extension TrackPlayerCore {
       guard let self, let player = self.player, let currentItem = player.currentItem else { return }
       guard (notification.object as? AVPlayerItem) === currentItem else { return }
       let position = currentItem.currentTime().seconds
-      let duration = currentItem.duration.seconds
+      let duration = currentItem.readyDurationSeconds
       NitroPlayerLogger.log("TrackPlayerCore", "🎯 Time jumped (seek detected) - position: \(Int(position))s")
       // Every seek lands here, including while waiting with time frozen (when the periodic
       // observer doesn't update it), so a stall recovery resumes at the seek target rather
@@ -614,6 +623,7 @@ extension TrackPlayerCore {
           // only on a genuine track change (currentItemDidChange) or a real network
           // restore (handleNetworkRestored).
           self?.setupBoundaryTimeObserver()
+          if let position = self?.takePendingSeek(for: item) { self?.seekInternal(position: position) }
           // Update now playing info now that duration is available (captured on playerQueue)
           self?.refreshMediaSession()
         } else if item.status == .failed {
@@ -624,6 +634,8 @@ extension TrackPlayerCore {
       }
     }
     currentItemObservers.append(statusObserver)
+    // The observer only sees changes, so a seek waiting for an item that is already ready runs now
+    if item.status == .readyToPlay, let position = takePendingSeek(for: item) { seekInternal(position: position) }
 
     let bufferEmptyObserver = item.observe(\.isPlaybackBufferEmpty, options: [.new]) { [weak self] item, _ in
       guard item.isPlaybackBufferEmpty else { return }

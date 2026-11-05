@@ -9,6 +9,7 @@ import type {
 import type { AndroidAutoMediaLibrary as AndroidAutoMediaLibraryType } from './specs/AndroidAutoMediaLibrary.nitro'
 import type { AudioDevices as AudioDevicesType } from './specs/AudioDevices.nitro'
 import type { AudioRoutePicker as AudioRoutePickerType } from './specs/AudioRoutePicker.nitro'
+import type { CarPlay as CarPlayType } from './specs/CarPlay.nitro'
 import type { Cast as CastType } from './specs/Cast.nitro'
 import type { DownloadManager as DownloadManagerType } from './specs/DownloadManager.nitro'
 import type { Equalizer as EqualizerType } from './specs/Equalizer.nitro'
@@ -46,6 +47,12 @@ export const AudioRoutePicker =
     ? NitroModules.createHybridObject<AudioRoutePickerType>('AudioRoutePicker')
     : null
 
+// iOS-only: CarPlay templates (use CarPlayHelper)
+export const CarPlay =
+  Platform.OS === 'ios'
+    ? NitroModules.createHybridObject<CarPlayType>('CarPlay')
+    : null
+
 // Google Cast (iOS + Android)
 export const Cast = NitroModules.createHybridObject<CastType>('Cast')
 
@@ -69,9 +76,11 @@ export type { CastState } from './specs/Cast.nitro'
 export * from './types/PlayerQueue'
 export * from './types/NotificationButtons'
 export * from './types/AndroidAutoMediaLibrary'
+export * from './types/CarPlay'
 export * from './types/DownloadTypes'
 export * from './types/EqualizerTypes'
 export type { TAudioDevice } from './specs/AudioDevices.nitro'
 export type { RepeatMode } from './specs/TrackPlayer.nitro'
 // Export utilities
 export { AndroidAutoMediaLibraryHelper } from './utils/androidAutoMediaLibrary'
+export { CarPlayHelper } from './utils/carPlay'

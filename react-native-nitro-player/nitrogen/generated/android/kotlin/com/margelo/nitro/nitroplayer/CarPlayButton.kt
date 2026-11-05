@@ -22,7 +22,10 @@ data class CarPlayButton(
   val id: String,
   @DoNotStrip
   @Keep
-  val icon: String,
+  val type: CarPlayButtonType?,
+  @DoNotStrip
+  @Keep
+  val icon: String?,
   @DoNotStrip
   @Keep
   val activeIcon: String?
@@ -37,8 +40,8 @@ data class CarPlayButton(
     @Keep
     @Suppress("unused")
     @JvmStatic
-    private fun fromCpp(id: String, icon: String, activeIcon: String?): CarPlayButton {
-      return CarPlayButton(id, icon, activeIcon)
+    private fun fromCpp(id: String, type: CarPlayButtonType?, icon: String?, activeIcon: String?): CarPlayButton {
+      return CarPlayButton(id, type, icon, activeIcon)
     }
   }
 }

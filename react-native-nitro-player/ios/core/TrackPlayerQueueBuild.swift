@@ -51,6 +51,7 @@ extension TrackPlayerCore {
   }
 
   func updatePlayerQueue(tracks: [TrackItem]) {
+    replacePlayerIfFailed(restoringQueue: false)
     // While casting, mirror the new queue to the Cast device instead of building
     // the local AVQueuePlayer (which would start local audio).
     if isCasting {
@@ -191,6 +192,7 @@ extension TrackPlayerCore {
       return false
     }
 
+    replacePlayerIfFailed(restoringQueue: false)
     NitroPlayerLogger.log("TrackPlayerCore", "\n🎯 REBUILD QUEUE FROM PLAYLIST INDEX \(index)")
     NitroPlayerLogger.log("TrackPlayerCore", "   Total tracks in playlist: \(self.currentTracks.count)")
     NitroPlayerLogger.log("TrackPlayerCore", "   Current index: \(self.currentTrackIndex), target index: \(index)")

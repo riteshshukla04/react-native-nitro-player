@@ -10,6 +10,8 @@
 #include <fbjni/fbjni.h>
 #include "CarPlayButton.hpp"
 
+#include "CarPlayButtonType.hpp"
+#include "JCarPlayButtonType.hpp"
 #include <optional>
 #include <string>
 
@@ -34,13 +36,16 @@ namespace margelo::nitro::nitroplayer {
       static const auto clazz = javaClassStatic();
       static const auto fieldId = clazz->getField<jni::JString>("id");
       jni::local_ref<jni::JString> id = this->getFieldValue(fieldId);
+      static const auto fieldType = clazz->getField<JCarPlayButtonType>("type");
+      jni::local_ref<JCarPlayButtonType> type = this->getFieldValue(fieldType);
       static const auto fieldIcon = clazz->getField<jni::JString>("icon");
       jni::local_ref<jni::JString> icon = this->getFieldValue(fieldIcon);
       static const auto fieldActiveIcon = clazz->getField<jni::JString>("activeIcon");
       jni::local_ref<jni::JString> activeIcon = this->getFieldValue(fieldActiveIcon);
       return CarPlayButton(
         id->toStdString(),
-        icon->toStdString(),
+        type != nullptr ? std::make_optional(type->toCpp()) : std::nullopt,
+        icon != nullptr ? std::make_optional(icon->toStdString()) : std::nullopt,
         activeIcon != nullptr ? std::make_optional(activeIcon->toStdString()) : std::nullopt
       );
     }
@@ -51,13 +56,14 @@ namespace margelo::nitro::nitroplayer {
      */
     [[maybe_unused]]
     static jni::local_ref<JCarPlayButton::javaobject> fromCpp(const CarPlayButton& value) {
-      using JSignature = JCarPlayButton(jni::alias_ref<jni::JString>, jni::alias_ref<jni::JString>, jni::alias_ref<jni::JString>);
+      using JSignature = JCarPlayButton(jni::alias_ref<jni::JString>, jni::alias_ref<JCarPlayButtonType>, jni::alias_ref<jni::JString>, jni::alias_ref<jni::JString>);
       static const auto clazz = javaClassStatic();
       static const auto create = clazz->getStaticMethod<JSignature>("fromCpp");
       return create(
         clazz,
         jni::make_jstring(value.id),
-        jni::make_jstring(value.icon),
+        value.type.has_value() ? JCarPlayButtonType::fromCpp(value.type.value()) : nullptr,
+        value.icon.has_value() ? jni::make_jstring(value.icon.value()) : nullptr,
         value.activeIcon.has_value() ? jni::make_jstring(value.activeIcon.value()) : nullptr
       );
     }

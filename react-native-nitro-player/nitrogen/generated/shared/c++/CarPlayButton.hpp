@@ -28,9 +28,11 @@
 #error NitroModules cannot be found! Are you sure you installed NitroModules properly?
 #endif
 
-
+// Forward declaration of `CarPlayButtonType` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class CarPlayButtonType; }
 
 #include <string>
+#include "CarPlayButtonType.hpp"
 #include <optional>
 
 namespace margelo::nitro::nitroplayer {
@@ -41,12 +43,13 @@ namespace margelo::nitro::nitroplayer {
   struct CarPlayButton final {
   public:
     std::string id     SWIFT_PRIVATE;
-    std::string icon     SWIFT_PRIVATE;
+    std::optional<CarPlayButtonType> type     SWIFT_PRIVATE;
+    std::optional<std::string> icon     SWIFT_PRIVATE;
     std::optional<std::string> activeIcon     SWIFT_PRIVATE;
 
   public:
     CarPlayButton() = default;
-    explicit CarPlayButton(std::string id, std::string icon, std::optional<std::string> activeIcon): id(id), icon(icon), activeIcon(activeIcon) {}
+    explicit CarPlayButton(std::string id, std::optional<CarPlayButtonType> type, std::optional<std::string> icon, std::optional<std::string> activeIcon): id(id), type(type), icon(icon), activeIcon(activeIcon) {}
 
   public:
     friend bool operator==(const CarPlayButton& lhs, const CarPlayButton& rhs) = default;
@@ -63,14 +66,16 @@ namespace margelo::nitro {
       jsi::Object obj = arg.asObject(runtime);
       return margelo::nitro::nitroplayer::CarPlayButton(
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "id"))),
-        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "icon"))),
+        JSIConverter<std::optional<margelo::nitro::nitroplayer::CarPlayButtonType>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "type"))),
+        JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "icon"))),
         JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "activeIcon")))
       );
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroplayer::CarPlayButton& arg) {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "id"), JSIConverter<std::string>::toJSI(runtime, arg.id));
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "icon"), JSIConverter<std::string>::toJSI(runtime, arg.icon));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), JSIConverter<std::optional<margelo::nitro::nitroplayer::CarPlayButtonType>>::toJSI(runtime, arg.type));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "icon"), JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.icon));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "activeIcon"), JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.activeIcon));
       return obj;
     }
@@ -83,7 +88,8 @@ namespace margelo::nitro {
         return false;
       }
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "id")))) return false;
-      if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "icon")))) return false;
+      if (!JSIConverter<std::optional<margelo::nitro::nitroplayer::CarPlayButtonType>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "type")))) return false;
+      if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "icon")))) return false;
       if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "activeIcon")))) return false;
       return true;
     }

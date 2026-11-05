@@ -15,6 +15,8 @@ export async function registerNotificationButtons() {
         lockScreen: [{ id: 'favorite', title: 'Favorite', command: 'like' }],
         carPlay: [
           { id: 'favorite', icon: 'heart', activeIcon: 'heart.fill' },
+          { id: 'repeat', type: 'repeat' },
+          { id: 'speed', type: 'playbackRate' },
           { id: 'refresh', icon: 'arrow.clockwise' },
         ],
       },

@@ -12,9 +12,11 @@
 
 #include "AndroidNotificationButton.hpp"
 #include "CarPlayButton.hpp"
+#include "CarPlayButtonType.hpp"
 #include "IOSNotificationButtons.hpp"
 #include "JAndroidNotificationButton.hpp"
 #include "JCarPlayButton.hpp"
+#include "JCarPlayButtonType.hpp"
 #include "JIOSNotificationButtons.hpp"
 #include "JLockScreenButton.hpp"
 #include "JLockScreenCommand.hpp"

@@ -9,6 +9,7 @@
 
 // Include C++ implementation defined types
 #include "HybridAudioRoutePickerSpecSwift.hpp"
+#include "HybridCarPlaySpecSwift.hpp"
 #include "HybridCastSpecSwift.hpp"
 #include "HybridDownloadManagerSpecSwift.hpp"
 #include "HybridEqualizerSpecSwift.hpp"
@@ -32,6 +33,46 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     }
     #endif
     NitroPlayer::HybridAudioRoutePickerSpec_cxx& swiftPart = swiftWrapper->getSwiftPart();
+    return swiftPart.toUnsafe();
+  }
+  
+  // pragma MARK: std::function<void(bool /* connected */)>
+  Func_void_bool create_Func_void_bool(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_bool::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](bool connected) mutable -> void {
+      swiftClosure.call(connected);
+    };
+  }
+  
+  // pragma MARK: std::function<void(const std::string& /* id */, const std::string& /* templateId */)>
+  Func_void_std__string_std__string create_Func_void_std__string_std__string(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_std__string_std__string::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const std::string& id, const std::string& templateId) mutable -> void {
+      swiftClosure.call(id, templateId);
+    };
+  }
+  
+  // pragma MARK: std::function<void(const TrackItem& /* track */)>
+  Func_void_TrackItem create_Func_void_TrackItem(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_TrackItem::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const TrackItem& track) mutable -> void {
+      swiftClosure.call(track);
+    };
+  }
+  
+  // pragma MARK: std::shared_ptr<HybridCarPlaySpec>
+  std::shared_ptr<HybridCarPlaySpec> create_std__shared_ptr_HybridCarPlaySpec_(void* NON_NULL swiftUnsafePointer) noexcept {
+    NitroPlayer::HybridCarPlaySpec_cxx swiftPart = NitroPlayer::HybridCarPlaySpec_cxx::fromUnsafe(swiftUnsafePointer);
+    return std::make_shared<margelo::nitro::nitroplayer::HybridCarPlaySpecSwift>(swiftPart);
+  }
+  void* NON_NULL get_std__shared_ptr_HybridCarPlaySpec_(std__shared_ptr_HybridCarPlaySpec_ cppType) {
+    std::shared_ptr<margelo::nitro::nitroplayer::HybridCarPlaySpecSwift> swiftWrapper = std::dynamic_pointer_cast<margelo::nitro::nitroplayer::HybridCarPlaySpecSwift>(cppType);
+    #ifdef NITRO_DEBUG
+    if (swiftWrapper == nullptr) [[unlikely]] {
+      throw std::runtime_error("Class \"HybridCarPlaySpec\" is not implemented in Swift!");
+    }
+    #endif
+    NitroPlayer::HybridCarPlaySpec_cxx& swiftPart = swiftWrapper->getSwiftPart();
     return swiftPart.toUnsafe();
   }
   
@@ -87,14 +128,6 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
   Func_void_std__vector_std__string_ create_Func_void_std__vector_std__string_(void* NON_NULL swiftClosureWrapper) noexcept {
     auto swiftClosure = NitroPlayer::Func_void_std__vector_std__string_::fromUnsafe(swiftClosureWrapper);
     return [swiftClosure = std::move(swiftClosure)](const std::vector<std::string>& result) mutable -> void {
-      swiftClosure.call(result);
-    };
-  }
-  
-  // pragma MARK: std::function<void(bool /* result */)>
-  Func_void_bool create_Func_void_bool(void* NON_NULL swiftClosureWrapper) noexcept {
-    auto swiftClosure = NitroPlayer::Func_void_bool::fromUnsafe(swiftClosureWrapper);
-    return [swiftClosure = std::move(swiftClosure)](bool result) mutable -> void {
       swiftClosure.call(result);
     };
   }
@@ -320,14 +353,6 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     auto swiftClosure = NitroPlayer::Func_void_TimedMetadata::fromUnsafe(swiftClosureWrapper);
     return [swiftClosure = std::move(swiftClosure)](const TimedMetadata& metadata) mutable -> void {
       swiftClosure.call(metadata);
-    };
-  }
-  
-  // pragma MARK: std::function<void(const TrackItem& /* track */)>
-  Func_void_TrackItem create_Func_void_TrackItem(void* NON_NULL swiftClosureWrapper) noexcept {
-    auto swiftClosure = NitroPlayer::Func_void_TrackItem::fromUnsafe(swiftClosureWrapper);
-    return [swiftClosure = std::move(swiftClosure)](const TrackItem& track) mutable -> void {
-      swiftClosure.call(track);
     };
   }
   
