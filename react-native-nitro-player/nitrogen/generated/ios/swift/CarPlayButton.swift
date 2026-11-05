@@ -18,8 +18,20 @@ public extension CarPlayButton {
   /**
    * Create a new instance of `CarPlayButton`.
    */
-  init(id: String, icon: String, activeIcon: String?) {
-    self.init(std.string(id), std.string(icon), { () -> bridge.std__optional_std__string_ in
+  init(id: String, type: CarPlayButtonType?, icon: String?, activeIcon: String?) {
+    self.init(std.string(id), { () -> bridge.std__optional_CarPlayButtonType_ in
+      if let __unwrappedValue = type {
+        return bridge.create_std__optional_CarPlayButtonType_(__unwrappedValue)
+      } else {
+        return .init()
+      }
+    }(), { () -> bridge.std__optional_std__string_ in
+      if let __unwrappedValue = icon {
+        return bridge.create_std__optional_std__string_(std.string(__unwrappedValue))
+      } else {
+        return .init()
+      }
+    }(), { () -> bridge.std__optional_std__string_ in
       if let __unwrappedValue = activeIcon {
         return bridge.create_std__optional_std__string_(std.string(__unwrappedValue))
       } else {
@@ -34,8 +46,20 @@ public extension CarPlayButton {
   }
   
   @inline(__always)
-  var icon: String {
-    return String(self.__icon)
+  var type: CarPlayButtonType? {
+    return self.__type.value
+  }
+  
+  @inline(__always)
+  var icon: String? {
+    return { () -> String? in
+      if bridge.has_value_std__optional_std__string_(self.__icon) {
+        let __unwrapped = bridge.get_std__optional_std__string_(self.__icon)
+        return String(__unwrapped)
+      } else {
+        return nil
+      }
+    }()
   }
   
   @inline(__always)

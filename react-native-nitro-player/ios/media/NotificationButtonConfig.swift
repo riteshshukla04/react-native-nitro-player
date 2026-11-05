@@ -26,8 +26,11 @@ struct IOSButtonConfig {
     if let id = Self.firstRepeated(carPlay.map(\.id)) {
       throw RuntimeError.error(withMessage: "notificationButtons.ios.carPlay: id '\(id)' is used more than once")
     }
-    for button in carPlay {
-      for name in [button.icon] + (button.activeIcon.map { [$0] } ?? []) where Self.image(named: name) == nil {
+    for button in carPlay where (button.type ?? .image) == .image {
+      guard let icon = button.icon else {
+        throw RuntimeError.error(withMessage: "notificationButtons.ios.carPlay: '\(button.id)' needs an icon")
+      }
+      for name in [icon] + (button.activeIcon.map { [$0] } ?? []) where Self.image(named: name) == nil {
         throw RuntimeError.error(
           withMessage: "notificationButtons.ios.carPlay: icon '\(name)' of '\(button.id)' is neither an SF Symbol nor an image in the asset catalog")
       }

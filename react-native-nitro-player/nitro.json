@@ -47,6 +47,12 @@
         "implementationClassName": "HybridAudioRoutePicker"
       }
     },
+    "CarPlay": {
+      "ios": {
+        "language": "swift",
+        "implementationClassName": "HybridCarPlay"
+      }
+    },
     "Cast": {
       "ios": {
         "language": "swift",

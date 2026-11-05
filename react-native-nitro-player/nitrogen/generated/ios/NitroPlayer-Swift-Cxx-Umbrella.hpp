@@ -12,6 +12,8 @@
 namespace margelo::nitro::nitroplayer { enum class AndroidAudioFocusMode; }
 // Forward declaration of `AndroidNotificationButton` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct AndroidNotificationButton; }
+// Forward declaration of `CarPlayButtonType` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class CarPlayButtonType; }
 // Forward declaration of `CarPlayButton` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct CarPlayButton; }
 // Forward declaration of `CastState` to properly resolve imports.
@@ -48,6 +50,8 @@ namespace margelo::nitro::nitroplayer { struct EqualizerState; }
 namespace margelo::nitro::nitroplayer { struct GainRange; }
 // Forward declaration of `HybridAudioRoutePickerSpec` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { class HybridAudioRoutePickerSpec; }
+// Forward declaration of `HybridCarPlaySpec` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { class HybridCarPlaySpec; }
 // Forward declaration of `HybridCastSpec` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { class HybridCastSpec; }
 // Forward declaration of `HybridDownloadManagerSpec` to properly resolve imports.
@@ -101,6 +105,7 @@ namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 #include "AndroidAudioFocusMode.hpp"
 #include "AndroidNotificationButton.hpp"
 #include "CarPlayButton.hpp"
+#include "CarPlayButtonType.hpp"
 #include "CastState.hpp"
 #include "CurrentPlayingType.hpp"
 #include "DownloadConfig.hpp"
@@ -118,6 +123,7 @@ namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 #include "EqualizerState.hpp"
 #include "GainRange.hpp"
 #include "HybridAudioRoutePickerSpec.hpp"
+#include "HybridCarPlaySpec.hpp"
 #include "HybridCastSpec.hpp"
 #include "HybridDownloadManagerSpec.hpp"
 #include "HybridEqualizerSpec.hpp"
@@ -166,6 +172,8 @@ namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 // Forward declarations of Swift defined types
 // Forward declaration of `HybridAudioRoutePickerSpec_cxx` to properly resolve imports.
 namespace NitroPlayer { class HybridAudioRoutePickerSpec_cxx; }
+// Forward declaration of `HybridCarPlaySpec_cxx` to properly resolve imports.
+namespace NitroPlayer { class HybridCarPlaySpec_cxx; }
 // Forward declaration of `HybridCastSpec_cxx` to properly resolve imports.
 namespace NitroPlayer { class HybridCastSpec_cxx; }
 // Forward declaration of `HybridDownloadManagerSpec_cxx` to properly resolve imports.

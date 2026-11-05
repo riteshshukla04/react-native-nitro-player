@@ -110,14 +110,97 @@ extension TrackPlayerCore {
       self.suppressTrackChangeEmit = true
       player.replaceCurrentItem(with: newItem)
 
-      if resumePosition > 1 {
-        let time = CMTime(seconds: resumePosition, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
-        player.seek(to: time)
-      }
+      if resumePosition > 1 { self.seekWhenReady(newItem, to: resumePosition) }
       if self.intendedToPlay {
         player.playImmediately(atRate: Float(self.currentPlaybackSpeed))
       }
     }
+  }
+
+  // MARK: - Failed-player recovery
+
+  /// Replaces a failed player after a short delay; false once the budget since playback last ran is spent.
+  /// Must be called on `playerQueue`.
+  func scheduleFailedPlayerReplacement() -> Bool {
+    guard !isCasting, failedPlayerReplacements < Constants.maxFailedItemRetries else { return false }
+    failedPlayerReplacements += 1
+    isRecoveringFromStall = true
+    emitStateChange()
+    playerQueue.asyncAfter(deadline: .now() + Constants.failedItemRetryDelay) { [weak self] in
+      self?.replaceFailedPlayer()
+    }
+    return true
+  }
+
+  /// An AVPlayer that fails never recovers; the system media server crashing fails every player
+  /// in the process. Builds a new player and, with `restoringQueue`, the same track and position
+  /// and the rest of the queue. Must be called on `playerQueue`.
+  func replaceFailedPlayer(restoringQueue: Bool = true) {
+    guard let old = player, old.status == .failed, !isCasting else { return }
+    // A failed player drops its items, so fall back to the track the core considers current
+    let currentId = old.currentItem?.trackId ?? getCurrentTrack()?.id
+    let itemTime = old.currentItem?.currentTime().seconds ?? .nan
+    let resumePosition = (itemTime.isFinite && itemTime > lastKnownPosition) ? itemTime : lastKnownPosition
+    NitroPlayerLogger.log("TrackPlayerCore",
+      "♻️ Replacing the failed player (attempt \(failedPlayerReplacements)/\(Constants.maxFailedItemRetries)), track \(currentId ?? "none"), resume @ \(Int(resumePosition))s")
+
+    if let observer = boundaryTimeObserver {
+      old.removeTimeObserver(observer)
+      boundaryTimeObserver = nil
+    }
+    currentItemObservers.removeAll()
+    detachMetadataOutput()
+    for keyPath in Self.observedPlayerKeyPaths { old.removeObserver(self, forKeyPath: keyPath) }
+    old.removeAllItems()
+    // Assets loaded through the dead media server are unusable as well
+    for asset in preloadedAssets.values { asset.cancelLoading() }
+    preloadedAssets.removeAll()
+    preloadGeneration += 1
+
+    let player = makeQueuePlayer()
+    self.player = player
+    for keyPath in Self.observedPlayerKeyPaths {
+      player.addObserver(self, forKeyPath: keyPath, options: [.new], context: nil)
+    }
+    guard restoringQueue else { return }
+    guard let currentId, let track = findTrackById(currentId),
+      let item = createGaplessPlayerItem(for: track, isPreload: true)
+    else {
+      NitroPlayerLogger.log("TrackPlayerCore", "♻️ Nothing to resume on the new player")
+      isRecoveringFromStall = false
+      return
+    }
+    // Same track as before, so the item change must not look like a track change
+    suppressTrackChangeEmit = true
+    player.insert(item, after: nil)
+    rebuildAVQueueFromCurrentPosition()
+    if resumePosition > 1 { seekWhenReady(item, to: resumePosition) }
+    if intendedToPlay {
+      activateAudioSessionIfNeeded()
+      player.playImmediately(atRate: Float(currentPlaybackSpeed))
+    }
+  }
+
+  /// Playback the user starts gets a working player even after the automatic replacements ran out;
+  /// callers about to build a new queue pass `restoringQueue: false`
+  func replacePlayerIfFailed(restoringQueue: Bool) {
+    guard player?.status == .failed else { return }
+    failedPlayerReplacements = 0
+    replaceFailedPlayer(restoringQueue: restoringQueue)
+  }
+
+  /// Seeks `item` once it is ready to play (see seekInternal); a later request replaces this one
+  func seekWhenReady(_ item: AVPlayerItem, to position: Double) {
+    pendingSeekItem = item
+    pendingSeekPosition = position
+    lastKnownPosition = position
+  }
+
+  /// The seek waiting for `item`, if any; call once the item is ready
+  func takePendingSeek(for item: AVPlayerItem) -> Double? {
+    guard let pending = pendingSeekItem, pending === item else { return nil }
+    pendingSeekItem = nil
+    return pendingSeekPosition
   }
 
   // MARK: - Network path monitoring
@@ -180,6 +263,15 @@ extension TrackPlayerCore {
       name: AVAudioSession.interruptionNotification, object: nil)
     nc.addObserver(self, selector: #selector(handleAudioRouteChange(_:)),
       name: AVAudioSession.routeChangeNotification, object: nil)
+    nc.addObserver(self, selector: #selector(handleMediaServicesReset(_:)),
+      name: AVAudioSession.mediaServicesWereResetNotification, object: nil)
+  }
+
+  /// The system media server restarted: the session lost its setup, and the player fails
+  /// (status KVO), which replaceFailedPlayer handles.
+  @objc func handleMediaServicesReset(_ notification: Notification) {
+    NitroPlayerLogger.log("TrackPlayerCore", "♻️ Media services were reset")
+    playerQueue.async { [weak self] in self?.resetAudioSession() }
   }
 
   /// Phone calls, Siri, other apps, etc. interrupt the audio session. When the

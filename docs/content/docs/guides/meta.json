@@ -4,6 +4,7 @@
     "queue-management",
     "offline-playback",
     "android-auto",
+    "carplay",
     "notification-buttons"
   ]
 }

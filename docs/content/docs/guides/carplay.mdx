@@ -1,0 +1,663 @@
+---
+title: CarPlay
+description: Build a CarPlay audio app from JS with tabs, lists, grids, lazy loading and Now Playing, including starts from the car
+---
+
+Nitro Player ships a complete CarPlay audio app. You describe the screens in JS and the library does the rest:
+
+- It builds the CarPlay templates (tab bar, lists, grids, Now Playing) from plain objects.
+- It plays through the same player your app uses, so the phone and the car share one queue.
+- It saves your last set of screens, so the car shows them right away on a cold start.
+- When the car opens your app while it is closed on the phone, it starts your JS runtime without any phone UI, so loaders, select handlers and lazy track URLs still work.
+
+CarPlay is iOS only. On Android every `CarPlayHelper` call does nothing; see [Android Auto](/docs/guides/android-auto) for the car on Android.
+
+## 1. Native setup
+
+You don't write any Swift for CarPlay or change Swift interop settings. Only the entitlement and `Info.plist` change.
+
+**Entitlement.** Request the CarPlay audio entitlement from Apple, then add it to your app's entitlements file:
+
+```xml
+<key>com.apple.developer.carplay-audio</key>
+<true/>
+```
+
+**Scene.** Declare a CarPlay scene in `Info.plist` next to your phone scene, pointing at the library's scene delegate:
+
+```xml
+<key>UIApplicationSceneManifest</key>
+<dict>
+  <key>UIApplicationSupportsMultipleScenes</key>
+  <true/>
+  <key>UISceneConfigurations</key>
+  <dict>
+    <key>CPTemplateApplicationSceneSessionRoleApplication</key>
+    <array>
+      <dict>
+        <key>UISceneClassName</key>
+        <string>CPTemplateApplicationScene</string>
+        <key>UISceneConfigurationName</key>
+        <string>CarPlay</string>
+        <key>UISceneDelegateClassName</key>
+        <string>NitroPlayerCarPlaySceneDelegate</string>
+      </dict>
+    </array>
+    <!-- your UIWindowSceneSessionRoleApplication entry stays as it is -->
+  </dict>
+</dict>
+```
+
+**Scene configuration in your AppDelegate.** Skip this if your `AppDelegate` doesn't implement `application(_:configurationForConnecting:options:)`. If it does, return the `CarPlay` configuration for the car's session role, so iOS uses the `Info.plist` entry above:
+
+```swift
+func application(
+  _ application: UIApplication,
+  configurationForConnecting connectingSceneSession: UISceneSession,
+  options: UIScene.ConnectionOptions
+) -> UISceneConfiguration {
+  if connectingSceneSession.role == .carTemplateApplication {
+    return UISceneConfiguration(name: "CarPlay", sessionRole: connectingSceneSession.role)
+  }
+  return UISceneConfiguration(name: "Default Configuration", sessionRole: connectingSceneSession.role)
+}
+```
+
+**Background audio.** Keep `audio` in `UIBackgroundModes`.
+
+CarPlay has no `TrackPlayer.configure` switch: iOS ignores `carPlayEnabled`, and the scene above is all it needs.
+
+## 2. Your first CarPlay screens
+
+Register CarPlay at **module scope**, from your entry file, not from a component or a `useEffect`. When the car starts the app, no phone screen mounts, so code inside components never runs.
+
+```typescript
+// index.js
+import { AppRegistry } from 'react-native';
+import App from './App';
+import { name as appName } from './app.json';
+import { registerCarPlay } from './src/carPlay';
+
+registerCarPlay();
+AppRegistry.registerComponent(appName, () => App);
+```
+
+```typescript
+// src/carPlay.ts
+import { CarPlayHelper } from 'react-native-nitro-player';
+
+export function registerCarPlay() {
+  CarPlayHelper.set({
+    templates: [
+      { type: 'list', id: 'library', title: 'Library', source: 'playlists', tab: { systemItem: 'favorites' } },
+      { type: 'list', id: 'queue', title: 'Queue', source: 'queue', tab: { title: 'Queue', image: 'list.bullet' } },
+    ],
+  });
+}
+```
+
+This is already a working CarPlay app:
+
+- **Library** lists every `PlayerQueue` playlist. Selecting one opens its tracks, and selecting a track plays it and opens Now Playing.
+- **Queue** shows the playing track and what comes next.
+
+The rest of this guide builds on it.
+
+## 3. Templates
+
+### The root
+
+`CarPlayHelper.set(root)` sets what the car shows, and you can call it again at any time, for example after sign-in. If every tab keeps its `id` and `type`, the tabs are redrawn in place and screens the driver opened stay open. Otherwise the tab bar is rebuilt.
+
+| Field | Type | Description |
+|---|---|---|
+| `templates` | `CarPlayTemplate[]` | Each one becomes a tab, up to the car's limit (usually four). A single template shows without a tab bar. |
+| `nowPlaying` | `CarPlayNowPlaying` | Now Playing options (see [Now Playing](#7-now-playing)) |
+| `texts` | `CarPlayTexts` | Texts the library shows by itself, for translation (see [Texts and placeholders](#texts-and-placeholders)) |
+| `placeholders` | `CarPlayPlaceholders` | Images for items without artwork |
+
+Every template has a `type` (`'list'` or `'grid'`), an `id` and a `title`. The `id` must be unique: `onSelect`, the loader, `reload` and `update` all find templates by it.
+
+### Lists
+
+A list is a sequence of sections holding rows. Most screens in a music app are lists.
+
+```typescript
+{
+  type: 'list',
+  id: 'home',
+  title: 'Home',
+  tab: { title: 'Home', image: 'house.fill' },
+  barButtons: [{ id: 'shuffle-all', image: 'shuffle', style: 'rounded' }],
+  sections: [
+    {
+      header: 'Jump back in',
+      items: [
+        {
+          type: 'imageRow',
+          style: 'card',
+          id: 'mixes',
+          title: 'Your mixes',
+          elements: [
+            { id: 'mix-chill', title: 'Chill', subtitle: 'Lofi', image: 'https://…/chill.jpg', fillImage: true, playlistId: chillId, playPlaylist: true },
+            { id: 'mix-focus', title: 'Focus', image: 'https://…/focus.jpg', tintColor: '#1F3A5C', playlistId: focusId, playPlaylist: true },
+          ],
+        },
+      ],
+    },
+    {
+      header: 'Playlists',
+      headerButton: { id: 'new-playlist', image: 'plus' },
+      items: [
+        { id: 'chill', title: 'Chill Vibes', subtitle: '24 songs', image: 'https://…/chill.jpg', playlistId: chillId },
+      ],
+    },
+  ],
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `sections` | `CarPlayListSection[]` | Groups of rows (see the section fields below) |
+| `source` | `'queue' \| 'playlists' \| 'playlist'` | Rows filled and kept current by the player, shown after `sections` (see [Lists filled by the player](#lists-filled-by-the-player)) |
+| `playlistId` | `string` | The playlist for `source: 'playlist'` |
+| `emptyTitle`, `emptySubtitle` | `string` | Shown when the list has no rows |
+| `barButtons` | `CarPlayBarButton[]` | Buttons in the navigation bar |
+| `tab` | `CarPlayTab` | How the template shows in the tab bar |
+| `lazy` | `boolean` | Shows right away and gets its rows from the loader (see [Loading from your server](#5-loading-from-your-server)) |
+| `loadingTitle` | `string` | Shown while a lazy list loads. Default: `texts.loading` |
+| `errorTitle`, `errorSubtitle` | `string` | The retry row shown when loading fails. Default: `texts.loadFailed` and `texts.retry` |
+
+**Sections** (`CarPlayListSection`):
+
+| Field | Type | Description |
+|---|---|---|
+| `header` | `string` | |
+| `headerSubtitle` | `string` | Shown under the header |
+| `headerImage` | `CarPlayImage` | Shown beside the header |
+| `headerButton` | `{ id, image }` | A button beside the header; presses go to `onSelect` with its `id` |
+| `indexTitle` | `string` | One character in the list's side index, such as `A`, for jumping through long lists |
+| `items` | `CarPlayListRow[]` | List items and image rows |
+
+`headerSubtitle`, `headerImage` and `headerButton` need a `header`.
+
+**List items** (`CarPlayListItem`):
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | `string` | Passed to `onSelect` and to the loader |
+| `title`, `subtitle` | `string` | |
+| `image` | `CarPlayImage` | Artwork or a symbol |
+| `accessory` | `'none' \| 'disclosure' \| 'cloud'` | Default: `disclosure` for rows that open something |
+| `accessoryImage` | `CarPlayImage` | Shown at the trailing edge instead of `accessory` |
+| `explicit` | `boolean` | Shows the explicit badge |
+| `enabled` | `boolean` | Default: `true` |
+| `progress` | `number` | How much has been played, from 0 to 1, shown as a bar, such as for podcast episodes |
+| `playingIndicator` | `'leading' \| 'trailing'` | Which side the playing indicator shows on. Default: `trailing` |
+| action fields | | `playlistId`, `trackId`, `playPlaylist`, `template`, `loadTemplate` (see [What a selection does](#4-what-a-selection-does)) |
+
+### Image rows
+
+Image rows (`type: 'imageRow'`) show tappable artwork, up to eight tiles per row. Pick how the tiles look with `style`. Every style takes these fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | `string` | Selecting the row's title sends this to `onSelect`, for example to open the whole list |
+| `title` | `string` | Shown above the tiles; leave it out to show only the tiles |
+| `style` | see below | Default: `row` |
+| `multipleLines` | `boolean` | Wraps the tiles onto more lines, like a grid, instead of one line. Default: `false` |
+| `elements` | depends on `style` | Each tile has an `id`, an `image` and the action fields |
+
+The styles and their tile fields:
+
+| `style` | Looks like | Tile fields besides `id`, `image` and actions |
+|---|---|---|
+| `row` | Artwork with a title and subtitle under it, such as albums and songs | `title?`, `subtitle?` |
+| `card` | Large cards with the text at the bottom, such as featured playlists | `title`, `subtitle?`, `fillImage?` (the image fills the card), `tintColor?` (`#RRGGBB` or `#RRGGBBAA`) |
+| `condensed` | A small image beside the text, compact | `title`, `subtitle?`, `imageShape?` (`'circle'` or `'rounded-rectangle'`), `accessorySymbol?` (an SF Symbol) |
+| `image-grid` | An image with a title under it, such as round artist photos | `title`, `imageShape?`, `accessorySymbol?` |
+| `grid` | Images without text | none |
+
+Styles need iOS 26 or later; earlier versions show every style as one line of images.
+
+### Artwork grids
+
+To show a grid of artwork, with each title and artist underneath, use the `row` style with `multipleLines`. Each section can hold its own grid:
+
+```typescript
+{
+  type: 'list',
+  id: 'home',
+  title: 'Home',
+  sections: [
+    {
+      items: [
+        {
+          type: 'imageRow',
+          id: 'recents',
+          title: 'Play it again',
+          multipleLines: true,
+          elements: recentTracks.slice(0, 8).map((track) => ({
+            id: `recents:${track.id}`,
+            image: track.artwork ?? 'music.note',
+            title: track.title,
+            subtitle: track.artist,
+            playlistId: recentsPlaylistId,
+            trackId: track.id,
+          })),
+        },
+        {
+          type: 'imageRow',
+          style: 'image-grid',
+          id: 'artists',
+          title: 'Your artists',
+          multipleLines: true,
+          elements: artists.map((artist) => ({
+            id: `artist:${artist.id}`,
+            image: artist.photo,
+            title: artist.name,
+            imageShape: 'circle',
+            template: { type: 'list', id: `artist:${artist.id}`, title: artist.name, lazy: true },
+          })),
+        },
+      ],
+    },
+  ],
+}
+```
+
+### Grids
+
+A grid shows up to **eight** buttons, each an icon-sized image with a title. Grids work well as a menu that leads into lists, such as genres or moods. Grid buttons have no subtitles, and there are no sections. For album or song artwork with titles and artists, use [artwork grids](#artwork-grids) instead.
+
+```typescript
+{
+  type: 'grid',
+  id: 'browse',
+  title: 'Browse',
+  tab: { systemItem: 'featured' },
+  buttons: [
+    { id: 'genre:jazz', title: 'Jazz', image: 'music.quarternote.3', loadTemplate: true },
+    { id: 'genre:piano', title: 'Piano', image: 'pianokeys', loadTemplate: true },
+    { id: 'mood:focus', title: 'Focus', image: 'brain.head.profile', template: { type: 'list', id: 'mood:focus', title: 'Focus', lazy: true } },
+    { id: 'mix', title: 'Daily mix', image: 'https://…/mix.jpg', playlistId: mixId, playPlaylist: true },
+    { id: 'surprise', title: 'Surprise me', image: 'dice' },
+  ],
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `buttons` | `CarPlayGridButton[]` | `{ id, title, image, enabled?, …action fields }`; only the first eight show. May be left out when `lazy`. |
+| `barButtons` | `CarPlayBarButton[]` | Buttons in the navigation bar |
+| `tab` | `CarPlayTab` | How the template shows in the tab bar |
+| `lazy` | `boolean` | Shows right away and gets its buttons from the loader |
+| `errorTitle` | `string` | The retry button's title when a lazy grid fails to load. Default: `texts.retry` |
+
+Grid buttons take the same actions as rows, so one can play a playlist, open a list, ask the loader, or call `onSelect`. A grid can be a tab, be opened from a row, be pushed with `CarPlayHelper.push`, or be lazy. Button images can be symbols or artwork URLs; until a URL image arrives, a placeholder symbol shows.
+
+### Tabs, bar buttons and images
+
+**Tabs** (`tab`) set how a root template shows in the tab bar:
+
+| Field | Type | Description |
+|---|---|---|
+| `title` | `string` | |
+| `image` | `CarPlayImage` | |
+| `systemItem` | `'bookmarks' \| 'contacts' \| 'downloads' \| 'favorites' \| 'featured' \| 'history' \| 'more' \| 'mostRecent' \| 'mostViewed' \| 'recents' \| 'search' \| 'topRated'` | Apple's own icon and title. It wins over `title` and `image`. |
+| `badge` | `boolean` | Shows a dot on the tab |
+
+**Bar buttons** (`barButtons`) are `{ id, title?, image?, style? }` in the navigation bar, up to two per screen. `style` is `'plain'` (the default) or `'rounded'`. Presses go to `CarPlayHelper.onSelect`.
+
+**Images** (`CarPlayImage`) can be:
+
+- an http(s) URL;
+- a `file://` URL, such as downloaded artwork;
+- an SF Symbol name, such as `'heart.fill'`;
+- the name of an image in your asset catalog.
+
+Symbols are tinted to match the car's light or dark appearance.
+
+### Texts and placeholders
+
+The library shows some texts and images by itself: while a lazy template loads, when it fails, in lists it fills from the player, and on screens it opens for you, such as a playlist opened through `playlistId`. Set them on the root, for example to translate them:
+
+```typescript
+CarPlayHelper.set({
+  templates,
+  texts: {
+    loading: 'Cargando…',
+    loadFailed: 'No se pudo cargar',
+    retry: 'Toca para reintentar',
+    emptyQueue: 'Nada en cola',
+    noPlaylists: 'Sin listas',
+    emptyPlaylist: 'Sin canciones',
+    trackCount: { one: '{count} canción', other: '{count} canciones' },
+  },
+  placeholders: { artwork: 'music.quarternote.3', playlist: 'rectangle.stack' },
+});
+```
+
+| `texts` field | Default |
+|---|---|
+| `loading` | "Loading…" |
+| `loadFailed` | "Couldn't load" |
+| `retry` | "Tap to try again" in lists, "Try again" in grids |
+| `emptyQueue` | "Nothing queued", also used by Up Next |
+| `noPlaylists` | "No playlists" |
+| `emptyPlaylist` | "No tracks" |
+| `trackCount` | `{count} track` / `{count} tracks`, the subtitle of playlists without a description |
+
+`placeholders.artwork` (default `music.note`) shows for tracks without artwork and while tile artwork loads. `placeholders.playlist` (default `music.note.list`) shows for playlists without artwork. Both take an SF Symbol or asset catalog name.
+
+A template's own `loadingTitle`, `errorTitle`, `errorSubtitle` and `emptyTitle` win over `texts`. To change anything else about a screen the library would open for you, build it yourself: for example, use `template: { type: 'list', id, title, source: 'playlist', playlistId, emptyTitle, barButtons }` instead of a bare `playlistId`.
+
+## 4. What a selection does
+
+Rows, grid buttons and image-row elements share these action fields. The first match wins:
+
+| Fields | Action |
+|---|---|
+| `playlistId` + `trackId` | Plays the track from that playlist and opens Now Playing |
+| `playlistId` + `playPlaylist: true` | Plays the playlist from its first track and opens Now Playing |
+| `playlistId` | Opens the playlist's tracks, kept in sync with `PlayerQueue` |
+| `template` | Opens that template |
+| `loadTemplate: true` | Opens what the loader returns for the item's `id` |
+| none of these | `CarPlayHelper.onSelect` receives the `id` |
+
+Anything without a built-in action goes to `onSelect`: rows, grid buttons, image-row elements and bar buttons. The second argument is the `id` of the template the press came from. Presses made before your handler is registered are delivered when it registers.
+
+```typescript
+CarPlayHelper.onSelect((id, templateId) => {
+  if (id === 'shuffle-all' || id === 'surprise') playRandom();
+  if (id === 'retry') CarPlayHelper.reload(templateId);
+});
+```
+
+### Lists filled by the player
+
+`source` fills a list from the player and keeps it current without any JS:
+
+- `queue`: the playing track and what follows; selecting a row skips to it. When empty it shows "Nothing queued".
+- `playlists`: every `PlayerQueue` playlist; selecting one opens its tracks. When empty it shows "No playlists".
+- `playlist`: the tracks of `playlistId`; selecting one plays it. When empty it shows "No tracks".
+
+Use `emptyTitle` to change those texts. Rows from `sections` show above the source rows.
+
+## 5. Loading from your server
+
+Most screens come from a server. You don't build every screen up front: give rows and tabs ids, and answer for those ids in one **loader**.
+
+```typescript
+CarPlayHelper.setTemplateLoader(async (id) => {
+  if (id === 'home') return homeScreen();
+  if (id.startsWith('album:')) return albumList(id.slice('album:'.length));
+  return null;
+});
+```
+
+The loader is called in two cases:
+
+| Trigger | When | Waits up to |
+|---|---|---|
+| `lazy: true` on a template | The template shows right away with a spinner and the loader fills it in | 30 seconds, then the error state |
+| `loadTemplate: true` on a row or grid button | Nothing opens until the loader answers | 15 seconds, then nothing opens |
+
+**Prefer lazy templates.** They show at once, keep a spinner up while your server answers, and offer a retry when it fails.
+
+```typescript
+CarPlayHelper.set({
+  templates: [
+    { type: 'list', id: 'home', title: 'Home', lazy: true, tab: { title: 'Home', image: 'house.fill' } },
+    { type: 'list', id: 'albums', title: 'Albums', lazy: true, tab: { title: 'Albums', image: 'square.stack.fill' } },
+  ],
+});
+
+// A row that opens a lazy list; the loader gets 'album:42'
+const albumRow = {
+  id: 'album:42',
+  title: 'Abbey Road',
+  image: 'https://…/abbey-road.jpg',
+  template: { type: 'list', id: 'album:42', title: 'Abbey Road', lazy: true },
+};
+```
+
+### What the loader returns
+
+- **The same `type` as the placeholder.** A lazy grid gets a grid back and a lazy list gets a list. A different type is ignored and logged.
+- **For a lazy template,** the returned `sections`, `buttons`, `source`, `playlistId` and `barButtons` replace the placeholder's, while its `title` and `tab` stay.
+- **For a `loadTemplate` row,** the returned template is opened as it is.
+- **`null`, `undefined` or a thrown error** means it failed:
+  - a lazy list shows `errorTitle` with a "Tap to try again" row;
+  - a lazy grid shows a "Try again" button;
+  - a `loadTemplate` row opens nothing.
+
+Keep everything the loader needs in the `id` itself, for example `album:42`, `artists:A` or `playlists@100`. It then works the same after a cold start, when no other state exists yet.
+
+### Errors, sign-in and going offline
+
+For problems the user can understand, return rows that say what is wrong instead of failing. Use a row without an action that calls `reload` from `onSelect` for a retry:
+
+```typescript
+const message = (title: string) => ({ id: `message:${title}`, title });
+const retry = { id: 'retry', title: "Couldn't reach the server", subtitle: 'Tap to try again', image: 'arrow.clockwise' };
+
+CarPlayHelper.setTemplateLoader(async (id) => {
+  if (!isSignedIn()) return { type: 'list', id, title: '', sections: [{ items: [message('Open the app on your phone to sign in')] }] };
+  try {
+    return await load(id);
+  } catch (error) {
+    if (error.status === 401) return { type: 'list', id, title: '', sections: [{ items: [message('Sign in again on your phone')] }] };
+    return { type: 'list', id, title: '', sections: [{ items: [retry] }] };
+  }
+});
+
+CarPlayHelper.onSelect((id, templateId) => {
+  if (id === 'retry') CarPlayHelper.reload(templateId);
+});
+```
+
+Grids can't show a message row, so show a disabled button instead:
+
+```typescript
+{ id: 'sign-in', title: 'Sign in on your phone', image: 'person.crop.circle.badge.exclamationmark', enabled: false }
+```
+
+### Refreshing
+
+- `CarPlayHelper.reload()` asks the loader again for every lazy template on screen. `reload('home')` asks again only for `home`. The current content stays on screen until the new answer arrives. Call it when the network comes back, the user signs in or out, or the data changes, for example after creating a playlist on the phone.
+- `CarPlayHelper.update(template)` redraws every shown template with the same `id` from an object you already have, without calling the loader.
+
+```typescript
+NetInfo.addEventListener(({ isInternetReachable }) => {
+  if (isInternetReachable) CarPlayHelper.reload();
+});
+```
+
+### Paging long lists
+
+Load one page per screen and end it with a lazy "More…" row whose `id` carries the next offset:
+
+```typescript
+const PAGE = 100;
+
+async function artistsPage(id: string) {
+  const [base, offsetText] = id.split('@');
+  const offset = Number(offsetText) || 0;
+  const artists = await api.artists({ startIndex: offset, limit: PAGE + 1 });
+  const items = artists.slice(0, PAGE).map(artistRow);
+  if (artists.length > PAGE) {
+    const next = `${base}@${offset + PAGE}`;
+    items.push({ id: next, title: 'More…', template: { type: 'list', id: next, title: 'Artists', lazy: true } });
+  }
+  return { type: 'list', id, title: 'Artists', sections: [{ items }] };
+}
+```
+
+For large libraries, a first screen of letters (`#`, `A`–`Z`) whose rows open `artists:A`, `artists:B` and so on is easier to use while driving than one long list.
+
+## 6. Playing music
+
+Rows play tracks that already exist in a `PlayerQueue` playlist. For music that comes from a server, create a playlist when its list loads, and point the rows at it:
+
+```typescript
+async function albumList(albumId: string) {
+  const tracks: TrackItem[] = await api.albumTracks(albumId);
+  const playlistId = await PlayerQueue.createPlaylist(`car:album:${albumId}`);
+  await PlayerQueue.addTracksToPlaylist(playlistId, tracks);
+  return {
+    type: 'list',
+    id: `album:${albumId}`,
+    title: '',
+    sections: [
+      {
+        items: tracks.map((track) => ({
+          id: `${playlistId}:${track.id}`,
+          title: track.title,
+          subtitle: track.artist,
+          image: track.artwork ?? 'music.note',
+          playlistId,
+          trackId: track.id,
+        })),
+      },
+    ],
+  };
+}
+```
+
+Selecting a row then plays that track with the rest of the album queued after it. Delete car playlists you no longer need, but keep the one that is playing (`TrackPlayer.getState().currentPlaylistId`).
+
+### Track URLs fetched at play time
+
+Tracks can be added with `url: ''` when stream URLs expire or cost a request each. The player asks for the URLs of the playing track and the next `lookaheadCount` tracks through `TrackPlayer.onTracksNeedUpdate`, and plays a track once its URL arrives. Register the handler at module scope too, so it also works on a start from the car:
+
+```typescript
+TrackPlayer.onTracksNeedUpdate(async (tracks) => {
+  const resolved = await Promise.all(
+    tracks.map(async (track) => ({ ...track, url: await api.streamUrl(track.id) })),
+  );
+  await TrackPlayer.updateTracks(resolved);
+});
+```
+
+Slow answers are fine: the example app's handler waits two seconds before answering, and its tracks still start once the URL arrives.
+
+## 7. Now Playing
+
+Now Playing opens on its own when a row starts playback. Configure it with `nowPlaying` on the root:
+
+| Field | Type | Description |
+|---|---|---|
+| `upNext` | `boolean` | Shows the Up Next button, which opens the playing queue. Default: `true` |
+| `upNextTitle` | `string` | The title of that queue screen |
+| `albumArtist` | `boolean` | Makes the album and artist names tappable. Presses go to `onAlbumArtistPress`. Default: `false` |
+
+```typescript
+CarPlayHelper.set({ templates, nowPlaying: { upNextTitle: 'Queue', albumArtist: true } });
+
+CarPlayHelper.onAlbumArtistPress((track) => {
+  CarPlayHelper.push({ type: 'list', id: `album:${track.album}`, title: track.album ?? '', lazy: true });
+});
+```
+
+The buttons below the progress bar come from `notificationButtons.ios.carPlay` in `TrackPlayer.configure`. Presses arrive in `TrackPlayer.onNotificationButtonPress` like on every other surface. Besides image buttons, CarPlay's own buttons are available through `type`:
+
+```typescript
+await TrackPlayer.configure({
+  notificationButtons: {
+    ios: {
+      carPlay: [
+        { id: 'favorite', icon: 'heart', activeIcon: 'heart.fill' },
+        { id: 'repeat', type: 'repeat' },
+        { id: 'speed', type: 'playbackRate' },
+        { id: 'shuffle', type: 'shuffle' },
+      ],
+    },
+  },
+});
+```
+
+`repeat` and `playbackRate` change the player themselves. `shuffle` and `addToLibrary` are toggles that report their state through `event.isActive`. See [Notification Buttons](/docs/guides/notification-buttons) for the full button API.
+
+## 8. Navigating from JS
+
+| Method | Description |
+|---|---|
+| `push(template)` | Opens a template on top of the current one. It can be `lazy`. |
+| `pop()` | Goes back one screen |
+| `popToRoot()` | Goes back to the tabs |
+| `showNowPlaying()` | Opens Now Playing, for example after starting playback from `onSelect` |
+
+CarPlay caps how deep the screen stack can go. When Now Playing or Up Next would go past the cap, they open from the root instead.
+
+## 9. Starting from the car with the app closed
+
+Drivers often start your app from the car's screen while it isn't running on the phone. This works without extra code, as long as everything above is registered at module scope. Here is what happens:
+
+1. iOS launches your app with only the CarPlay scene; no phone window is created.
+2. The library shows the root you last passed to `set`, which it saved on the device. Lazy templates show their spinner.
+3. The library starts React Native with the `RCTReactNativeFactory` your `AppDelegate` already creates. Your entry file runs as usual, without mounting any screen.
+4. Your module-scope code calls `set`, `setTemplateLoader`, `onSelect` and `onTracksNeedUpdate`. Loads requested before then are waiting, and now reach your loader.
+5. When the user later opens the app on the phone, the phone UI reuses this same runtime.
+
+Things to check:
+
+- **Module scope only.** Code that runs only after a screen mounts (navigation containers, a `useEffect` in `App`) doesn't run on a start from the car.
+- **Read state from storage.** Sign-in tokens and settings must be available without any screen running, for example from MMKV or a persisted store.
+- **OTA updates.** If you ship JS through over-the-air updates, a start from the car runs whichever bundle your `AppDelegate` picks, so make sure that bundle registers CarPlay.
+- **React Native host.** If your `AppDelegate` has no `RCTReactNativeFactory`, JS can't start without the phone UI. The library logs `No RCTReactNativeFactory on the app delegate`, and the car waits until the app is opened on the phone.
+
+## 10. Connection state
+
+```typescript
+import { CarPlayHelper, useCarPlayConnection } from 'react-native-nitro-player';
+
+// In components
+const { isConnected } = useCarPlayConnection();
+
+// Anywhere else
+const unsubscribe = CarPlayHelper.onConnectionChange((connected) => {});
+CarPlayHelper.isConnected();
+CarPlayHelper.isAvailable(); // false on Android and when the native module is missing
+```
+
+## 11. Testing
+
+- **Device:** test on a physical iPhone connected by USB to Apple's CarPlay Simulator. It ships in Additional Tools for Xcode, and newer Xcode versions open it from Device Hub. It gives the closest results to a real car.
+- **Release build:** use one, so JS is bundled into the app and nothing depends on Metro.
+- **Start from the car:**
+  1. Quit the app on the phone: swipe it away, or stop it from Xcode.
+  2. Open it from the CarPlay home screen.
+  3. Check that the tabs show at once and fill in, and that a track plays.
+- **Edge cases:** test signed out, offline (Airplane Mode, then back online), with downloads, and with the phone locked.
+- **Logs:** debug builds log every CarPlay step to the Xcode console as `[CarPlay] 🚗 …` lines, for example `Started React Native for CarPlay`, `Loading 'home', waiting for JS` and `Loaded 'home': content`.
+
+If the app's icon in the CarPlay Simulator turns grey after you reinstall the app, close the CarPlay Simulator session and start a new one.
+
+## Troubleshooting
+
+| Symptom | Cause |
+|---|---|
+| A tab keeps spinning, then shows "Couldn't load" or "Try again" | No loader is registered, the loader returned `null`, or JS never started (look for `Started React Native for CarPlay` in the logs) |
+| The tabs are empty on a start from the car | CarPlay is registered inside a component; move it to module scope |
+| `Loader returned another template type` in the logs | A lazy template got back a different `type` |
+| Selecting a row does nothing | The row has no action and nothing handles its `id` in `onSelect` |
+| A list stops at 500 rows | CarPlay's row limit; page with a "More…" row |
+| A grid shows only eight buttons | CarPlay's grid limit |
+| A track opens Now Playing but doesn't start | It has no URL and `onTracksNeedUpdate` never answers with one |
+
+## API reference
+
+| Method | Description |
+|---|---|
+| `set(root)` | Sets the tabs, Now Playing options, texts and placeholders; saved for the next cold start |
+| `setTemplateLoader(loader)` | `(id) => Promise<CarPlayTemplate \| null>` for lazy templates and `loadTemplate` items |
+| `reload(templateId?)` | Asks the loader again for one or every lazy template on screen |
+| `update(template)` | Redraws shown templates with the same `id` |
+| `push(template)`, `pop()`, `popToRoot()` | Navigation |
+| `showNowPlaying()` | Opens Now Playing |
+| `onSelect(callback)` | `(id, templateId) => void` for items and bar buttons without a built-in action |
+| `onAlbumArtistPress(callback)` | `(track) => void`; needs `nowPlaying.albumArtist` |
+| `onConnectionChange(callback)` | `(connected) => void`; returns an unsubscribe function |
+| `isConnected()` | Whether CarPlay is connected |
+| `isAvailable()` | Whether CarPlay is supported here (iOS with the native module) |

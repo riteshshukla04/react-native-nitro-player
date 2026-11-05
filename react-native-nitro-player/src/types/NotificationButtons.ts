@@ -125,13 +125,30 @@ export interface LockScreenButton {
   command: LockScreenCommand
 }
 
+/**
+ * Kind of button on CarPlay's Now Playing screen:
+ * - `image`: draws `icon` (default)
+ * - `shuffle` / `addToLibrary`: system toggles, reported as {@link NotificationButtonEvent.isActive}
+ * - `repeat`: cycles the player's repeat mode itself, reported as {@link NotificationButtonEvent.repeatMode}
+ * - `playbackRate`: cycles the player's speed through 1, 1.25, 1.5, 1.75, 2 and 0.5 itself
+ * - `more`: the system "more" button
+ */
+export type CarPlayButtonType =
+  | 'image'
+  | 'shuffle'
+  | 'repeat'
+  | 'playbackRate'
+  | 'addToLibrary'
+  | 'more'
+
 /** A button on CarPlay's Now Playing screen */
 export interface CarPlayButton {
   /** Passed to `TrackPlayer.onNotificationButtonPress` */
   id: string
-  /** An SF Symbol name, or the name of an image in your app's asset catalog */
-  icon: string
-  /** Shown while the button is active for the current track; makes the button a toggle */
+  type?: CarPlayButtonType
+  /** Required for `image`: an SF Symbol name, or the name of an image in your app's asset catalog */
+  icon?: string
+  /** `image` only: shown while the button is active for the current track; makes the button a toggle */
   activeIcon?: string
 }
 
