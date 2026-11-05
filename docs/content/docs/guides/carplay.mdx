@@ -84,9 +84,24 @@ AppRegistry.registerComponent(appName, () => App);
 
 ```typescript
 // src/carPlay.ts
-import { CarPlayHelper } from 'react-native-nitro-player';
+import { CarPlayHelper, PlayerQueue } from 'react-native-nitro-player';
 
-export function registerCarPlay() {
+export async function registerCarPlay() {
+  if (PlayerQueue.getAllPlaylists().length === 0) {
+    const playlistId = await PlayerQueue.createPlaylist('Road trip');
+    await PlayerQueue.addTracksToPlaylist(playlistId, [
+      {
+        id: 'blue-in-green',
+        title: 'Blue in Green',
+        artist: 'Miles Davis',
+        album: 'Kind of Blue',
+        duration: 337,
+        url: 'https://cdn.example.com/blue-in-green.mp3',
+        artwork: 'https://cdn.example.com/kind-of-blue.jpg',
+      },
+    ]);
+  }
+
   CarPlayHelper.set({
     templates: [
       { type: 'list', id: 'library', title: 'Library', source: 'playlists', tab: { systemItem: 'favorites' } },
@@ -100,6 +115,8 @@ This is already a working CarPlay app:
 
 - **Library** lists every `PlayerQueue` playlist. Selecting one opens its tracks, and selecting a track plays it and opens Now Playing.
 - **Queue** shows the playing track and what comes next.
+
+CarPlay screens never contain song URLs. They point at tracks in `PlayerQueue` playlists, and the player plays each track's `url`, like the one on "Blue in Green" above. [Playing music](#6-playing-music) covers URLs from a server and URLs fetched at play time.
 
 The rest of this guide builds on it.
 
@@ -286,6 +303,8 @@ A grid shows up to **eight** buttons, each an icon-sized image with a title. Gri
 }
 ```
 
+`mixId` is the id of a `PlayerQueue` playlist whose tracks carry their URLs; see [Playing music](#6-playing-music).
+
 | Field | Type | Description |
 |---|---|---|
 | `buttons` | `CarPlayGridButton[]` | `{ id, title, image, enabled?, …action fields }`; only the first eight show. May be left out when `lazy`. |
@@ -364,6 +383,8 @@ Rows, grid buttons and image-row elements share these action fields. The first m
 | `template` | Opens that template |
 | `loadTemplate: true` | Opens what the loader returns for the item's `id` |
 | none of these | `CarPlayHelper.onSelect` receives the `id` |
+
+None of these fields is a song URL. `playlistId` and `trackId` name a track you added to a `PlayerQueue` playlist, and the player plays that track's `url`.
 
 Anything without a built-in action goes to `onSelect`: rows, grid buttons, image-row elements and bar buttons. The second argument is the `id` of the template the press came from. Presses made before your handler is registered are delivered when it registers.
 
@@ -498,17 +519,35 @@ For large libraries, a first screen of letters (`#`, `A`–`Z`) whose rows open 
 
 ## 6. Playing music
 
-Rows play tracks that already exist in a `PlayerQueue` playlist. For music that comes from a server, create a playlist when its list loads, and point the rows at it:
+CarPlay templates never contain song URLs. A row, grid button or image-row element names a track with `playlistId` and `trackId`, and the player plays the `url` of that track in its `PlayerQueue` playlist. So the URL goes on the `TrackItem` you add to the playlist, in one of two ways:
+
+| `url` when the track is added | When to use it |
+|---|---|
+| The stream URL | The URL is known up front and doesn't expire |
+| `''`, filled in by [`onTracksNeedUpdate`](#track-urls-fetched-at-play-time) | URLs expire, or each one costs a request |
+
+### URLs known up front
+
+For music that comes from a server, create a playlist when its list loads, with each track's URL set, and point the rows at it:
 
 ```typescript
-async function albumList(albumId: string) {
-  const tracks: TrackItem[] = await api.albumTracks(albumId);
+async function albumList(albumId: string): Promise<CarPlayTemplate> {
+  const songs = await api.albumSongs(albumId);
+  const tracks: TrackItem[] = songs.map((song) => ({
+    id: song.id,
+    title: song.name,
+    artist: song.artist,
+    album: song.album,
+    duration: song.seconds,
+    url: `https://music.example.com/stream/${song.id}.mp3`,
+    artwork: song.coverUrl,
+  }));
   const playlistId = await PlayerQueue.createPlaylist(`car:album:${albumId}`);
   await PlayerQueue.addTracksToPlaylist(playlistId, tracks);
   return {
     type: 'list',
     id: `album:${albumId}`,
-    title: '',
+    title: songs[0]?.album ?? '',
     sections: [
       {
         items: tracks.map((track) => ({
@@ -529,7 +568,21 @@ Selecting a row then plays that track with the rest of the album queued after it
 
 ### Track URLs fetched at play time
 
-Tracks can be added with `url: ''` when stream URLs expire or cost a request each. The player asks for the URLs of the playing track and the next `lookaheadCount` tracks through `TrackPlayer.onTracksNeedUpdate`, and plays a track once its URL arrives. Register the handler at module scope too, so it also works on a start from the car:
+When stream URLs expire or each one costs a request, add the tracks with `url: ''`. Everything else, including the rows, stays the same as above:
+
+```typescript
+const tracks: TrackItem[] = songs.map((song) => ({
+  id: song.id,
+  title: song.name,
+  artist: song.artist,
+  album: song.album,
+  duration: song.seconds,
+  url: '',
+  artwork: song.coverUrl,
+}));
+```
+
+The player then asks for the URLs of the playing track and the next `lookaheadCount` tracks through `TrackPlayer.onTracksNeedUpdate`, and plays a track once its URL arrives. `lookaheadCount` defaults to 5 and is set with `TrackPlayer.configure({ lookaheadCount })`. Your handler answers with `TrackPlayer.updateTracks`. Register it at module scope too, so it also works on a start from the car:
 
 ```typescript
 TrackPlayer.onTracksNeedUpdate(async (tracks) => {
@@ -540,7 +593,7 @@ TrackPlayer.onTracksNeedUpdate(async (tracks) => {
 });
 ```
 
-Slow answers are fine: the example app's handler waits two seconds before answering, and its tracks still start once the URL arrives.
+Slow answers are fine. The example app's Lookahead playlist, in `example/src/carPlay.ts`, works this way: its handler waits two seconds before answering, and its tracks still start once the URL arrives.
 
 ## 7. Now Playing
 
