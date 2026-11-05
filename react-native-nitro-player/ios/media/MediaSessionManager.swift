@@ -253,6 +253,8 @@ class MediaSessionManager {
       let rates = Constants.supportedPlaybackRates.map(Double.init)
       let current = rates.firstIndex { abs($0 - cachedPlaybackSpeed) < 0.01 } ?? rates.firstIndex(of: 1.0) ?? 0
       let speed = rates[(current + 1) % rates.count]
+      // The next press may come before the player reports the new speed
+      cachedPlaybackSpeed = speed
       guard let core = trackPlayerCore else { return }
       Task {
         try? await core.setPlaybackSpeed(speed)

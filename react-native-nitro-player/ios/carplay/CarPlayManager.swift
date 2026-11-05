@@ -3,6 +3,7 @@
 //  NitroPlayer
 //
 
+#if canImport(CarPlay)
 import CarPlay
 import Foundation
 import NitroModules
@@ -60,7 +61,7 @@ final class CarPlayManager: NSObject {
     var loadFailed = false
     var loadGeneration = 0
     var playingItems: [(item: CPListItem, trackId: String, playlistId: String?)] = []
-    var gridRedrawPending = false
+    var gridImageGeneration = 0
 
     init(template: CPTemplate, model: CarPlayTemplateModel) {
       self.template = template
@@ -809,15 +810,20 @@ final class CarPlayManager: NSObject {
       button.isEnabled = model.enabled ?? true
       return button
     }
+    // Redrawing a shown grid replaces it (see showGrid), so redraw once, after the last image
+    binding.gridImageGeneration += 1
+    let generation = binding.gridImageGeneration
+    var pending = 0
+    var arrived = false
     for model in models {
-      images.load(model.image, size: size, scale: scale) { [weak self, weak binding] image in
-        guard let self, let binding, image != nil, !binding.gridRedrawPending else { return }
-        binding.gridRedrawPending = true
-        DispatchQueue.main.async {
-          binding.gridRedrawPending = false
-          if case .grid = binding.displayed, !binding.awaitingContent { self.render(binding) }
-        }
+      let loading = images.load(model.image, size: size, scale: scale) { [weak self, weak binding] image in
+        guard let self, let binding, binding.gridImageGeneration == generation else { return }
+        pending -= 1
+        arrived = arrived || image != nil
+        guard pending == 0, arrived, case .grid = binding.displayed, !binding.awaitingContent else { return }
+        self.render(binding)
       }
+      if loading { pending += 1 }
     }
     return buttons
   }
@@ -855,11 +861,13 @@ final class CarPlayManager: NSObject {
     if let tabBar = controller.rootTemplate as? CPTabBarTemplate,
       let index = tabBar.templates.firstIndex(where: { $0 === old })
     {
+      // Before iOS 17 the tab bar can't select a tab again, and updating its tabs resets the selection
+      guard #available(iOS 17.0, *) else { return false }
       let selected = tabBar.selectedTemplate
       var templates = tabBar.templates
       templates[index] = new
       tabBar.updateTemplates(templates)
-      if #available(iOS 17.0, *), let selected { tabBar.select(selected === old ? new : selected) }
+      if let selected { tabBar.select(selected === old ? new : selected) }
       return true
     }
     if controller.rootTemplate === old {
@@ -1040,3 +1048,26 @@ extension CarPlayManager: CPNowPlayingTemplateObserver {
     }
   }
 }
+#else
+/// Platforms without CarPlay (visionOS): every call does nothing
+final class CarPlayManager {
+  static let shared = CarPlayManager()
+
+  var isConnected: Bool { false }
+
+  @discardableResult
+  func addConnectionListener(_ listener: @escaping (Bool) -> Void) -> Int64 { 0 }
+  func removeConnectionListener(id: Int64) {}
+  func setRoot(json: String) throws {}
+  func push(json: String) throws {}
+  func update(json: String) throws {}
+  func reload(templateId: String?) {}
+  func pop() {}
+  func popToRoot() {}
+  func showNowPlaying() {}
+  func setSelectHandler(_ handler: @escaping (String, String) -> Void) {}
+  func setLoadHandler(_ handler: @escaping (String, String) -> Void) {}
+  func resolveTemplate(requestId: String, json: String) {}
+  func setAlbumArtistHandler(_ handler: @escaping (TrackItem) -> Void) {}
+}
+#endif

@@ -125,7 +125,7 @@ extension TrackPlayerCore {
       emitStateChange()
     }
 
-    let position = currentItem.currentTime().seconds
+    let position = reportedPosition(of: currentItem)
     let rawDuration = currentItem.readyDurationSeconds
     let duration = (rawDuration > 0 && !rawDuration.isNaN && !rawDuration.isInfinite) ? rawDuration : 0.0
 
@@ -634,6 +634,8 @@ extension TrackPlayerCore {
       }
     }
     currentItemObservers.append(statusObserver)
+    // The observer only sees changes, so a seek waiting for an item that is already ready runs now
+    if item.status == .readyToPlay, let position = takePendingSeek(for: item) { seekInternal(position: position) }
 
     let bufferEmptyObserver = item.observe(\.isPlaybackBufferEmpty, options: [.new]) { [weak self] item, _ in
       guard item.isPlaybackBufferEmpty else { return }

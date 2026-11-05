@@ -158,11 +158,17 @@ extension TrackPlayerCore {
     preloadGeneration += 1
 
     let player = makeQueuePlayer()
+    // setVolume only ever sets the player, so the new one takes it over
+    player.volume = old.volume
     self.player = player
     for keyPath in Self.observedPlayerKeyPaths {
       player.addObserver(self, forKeyPath: keyPath, options: [.new], context: nil)
     }
-    guard restoringQueue else { return }
+    guard restoringQueue else {
+      // The caller builds a new queue, so there is nothing left to recover
+      isRecoveringFromStall = false
+      return
+    }
     guard let currentId, let track = findTrackById(currentId),
       let item = createGaplessPlayerItem(for: track, isPreload: true)
     else {
@@ -201,6 +207,11 @@ extension TrackPlayerCore {
     guard let pending = pendingSeekItem, pending === item else { return nil }
     pendingSeekItem = nil
     return pendingSeekPosition
+  }
+
+  /// Where `item` is, counting a seek that still waits for it as done
+  func reportedPosition(of item: AVPlayerItem) -> Double {
+    pendingSeekItem === item ? pendingSeekPosition : item.currentTime().seconds
   }
 
   // MARK: - Network path monitoring

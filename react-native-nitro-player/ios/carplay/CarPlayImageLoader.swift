@@ -20,13 +20,15 @@ final class CarPlayImageLoader {
   }
 
   /// Main thread in and out; `completion` runs only for URLs that were not cached yet
-  func load(_ source: String?, size: CGSize, scale: CGFloat, completion: @escaping (UIImage?) -> Void) {
-    guard let source, let url = remoteOrFileURL(source) else { return }
+  /// - Returns: Whether `completion` will run
+  @discardableResult
+  func load(_ source: String?, size: CGSize, scale: CGFloat, completion: @escaping (UIImage?) -> Void) -> Bool {
+    guard let source, let url = remoteOrFileURL(source) else { return false }
     let cacheKey = key(url, size, scale)
-    if cache.object(forKey: cacheKey as NSString) != nil { return }
+    if cache.object(forKey: cacheKey as NSString) != nil { return false }
     if waiting[cacheKey] != nil {
       waiting[cacheKey]?.append(completion)
-      return
+      return true
     }
     waiting[cacheKey] = [completion]
     let finish: (UIImage?) -> Void = { [weak self] image in
@@ -41,11 +43,12 @@ final class CarPlayImageLoader {
       DispatchQueue.global(qos: .utility).async {
         finish(UIImage(contentsOfFile: url.path).map { Self.scaled($0, to: size, scale: scale) })
       }
-      return
+      return true
     }
     URLSession.shared.dataTask(with: url) { data, _, _ in
       finish(data.flatMap(UIImage.init(data:)).map { Self.scaled($0, to: size, scale: scale) })
     }.resume()
+    return true
   }
 
   /// CarPlay draws row and grid images as given (symbols come out black), so symbols become

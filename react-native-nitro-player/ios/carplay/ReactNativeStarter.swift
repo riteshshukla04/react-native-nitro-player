@@ -12,17 +12,19 @@ enum ReactNativeStarter {
   static func startIfNeeded() {
     guard let appDelegate = UIApplication.shared.delegate as? NSObject,
       let factory = reactNativeFactory(of: appDelegate),
-      let rootViewFactory = factory.value(forKey: "rootViewFactory") as? NSObject
+      let rootViewFactory = property(factory, "rootViewFactory") as? NSObject
     else {
       NitroPlayerLogger.log("CarPlay", "⚠️ No RCTReactNativeFactory on the app delegate; JS starts with the phone UI")
       return
     }
-    guard rootViewFactory.value(forKey: "reactHost") == nil,
-      rootViewFactory.value(forKey: "bridge") == nil
+    guard property(rootViewFactory, "reactHost") == nil,
+      property(rootViewFactory, "bridge") == nil
     else { return }
     let selector = NSSelectorFromString(
       "initializeReactHostWithLaunchOptions:bundleConfiguration:devMenuConfiguration:")
-    guard rootViewFactory.responds(to: selector) else {
+    guard rootViewFactory.responds(to: selector),
+      ["bundleConfiguration", "devMenuConfiguration"].allSatisfy({ factory.responds(to: NSSelectorFromString($0)) })
+    else {
       NitroPlayerLogger.log("CarPlay", "⚠️ This React Native version cannot start without a window")
       return
     }
@@ -30,15 +32,19 @@ enum ReactNativeStarter {
     let initialize = unsafeBitCast(rootViewFactory.method(for: selector), to: Initialize.self)
     initialize(
       rootViewFactory, selector, nil,
-      factory.value(forKey: "bundleConfiguration") as AnyObject?,
-      factory.value(forKey: "devMenuConfiguration") as AnyObject?)
+      property(factory, "bundleConfiguration") as AnyObject?,
+      property(factory, "devMenuConfiguration") as AnyObject?)
     NitroPlayerLogger.log("CarPlay", "🚗 Started React Native for CarPlay")
+  }
+
+  /// KVC raises an Objective-C exception, which Swift can't catch, for a key the object lacks
+  private static func property(_ object: NSObject, _ key: String) -> Any? {
+    object.responds(to: NSSelectorFromString(key)) ? object.value(forKey: key) : nil
   }
 
   private static func reactNativeFactory(of appDelegate: NSObject) -> NSObject? {
     guard let factoryClass = NSClassFromString("RCTReactNativeFactory") else { return nil }
-    if appDelegate.responds(to: NSSelectorFromString("reactNativeFactory")),
-      let factory = appDelegate.value(forKey: "reactNativeFactory") as? NSObject,
+    if let factory = property(appDelegate, "reactNativeFactory") as? NSObject,
       factory.isKind(of: factoryClass)
     {
       return factory

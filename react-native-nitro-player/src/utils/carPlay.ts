@@ -69,7 +69,9 @@ export const CarPlayHelper = {
    */
   setTemplateLoader: (loader: TemplateLoader): void => {
     CarPlayModule?.onLoadTemplate((requestId, itemId) => {
-      loader(itemId)
+      // Inside then(), so a loader that throws before returning its promise still gets an answer
+      Promise.resolve()
+        .then(() => loader(itemId))
         .catch(() => null)
         .then((template) =>
           CarPlayModule?.resolveTemplate(
