@@ -1312,4 +1312,4 @@ import type {
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).
