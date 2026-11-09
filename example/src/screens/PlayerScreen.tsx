@@ -21,6 +21,7 @@ import {
 } from 'react-native-nitro-player';
 import type { RepeatMode } from 'react-native-nitro-player';
 import { colors, commonStyles, spacing, borderRadius } from '../styles/theme';
+import {durationLabel} from '../utils/durationLabel';
 import { radioStreams, sampleTracks1 } from '../data/sampleTracks';
 
 export default function PlayerScreen() {
@@ -181,9 +182,7 @@ export default function PlayerScreen() {
               />
             </View>
             <Text style={styles.timeText}>
-              {currentTrack?.duration === 0
-                ? `LIVE · ${streamMetadata!.title}`
-                : formatTime(totalDuration)}
+              {durationLabel(currentTrack?.duration, streamMetadata, totalDuration, formatTime)}
             </Text>
           </View>
         </View>
