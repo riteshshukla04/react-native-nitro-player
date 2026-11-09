@@ -46,8 +46,7 @@ internal class TrackPlayerEventListener(
                     if (pnIdx >= 0) {
                         playNextStack.removeAt(pnIdx)
                     } else {
-                        val unIdx = upNextQueue.indexOfFirst { it.id == trackId }
-                        if (unIdx >= 0) upNextQueue.removeAt(unIdx)
+                        upNextQueue.removeAt(upNextQueue.indexOfFirst { it.id == trackId })
                     }
                 }
             }
