@@ -314,7 +314,7 @@ function formatBytes(bytes: number): string {
 const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
+    backgroundColor: colors.cardBackground,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,

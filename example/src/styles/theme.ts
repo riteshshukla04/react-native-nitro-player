@@ -1,22 +1,24 @@
 import { StyleSheet } from 'react-native';
 
 export const colors = {
-  primary: '#007AFF',
-  secondary: '#FF9500',
-  danger: '#FF3B30',
-  success: '#34C759',
-  background: '#f5f5f5',
+  primary: '#1DB954',
+  secondary: '#FF9F0A',
+  danger: '#FF453A',
+  success: '#30D158',
+  background: '#0B0B12',
   white: '#ffffff',
-  cardBackground: '#f8f9fa',
-  text: '#000000',
-  textSecondary: '#666666',
-  textTertiary: '#999999',
-  border: '#e0e0e0',
-  progressBackground: '#e0e0e0',
-  activeBackground: '#e3f2fd',
-  activeBorder: '#007AFF',
-  infoBackground: '#fff3cd',
-  infoBorder: '#ffc107',
+  cardBackground: '#1C1C28',
+  surface: '#14141E',
+  text: '#F5F5F7',
+  textSecondary: '#A1A1B5',
+  textTertiary: '#6E6E85',
+  border: '#2A2A3A',
+  progressBackground: '#34344A',
+  activeBackground: '#1B3A2A',
+  activeBorder: '#1DB954',
+  infoBackground: '#2E2A17',
+  infoBorder: '#FFC107',
+  onPrimary: '#06130B',
 };
 
 export const spacing = {
@@ -33,6 +35,7 @@ export const borderRadius = {
   lg: 12,
   xl: 25,
   xxl: 35,
+  card: 20,
 };
 
 export const typography = {
@@ -79,16 +82,13 @@ export const commonStyles = StyleSheet.create({
     flex: 1,
   },
   section: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     marginHorizontal: spacing.lg,
     marginVertical: spacing.sm,
     padding: spacing.lg,
-    borderRadius: borderRadius.lg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderRadius: borderRadius.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
   },
   sectionTitle: {
     ...typography.h2,
@@ -111,11 +111,11 @@ export const commonStyles = StyleSheet.create({
     backgroundColor: colors.primary,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: borderRadius.sm,
+    borderRadius: borderRadius.xl,
     marginHorizontal: spacing.xs,
   },
   buttonText: {
-    color: colors.white,
+    color: colors.onPrimary,
     ...typography.button,
   },
   infoText: {
