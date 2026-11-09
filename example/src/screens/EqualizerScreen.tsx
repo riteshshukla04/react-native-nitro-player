@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     activePresetText: {
-        color: colors.white,
+        color: colors.onPrimary,
         fontWeight: '700',
     },
     hintText: {
@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
         marginTop: spacing.xs,
     },
     warningBanner: {
-        backgroundColor: '#FFF3CD',
+        backgroundColor: colors.infoBackground,
         padding: spacing.md,
         borderRadius: borderRadius.md,
         marginBottom: spacing.md,
@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
     },
     warningText: {
         fontSize: 14,
-        color: '#856404',
+        color: colors.infoBorder,
         textAlign: 'center',
         fontWeight: '500',
     },

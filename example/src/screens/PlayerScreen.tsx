@@ -8,6 +8,7 @@ import {
   Platform,
   SafeAreaView,
   Image,
+  StatusBar,
 } from 'react-native';
 import {
   TrackPlayer,
@@ -20,12 +21,12 @@ import {
   useTimedMetadata,
 } from 'react-native-nitro-player';
 import type { RepeatMode } from 'react-native-nitro-player';
-import { colors, commonStyles, spacing, borderRadius } from '../styles/theme';
+import { colors, spacing, borderRadius } from '../styles/theme';
 import { radioStreams, sampleTracks1 } from '../data/sampleTracks';
 
 export default function PlayerScreen() {
   const { track: currentTrack } = useOnChangeTrack();
-  console.log('useNowPlaying', useNowPlaying());
+  useNowPlaying();
   const { state: playbackState } = useOnPlaybackStateChange();
   const { position: playbackPosition, totalDuration } =
     useOnPlaybackProgressChange();
@@ -110,223 +111,209 @@ export default function PlayerScreen() {
     setRepeatModeState(current);
   };
 
+  const isPlaying = playbackState === 'playing';
+  const progress =
+    totalDuration > 0 ? Math.min(1, playbackPosition / totalDuration) : 0;
+  const artwork = streamArtwork ?? currentTrack?.artwork;
+  const title = streamMetadata?.title ?? currentTrack?.title;
+  const artist = streamMetadata?.artist ?? currentTrack?.artist;
+  const album = streamMetadata?.album ?? currentTrack?.album;
+
   return (
-    <SafeAreaView style={commonStyles.container}>
-      <ScrollView style={commonStyles.scrollView}>
-        {/* Quick Test Button */}
-        <TouchableOpacity
-          style={[styles.quickTestButton, quickLoading && {opacity: 0.5}]}
-          onPress={quickTest}
-          disabled={quickLoading}>
-          <Text style={styles.quickTestText}>
-            {quickLoading ? '⏳ Loading...' : '🚀 Quick Test — Load & Play'}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Live radio — exercises timed (ICY) metadata */}
-        <TouchableOpacity
-          style={[styles.quickTestButton, radioLoading && {opacity: 0.5}]}
-          onPress={playRadio}
-          disabled={radioLoading}>
-          <Text style={styles.quickTestText}>
-            {radioLoading ? '⏳ Loading...' : '📻 Play Live Radio (ICY metadata)'}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Stream Metadata */}
-        {streamMetadata && (
-          <View style={commonStyles.section}>
-            <Text style={commonStyles.sectionTitle}>Stream Metadata</Text>
-            <View style={commonStyles.card}>
-              {!!streamArtwork && (
-                <Image source={{uri: streamArtwork}} style={styles.streamArtwork} />
-              )}
-              <Text style={styles.trackTitle}>{streamMetadata.title ?? '—'}</Text>
-              {!!streamMetadata.artist && (
-                <Text style={styles.trackArtist}>{streamMetadata.artist}</Text>
-              )}
-              {!!streamMetadata.album && (
-                <Text style={styles.trackAlbum}>{streamMetadata.album}</Text>
-              )}
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" />
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}>
+        {/* Artwork hero */}
+        <View style={styles.artworkShadow}>
+          {artwork ? (
+            <Image source={{ uri: artwork }} style={styles.artwork} />
+          ) : (
+            <View style={[styles.artwork, styles.artworkPlaceholder]}>
+              <Text style={styles.artworkGlyph}>♪</Text>
             </View>
-          </View>
-        )}
+          )}
+        </View>
 
         {/* Now Playing */}
-        <View style={commonStyles.section}>
-          <Text style={commonStyles.sectionTitle}>Now Playing</Text>
-          {currentTrack ? (
-            <View style={commonStyles.card}>
-              <Text style={styles.trackTitle}>{currentTrack.title}</Text>
-              <Text style={styles.trackArtist}>{currentTrack.artist}</Text>
-              <Text style={styles.trackAlbum}>{currentTrack.album}</Text>
-            </View>
-          ) : (
-            <Text style={commonStyles.infoText}>No track playing</Text>
+        <View style={styles.meta}>
+          <Text style={styles.eyebrow}>NOW PLAYING</Text>
+          <Text style={styles.trackTitle} numberOfLines={1}>
+            {title ?? 'Nothing playing'}
+          </Text>
+          <Text style={styles.trackArtist} numberOfLines={1}>
+            {artist ?? 'Load a playlist to get started'}
+          </Text>
+          {!!album && (
+            <Text style={styles.trackAlbum} numberOfLines={1}>
+              {album}
+            </Text>
           )}
         </View>
 
         {/* Progress */}
-        <View style={commonStyles.section}>
-          <View style={styles.progressContainer}>
+        <View style={styles.progressContainer}>
+          <View style={styles.progressBar}>
+            <View
+              style={[styles.progressFill, { width: `${progress * 100}%` }]}
+            />
+            <View
+              style={[styles.progressKnob, { left: `${progress * 100}%` }]}
+            />
+          </View>
+          <View style={styles.timeRow}>
             <Text style={styles.timeText}>{formatTime(playbackPosition)}</Text>
-            <View style={styles.progressBar}>
-              <View
-                style={[
-                  styles.progressFill,
-                  {
-                    width: `${totalDuration > 0 ? (playbackPosition / totalDuration) * 100 : 0}%`,
-                  },
-                ]}
-              />
-            </View>
             <Text style={styles.timeText}>{formatTime(totalDuration)}</Text>
           </View>
         </View>
-        <View style={commonStyles.section}>
-          <Text style={commonStyles.sectionTitle}>Playback Speed</Text>
-          <Text style={commonStyles.infoText}>{playbackSpeed}x</Text>
+
+        {/* Transport controls */}
+        <View style={styles.controlsRow}>
+          <TouchableOpacity
+            style={styles.sideButton}
+            onPress={shuffleCurrentPlaylist}>
+            <Text style={styles.sideButtonText}>🔀 Shuffle</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.controlButton}
+            onPress={() => void TrackPlayer.skipToPrevious()}>
+            <Text style={styles.controlButtonText}>⏮</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.playButton}
+            onPress={() =>
+              isPlaying ? void TrackPlayer.pause() : void TrackPlayer.play()
+            }>
+            {isPlaying ? (
+              <View style={styles.pauseIcon}>
+                <View style={styles.pauseBar} />
+                <View style={styles.pauseBar} />
+              </View>
+            ) : (
+              <View style={styles.playIcon} />
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.controlButton}
+            onPress={() => void TrackPlayer.skipToNext()}>
+            <Text style={styles.controlButtonText}>⏭</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.sideButton, repeatMode !== 'off' && styles.chipActive]}
+            onPress={cycleRepeatMode}>
+            <Text
+              style={[
+                styles.sideButtonText,
+                repeatMode !== 'off' && styles.chipTextActive,
+              ]}>
+              {REPEAT_LABELS[repeatMode]}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        {Platform.OS === 'ios' && (
+          <TouchableOpacity
+            style={styles.routeButton}
+            onPress={() => {
+              try {
+                AudioRoutePicker?.showRoutePicker();
+              } catch {
+                console.log('AudioRoutePicker not available');
+              }
+            }}>
+            <Text style={styles.sideButtonText}>🔊 Route</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Sources */}
+        <Text style={styles.sectionLabel}>Play something</Text>
+        <View style={styles.sourceRow}>
+          <TouchableOpacity
+            style={[styles.sourceCard, quickLoading && styles.disabled]}
+            onPress={quickTest}
+            disabled={quickLoading}>
+            <Text style={styles.sourceEmoji}>🚀</Text>
+            <Text style={styles.sourceTitle}>
+              {quickLoading ? 'Loading...' : 'Quick Test — Load & Play'}
+            </Text>
+            <Text style={styles.sourceSub}>3 sample tracks</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.sourceCard, radioLoading && styles.disabled]}
+            onPress={playRadio}
+            disabled={radioLoading}>
+            <Text style={styles.sourceEmoji}>📻</Text>
+            <Text style={styles.sourceTitle}>
+              {radioLoading ? 'Loading...' : 'Play Live Radio (ICY metadata)'}
+            </Text>
+            <Text style={styles.sourceSub}>Live stream metadata</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Playback Controls */}
-        <View style={commonStyles.section}>
-          <Text style={commonStyles.sectionTitle}>Controls</Text>
-          <View style={styles.controlsRow}>
+        {/* Seek */}
+        <Text style={styles.sectionLabel}>Seek</Text>
+        <View style={styles.chipRow}>
+          {[
+            { label: '30s', onPress: () => void TrackPlayer.seek(30) },
+            { label: '60s', onPress: () => void TrackPlayer.seek(60) },
+            {
+              label: '-10s',
+              onPress: () =>
+                totalDuration > 10 && void TrackPlayer.seek(totalDuration - 10),
+            },
+          ].map(item => (
             <TouchableOpacity
-              style={styles.controlButton}
-              onPress={() => void TrackPlayer.skipToPrevious()}>
-              <Text style={styles.controlButtonText}>⏮️</Text>
+              key={item.label}
+              style={styles.chip}
+              onPress={item.onPress}>
+              <Text style={styles.chipText}>{item.label}</Text>
             </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Speed */}
+        <Text style={styles.sectionLabel}>Speed · {playbackSpeed}x</Text>
+        <View style={styles.chipRow}>
+          {[0.5, 1, 1.5, 2].map(speed => (
             <TouchableOpacity
-              style={[styles.controlButton, styles.playButton]}
-              onPress={() =>
-                playbackState === 'playing'
-                  ? void TrackPlayer.pause()
-                  : void TrackPlayer.play()
-              }>
-              <Text style={styles.playButtonText}>
-                {playbackState === 'playing' ? '⏸️' : '▶️'}
+              key={speed}
+              style={[styles.chip, playbackSpeed === speed && styles.chipActive]}
+              onPress={() => setPlaybackSpeedState(speed)}>
+              <Text
+                style={[
+                  styles.chipText,
+                  playbackSpeed === speed && styles.chipTextActive,
+                ]}>
+                {speed}x
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.controlButton}
-              onPress={() => void TrackPlayer.skipToNext()}>
-              <Text style={styles.controlButtonText}>⏭️</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.secondaryControls}>
-            <TouchableOpacity
-              style={[
-                commonStyles.smallButton,
-                repeatMode !== 'off' && styles.repeatActiveButton,
-              ]}
-              onPress={cycleRepeatMode}>
-              <Text style={commonStyles.buttonText}>{REPEAT_LABELS[repeatMode]}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={commonStyles.smallButton}
-              onPress={shuffleCurrentPlaylist}>
-              <Text style={commonStyles.buttonText}>🔀 Shuffle</Text>
-            </TouchableOpacity>
-            {Platform.OS === 'ios' && (
-              <TouchableOpacity
-                style={commonStyles.smallButton}
-                onPress={() => {
-                  try {
-                    AudioRoutePicker?.showRoutePicker();
-                  } catch {
-                    console.log('AudioRoutePicker not available');
-                  }
-                }}>
-                <Text style={commonStyles.buttonText}>🔊 Route</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+          ))}
         </View>
 
-        {/* Repeat Mode */}
-        <View style={commonStyles.section}>
-          <Text style={commonStyles.sectionTitle}>Repeat Mode</Text>
-          <View style={styles.repeatRow}>
-            {REPEAT_MODES.map(mode => (
-              <TouchableOpacity
-                key={mode}
+        {/* Repeat */}
+        <Text style={styles.sectionLabel}>Repeat Mode</Text>
+        <View style={styles.chipRow}>
+          {REPEAT_MODES.map(mode => (
+            <TouchableOpacity
+              key={mode}
+              style={[styles.chip, repeatMode === mode && styles.chipActive]}
+              onPress={() => {
+                void TrackPlayer.setRepeatMode(mode).then(() =>
+                  setRepeatModeState(mode),
+                );
+              }}>
+              <Text
                 style={[
-                  styles.repeatModeButton,
-                  repeatMode === mode && styles.repeatModeButtonActive,
-                ]}
-                onPress={() => {
-                  void TrackPlayer.setRepeatMode(mode).then(() => setRepeatModeState(mode));
-                }}>
-                <Text
-                  style={[
-                    styles.repeatModeText,
-                    repeatMode === mode && styles.repeatModeTextActive,
-                  ]}>
-                  {REPEAT_LABELS[mode]}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <TouchableOpacity
-            style={[commonStyles.smallButton, { alignSelf: 'center', marginTop: spacing.sm }]}
-            onPress={fetchRepeatMode}>
-            <Text style={commonStyles.buttonText}>🔍 Get Repeat Mode</Text>
-          </TouchableOpacity>
-          <Text style={styles.repeatStatus}>
-            Current: {REPEAT_LABELS[repeatMode]}
-          </Text>
-        </View>
-
-        {/* Seek Controls */}
-        <View style={commonStyles.section}>
-          <Text style={commonStyles.sectionTitle}>Seek</Text>
-          <View style={styles.seekRow}>
-            <TouchableOpacity
-              style={styles.seekButton}
-              onPress={() => void TrackPlayer.seek(30)}>
-              <Text style={commonStyles.buttonText}>30s</Text>
+                  styles.chipText,
+                  repeatMode === mode && styles.chipTextActive,
+                ]}>
+                {REPEAT_LABELS[mode]}
+              </Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.seekButton}
-              onPress={() => void TrackPlayer.seek(60)}>
-              <Text style={commonStyles.buttonText}>60s</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.seekButton}
-              onPress={() =>
-                totalDuration > 10 && void TrackPlayer.seek(totalDuration - 10)
-              }>
-              <Text style={commonStyles.buttonText}>-10s</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={commonStyles.section}>
-          <Text style={commonStyles.sectionTitle}>Playback Speed</Text>
-          <View style={styles.playbackSpeedRow}>
-          <TouchableOpacity
-            style={commonStyles.smallButton}
-            onPress={() => setPlaybackSpeedState(1.5)}>
-            <Text style={commonStyles.buttonText}>1.5x</Text>
+          ))}
+          <TouchableOpacity style={styles.chip} onPress={fetchRepeatMode}>
+            <Text style={styles.chipText}>🔍 Get</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={commonStyles.smallButton}
-            onPress={() => setPlaybackSpeedState(2)}>
-            <Text style={commonStyles.buttonText}>2x</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={commonStyles.smallButton}
-            onPress={() => setPlaybackSpeedState(0.5)}>
-            <Text style={commonStyles.buttonText}>0.5x</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={commonStyles.smallButton}
-            onPress={() => setPlaybackSpeedState(1)}>
-            <Text style={commonStyles.buttonText}>1x</Text>
-          </TouchableOpacity>
-          </View>
-          
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -334,144 +321,150 @@ export default function PlayerScreen() {
 }
 
 const styles = StyleSheet.create({
-  trackTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 4,
+  container: { flex: 1, backgroundColor: colors.background },
+  content: { padding: spacing.xl, paddingBottom: 40 },
+  artworkShadow: {
+    alignSelf: 'center',
+    width: '58%',
+    aspectRatio: 1,
+    borderRadius: 28,
+    backgroundColor: colors.cardBackground,
+    elevation: 16,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.35,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
+    marginTop: spacing.md,
   },
-  trackArtist: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    marginBottom: 4,
-  },
-  trackAlbum: {
-    fontSize: 14,
-    color: colors.textTertiary,
-  },
-  streamArtwork: {
-    width: 120,
-    height: 120,
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.sm,
-  },
-  progressContainer: {
-    flexDirection: 'row',
+  artwork: { width: '100%', height: '100%', borderRadius: 28 },
+  artworkPlaceholder: {
+    backgroundColor: '#23233A',
     alignItems: 'center',
-    gap: spacing.sm,
+    justifyContent: 'center',
   },
+  artworkGlyph: { fontSize: 96, color: colors.primary },
+  meta: { marginTop: 22, alignItems: 'center' },
+  eyebrow: {
+    fontSize: 11,
+    letterSpacing: 2,
+    fontWeight: '700',
+    color: colors.primary,
+    marginBottom: 6,
+  },
+  trackTitle: { fontSize: 24, fontWeight: '800', color: colors.text },
+  trackArtist: { fontSize: 16, color: colors.textSecondary, marginTop: 4 },
+  trackAlbum: { fontSize: 13, color: colors.textTertiary, marginTop: 2 },
+  progressContainer: { marginTop: 20 },
   progressBar: {
-    flex: 1,
-    height: 4,
+    height: 6,
     backgroundColor: colors.progressBackground,
-    borderRadius: 2,
-    overflow: 'hidden',
+    borderRadius: 3,
+    justifyContent: 'center',
   },
   progressFill: {
-    height: '100%',
+    height: 6,
     backgroundColor: colors.primary,
+    borderRadius: 3,
   },
-  timeText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    width: 40,
-    textAlign: 'center',
+  progressKnob: {
+    position: 'absolute',
+    width: 14,
+    height: 14,
+    marginLeft: -7,
+    borderRadius: 7,
+    backgroundColor: colors.text,
   },
+  timeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  timeText: { fontSize: 12, color: colors.textSecondary },
   controlsRow: {
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    gap: 20,
-    marginBottom: spacing.lg,
+    justifyContent: 'space-between',
+    marginTop: 24,
   },
   controlButton: {
-    width: 50,
-    height: 50,
-    borderRadius: borderRadius.xl,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: colors.cardBackground,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
   },
+  controlButtonText: { fontSize: 20, color: colors.text },
   playButton: {
-    width: 70,
-    height: 70,
-    borderRadius: borderRadius.xxl,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     backgroundColor: colors.primary,
-  },
-  controlButtonText: {
-    fontSize: 24,
-  },
-  playButtonText: {
-    fontSize: 32,
-  },
-  secondaryControls: {
-    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.md,
+    elevation: 8,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.5,
+    shadowRadius: 14,
   },
-  seekRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    gap: spacing.sm,
+  playIcon: {
+    marginLeft: 6,
+    width: 0,
+    height: 0,
+    borderTopWidth: 14,
+    borderBottomWidth: 14,
+    borderLeftWidth: 24,
+    borderTopColor: 'transparent',
+    borderBottomColor: 'transparent',
+    borderLeftColor: colors.onPrimary,
   },
-  seekButton: {
-    flex: 1,
-    backgroundColor: colors.primary,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
+  pauseIcon: { flexDirection: 'row', gap: 6 },
+  pauseBar: {
+    width: 8,
+    height: 28,
+    borderRadius: 2,
+    backgroundColor: colors.onPrimary,
   },
-  repeatActiveButton: {
-    backgroundColor: colors.primary,
-  },
-  repeatRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-  },
-  repeatModeButton: {
-    flex: 1,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
+  sideButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 16,
     backgroundColor: colors.cardBackground,
-    alignItems: 'center',
-    borderWidth: 1,
+  },
+  sideButtonText: { fontSize: 11, color: colors.textSecondary, fontWeight: '600' },
+  routeButton: { alignSelf: 'center', marginTop: spacing.md, padding: 8 },
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    marginTop: 30,
+    marginBottom: 12,
+  },
+  sourceRow: { flexDirection: 'row', gap: spacing.md },
+  sourceCard: {
+    flex: 1,
+    backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.card,
+    padding: spacing.lg,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
   },
-  repeatModeButtonActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+  sourceEmoji: { fontSize: 26, marginBottom: 10 },
+  sourceTitle: { fontSize: 14, fontWeight: '700', color: colors.text },
+  sourceSub: { fontSize: 12, color: colors.textTertiary, marginTop: 4 },
+  disabled: { opacity: 0.5 },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  chip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: colors.cardBackground,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
   },
-  repeatModeText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontWeight: '500',
-  },
-  repeatModeTextActive: {
-    color: colors.text,
-    fontWeight: '700',
-  },
-  repeatStatus: {
-    textAlign: 'center',
-    marginTop: spacing.sm,
-    fontSize: 13,
-    color: colors.textSecondary,
-  },
-  playbackSpeedRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-  },
-  quickTestButton: {
-    backgroundColor: '#4CAF50',
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  quickTestText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+  chipTextActive: { color: colors.onPrimary },
 });
