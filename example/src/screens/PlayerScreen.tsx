@@ -180,7 +180,11 @@ export default function PlayerScreen() {
                 ]}
               />
             </View>
-            <Text style={styles.timeText}>{formatTime(totalDuration)}</Text>
+            <Text style={styles.timeText}>
+              {currentTrack?.duration === 0
+                ? `LIVE · ${streamMetadata!.title}`
+                : formatTime(totalDuration)}
+            </Text>
           </View>
         </View>
         <View style={commonStyles.section}>
