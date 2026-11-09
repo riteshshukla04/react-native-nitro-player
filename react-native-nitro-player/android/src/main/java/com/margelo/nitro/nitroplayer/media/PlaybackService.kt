@@ -98,6 +98,9 @@ class NitroPlayerPlaybackService : MediaSessionService() {
         sessionPlayer =
             object : ForwardingPlayer(player) {
                 override fun seekToPrevious() {
+                    // Log where a remote Previous (notification / headset) lands, for skip debugging
+                    val target = player.getMediaItemAt(player.currentMediaItemIndex - 1)
+                    NitroPlayerLogger.log("PlaybackService") { "remote previous -> ${target.mediaId}" }
                     trackPlayerCore?.skipToPreviousOnQueue() ?: super.seekToPrevious()
                 }
 
