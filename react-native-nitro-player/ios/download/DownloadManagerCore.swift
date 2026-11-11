@@ -193,6 +193,9 @@ final class DownloadManagerCore: NSObject {
       if let trackId = self.taskMetadata[downloadId]?.trackId {
         self.notifyStateChange(downloadId: downloadId, trackId: trackId, state: .paused, error: nil)
       }
+
+      // The slot is free: without this, pending downloads wait for a completion that may never come
+      self.startNextPendingDownload()
     }
   }
 
@@ -240,6 +243,9 @@ final class DownloadManagerCore: NSObject {
 
       self.activeTasks.removeValue(forKey: downloadId)
       self.taskMetadata.removeValue(forKey: downloadId)
+
+      // The slot is free: without this, pending downloads wait for a completion that may never come
+      self.startNextPendingDownload()
     }
   }
 
@@ -276,6 +282,7 @@ final class DownloadManagerCore: NSObject {
     if let trackId = self.taskMetadata[downloadId]?.trackId {
       self.notifyStateChange(downloadId: downloadId, trackId: trackId, state: .paused, error: nil)
     }
+    self.startNextPendingDownload()
   }
 
   private func _resumeDownloadUnsafe(downloadId: String) {
@@ -305,6 +312,7 @@ final class DownloadManagerCore: NSObject {
     }
     self.activeTasks.removeValue(forKey: downloadId)
     self.taskMetadata.removeValue(forKey: downloadId)
+    self.startNextPendingDownload()
   }
 
   func pauseAllDownloads() {
