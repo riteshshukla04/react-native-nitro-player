@@ -40,6 +40,23 @@ its own `OptionsProvider`. If your app already ships its own Cast
 Cast has no simulator/emulator support — testing needs a real Chromecast device
 on the same network.
 
+### Building without Google Cast (Android)
+
+The Cast SDK is proprietary Google Play services code, which some distribution
+channels (e.g. F-Droid) don't accept. To leave it out of an Android build, set
+`nitroPlayerCastEnabled` in your app's `android/gradle.properties`:
+
+```properties
+nitroPlayerCastEnabled=false
+```
+
+or pass `-PnitroPlayerCastEnabled=false` to Gradle (handy for a one-off flavor
+build in CI). The library then compiles
+without `play-services-cast-framework`, `media3-cast` and `mediarouter`, and the
+`Cast` API stays callable as inert no-ops: `getCastState()` reports
+`'no_devices_available'`, `isCasting()` is `false`, and `showCastPicker()` does
+nothing. Hide `CastButton` in that build, since there are no devices to pick.
+
 ---
 
 ## Cast API
