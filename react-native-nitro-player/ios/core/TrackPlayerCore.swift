@@ -96,6 +96,10 @@ class TrackPlayerCore: NSObject {
   // track, not a real track change — so it must not emit onChangeTrack or reset
   // per-track state. Consumed (cleared) by the next `currentItemDidChange`.
   internal var suppressTrackChangeEmit = false
+  // Set right before the library itself moves to another item (skipToNext, jumping into the
+  // temporary queues). Lets `currentItemDidChange` tell that apart from a track that finished
+  // by itself, so it reports `skip` or `end`. Consumed (cleared) by the next `currentItemDidChange`.
+  internal var selfInitiatedItemChange = false
   internal var lastCurrentItemTrackId: String?
   // Last observed playback position, used to resume after recreating a failed item.
   internal var lastKnownPosition: Double = 0

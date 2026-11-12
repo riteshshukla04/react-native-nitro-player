@@ -404,6 +404,8 @@ extension TrackPlayerCore {
     // don't reset per-track state that recovery still depends on.
     let isRecoveryReplace = suppressTrackChangeEmit
     suppressTrackChangeEmit = false
+    let isSelfInitiated = selfInitiatedItemChange
+    selfInitiatedItemChange = false
 
     if !isRecoveryReplace {
       // Genuine new track — reset per-track state.
@@ -535,7 +537,7 @@ extension TrackPlayerCore {
           } else {
             NitroPlayerLogger.log("TrackPlayerCore", "   🎵 Temporary track: \(track.title) - \(track.artist)")
             NitroPlayerLogger.log("TrackPlayerCore", "   📢 Emitting onChangeTrack for temporary track")
-            notifyTrackChange(track, .skip)
+            notifyTrackChange(track, isSelfInitiated ? .skip : .end)
           }
         }
       } else if let index = currentTrackIndexOf(trackId, from: indexHint) {
@@ -551,7 +553,7 @@ extension TrackPlayerCore {
             NitroPlayerLogger.log("TrackPlayerCore", "   📢 Emitting onChangeTrack (index changed from \(oldIndex) to \(index))")
             let wrappedToStart =
               currentRepeatMode == .playlist && index == 0 && oldIndex == currentTracks.count - 1
-            notifyTrackChange(track, wrappedToStart ? .repeat : .skip)
+            notifyTrackChange(track, wrappedToStart ? .repeat : (isSelfInitiated ? .skip : .end))
           } else {
             NitroPlayerLogger.log("TrackPlayerCore", "   ⏭️ Skipping onChangeTrack emission (index unchanged)")
           }
