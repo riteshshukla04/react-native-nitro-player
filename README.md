@@ -143,6 +143,8 @@ await TrackPlayer.configure({
 
 Remote skip intervals are in seconds. iOS uses them for AirPods/Control Center fixed skip buttons and exposes remote playback rates `0.5, 1.0, 1.25, 1.5, 1.75, 2.0`; Android uses them for the Media3 seek back/forward notification buttons and does not expose a playback-rate media button. Press-and-hold continuous seek is not implemented on either platform. Custom intervals apply to local playback; during a Google Cast session the receiver skips by a fixed 15 seconds.
 
+On Android, playback keeps going when the app is swiped away from recent apps. Set `androidStopOnTaskRemoved: true` to stop playback and remove the notification instead. It doesn't apply while casting or while Android Auto is connected, and iOS ignores it.
+
 ### 2. Create Playlists
 
 ```typescript

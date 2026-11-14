@@ -99,6 +99,14 @@ export interface PlayerConfig {
   androidAudioFocus?: AndroidAudioFocusMode
 
   /**
+   * Android only, ignored on iOS: swiping the app away from recent apps stops playback and removes
+   * the notification, even while playing (default: false, which keeps playing). It's not applied
+   * while casting or while Android Auto is connected. Saved on the device, so it also applies when
+   * the service runs without JS; set it to false to turn it off again.
+   */
+  androidStopOnTaskRemoved?: boolean
+
+  /**
    * Extra buttons in the notification, lock screen, Android Auto and CarPlay. Replaces the
    * previous buttons; leave it out to keep them. Rejects an unknown icon or a repeated id or command.
    */
