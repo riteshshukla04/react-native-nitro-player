@@ -51,6 +51,7 @@ namespace margelo::nitro::nitroplayer {
     std::optional<double> remoteSkipForwardInterval     SWIFT_PRIVATE;
     std::optional<double> remoteSkipBackwardInterval     SWIFT_PRIVATE;
     std::optional<bool> preferRemoteSkipIntervals     SWIFT_PRIVATE;
+    std::optional<bool> showRemoteSkipButtons     SWIFT_PRIVATE;
     std::optional<double> lookaheadCount     SWIFT_PRIVATE;
     std::optional<std::string> androidNotificationIcon     SWIFT_PRIVATE;
     std::optional<AndroidAudioFocusMode> androidAudioFocus     SWIFT_PRIVATE;
@@ -58,7 +59,7 @@ namespace margelo::nitro::nitroplayer {
 
   public:
     PlayerConfig() = default;
-    explicit PlayerConfig(std::optional<bool> androidAutoEnabled, std::optional<bool> carPlayEnabled, std::optional<bool> showInNotification, std::optional<double> remoteSkipForwardInterval, std::optional<double> remoteSkipBackwardInterval, std::optional<bool> preferRemoteSkipIntervals, std::optional<double> lookaheadCount, std::optional<std::string> androidNotificationIcon, std::optional<AndroidAudioFocusMode> androidAudioFocus, std::optional<NotificationButtons> notificationButtons): androidAutoEnabled(androidAutoEnabled), carPlayEnabled(carPlayEnabled), showInNotification(showInNotification), remoteSkipForwardInterval(remoteSkipForwardInterval), remoteSkipBackwardInterval(remoteSkipBackwardInterval), preferRemoteSkipIntervals(preferRemoteSkipIntervals), lookaheadCount(lookaheadCount), androidNotificationIcon(androidNotificationIcon), androidAudioFocus(androidAudioFocus), notificationButtons(notificationButtons) {}
+    explicit PlayerConfig(std::optional<bool> androidAutoEnabled, std::optional<bool> carPlayEnabled, std::optional<bool> showInNotification, std::optional<double> remoteSkipForwardInterval, std::optional<double> remoteSkipBackwardInterval, std::optional<bool> preferRemoteSkipIntervals, std::optional<bool> showRemoteSkipButtons, std::optional<double> lookaheadCount, std::optional<std::string> androidNotificationIcon, std::optional<AndroidAudioFocusMode> androidAudioFocus, std::optional<NotificationButtons> notificationButtons): androidAutoEnabled(androidAutoEnabled), carPlayEnabled(carPlayEnabled), showInNotification(showInNotification), remoteSkipForwardInterval(remoteSkipForwardInterval), remoteSkipBackwardInterval(remoteSkipBackwardInterval), preferRemoteSkipIntervals(preferRemoteSkipIntervals), showRemoteSkipButtons(showRemoteSkipButtons), lookaheadCount(lookaheadCount), androidNotificationIcon(androidNotificationIcon), androidAudioFocus(androidAudioFocus), notificationButtons(notificationButtons) {}
 
   public:
     friend bool operator==(const PlayerConfig& lhs, const PlayerConfig& rhs) = default;
@@ -80,6 +81,7 @@ namespace margelo::nitro {
         JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "remoteSkipForwardInterval"))),
         JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "remoteSkipBackwardInterval"))),
         JSIConverter<std::optional<bool>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "preferRemoteSkipIntervals"))),
+        JSIConverter<std::optional<bool>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "showRemoteSkipButtons"))),
         JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "lookaheadCount"))),
         JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "androidNotificationIcon"))),
         JSIConverter<std::optional<margelo::nitro::nitroplayer::AndroidAudioFocusMode>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "androidAudioFocus"))),
@@ -94,6 +96,7 @@ namespace margelo::nitro {
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "remoteSkipForwardInterval"), JSIConverter<std::optional<double>>::toJSI(runtime, arg.remoteSkipForwardInterval));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "remoteSkipBackwardInterval"), JSIConverter<std::optional<double>>::toJSI(runtime, arg.remoteSkipBackwardInterval));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "preferRemoteSkipIntervals"), JSIConverter<std::optional<bool>>::toJSI(runtime, arg.preferRemoteSkipIntervals));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "showRemoteSkipButtons"), JSIConverter<std::optional<bool>>::toJSI(runtime, arg.showRemoteSkipButtons));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "lookaheadCount"), JSIConverter<std::optional<double>>::toJSI(runtime, arg.lookaheadCount));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "androidNotificationIcon"), JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.androidNotificationIcon));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "androidAudioFocus"), JSIConverter<std::optional<margelo::nitro::nitroplayer::AndroidAudioFocusMode>>::toJSI(runtime, arg.androidAudioFocus));
@@ -114,6 +117,7 @@ namespace margelo::nitro {
       if (!JSIConverter<std::optional<double>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "remoteSkipForwardInterval")))) return false;
       if (!JSIConverter<std::optional<double>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "remoteSkipBackwardInterval")))) return false;
       if (!JSIConverter<std::optional<bool>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "preferRemoteSkipIntervals")))) return false;
+      if (!JSIConverter<std::optional<bool>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "showRemoteSkipButtons")))) return false;
       if (!JSIConverter<std::optional<double>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "lookaheadCount")))) return false;
       if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "androidNotificationIcon")))) return false;
       if (!JSIConverter<std::optional<margelo::nitro::nitroplayer::AndroidAudioFocusMode>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "androidAudioFocus")))) return false;

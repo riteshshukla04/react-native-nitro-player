@@ -33,6 +33,7 @@ class MediaSessionManager {
   private var remoteSkipForwardInterval: Double = Constants.defaultRemoteSkipInterval
   private var remoteSkipBackwardInterval: Double = Constants.defaultRemoteSkipInterval
   private var preferRemoteSkipIntervals = false
+  private var showRemoteSkipButtons = true
 
   // Tracks the artwork URL currently shown so we can discard stale async loads
   private var lastArtworkUrl: String?
@@ -87,6 +88,7 @@ class MediaSessionManager {
     remoteSkipForwardInterval: Double?,
     remoteSkipBackwardInterval: Double?,
     preferRemoteSkipIntervals: Bool?,
+    showRemoteSkipButtons: Bool?,
     playbackSpeed: Double?
   ) {
     if let showInNotification = showInNotification {
@@ -94,6 +96,9 @@ class MediaSessionManager {
     }
     if let preferRemoteSkipIntervals = preferRemoteSkipIntervals {
       self.preferRemoteSkipIntervals = preferRemoteSkipIntervals
+    }
+    if let showRemoteSkipButtons = showRemoteSkipButtons {
+      self.showRemoteSkipButtons = showRemoteSkipButtons
     }
     if let playbackSpeed = sanitizedPositive(playbackSpeed) {
       cachedPlaybackSpeed = playbackSpeed
@@ -568,11 +573,16 @@ class MediaSessionManager {
     let playerDuration = state.totalDuration
     let hasDuration = playerDuration > 0 && !playerDuration.isNaN && !playerDuration.isInfinite
 
-    commandCenter.nextTrackCommand.isEnabled = hasCurrentTrack && isNotLast
-    commandCenter.previousTrackCommand.isEnabled = hasCurrentTrack
+    // Without a duration (a live stream) previous could only restart a stream that can't seek
+    let canGoBack =
+      positionInQueue > 0 || hasDuration || (cachedRepeatMode == .playlist && queueCount > 1)
     // iOS shows enabled skip-interval commands in place of next/previous, so they stay off unless the app prefers them
-    commandCenter.skipForwardCommand.isEnabled = hasCurrentTrack && preferRemoteSkipIntervals
-    commandCenter.skipBackwardCommand.isEnabled = hasCurrentTrack && preferRemoteSkipIntervals
+    let showSkips = preferRemoteSkipIntervals && showRemoteSkipButtons && hasDuration
+
+    commandCenter.nextTrackCommand.isEnabled = hasCurrentTrack && isNotLast
+    commandCenter.previousTrackCommand.isEnabled = hasCurrentTrack && canGoBack
+    commandCenter.skipForwardCommand.isEnabled = hasCurrentTrack && showSkips
+    commandCenter.skipBackwardCommand.isEnabled = hasCurrentTrack && showSkips
     commandCenter.changePlaybackRateCommand.isEnabled = hasCurrentTrack
     commandCenter.changePlaybackPositionCommand.isEnabled = hasCurrentTrack && hasDuration
 

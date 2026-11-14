@@ -104,6 +104,7 @@ final class HybridTrackPlayer: HybridTrackPlayerSpec {
         remoteSkipForwardInterval: config.remoteSkipForwardInterval,
         remoteSkipBackwardInterval: config.remoteSkipBackwardInterval,
         preferRemoteSkipIntervals: config.preferRemoteSkipIntervals,
+        showRemoteSkipButtons: config.showRemoteSkipButtons,
         notificationButtons: notificationButtons
       )
     }

@@ -88,6 +88,13 @@ export interface PlayerConfig {
    */
   preferRemoteSkipIntervals?: boolean
   /**
+   * Show the remote skip-interval buttons at all (default: true). `false` removes them from the
+   * Android notification, Android Auto and WearOS, and keeps them off on iOS even when
+   * `preferRemoteSkipIntervals` is true. Either way they're left out for a live stream or any
+   * item that can't seek.
+   */
+  showRemoteSkipButtons?: boolean
+  /**
    * Number of upcoming tracks to preload URLs for (default: 5)
    * Higher values = more proactive loading, but more network requests
    */
