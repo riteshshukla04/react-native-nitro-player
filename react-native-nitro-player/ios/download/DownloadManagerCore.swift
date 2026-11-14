@@ -730,21 +730,8 @@ final class DownloadManagerCore: NSObject {
   private func recordToTrackItem(_ record: TrackItemRecord) -> TrackItem {
     let artwork: Variant_NullType_String? = record.artwork.map { .second($0) }
 
-    var extraPayload: AnyMap? = nil
-    if let extraPayloadDict = record.extraPayload {
-      extraPayload = AnyMap()
-      for (key, value) in extraPayloadDict {
-        if let stringValue = value as? String {
-          extraPayload?.setString(key: key, value: stringValue)
-        } else if let doubleValue = value as? Double {
-          extraPayload?.setDouble(key: key, value: doubleValue)
-        } else if let intValue = value as? Int {
-          extraPayload?.setDouble(key: key, value: Double(intValue))
-        } else if let boolValue = value as? Bool {
-          extraPayload?.setBoolean(key: key, value: boolValue)
-        }
-      }
-    }
+    // Keeps nested objects and arrays, e.g. extraPayload.headers
+    let extraPayload = record.extraPayload.map { AnyMap.fromDictionaryIgnoreIncompatible($0) }
 
     return TrackItem(
       id: record.id,
