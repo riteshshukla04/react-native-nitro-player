@@ -24,11 +24,13 @@ import kotlinx.coroutines.launch
 class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
     companion object {
         private const val ROOT_ID = "root"
+        private const val RECENT_ROOT_ID = "recent"
         private const val PLAYLIST_PREFIX = "playlist_"
         private const val ANDROID_AUTO_PACKAGE = "com.google.android.projection.gearhead"
         private const val PREFS_NAME = "NitroPlayerAndroidAuto"
         private const val KEY_ENABLED = "enabled"
         private const val KEY_SEARCH = "search"
+        private const val KEY_LAST_TRACK = "lastTrackId"
 
         var isAndroidAutoConnected: Boolean = false
 
@@ -52,6 +54,14 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
             supported: Boolean,
         ) {
             prefs(context).edit().putBoolean(KEY_SEARCH, supported).apply()
+        }
+
+        // Playlists are saved but not the position in them; a recent-media request needs the track without JS
+        fun rememberCurrentTrack(
+            context: Context,
+            trackId: String,
+        ) {
+            prefs(context).edit().putString(KEY_LAST_TRACK, trackId).apply()
         }
 
         private fun prefs(context: Context) = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -94,10 +104,16 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
         clientPackageName: String,
         clientUid: Int,
         rootHints: Bundle?,
-    ): BrowserRoot {
+    ): BrowserRoot? {
         NitroPlayerLogger.log("MediaBrowserService", "📂 NitroPlayerMediaBrowserService: onGetRoot called from $clientPackageName")
 
         if (clientPackageName == ANDROID_AUTO_PACKAGE) core.onAndroidAutoBrowserConnected()
+
+        // SystemUI's media resumption (and other clients) ask for one playable recent item, without JS running
+        if (rootHints?.getBoolean(BrowserRoot.EXTRA_RECENT) == true) {
+            if (recentTrack() == null) return null
+            return BrowserRoot(RECENT_ROOT_ID, Bundle().apply { putBoolean(BrowserRoot.EXTRA_RECENT, true) })
+        }
 
         // Always the real root: enabling later only has to refresh it, not reconnect the car
         val extras =
@@ -123,6 +139,14 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
         result: Result<MutableList<MediaBrowserCompat.MediaItem>>,
     ) {
         NitroPlayerLogger.log("MediaBrowserService", "📂 NitroPlayerMediaBrowserService: onLoadChildren called for parentId: $parentId")
+
+        if (parentId == RECENT_ROOT_ID) {
+            // Playing it ("playlistId:trackId") loads the saved queue natively and starts JS
+            val recent = recentTrack()
+            result.sendResult(recent?.let { (playlist, track) -> mutableListOf(recentMediaItem(playlist, track)) } ?: mutableListOf())
+            return
+        }
+
         startJsOnDemand()
 
         if (!isAndroidAutoEnabled) {
@@ -297,6 +321,28 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
         } catch (e: Exception) {
             NitroPlayerLogger.log("MediaBrowserService", "⚠️ NitroPlayerMediaBrowserService: Error notifying playlist changed: ${e.message}")
         }
+    }
+
+    private fun recentTrack(): Pair<Playlist, TrackItem>? {
+        val playlist = core.playlistManager.getCurrentPlaylist() ?: return null
+        val lastTrackId = prefs(this).getString(KEY_LAST_TRACK, null)
+        val track = playlist.tracks.firstOrNull { it.id == lastTrackId } ?: playlist.tracks.firstOrNull() ?: return null
+        return playlist to track
+    }
+
+    private fun recentMediaItem(
+        playlist: Playlist,
+        track: TrackItem,
+    ): MediaBrowserCompat.MediaItem {
+        val description =
+            MediaDescriptionCompat
+                .Builder()
+                .setMediaId("${playlist.id}:${track.id}")
+                .setTitle(track.title)
+                .setSubtitle(track.artist)
+                .setIconUri(track.artwork?.asSecondOrNull()?.let { Uri.parse(it) })
+                .build()
+        return MediaBrowserCompat.MediaItem(description, MediaBrowserCompat.MediaItem.FLAG_PLAYABLE)
     }
 
     // Apps may delete the playlists a published library points at; hide those, but keep empty ones so the user still finds them

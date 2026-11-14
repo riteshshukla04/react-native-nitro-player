@@ -5,6 +5,7 @@ import com.margelo.nitro.nitroplayer.Reason
 import com.margelo.nitro.nitroplayer.TimedMetadata
 import com.margelo.nitro.nitroplayer.TrackItem
 import com.margelo.nitro.nitroplayer.TrackPlayerState
+import com.margelo.nitro.nitroplayer.media.NitroPlayerMediaBrowserService
 
 /**
  * Notification helpers — call the registered ListenerRegistry callbacks.
@@ -15,6 +16,7 @@ internal fun TrackPlayerCore.notifyTrackChange(
     track: TrackItem,
     reason: Reason?,
 ) {
+    NitroPlayerMediaBrowserService.rememberCurrentTrack(context, track.id)
     onChangeTrackListeners.forEach { it(track, reason) }
 }
 
