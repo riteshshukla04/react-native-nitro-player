@@ -69,6 +69,25 @@ internal fun TrackPlayerCore.skipToNextOnQueue() {
 
 suspend fun TrackPlayerCore.skipToPrevious() = withPlayerContext { skipToPreviousOnQueue() }
 
+/** Whether [skipToNextOnQueue] would move anywhere: off for a live stream alone in the queue. */
+internal fun TrackPlayerCore.canSkipToNextOnQueue(): Boolean {
+    if (!isExoInitialized) return false
+    // The timeline is windowed, so also ask the logical queue
+    if (exo.hasNextMediaItem() || currentTrackIndex < currentTracks.size - 1) return true
+    if (currentRepeatMode != RepeatMode.PLAYLIST || currentTracks.isEmpty()) return false
+    // The wrap restarts a lone playlist track in place, which a live stream can't do
+    return currentTracks.size > 1 || currentTemporaryType != TrackPlayerCore.TemporaryType.NONE || exo.player.isCurrentMediaItemSeekable
+}
+
+/** Whether [skipToPreviousOnQueue] would do more than restart a stream that can't seek. */
+internal fun TrackPlayerCore.canSkipToPreviousOnQueue(): Boolean {
+    if (!isExoInitialized) return false
+    return exo.player.isCurrentMediaItemSeekable ||
+        (currentTemporaryType != TrackPlayerCore.TemporaryType.NONE && currentTracks.isNotEmpty()) ||
+        currentTrackIndex > 0 ||
+        (currentRepeatMode == RepeatMode.PLAYLIST && currentTracks.size > 1)
+}
+
 internal fun TrackPlayerCore.skipToPreviousOnQueue() {
     val currentPosition = exo.currentPosition
     when {
@@ -111,6 +130,7 @@ internal fun TrackPlayerCore.setRepeatModeOnQueue(mode: RepeatMode) {
     ) {
         rebuildQueueFromCurrentPosition()
     }
+    mediaSessionManager?.refreshStandardButtons()
 }
 
 /** True while the playing item was removed from the playlist and is finishing. */
@@ -164,6 +184,7 @@ internal fun TrackPlayerCore.configureOnQueue(config: PlayerConfig) {
         config.showInNotification,
         remoteSkipForwardIntervalMs,
         remoteSkipBackwardIntervalMs,
+        config.showRemoteSkipButtons,
     )
     notificationButtons?.let { mediaSessionManager?.setNotificationButtons(it) }
 }

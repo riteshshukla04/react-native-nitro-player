@@ -107,7 +107,8 @@ extension TrackPlayerCore {
     androidAutoEnabled: Bool?, carPlayEnabled: Bool?,
     showInNotification: Bool?, lookaheadCount: Int?,
     remoteSkipForwardInterval: Double?, remoteSkipBackwardInterval: Double?,
-    preferRemoteSkipIntervals: Bool?, notificationButtons: IOSButtonConfig? = nil
+    preferRemoteSkipIntervals: Bool?, showRemoteSkipButtons: Bool? = nil,
+    notificationButtons: IOSButtonConfig? = nil
   ) {
     if let la = lookaheadCount {
       self.lookaheadCount = la
@@ -122,6 +123,7 @@ extension TrackPlayerCore {
         remoteSkipForwardInterval: remoteSkipForwardInterval,
         remoteSkipBackwardInterval: remoteSkipBackwardInterval,
         preferRemoteSkipIntervals: preferRemoteSkipIntervals,
+        showRemoteSkipButtons: showRemoteSkipButtons,
         playbackSpeed: playbackSpeed
       )
       if let notificationButtons = notificationButtons {
