@@ -133,6 +133,7 @@ interface PlayerConfig {
   lookaheadCount?: number;        // Default: 5 — tracks to preload URLs for
   androidNotificationIcon?: string; // Android only — host-app drawable name for the notification small icon (white monochrome)
   androidAudioFocus?: AndroidAudioFocusMode; // Default: 'pause' — Android only
+  androidStopOnTaskRemoved?: boolean; // Default: false — Android only, swiping the app away stops playback
 }
 ```
 

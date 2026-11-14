@@ -152,6 +152,7 @@ internal fun TrackPlayerCore.configureOnQueue(config: PlayerConfig) {
     // JS is calling, so the keep-alive task is registered: start it now if a headless start needs it
     updateJsKeepAlive()
     config.androidAudioFocus?.let { applyAudioFocusMode(it) }
+    config.androidStopOnTaskRemoved?.let { NitroPlayerPlaybackService.setStopOnTaskRemoved(context, it) }
     config.androidAutoEnabled?.let { NitroPlayerMediaBrowserService.setAndroidAutoEnabled(context, it) }
     config.lookaheadCount?.let { lookaheadCount = it.toInt() }
     config.androidNotificationIcon?.let { NitroPlayerPlaybackService.notificationSmallIconResName = it }

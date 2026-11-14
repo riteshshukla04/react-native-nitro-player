@@ -1,6 +1,7 @@
 package com.margelo.nitro.nitroplayer.media
 
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Binder
@@ -44,6 +45,18 @@ class NitroPlayerPlaybackService : MediaSessionService() {
     companion object {
         const val ACTION_LOCAL_BIND = "com.margelo.nitro.nitroplayer.LOCAL_BIND"
         const val EXTRA_STARTED_FROM_NOTIFICATION = "com.margelo.nitro.nitroplayer.STARTED_FROM_NOTIFICATION"
+        private const val PREFS_NAME = "NitroPlayerPlaybackService"
+        private const val KEY_STOP_ON_TASK_REMOVED = "stopOnTaskRemoved"
+
+        // Persisted: a service restarted without JS can still be swiped away
+        fun setStopOnTaskRemoved(
+            context: Context,
+            enabled: Boolean,
+        ) {
+            prefs(context).edit().putBoolean(KEY_STOP_ON_TASK_REMOVED, enabled).apply()
+        }
+
+        private fun prefs(context: Context) = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
         @Volatile
         var notificationSmallIconResName: String? = null
@@ -64,6 +77,18 @@ class NitroPlayerPlaybackService : MediaSessionService() {
     private lateinit var sessionPlayer: Player
     private var notificationProvider: DefaultMediaNotificationProvider? = null
     private val mainHandler = Handler(Looper.getMainLooper())
+
+    // Puts the session back under the service (and its notification) once playback starts after a stopping swipe
+    private val readdSessionListener =
+        object : Player.Listener {
+            override fun onPlayWhenReadyChanged(
+                playWhenReady: Boolean,
+                reason: Int,
+            ) {
+                val session = mediaSession ?: return
+                if (playWhenReady && !isSessionAdded(session)) addSession(session)
+            }
+        }
 
     /** Owns the CastPlayer + Cast session lifecycle; null when Cast is unavailable. */
     private var castSessionController: CastSessionController? = null
@@ -175,6 +200,7 @@ class NitroPlayerPlaybackService : MediaSessionService() {
         setMediaNotificationProvider(provider)
 
         addSession(mediaSession!!)
+        player.addListener(readdSessionListener)
 
         initCast()
     }
@@ -193,7 +219,7 @@ class NitroPlayerPlaybackService : MediaSessionService() {
                     NitroMediaItemConverter(),
                     ExoPlayerBuilder.DEFAULT_REMOTE_SKIP_INTERVAL_MS,
                     ExoPlayerBuilder.DEFAULT_REMOTE_SKIP_INTERVAL_MS,
-                )
+                ).apply { addListener(readdSessionListener) }
             castSessionController =
                 CastSessionController(
                     castContext = castContext,
@@ -256,6 +282,19 @@ class NitroPlayerPlaybackService : MediaSessionService() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         val session = mediaSession
+        // Not while casting or in the car: swiping the phone app away shouldn't stop the TV or the car
+        val stopOnTaskRemoved =
+            prefs(this).getBoolean(KEY_STOP_ON_TASK_REMOVED, false) &&
+                session?.player === sessionPlayer &&
+                !NitroPlayerMediaBrowserService.isAndroidAutoConnected
+        if (stopOnTaskRemoved) {
+            NitroPlayerLogger.log("PlaybackService") { "task removed: stopping playback (androidStopOnTaskRemoved)" }
+            pauseAllPlayersAndStopSelf()
+            // The JS side stays bound, so the service isn't destroyed and Media3 would keep the paused
+            // notification; removing the session drops it. readdSessionListener adds it back on play.
+            session?.let { removeSession(it) }
+            return
+        }
         if (session == null || !session.player.playWhenReady) {
             stopSelf()
         }
