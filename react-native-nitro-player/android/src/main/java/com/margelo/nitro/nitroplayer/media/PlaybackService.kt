@@ -17,6 +17,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import androidx.mediarouter.media.MediaRouter
 import com.google.android.gms.cast.framework.CastContext
 import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
 import com.margelo.nitro.nitroplayer.core.checkUpcomingTracksForUrls
@@ -202,6 +203,7 @@ class NitroPlayerPlaybackService : MediaSessionService() {
                     localSessionPlayer = sessionPlayer,
                     mediaSession = mediaSession!!,
                     mainHandler = mainHandler,
+                    mediaRouter = MediaRouter.getInstance(this),
                 )
         } catch (e: Exception) {
             NitroPlayerLogger.log("PlaybackService") { "Cast unavailable: ${e.message}" }
