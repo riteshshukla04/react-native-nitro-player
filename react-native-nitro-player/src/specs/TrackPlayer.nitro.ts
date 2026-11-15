@@ -122,6 +122,12 @@ export interface TrackPlayer extends HybridObject<{
    * with the track that was playing at tap time. Android only — no-op on iOS.
    */
   appStartedWithNotification(callback: (track: TrackItem) => void): void
+  /**
+   * Fires when Android Auto connects or disconnects. Android only — no-op on iOS.
+   *
+   * Each call adds a listener; earlier ones stay registered until this object
+   * is disposed. Calling it never affects `useAndroidAutoConnection`.
+   */
   onAndroidAutoConnectionChange(callback: (connected: boolean) => void): void
   isAndroidAutoConnected(): boolean
 
