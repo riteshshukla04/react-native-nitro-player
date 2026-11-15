@@ -34,6 +34,8 @@ internal fun TrackPlayerCore.switchToCastPlayer() {
     val currentTrack = getCurrentTrack() ?: currentTracks.getOrNull(currentTrackIndex)
     val upcoming = buildUpcomingQueueTracks(currentId)
     val positionMs = local.currentPosition.coerceAtLeast(0L)
+    // A live/unseekable stream's position is just time listened — there is nothing at that offset to resume.
+    val canResumePosition = local.isCurrentMediaItemSeekable && !local.isCurrentMediaItemLive
     val wasPlaying = local.playWhenReady
     val repeat = local.repeatMode
 
@@ -45,6 +47,10 @@ internal fun TrackPlayerCore.switchToCastPlayer() {
     playerListener?.let { controller.castPlayer.addListener(it) }
     setMediaSessionPlayer(controller.castPlayer)
 
+    // Set before any load: the cast load reads playWhenReady as its autoplay flag, and a play sent
+    // while the receiver has no media yet is dropped. Also covers the lazy load from updateTracks.
+    controller.castPlayer.playWhenReady = wasPlaying
+
     val castList = ArrayList<TrackItem>()
     currentTrack?.let { castList.add(it) }
     castList.addAll(upcoming)
@@ -54,10 +60,9 @@ internal fun TrackPlayerCore.switchToCastPlayer() {
         lastCastWaitTrackId = null
         val items = playable.map { makeMediaItem(it, mediaIdFor(it)) }
         // Resume mid-track only when the receiver starts on the locally playing track.
-        val resumeFromCurrent = currentTrack != null && playable.first().id == currentTrack.id
+        val resumeFromCurrent = canResumePosition && currentTrack != null && playable.first().id == currentTrack.id
         controller.castPlayer.setMediaItems(items, 0, if (resumeFromCurrent) positionMs else 0L)
         controller.castPlayer.repeatMode = repeat
-        controller.castPlayer.playWhenReady = wasPlaying
         controller.castPlayer.prepare()
     } else {
         // Nothing castable yet (lazy queue) — request URLs; updateTracks will load.

@@ -58,7 +58,10 @@ extension TrackPlayerCore {
       guard let self else { return }
       let wasPlaying = (self.player?.rate ?? 0) > 0 || self.intendedToPlay
       let rawPosition = self.player?.currentTime().seconds ?? 0
-      let position = rawPosition.isFinite ? rawPosition : 0
+      // A live stream (indefinite duration) has no position to resume: currentTime is just time listened.
+      let item = self.player?.currentItem
+      let isLive = item?.status == .readyToPlay && item?.duration.isIndefinite == true
+      let position = rawPosition.isFinite && !isLive ? rawPosition : 0
 
       self.isCasting = true
       self.player?.pause() // silence local output — audio now comes from the device
