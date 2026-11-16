@@ -33,7 +33,6 @@ class MediaSessionManager {
   private var remoteSkipForwardInterval: Double = Constants.defaultRemoteSkipInterval
   private var remoteSkipBackwardInterval: Double = Constants.defaultRemoteSkipInterval
   private var preferRemoteSkipIntervals = false
-  private var showRemoteSkipButtons = true
 
   // Tracks the artwork URL currently shown so we can discard stale async loads
   private var lastArtworkUrl: String?
@@ -88,7 +87,6 @@ class MediaSessionManager {
     remoteSkipForwardInterval: Double?,
     remoteSkipBackwardInterval: Double?,
     preferRemoteSkipIntervals: Bool?,
-    showRemoteSkipButtons: Bool?,
     playbackSpeed: Double?
   ) {
     if let showInNotification = showInNotification {
@@ -96,9 +94,6 @@ class MediaSessionManager {
     }
     if let preferRemoteSkipIntervals = preferRemoteSkipIntervals {
       self.preferRemoteSkipIntervals = preferRemoteSkipIntervals
-    }
-    if let showRemoteSkipButtons = showRemoteSkipButtons {
-      self.showRemoteSkipButtons = showRemoteSkipButtons
     }
     if let playbackSpeed = sanitizedPositive(playbackSpeed) {
       cachedPlaybackSpeed = playbackSpeed
@@ -572,14 +567,20 @@ class MediaSessionManager {
 
     let playerDuration = state.totalDuration
     let hasDuration = playerDuration > 0 && !playerDuration.isNaN && !playerDuration.isInfinite
+    // Until the item loads the player reports no duration; the track's own duration tells a
+    // regular track from a live stream, so the buttons don't flicker on every load.
+    let isFinite = hasDuration || (cachedTrack?.duration ?? 0) > 0
 
     // Without a duration (a live stream) previous could only restart a stream that can't seek
     let canGoBack =
-      positionInQueue > 0 || hasDuration || (cachedRepeatMode == .playlist && queueCount > 1)
+      positionInQueue > 0 || isFinite || (cachedRepeatMode == .playlist && queueCount > 1)
+    // skipToNext wraps under playlist repeat; a lone live stream would only reconnect
+    let canGoForward =
+      isNotLast || (cachedRepeatMode == .playlist && (queueCount > 1 || isFinite))
     // iOS shows enabled skip-interval commands in place of next/previous, so they stay off unless the app prefers them
-    let showSkips = preferRemoteSkipIntervals && showRemoteSkipButtons && hasDuration
+    let showSkips = preferRemoteSkipIntervals && isFinite
 
-    commandCenter.nextTrackCommand.isEnabled = hasCurrentTrack && isNotLast
+    commandCenter.nextTrackCommand.isEnabled = hasCurrentTrack && canGoForward
     commandCenter.previousTrackCommand.isEnabled = hasCurrentTrack && canGoBack
     commandCenter.skipForwardCommand.isEnabled = hasCurrentTrack && showSkips
     commandCenter.skipBackwardCommand.isEnabled = hasCurrentTrack && showSkips

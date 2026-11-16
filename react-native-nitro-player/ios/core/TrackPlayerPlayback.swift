@@ -107,7 +107,7 @@ extension TrackPlayerCore {
     androidAutoEnabled: Bool?, carPlayEnabled: Bool?,
     showInNotification: Bool?, lookaheadCount: Int?,
     remoteSkipForwardInterval: Double?, remoteSkipBackwardInterval: Double?,
-    preferRemoteSkipIntervals: Bool?, showRemoteSkipButtons: Bool? = nil,
+    preferRemoteSkipIntervals: Bool?,
     notificationButtons: IOSButtonConfig? = nil
   ) {
     if let la = lookaheadCount {
@@ -123,7 +123,6 @@ extension TrackPlayerCore {
         remoteSkipForwardInterval: remoteSkipForwardInterval,
         remoteSkipBackwardInterval: remoteSkipBackwardInterval,
         preferRemoteSkipIntervals: preferRemoteSkipIntervals,
-        showRemoteSkipButtons: showRemoteSkipButtons,
         playbackSpeed: playbackSpeed
       )
       if let notificationButtons = notificationButtons {
@@ -314,11 +313,25 @@ extension TrackPlayerCore {
     checkUpcomingTracksForUrls(lookahead: lookaheadCount)
   }
 
+  /// Anything but a live stream can go back to its start; restarting a live stream only reconnects.
+  private func canRestartCurrentItem(_ player: AVQueuePlayer) -> Bool {
+    if let duration = player.currentItem?.duration.seconds, duration.isFinite, duration > 0 {
+      return true
+    }
+    guard let trackId = player.currentItem?.trackId else { return false }
+    let track =
+      currentTracks.first { $0.id == trackId } ?? playNextStack.first { $0.id == trackId }
+      ?? upNextQueue.first { $0.id == trackId }
+    return (track?.duration ?? 0) > 0
+  }
+
   func skipToPreviousInternal() {
     guard let queuePlayer = self.player else { return }
 
     let currentTime = queuePlayer.currentTime()
-    if currentTime.seconds > Constants.skipToPreviousThreshold {
+    if currentTime.seconds > Constants.skipToPreviousThreshold
+      && canRestartCurrentItem(queuePlayer)
+    {
       // If more than threshold seconds in, restart current track. Through seekInternal so the
       // lock screen's elapsed time resets too; a bare seek left it counting from the old position.
       seekInternal(position: 0)
