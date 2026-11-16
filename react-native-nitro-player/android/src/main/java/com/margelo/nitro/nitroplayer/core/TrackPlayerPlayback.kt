@@ -74,8 +74,9 @@ suspend fun TrackPlayerCore.skipToPrevious() = withPlayerContext { skipToPreviou
 internal fun TrackPlayerCore.canRestartCurrentItem(): Boolean {
     val player = exo.player
     if (player.isCurrentMediaItemSeekable) return true
-    if (player.isCurrentMediaItemLive) return false
-    return player.duration != C.TIME_UNSET || (player.currentMediaItem?.mediaMetadata?.durationMs ?: 0L) > 0
+    // A transcode without a length header reads as live to ExoPlayer; the app-supplied duration says otherwise
+    if ((player.currentMediaItem?.mediaMetadata?.durationMs ?: 0L) > 0) return true
+    return !player.isCurrentMediaItemLive && player.duration != C.TIME_UNSET
 }
 
 /** Whether [skipToNextOnQueue] would move anywhere: off for a live stream alone in the queue. */
