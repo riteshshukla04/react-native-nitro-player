@@ -44,8 +44,9 @@ object MediaSessionCallbackFactory {
                 session: MediaSession,
                 controller: MediaSession.ControllerInfo,
             ): MediaSession.ConnectionResult =
+                // Both command sets are set explicitly, so the empty builder keeps every controller's access unchanged.
                 MediaSession.ConnectionResult
-                    .AcceptedResultBuilder(session)
+                    .AcceptedResultBuilder()
                     .setAvailableSessionCommands(
                         service.trackPlayerCore?.mediaSessionManager?.sessionCommands()
                             ?: MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS,
