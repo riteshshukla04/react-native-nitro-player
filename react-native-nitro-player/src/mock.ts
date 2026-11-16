@@ -99,15 +99,15 @@ const DEFAULT_PLAYER_STATE: PlayerState = frozen({
   currentPlayingType: 'not-playing',
 })
 
-const EMPTY_STORAGE_INFO: DownloadStorageInfo = {
+const EMPTY_STORAGE_INFO: DownloadStorageInfo = frozen({
   totalDownloadedSize: 0,
   trackCount: 0,
   playlistCount: 0,
   availableSpace: 0,
   totalSpace: 0,
-}
+})
 
-const EMPTY_QUEUE_STATUS: DownloadQueueStatus = {
+const EMPTY_QUEUE_STATUS: DownloadQueueStatus = frozen({
   pendingCount: 0,
   activeCount: 0,
   completedCount: 0,
@@ -115,9 +115,9 @@ const EMPTY_QUEUE_STATUS: DownloadQueueStatus = {
   totalBytesToDownload: 0,
   totalBytesDownloaded: 0,
   overallProgress: 0,
-}
+})
 
-const GAIN_RANGE = { min: -12, max: 12 }
+const GAIN_RANGE = frozen({ min: -12, max: 12 })
 
 export const PlayerQueue: MockedHybridObject<PlayerQueueType> = {
   createPlaylist: resolved(''),
@@ -315,9 +315,7 @@ const CAST_STATE_RESULT: UseCastStateResult = frozen({
   isReady: true,
 })
 
-const DOWNLOAD_PROGRESS_RESULT: ReturnType<
-  typeof NitroPlayer.useDownloadProgress
-> = frozen({
+const DOWNLOAD_PROGRESS_RESULT: NitroPlayer.UseDownloadProgressResult = frozen({
   progressMap: new Map(),
   progressList: [],
   overallProgress: 0,
