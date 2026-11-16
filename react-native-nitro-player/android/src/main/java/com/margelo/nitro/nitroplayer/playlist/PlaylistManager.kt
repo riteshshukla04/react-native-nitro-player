@@ -598,8 +598,15 @@ class PlaylistManager private constructor(
 
 private val SAVED_ARTWORK_VARIANT = Regex("^(First|Second)\\(value=(.*)\\)$")
 
-/** Repairs artwork saved by older versions as the variant's toString(): "Second(value=<url>)" or "First(value=…)" for null. */
+/**
+ * Repairs artwork saved by older versions as the variant's toString(): "Second(value=<url>)", or
+ * "First(value=…)" for null. Each load-and-save on those versions wrapped it again, so unwrap all layers.
+ */
 private fun savedArtworkUrl(saved: String): String? {
-    val match = SAVED_ARTWORK_VARIANT.matchEntire(saved) ?: return saved
-    return if (match.groupValues[1] == "Second") match.groupValues[2] else null
+    var value = saved
+    while (true) {
+        val match = SAVED_ARTWORK_VARIANT.matchEntire(value) ?: return value
+        if (match.groupValues[1] == "First") return null
+        value = match.groupValues[2]
+    }
 }
