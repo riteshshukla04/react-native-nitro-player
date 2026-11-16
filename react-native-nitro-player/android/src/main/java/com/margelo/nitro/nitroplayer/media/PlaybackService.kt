@@ -51,7 +51,7 @@ class NitroPlayerPlaybackService : MediaSessionService() {
 
         // Persisted: a service restarted without JS can still be swiped away. The first configure()
         // of a process decides, so an app that drops the option turns it off again.
-        fun configureStopOnTaskRemoved(
+        internal fun configureStopOnTaskRemoved(
             context: Context,
             enabled: Boolean?,
         ) {
@@ -275,7 +275,7 @@ class NitroPlayerPlaybackService : MediaSessionService() {
                 session?.player === sessionPlayer &&
                 !NitroPlayerMediaBrowserService.isAndroidAutoConnected
         if (stopOnTaskRemoved) {
-            NitroPlayerLogger.log("PlaybackService") { "task removed: stopping playback (androidStopOnTaskRemoved)" }
+            NitroPlayerLogger.log("PlaybackService") { "task removed: pausing playback (androidStopOnTaskRemoved)" }
             // Not pauseAllPlayersAndStopSelf(): it turns off Media3's paused-foreground grace for good.
             // The JS side stays bound, so the service isn't destroyed and Media3 would keep the paused
             // notification; removing the session drops it. readdSessionListener adds it back on play.
