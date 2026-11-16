@@ -38,6 +38,8 @@ namespace margelo::nitro::nitroplayer { struct LockScreenButton; }
 namespace margelo::nitro::nitroplayer { enum class LockScreenCommand; }
 // Forward declaration of `CarPlayButton` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct CarPlayButton; }
+// Forward declaration of `CarPlayButtonType` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class CarPlayButtonType; }
 // Forward declaration of `Reason` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class Reason; }
 // Forward declaration of `TimedMetadata` to properly resolve imports.
@@ -67,6 +69,7 @@ namespace margelo::nitro::nitroplayer { struct NotificationButtonEvent; }
 #include "LockScreenButton.hpp"
 #include "LockScreenCommand.hpp"
 #include "CarPlayButton.hpp"
+#include "CarPlayButtonType.hpp"
 #include "Reason.hpp"
 #include <functional>
 #include "TimedMetadata.hpp"

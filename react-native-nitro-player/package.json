@@ -1,6 +1,6 @@
 {
   "name": "react-native-nitro-player",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "A powerful audio player library for React Native with playlist management, playback controls, and support for Android Auto and CarPlay",
   "main": "lib/index",
   "module": "lib/index",
@@ -26,7 +26,8 @@
     "app.plugin.js",
     "nitro.json",
     "*.podspec",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "postinstall": "tsc || exit 0;",

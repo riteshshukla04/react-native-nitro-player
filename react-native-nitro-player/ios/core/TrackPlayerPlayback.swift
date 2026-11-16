@@ -181,7 +181,7 @@ extension TrackPlayerCore {
     let position = player.currentTime().seconds
     guard position.isFinite else { return }
     var target = max(0, position + offset)
-    if let duration = player.currentItem?.duration.seconds, duration > 0, duration.isFinite {
+    if let duration = player.currentItem?.readyDurationSeconds, duration > 0, duration.isFinite {
       target = min(target, duration)
     }
     seekInternal(position: target)
@@ -202,6 +202,7 @@ extension TrackPlayerCore {
 
   func playInternal() {
     NitroPlayerLogger.log("TrackPlayerCore", "▶️ play() called")
+    replacePlayerIfFailed(restoringQueue: true)
     activateAudioSessionIfNeeded()
     self.intendedToPlay = true
     // An explicit play() is the ground truth for intent — clear any stale
@@ -238,6 +239,13 @@ extension TrackPlayerCore {
 
   func seekInternal(position: Double) {
     guard let player = self.player else { return }
+    // Seeking a loading item makes AVFoundation wait on the media server for its duration; a slow
+    // stream runs that wait out and iOS kills the server, failing every player. Seek once ready.
+    if let item = player.currentItem, item.status != .readyToPlay {
+      NitroPlayerLogger.log("TrackPlayerCore", "⏳ Seek to \(Int(position))s waits for the item to load")
+      seekWhenReady(item, to: position)
+      return
+    }
     self.isManuallySeeked = true
     let time = CMTime(seconds: position, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
     player.seek(to: time) { _ in
@@ -423,5 +431,7 @@ extension TrackPlayerCore {
 
     NitroPlayerLogger.log("TrackPlayerCore", "▶️ Playing from index: \(songIndex)")
     self.playFromIndexInternal(index: songIndex)
+    // A song without a URL plays once onTracksNeedUpdate answers; nothing else asks for it here
+    checkUpcomingTracksForUrls(lookahead: lookaheadCount)
   }
 }
