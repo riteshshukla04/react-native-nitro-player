@@ -134,7 +134,8 @@ class TrackPlayerCore private constructor(
     @Volatile internal var isCastingField: Boolean = false
 
     /** Last state sent to JS — lets an event batch catch a change the individual callbacks reported stale. */
-    internal var lastEmittedPlaybackState: com.margelo.nitro.nitroplayer.TrackPlayerState? = null
+    // What JS was last told (main thread only); JS starts out at stopped
+    internal var lastEmittedPlaybackState: TrackPlayerState = TrackPlayerState.STOPPED
 
     /** Last track announced from a cast "waiting for URL" state — dedups onChangeTrack across updateTracks re-entries. */
     internal var lastCastWaitTrackId: String? = null
