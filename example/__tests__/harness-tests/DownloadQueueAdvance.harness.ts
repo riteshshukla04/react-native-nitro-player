@@ -36,16 +36,17 @@ const waitForProgress = async (trackId: string, timeoutMs: number) => {
   return trackIdsWithProgress.has(trackId);
 };
 
-// Polls until the download leaves `pending`, or the timeout elapses.
+// Polls until the download leaves `pending`, or the timeout elapses. Looks the task up by its
+// download id, since a finished download of the same track can outlive the cleanup.
 const waitForLeavingPending = async (
-  trackId: string,
+  downloadId: string,
   timeoutMs: number,
-): Promise<string | null> => {
+): Promise<string | undefined> => {
   const deadline = Date.now() + timeoutMs;
-  let state = DownloadManager.getDownloadState(trackId);
+  let state = DownloadManager.getDownloadTask(downloadId)?.state;
   while (state === 'pending' && Date.now() < deadline) {
     await wait(250);
-    state = DownloadManager.getDownloadState(trackId);
+    state = DownloadManager.getDownloadTask(downloadId)?.state;
   }
   return state;
 };
@@ -97,7 +98,7 @@ describe('DownloadManager - queue advances when a slot is freed', () => {
     }
     await DownloadManager.cancelDownload(downloadIdA);
 
-    const state = await waitForLeavingPending(trackB.id, 20000);
+    const state = await waitForLeavingPending(downloadIdB, 20000);
     console.log(`[queue-advance] after cancel: B is ${state}`);
 
     // Failing on the network still means the queue moved on
@@ -111,7 +112,7 @@ describe('DownloadManager - queue advances when a slot is freed', () => {
     }
     await DownloadManager.pauseDownload(downloadIdA);
 
-    const state = await waitForLeavingPending(trackB.id, 20000);
+    const state = await waitForLeavingPending(downloadIdB, 20000);
     console.log(`[queue-advance] after pause: B is ${state}`);
 
     expect(['downloading', 'completed', 'failed']).toContain(state);
@@ -123,7 +124,7 @@ describe('DownloadManager - queue advances when a slot is freed', () => {
       return;
     }
     await DownloadManager.pauseDownload(downloadIdA);
-    if ((await waitForLeavingPending(trackB.id, 20000)) !== 'downloading') {
+    if ((await waitForLeavingPending(downloadIdB, 20000)) !== 'downloading') {
       console.warn('B did not start downloading - skipping test');
       return;
     }
@@ -138,6 +139,8 @@ describe('DownloadManager - queue advances when a slot is freed', () => {
     // B still holds the only slot, so A has to wait for it
     if (stateB === 'downloading') {
       expect(stateA).toBe('pending');
+    } else {
+      console.warn(`B is ${stateB}, not downloading - nothing to check`);
     }
   });
 });

@@ -235,7 +235,10 @@ final class DownloadManagerCore: NSObject {
   }
 
   private func _resumeDownloadUnsafe(downloadId: String) {
-    guard let metadata = self.taskMetadata[downloadId] else { return }
+    // Only a stopped download resumes; a pending or running one already has its task
+    guard let metadata = self.taskMetadata[downloadId],
+      metadata.state == .paused || metadata.state == .failed
+    else { return }
     var task: URLSessionDownloadTask
     if let resumeData = metadata.resumeData {
       task = self.backgroundSession.downloadTask(withResumeData: resumeData)
