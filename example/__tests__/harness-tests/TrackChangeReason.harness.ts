@@ -44,6 +44,17 @@ describe('TrackPlayer - onChangeTrack reason', () => {
   const reasonForTrack = (trackId: string) =>
     changes.find(change => change.trackId === trackId)?.reason;
 
+  // Jumps to the last seconds of the current track; the duration is 0 until the item loads.
+  const seekNearEnd = async () => {
+    let totalDuration = 0;
+    const deadline = Date.now() + 10000;
+    while (totalDuration <= 0 && Date.now() < deadline) {
+      totalDuration = (await TrackPlayer.getState()).totalDuration;
+      if (totalDuration <= 0) await wait(250);
+    }
+    await TrackPlayer.seek(Math.max(totalDuration - 3, 0));
+  };
+
   // Starts track 1 and reports whether the audio actually loaded.
   const startPlaying = async () => {
     await PlayerQueue.loadPlaylist(playlistId);
@@ -92,8 +103,7 @@ describe('TrackPlayer - onChangeTrack reason', () => {
     if (!(await startPlaying())) return;
 
     // Jump to the last seconds of track 1 instead of waiting for a whole song.
-    const { totalDuration } = await TrackPlayer.getState();
-    await TrackPlayer.seek(Math.max(totalDuration - 3, 0));
+    await seekNearEnd();
 
     const advanced = await waitUntil(
       () => reasonForTrack('2') !== undefined,
@@ -124,8 +134,7 @@ describe('TrackPlayer - onChangeTrack reason', () => {
     if (!(await startPlaying())) return;
     await TrackPlayer.playNext('3');
 
-    const { totalDuration } = await TrackPlayer.getState();
-    await TrackPlayer.seek(Math.max(totalDuration - 3, 0));
+    await seekNearEnd();
 
     const advanced = await waitUntil(
       () => reasonForTrack('3') !== undefined,
@@ -135,6 +144,8 @@ describe('TrackPlayer - onChangeTrack reason', () => {
 
     expect(advanced).toBe(true);
     expect(reasonForTrack('3')).toBe('end');
+    // Late duplicates from the same item change would land within a moment
+    await wait(1000);
     expect(changes.filter(change => change.trackId === '3')).toHaveLength(1);
   });
 

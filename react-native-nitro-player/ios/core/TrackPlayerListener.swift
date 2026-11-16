@@ -524,7 +524,7 @@ extension TrackPlayerCore {
       // through the queue, including onto a back-to-back copy, searches past it.
       let matchesIndex = currentTracks[safe: currentTrackIndex]?.id == trackId
       let ontoNextCopy = currentTracks[safe: currentTrackIndex + 1]?.id == trackId
-        && !(isRecoveryReplace || isRepeatLoop || isBackendTransfer)
+        && !(isRecoveryReplace || isRepeatLoop || isBackendTransfer || isSameItem)
         && (previousItemTrackId == trackId || previousTemporaryType != .none)
       let indexHint = matchesIndex && !ontoNextCopy ? currentTrackIndex : currentTrackIndex + 1
 
