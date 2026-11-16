@@ -19,19 +19,30 @@ import com.margelo.nitro.nitroplayer.TrackItem
 
 // ── Cast-safety helpers ────────────────────────────────────────────────────
 
-/** A track the Cast receiver can actually load: non-empty remote (non-local) URL. */
-internal fun TrackPlayerCore.isTrackCastable(track: TrackItem): Boolean =
-    track.url.isNotEmpty() &&
-        !track.url.startsWith("/") &&
-        !track.url.startsWith("file:")
+/** Whether the app supplies the receiver's URLs through `Cast.setCastUrls`. */
+internal val TrackPlayerCore.suppliesCastUrls: Boolean
+    get() = !onTracksNeedCastUrlsListeners.isEmpty
 
-/** Receiver-safe run: keeps castable tracks, skips local-only ones, stops at the first lazy (empty-URL) track whose resolution is pending — receivers auto-skip failed loads instead of waiting like ExoPlayer. */
+/** The URL the receiver loads: the app-supplied Cast URL, or else the track's own URL. */
+internal fun TrackPlayerCore.castUrlFor(track: TrackItem): String = castUrls[track.id] ?: track.url
+
+/** A track the Cast receiver can actually load: an app-supplied Cast URL, or else a non-empty remote (non-local) URL. */
+internal fun TrackPlayerCore.isTrackCastable(track: TrackItem): Boolean =
+    if (suppliesCastUrls) {
+        castUrls.containsKey(track.id)
+    } else {
+        track.url.isNotEmpty() &&
+            !track.url.startsWith("/") &&
+            !track.url.startsWith("file:")
+    }
+
+/** Receiver-safe run: keeps castable tracks, skips local-only ones, stops at the first track whose URL is pending — receivers auto-skip failed loads instead of waiting like ExoPlayer. */
 internal fun TrackPlayerCore.castableUpcoming(tracks: List<TrackItem>): List<TrackItem> {
     val result = ArrayList<TrackItem>(tracks.size)
     for (track in tracks) {
         when {
             isTrackCastable(track) -> result.add(track)
-            track.url.isEmpty() -> break
+            suppliesCastUrls || track.url.isEmpty() -> break
             // local-only → skip and keep scanning
         }
     }
@@ -182,7 +193,7 @@ internal fun TrackPlayerCore.rebuildQueueFromCurrentPosition() {
         val track = newQueueTracks[commonPrefix]
         if (extractTrackId(existing.mediaId) != track.id) break
         // URI must match too — items materialized before lazy URL resolution are unplayable
-        val desiredUrl = if (isCastingField) track.url else downloadManager.getEffectiveUrl(track)
+        val desiredUrl = if (isCastingField) castUrlFor(track) else downloadManager.getEffectiveUrl(track)
         if (existing.localConfiguration?.uri?.toString().orEmpty() != desiredUrl) break
         commonPrefix++
     }
@@ -292,7 +303,7 @@ internal fun TrackPlayerCore.makeMediaItem(
     }
 
     // The receiver fetches media itself, so local download paths are unplayable there — cast uses the remote URL.
-    val effectiveUrl = if (isCastingField) track.url else downloadManager.getEffectiveUrl(track)
+    val effectiveUrl = if (isCastingField) castUrlFor(track) else downloadManager.getEffectiveUrl(track)
 
     // Register custom HTTP headers (e.g. Authorization) from extraPayload.headers so they are
     // injected into the request for this URL. Applies to remote streams only — see ExoPlayerBuilder.

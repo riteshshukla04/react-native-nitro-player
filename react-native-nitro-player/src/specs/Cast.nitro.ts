@@ -1,4 +1,5 @@
 import type { HybridObject } from 'react-native-nitro-modules'
+import type { TrackItem } from '../types/PlayerQueue'
 
 /**
  * The current Google Cast connection state.
@@ -69,4 +70,31 @@ export interface Cast extends HybridObject<{
   onCastStateChange(
     callback: (state: CastState, deviceName: string | null) => void
   ): void
+
+  /**
+   * Register a callback fired while casting when the current or upcoming
+   * tracks have no Cast URL yet. Answer it with {@link setCastUrls}.
+   *
+   * Use this when the receiver needs a different URL from the one the phone
+   * plays, such as a format the receiver can decode or a stream for a
+   * downloaded track. Once a callback is registered, the receiver only loads
+   * tracks that have a Cast URL, and waits on the first one that doesn't.
+   * Without one, the receiver loads each track's `url`.
+   *
+   * Each track id is asked for at most once every few seconds while unanswered.
+   *
+   * @param callback Called with the tracks that need a Cast URL, one per id
+   */
+  onTracksNeedCastUrls(callback: (tracks: TrackItem[]) => void): void
+
+  /**
+   * Supply the URLs the Cast receiver loads, keyed by track id. Merged into
+   * the URLs already supplied; empty strings are ignored.
+   *
+   * Cast URLs are cleared whenever a Cast session starts or ends, so each
+   * session asks for fresh ones through {@link onTracksNeedCastUrls}.
+   *
+   * @param urls Cast URL per track id
+   */
+  setCastUrls(urls: Record<string, string>): Promise<void>
 }

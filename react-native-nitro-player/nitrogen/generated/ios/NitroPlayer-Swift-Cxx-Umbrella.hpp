@@ -157,6 +157,7 @@ namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 #include <memory>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <variant>
 #include <vector>
 

@@ -61,6 +61,8 @@ namespace margelo::nitro::nitroplayer {
     void showCastPicker() override;
     std::shared_ptr<Promise<void>> endCastSession() override;
     void onCastStateChange(const std::function<void(CastState /* state */, const std::optional<std::variant<nitro::NullType, std::string>>& /* deviceName */)>& callback) override;
+    void onTracksNeedCastUrls(const std::function<void(const std::vector<TrackItem>& /* tracks */)>& callback) override;
+    std::shared_ptr<Promise<void>> setCastUrls(const std::unordered_map<std::string, std::string>& urls) override;
 
   private:
     jni::global_ref<JHybridCastSpec::JavaPart> _javaPart;

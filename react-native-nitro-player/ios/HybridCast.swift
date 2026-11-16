@@ -12,6 +12,7 @@ import NitroModules
 final class HybridCast: HybridCastSpec {
   private let core: TrackPlayerCore
   private var listenerIds: [Int64] = []
+  private var castUrlListenerIds: [Int64] = []
 
   override init() {
     core = TrackPlayerCore.shared
@@ -56,8 +57,28 @@ final class HybridCast: HybridCastSpec {
     listenerIds.append(id)
   }
 
+  func onTracksNeedCastUrls(callback: @escaping ([TrackItem]) -> Void) throws {
+    // Replace any prior listener so JS reloads don't accumulate handlers.
+    for id in castUrlListenerIds { core.removeOnTracksNeedCastUrlsListener(id: id) }
+    castUrlListenerIds.removeAll()
+
+    castUrlListenerIds.append(core.addOnTracksNeedCastUrlsListener(callback))
+  }
+
+  func setCastUrls(urls: [String: String]) throws -> Promise<Void> {
+    // Runs on the player queue, where the cast queue is built.
+    let promise = Promise<Void>()
+    core.playerQueue.async {
+      self.core.setCastUrlsInternal(urls)
+      promise.resolve(withResult: ())
+    }
+    return promise
+  }
+
   deinit {
     for id in listenerIds { core.removeOnCastStateChangeListener(id: id) }
     listenerIds.removeAll()
+    for id in castUrlListenerIds { core.removeOnTracksNeedCastUrlsListener(id: id) }
+    castUrlListenerIds.removeAll()
   }
 }

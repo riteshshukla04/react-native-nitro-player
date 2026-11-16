@@ -14,6 +14,8 @@ namespace NitroPlayer { class HybridCastSpec_cxx; }
 
 // Forward declaration of `CastState` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class CastState; }
+// Forward declaration of `TrackItem` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct TrackItem; }
 
 #include <NitroModules/Promise.hpp>
 #include <string>
@@ -22,6 +24,10 @@ namespace margelo::nitro::nitroplayer { enum class CastState; }
 #include <NitroModules/Null.hpp>
 #include <variant>
 #include <functional>
+#include "TrackItem.hpp"
+#include <vector>
+#include <NitroModules/AnyMap.hpp>
+#include <unordered_map>
 
 #include "NitroPlayer-Swift-Cxx-Umbrella.hpp"
 
@@ -124,6 +130,20 @@ namespace margelo::nitro::nitroplayer {
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
+    }
+    inline void onTracksNeedCastUrls(const std::function<void(const std::vector<TrackItem>& /* tracks */)>& callback) override {
+      auto __result = _swiftPart.onTracksNeedCastUrls(callback);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+    }
+    inline std::shared_ptr<Promise<void>> setCastUrls(const std::unordered_map<std::string, std::string>& urls) override {
+      auto __result = _swiftPart.setCastUrls(urls);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
     }
 
   private:

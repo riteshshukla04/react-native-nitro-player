@@ -120,6 +120,8 @@ class TrackPlayerCore private constructor(
         ListenerRegistry<(TimedMetadata) -> Unit>()
     internal val onCastStateChangeListeners =
         ListenerRegistry<(com.margelo.nitro.nitroplayer.CastState, String?) -> Unit>()
+    internal val onTracksNeedCastUrlsListeners =
+        ListenerRegistry<(List<TrackItem>) -> Unit>()
     internal val onNotificationLaunchListeners =
         ListenerRegistry<(TrackItem) -> Unit>()
     internal val onNotificationButtonPressListeners =
@@ -135,6 +137,15 @@ class TrackPlayerCore private constructor(
 
     /** Last track announced from a cast "waiting for URL" state — dedups onChangeTrack across updateTracks re-entries. */
     internal var lastCastWaitTrackId: String? = null
+
+    /** App-supplied URLs the receiver loads instead of `track.url`, keyed by track id. Cleared each session. */
+    internal val castUrls = HashMap<String, String>()
+
+    /** When each track was last asked for a Cast URL, so repeated queue events ask once. */
+    internal val castUrlRequestedAt = HashMap<String, Long>()
+
+    /** Where local playback was when the session started (track id to ms), applied once that track's Cast URL arrives. */
+    internal var castResume: Pair<String, Long>? = null
 
     // ── Progress & playlist-update runnables ───────────────────────────────
 
@@ -471,6 +482,18 @@ class TrackPlayerCore private constructor(
     }
 
     fun removeOnTracksNeedUpdateListener(id: Long): Boolean = onTracksNeedUpdateListeners.remove(id)
+
+    fun addOnTracksNeedCastUrlsListener(cb: (List<TrackItem>) -> Unit): Long {
+        val id = onTracksNeedCastUrlsListeners.add(cb)
+        // A session may already be waiting on Cast URLs
+        enqueue {
+            castUrlRequestedAt.clear()
+            checkUpcomingTracksForCastUrls(lookaheadCount)
+        }
+        return id
+    }
+
+    fun removeOnTracksNeedCastUrlsListener(id: Long): Boolean = onTracksNeedCastUrlsListeners.remove(id)
 
     fun addOnTemporaryQueueChangeListener(cb: (List<TrackItem>, List<TrackItem>) -> Unit): Long = onTemporaryQueueChangeListeners.add(cb)
 

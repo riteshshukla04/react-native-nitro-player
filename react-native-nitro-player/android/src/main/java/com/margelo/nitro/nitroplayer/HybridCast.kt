@@ -13,6 +13,7 @@ import com.margelo.nitro.nitroplayer.core.endCastSession
 import com.margelo.nitro.nitroplayer.core.getCastDeviceName
 import com.margelo.nitro.nitroplayer.core.getCastState
 import com.margelo.nitro.nitroplayer.core.isCasting
+import com.margelo.nitro.nitroplayer.core.setCastUrlsOnQueue
 import com.margelo.nitro.nitroplayer.core.showCastPicker
 
 /**
@@ -27,6 +28,7 @@ class HybridCast : HybridCastSpec() {
     private val core: TrackPlayerCore
 
     private val listenerIds = mutableListOf<Long>()
+    private val castUrlListenerIds = mutableListOf<Long>()
 
     init {
         val context =
@@ -71,9 +73,32 @@ class HybridCast : HybridCastSpec() {
         listenerIds += id
     }
 
+    override fun onTracksNeedCastUrls(callback: (tracks: Array<TrackItem>) -> Unit) {
+        // Replace any prior listener so JS reloads don't accumulate handlers.
+        castUrlListenerIds.forEach { core.removeOnTracksNeedCastUrlsListener(it) }
+        castUrlListenerIds.clear()
+
+        castUrlListenerIds += core.addOnTracksNeedCastUrlsListener { tracks -> callback(tracks.toTypedArray()) }
+    }
+
+    // Appended to the player looper now (not from a coroutine), so it lands in JS call order.
+    override fun setCastUrls(urls: Map<String, String>): Promise<Unit> {
+        val promise = Promise<Unit>()
+        core.enqueue {
+            try {
+                promise.resolve(core.setCastUrlsOnQueue(urls))
+            } catch (e: Throwable) {
+                promise.reject(e)
+            }
+        }
+        return promise
+    }
+
     override fun dispose() {
         super.dispose()
         listenerIds.forEach { core.removeOnCastStateChangeListener(it) }
         listenerIds.clear()
+        castUrlListenerIds.forEach { core.removeOnTracksNeedCastUrlsListener(it) }
+        castUrlListenerIds.clear()
     }
 }

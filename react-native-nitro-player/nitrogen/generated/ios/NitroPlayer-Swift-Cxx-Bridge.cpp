@@ -100,6 +100,14 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     };
   }
   
+  // pragma MARK: std::function<void(const std::vector<TrackItem>& /* tracks */)>
+  Func_void_std__vector_TrackItem_ create_Func_void_std__vector_TrackItem_(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_std__vector_TrackItem_::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const std::vector<TrackItem>& tracks) mutable -> void {
+      swiftClosure.call(tracks);
+    };
+  }
+  
   // pragma MARK: std::shared_ptr<HybridCastSpec>
   std::shared_ptr<HybridCastSpec> create_std__shared_ptr_HybridCastSpec_(void* NON_NULL swiftUnsafePointer) noexcept {
     NitroPlayer::HybridCastSpec_cxx swiftPart = NitroPlayer::HybridCastSpec_cxx::fromUnsafe(swiftUnsafePointer);
@@ -298,14 +306,6 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     #endif
     NitroPlayer::HybridPlayerQueueSpec_cxx& swiftPart = swiftWrapper->getSwiftPart();
     return swiftPart.toUnsafe();
-  }
-  
-  // pragma MARK: std::function<void(const std::vector<TrackItem>& /* result */)>
-  Func_void_std__vector_TrackItem_ create_Func_void_std__vector_TrackItem_(void* NON_NULL swiftClosureWrapper) noexcept {
-    auto swiftClosure = NitroPlayer::Func_void_std__vector_TrackItem_::fromUnsafe(swiftClosureWrapper);
-    return [swiftClosure = std::move(swiftClosure)](const std::vector<TrackItem>& result) mutable -> void {
-      swiftClosure.call(result);
-    };
   }
   
   // pragma MARK: std::function<void(const PlayerState& /* result */)>

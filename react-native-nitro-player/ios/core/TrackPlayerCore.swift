@@ -36,6 +36,8 @@ class TrackPlayerCore: NSObject {
     /// How long a waiting item may go without receiving any media before it is recreated.
     /// Each window in which media arrives re-arms it, so a slow download is never cut off.
     static let stallWatchdogDelay: TimeInterval = 20.0
+    /// How long an unanswered Cast URL request waits before the same track is asked for again.
+    static let castUrlRequestInterval: TimeInterval = 5.0
   }
 
   // MARK: - Thread infrastructure
@@ -135,6 +137,7 @@ class TrackPlayerCore: NSObject {
   internal let onTemporaryQueueChangeListeners = ListenerRegistry<([TrackItem], [TrackItem]) -> Void>()
   internal let onTimedMetadataListeners       = ListenerRegistry<(TimedMetadata) -> Void>()
   internal let onCastStateChangeListeners     = ListenerRegistry<(CastState, String?) -> Void>()
+  internal let onTracksNeedCastUrlsListeners  = ListenerRegistry<([TrackItem]) -> Void>()
   internal let onNotificationButtonPressListeners = ListenerRegistry<(String, TrackItem, NotificationButtonEvent) -> Void>()
 
   // MARK: - Google Cast
@@ -143,6 +146,10 @@ class TrackPlayerCore: NSObject {
   internal var castManager: CastSessionManager?
   /// True while playback is routed to a Cast device (audio plays only on the device).
   internal var isCasting = false
+  /// When each track was last asked for a Cast URL, so repeated queue events ask once.
+  internal var castUrlRequestedAt: [String: TimeInterval] = [:]
+  /// Where local playback was when the session started, applied once the track's Cast URL arrives.
+  internal var castResume: (trackId: String, position: Double)?
 
   // MARK: - Singleton
   static let shared = TrackPlayerCore()
@@ -271,6 +278,20 @@ class TrackPlayerCore: NSObject {
   }
   @discardableResult func removeOnCastStateChangeListener(id: Int64) -> Bool {
     onCastStateChangeListeners.remove(id: id)
+  }
+
+  @discardableResult func addOnTracksNeedCastUrlsListener(_ cb: @escaping ([TrackItem]) -> Void) -> Int64 {
+    let id = onTracksNeedCastUrlsListeners.add(cb)
+    // A session may already be waiting on Cast URLs
+    playerQueue.async { [weak self] in
+      guard let self else { return }
+      self.castUrlRequestedAt.removeAll()
+      self.checkUpcomingTracksForCastUrls(lookahead: self.lookaheadCount)
+    }
+    return id
+  }
+  @discardableResult func removeOnTracksNeedCastUrlsListener(id: Int64) -> Bool {
+    onTracksNeedCastUrlsListeners.remove(id: id)
   }
 
   @discardableResult func addOnNotificationButtonPressListener(_ cb: @escaping (String, TrackItem, NotificationButtonEvent) -> Void) -> Int64 {

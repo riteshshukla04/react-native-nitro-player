@@ -9,6 +9,8 @@
 
 // Forward declaration of `CastState` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class CastState; }
+// Forward declaration of `TrackItem` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct TrackItem; }
 
 #include <NitroModules/Promise.hpp>
 #include <NitroModules/JPromise.hpp>
@@ -24,6 +26,13 @@ namespace margelo::nitro::nitroplayer { enum class CastState; }
 #include <functional>
 #include "JFunc_void_CastState_std__optional_std__variant_nitro__NullType__std__string__.hpp"
 #include <NitroModules/JNICallable.hpp>
+#include "TrackItem.hpp"
+#include <vector>
+#include "JFunc_void_std__vector_TrackItem_.hpp"
+#include "JTrackItem.hpp"
+#include <NitroModules/AnyMap.hpp>
+#include <NitroModules/JAnyMap.hpp>
+#include <unordered_map>
 
 namespace margelo::nitro::nitroplayer {
 
@@ -110,6 +119,31 @@ namespace margelo::nitro::nitroplayer {
   void JHybridCastSpec::onCastStateChange(const std::function<void(CastState /* state */, const std::optional<std::variant<nitro::NullType, std::string>>& /* deviceName */)>& callback) {
     static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_CastState_std__optional_std__variant_nitro__NullType__std__string__::javaobject> /* callback */)>("onCastStateChange_cxx");
     method(_javaPart, JFunc_void_CastState_std__optional_std__variant_nitro__NullType__std__string___cxx::fromCpp(callback));
+  }
+  void JHybridCastSpec::onTracksNeedCastUrls(const std::function<void(const std::vector<TrackItem>& /* tracks */)>& callback) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_std__vector_TrackItem_::javaobject> /* callback */)>("onTracksNeedCastUrls_cxx");
+    method(_javaPart, JFunc_void_std__vector_TrackItem__cxx::fromCpp(callback));
+  }
+  std::shared_ptr<Promise<void>> JHybridCastSpec::setCastUrls(const std::unordered_map<std::string, std::string>& urls) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JMap<jni::JString, jni::JString>> /* urls */)>("setCastUrls");
+    auto __result = method(_javaPart, [&]() -> jni::local_ref<jni::JMap<jni::JString, jni::JString>> {
+      auto __map = jni::JHashMap<jni::JString, jni::JString>::create(urls.size());
+      for (const auto& __entry : urls) {
+        __map->put(jni::make_jstring(__entry.first), jni::make_jstring(__entry.second));
+      }
+      return __map;
+    }());
+    return [&]() {
+      auto __promise = Promise<void>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& /* unit */) {
+        __promise->resolve();
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
   }
 
 } // namespace margelo::nitro::nitroplayer

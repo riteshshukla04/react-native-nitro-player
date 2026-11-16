@@ -251,4 +251,53 @@ open class HybridCastSpec_cxx {
       return bridge.create_Result_void_(__exceptionPtr)
     }
   }
+  
+  @inline(__always)
+  public final func onTracksNeedCastUrls(callback: bridge.Func_void_std__vector_TrackItem_) -> bridge.Result_void_ {
+    do {
+      try self.__implementation.onTracksNeedCastUrls(callback: { () -> ([TrackItem]) -> Void in
+        let __wrappedFunction = bridge.wrap_Func_void_std__vector_TrackItem_(callback)
+        return { (__tracks: [TrackItem]) -> Void in
+          __wrappedFunction.call({ () -> bridge.std__vector_TrackItem_ in
+            var __vector = bridge.create_std__vector_TrackItem_(__tracks.count)
+            for __item in __tracks {
+              __vector.push_back(__item)
+            }
+            return __vector
+          }())
+        }
+      }())
+      return bridge.create_Result_void_()
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_void_(__exceptionPtr)
+    }
+  }
+  
+  @inline(__always)
+  public final func setCastUrls(urls: bridge.std__unordered_map_std__string__std__string_) -> bridge.Result_std__shared_ptr_Promise_void___ {
+    do {
+      let __result = try self.__implementation.setCastUrls(urls: { () -> Dictionary<String, String> in
+        var __dictionary = Dictionary<String, String>(minimumCapacity: urls.size())
+        let __keys = bridge.get_std__unordered_map_std__string__std__string__keys(urls)
+        for __key in __keys {
+          let __value = bridge.get_std__unordered_map_std__string__std__string__value(urls, __key)
+          __dictionary[String(__key)] = String(__value)
+        }
+        return __dictionary
+      }())
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_void__ in
+        let __promise = bridge.create_std__shared_ptr_Promise_void__()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_void__(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve() })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
+      }()
+      return bridge.create_Result_std__shared_ptr_Promise_void___(__resultCpp)
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_std__shared_ptr_Promise_void___(__exceptionPtr)
+    }
+  }
 }

@@ -21,6 +21,8 @@ namespace margelo::nitro::nitroplayer {
       prototype.registerHybridMethod("showCastPicker", &HybridCastSpec::showCastPicker);
       prototype.registerHybridMethod("endCastSession", &HybridCastSpec::endCastSession);
       prototype.registerHybridMethod("onCastStateChange", &HybridCastSpec::onCastStateChange);
+      prototype.registerHybridMethod("onTracksNeedCastUrls", &HybridCastSpec::onTracksNeedCastUrls);
+      prototype.registerHybridMethod("setCastUrls", &HybridCastSpec::setCastUrls);
     });
   }
 

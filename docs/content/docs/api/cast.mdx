@@ -149,6 +149,50 @@ Prefer the [hooks](#hooks) in React components — they manage subscriptions for
 
 ---
 
+### `onTracksNeedCastUrls(callback)`
+
+Called while casting when the current or upcoming tracks have no Cast URL yet.
+Answer it with [`setCastUrls`](#setcasturlsurls).
+
+Use this when the receiver needs a different URL from the one the phone plays:
+a format the receiver can decode (Cast receivers can't decode ALAC, for example),
+or a stream for a downloaded track, whose local file the receiver can't reach.
+
+```typescript
+Cast.onTracksNeedCastUrls(async (tracks) => {
+  const urls = await fetchCastUrls(tracks); // { [trackId]: url }
+  await Cast.setCastUrls(urls);
+});
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `tracks` | `TrackItem[]` | Tracks that need a Cast URL, one per id |
+
+Once a callback is registered, the receiver only loads tracks that have a Cast
+URL, and waits on the first one that doesn't. Without one, the receiver loads
+each track's `url`. A track that goes unanswered is asked for again after a few
+seconds.
+
+---
+
+### `setCastUrls(urls)`
+
+Supply the URLs the Cast receiver loads, keyed by track id. Merged into the URLs
+already supplied; empty strings are ignored.
+
+```typescript
+await Cast.setCastUrls({ 'track-1': 'https://example.com/track-1.mp3' });
+```
+
+**Returns:** `Promise<void>`
+
+Cast URLs are cleared whenever a session starts or ends, so each session asks for
+fresh ones. When the session starts, the receiver waits for the playing track's
+Cast URL, then resumes at the position local playback was at.
+
+---
+
 ## CastButton
 
 A ready-to-use Cast button. Reflects the live connection state, hides itself when

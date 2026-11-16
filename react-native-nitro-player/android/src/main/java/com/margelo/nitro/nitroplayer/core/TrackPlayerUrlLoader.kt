@@ -77,6 +77,12 @@ internal fun TrackPlayerCore.updateTracksOnQueue(tracks: List<TrackItem>) {
                 playlistManager.getPlaylist(currentPlaylistId!!)?.let { assignCurrentTracks(it.tracks) }
             }
 
+            if (isCastingField && suppliesCastUrls) {
+                // The receiver loads Cast URLs, so a new `url` changes nothing there — only resync newly queued tracks.
+                if (exo.mediaItemCount > 0) rebuildQueueFromCurrentPosition() else checkUpcomingTracksForCastUrls(lookaheadCount)
+                return@run
+            }
+
             if (isCastingField) {
                 // Resolved current track (or empty receiver) → atomic reload from the current index; otherwise resync only the upcoming items.
                 if (currentTrackResolvedNow || exo.mediaItemCount == 0) {
@@ -168,10 +174,34 @@ internal fun TrackPlayerCore.checkUpcomingTracksForUrls(
     val needUrls = candidates.filter { it.url.isEmpty() }.distinctBy { it.id }
     val now = SystemClock.elapsedRealtime()
     val ask = if (force) needUrls else needUrls.filter { track -> urlRequestedAt[track.id]?.let { now - it < URL_REQUEST_COALESCE_MS } != true }
+    if (ask.isNotEmpty()) {
+        if (urlRequestedAt.size > 1000) urlRequestedAt.clear()
+        ask.forEach { urlRequestedAt[it.id] = now }
+        notifyTracksNeedUpdate(ask, lookahead)
+    }
+
+    checkUpcomingTracksForCastUrls(lookahead)
+}
+
+// How long an unanswered Cast URL request waits before the same track is asked for again
+private const val CAST_URL_REQUEST_INTERVAL_MS = 5_000L
+
+/** While casting, asks the app for the receiver URLs of the current and upcoming tracks that have none. */
+internal fun TrackPlayerCore.checkUpcomingTracksForCastUrls(lookahead: Int) {
+    if (!isCastingField || !suppliesCastUrls) return
+    // The receiver holds nothing while waiting on the current track's URL, so fall back to the cursor.
+    val current = getCurrentTrack() ?: currentTracks.getOrNull(currentTrackIndex)
+    val candidates = listOfNotNull(current) + getNextTracksInternal(lookahead)
+    val now = SystemClock.elapsedRealtime()
+    val ask =
+        candidates
+            .filter { !castUrls.containsKey(it.id) }
+            .filter { track -> castUrlRequestedAt[track.id]?.let { now - it < CAST_URL_REQUEST_INTERVAL_MS } != true }
+            .distinctBy { it.id }
     if (ask.isEmpty()) return
-    if (urlRequestedAt.size > 1000) urlRequestedAt.clear()
-    ask.forEach { urlRequestedAt[it.id] = now }
-    notifyTracksNeedUpdate(ask, lookahead)
+    ask.forEach { castUrlRequestedAt[it.id] = now }
+    NitroPlayerLogger.log("TrackPlayerCore") { "tracksNeedCastUrls: ${ask.size} track(s)" }
+    onTracksNeedCastUrlsListeners.forEach { it(ask) }
 }
 
 /** Order-preserving dedupe that keeps the last element per key (the counterpart of [distinctBy]). */

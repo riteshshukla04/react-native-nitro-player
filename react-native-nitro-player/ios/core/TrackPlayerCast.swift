@@ -26,18 +26,22 @@ extension TrackPlayerCore {
 
   // MARK: - Cast-safety helpers
 
-  /// A track the Cast receiver can actually load: non-empty remote (non-local) URL.
+  /// Whether the app supplies the receiver's URLs through `Cast.setCastUrls`.
+  var suppliesCastUrls: Bool { !onTracksNeedCastUrlsListeners.isEmpty }
+
+  /// A track the Cast receiver can actually load: an app-supplied Cast URL, or else a non-empty remote (non-local) URL.
   func isTrackCastable(_ track: TrackItem) -> Bool {
-    !track.url.isEmpty && !track.url.hasPrefix("/") && !track.url.hasPrefix("file:")
+    if suppliesCastUrls { return castManager?.castUrl(for: track.id) != nil }
+    return !track.url.isEmpty && !track.url.hasPrefix("/") && !track.url.hasPrefix("file:")
   }
 
-  /// Receiver-safe run: keeps castable tracks, skips local-only ones, stops at the first lazy (empty-URL) track whose resolution is pending.
+  /// Receiver-safe run: keeps castable tracks, skips local-only ones, stops at the first track whose URL is pending.
   func castableUpcoming(_ tracks: [TrackItem]) -> [TrackItem] {
     var result: [TrackItem] = []
     for track in tracks {
       if isTrackCastable(track) {
         result.append(track)
-      } else if track.url.isEmpty {
+      } else if suppliesCastUrls || track.url.isEmpty {
         break
       }
       // local-only → skip and keep scanning
@@ -63,6 +67,11 @@ extension TrackPlayerCore {
       self.isCasting = true
       self.player?.pause() // silence local output — audio now comes from the device
 
+      // Each session asks for fresh Cast URLs; resume where local playback was once the current one arrives.
+      self.castManager?.clearCastUrls()
+      self.castUrlRequestedAt.removeAll()
+      self.castResume = self.getCurrentTrack().map { (trackId: $0.id, position: position) }
+
       self.loadCastQueue(autoplay: wasPlaying, position: position)
     }
   }
@@ -75,6 +84,9 @@ extension TrackPlayerCore {
       let resumePosition = snapshot.position
       let remoteTrackId = snapshot.trackId
       self.isCasting = false
+      self.castManager?.clearCastUrls()
+      self.castUrlRequestedAt.removeAll()
+      self.castResume = nil
 
       // A backend transfer is not a track change.
       self.backendTransferTargetId = remoteTrackId
@@ -206,6 +218,30 @@ extension TrackPlayerCore {
       repeatMode: isTransientPlayOut() ? .off : currentRepeatMode
     )
     checkUpcomingTracksForUrls(lookahead: lookaheadCount)
+  }
+
+  /// Apply app-supplied Cast URLs: load the receiver if it was waiting, reload items whose URL changed, else extend the queue.
+  func setCastUrlsInternal(_ urls: [String: String]) {
+    let urls = urls.filter { !$0.value.isEmpty }
+    guard !urls.isEmpty, let cast = castManager else { return }
+
+    let changedOnReceiver = cast.loadedTrackIds.contains { id in
+      urls[id].map { $0 != cast.castUrl(for: id) } ?? false
+    }
+    cast.setCastUrls(urls)
+    for id in urls.keys { castUrlRequestedAt.removeValue(forKey: id) }
+
+    guard isCasting else { return }
+    if !cast.hasLoadedMedia {
+      let current = getCurrentTrack()
+      let resume = castResume.flatMap { $0.trackId == current?.id ? $0.position : nil } ?? 0
+      if let current, isTrackCastable(current) { castResume = nil }
+      loadCastQueue(autoplay: intendedToPlay, position: resume)
+    } else if changedOnReceiver {
+      loadCastQueue(autoplay: intendedToPlay, position: cast.lastKnownRemotePosition)
+    } else {
+      syncCastQueueAfterCurrent()
+    }
   }
 
   /// Current-preserving operations; the reconciler reloads only when receiver state is untrusted.

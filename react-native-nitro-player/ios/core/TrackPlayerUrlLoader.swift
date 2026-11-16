@@ -134,6 +134,12 @@ extension TrackPlayerCore {
           "📥 Synced currentTracks from PlaylistManager (\(self.currentTracks.count) tracks)")
       }
 
+      if self.isCasting, self.suppliesCastUrls {
+        // The receiver loads Cast URLs, so a new `url` changes nothing there — only extend for newly queued tracks.
+        self.syncCastQueueAfterCurrent()
+        return
+      }
+
       if self.isCasting {
         // Resolved URLs are applied by (re)loading/extending the remote queue — never by touching the silent local player.
         let currentResolvedNow = currentTrackIsEmpty
@@ -260,6 +266,25 @@ extension TrackPlayerCore {
       NitroPlayerLogger.log("TrackPlayerCore", "⚠️ \(tracksNeedingUrls.count) upcoming tracks need URLs")
       notifyTracksNeedUpdate(tracks: tracksNeedingUrls, lookahead: lookahead)
     }
+
+    checkUpcomingTracksForCastUrls(lookahead: lookahead)
+  }
+
+  /// While casting, asks the app for the receiver URLs of the current and upcoming tracks that have none.
+  func checkUpcomingTracksForCastUrls(lookahead: Int) {
+    guard isCasting, suppliesCastUrls, let cast = castManager else { return }
+
+    let now = ProcessInfo.processInfo.systemUptime
+    let candidates = (getCurrentTrack().map { [$0] } ?? []) + getNextTracksInternal(count: lookahead)
+    let ask = candidates
+      .filter { cast.castUrl(for: $0.id) == nil }
+      .filter { castUrlRequestedAt[$0.id].map { now - $0 >= Constants.castUrlRequestInterval } ?? true }
+      .distinctKeepingFirst(by: \.id)
+    guard !ask.isEmpty else { return }
+
+    for track in ask { castUrlRequestedAt[track.id] = now }
+    NitroPlayerLogger.log("TrackPlayerCore", "📡 \(ask.count) tracks need Cast URLs")
+    onTracksNeedCastUrlsListeners.forEach { $0(ask) }
   }
 }
 
