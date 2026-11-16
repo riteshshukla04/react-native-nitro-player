@@ -553,8 +553,8 @@ final class DownloadDatabase {
   }
 
   private func recordToTrackItem(_ record: TrackItemRecord) -> TrackItem {
-    // Keeps nested objects and arrays, e.g. extraPayload.headers
-    let extraPayload = record.extraPayload.map { AnyMap.fromDictionaryIgnoreIncompatible($0) }
+    // Keeps nested objects, arrays, nulls and booleans, e.g. extraPayload.headers
+    let extraPayload = record.extraPayload.map { AnyMap.fromJSON($0) }
 
     return TrackItem(
       id: record.id,

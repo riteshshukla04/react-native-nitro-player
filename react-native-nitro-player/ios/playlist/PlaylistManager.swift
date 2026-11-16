@@ -594,9 +594,9 @@ class PlaylistManager {
             !$0.isEmpty ? Variant_NullType_String.second($0) : nil
           }
 
-          // Keeps nested objects and arrays, e.g. extraPayload.headers
+          // Keeps nested objects, arrays, nulls and booleans, e.g. extraPayload.headers
           let extraPayload = (trackDict["extraPayload"] as? [String: Any]).map {
-            AnyMap.fromDictionaryIgnoreIncompatible($0)
+            AnyMap.fromJSON($0)
           }
 
           return TrackItem(

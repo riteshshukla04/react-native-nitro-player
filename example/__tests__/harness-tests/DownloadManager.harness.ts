@@ -355,6 +355,8 @@ describe('DownloadManager - Comprehensive Tests', () => {
           favorite: true,          // Boolean
           playCount: 42,           // Number (integer)
           customTag: 'test-tag',   // String
+          headers: { Authorization: 'Basic dGVzdA==', 'X-Empty': null }, // Nested object with a null
+          tags: [{ live: true }, 2], // Array of mixed values
         },
       };
 
@@ -419,6 +421,11 @@ describe('DownloadManager - Comprehensive Tests', () => {
       expect(downloadedTrack!.originalTrack.extraPayload!.favorite).toBe(true);
       expect(downloadedTrack!.originalTrack.extraPayload!.playCount).toBe(42);
       expect(downloadedTrack!.originalTrack.extraPayload!.customTag).toBe('test-tag');
+      expect(downloadedTrack!.originalTrack.extraPayload!.headers).toEqual({
+        Authorization: 'Basic dGVzdA==',
+        'X-Empty': null,
+      });
+      expect(downloadedTrack!.originalTrack.extraPayload!.tags).toEqual([{ live: true }, 2]);
 
       // Verify it also appears in getAllDownloadedTracks
       const allDownloads = await DownloadManager.getAllDownloadedTracks();
