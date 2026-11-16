@@ -88,6 +88,12 @@ export interface PlayerConfig {
    */
   preferRemoteSkipIntervals?: boolean
   /**
+   * Android only, ignored on iOS: show the skip-interval buttons in the notification, Android Auto
+   * and WearOS (default: true). Either way they're left out for a live stream or any item that
+   * can't seek. On iOS, `preferRemoteSkipIntervals` decides.
+   */
+  androidShowRemoteSkipButtons?: boolean
+  /**
    * Number of upcoming tracks to preload URLs for (default: 5)
    * Higher values = more proactive loading, but more network requests
    */
@@ -97,6 +103,14 @@ export interface PlayerConfig {
 
   /** How Android reacts when another app takes audio focus (default: 'pause'). */
   androidAudioFocus?: AndroidAudioFocusMode
+
+  /**
+   * Android only, ignored on iOS: swiping the app away from recent apps pauses playback and removes
+   * the notification, even while playing (default: false, which keeps playing). The queue is kept.
+   * It's not applied while casting or while Android Auto is connected. Saved on the device, so it also
+   * applies when the service runs without JS; the first configure() of each launch sets it.
+   */
+  androidStopOnTaskRemoved?: boolean
 
   /**
    * Extra buttons in the notification, lock screen, Android Auto and CarPlay. Replaces the

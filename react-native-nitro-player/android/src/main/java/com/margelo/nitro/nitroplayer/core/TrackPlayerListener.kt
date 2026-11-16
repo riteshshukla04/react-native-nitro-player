@@ -135,6 +135,22 @@ internal class TrackPlayerEventListener(
         }
     }
 
+    // A live stream, a queue edge or a new timeline can change what previous / next / ±N skip can do
+    override fun onEvents(
+        player: Player,
+        events: Player.Events,
+    ) {
+        if (events.containsAny(
+                Player.EVENT_TIMELINE_CHANGED,
+                Player.EVENT_MEDIA_ITEM_TRANSITION,
+                Player.EVENT_AVAILABLE_COMMANDS_CHANGED,
+                Player.EVENT_REPEAT_MODE_CHANGED,
+            )
+        ) {
+            core.mediaSessionManager?.refreshStandardButtons()
+        }
+    }
+
     override fun onPlayWhenReadyChanged(
         playWhenReady: Boolean,
         reason: Int,
