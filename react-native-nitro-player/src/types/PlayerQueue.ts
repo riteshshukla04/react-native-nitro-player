@@ -99,10 +99,10 @@ export interface PlayerConfig {
   androidAudioFocus?: AndroidAudioFocusMode
 
   /**
-   * Android only, ignored on iOS: swiping the app away from recent apps stops playback and removes
-   * the notification, even while playing (default: false, which keeps playing). It's not applied
-   * while casting or while Android Auto is connected. Saved on the device, so it also applies when
-   * the service runs without JS; set it to false to turn it off again.
+   * Android only, ignored on iOS: swiping the app away from recent apps pauses playback and removes
+   * the notification, even while playing (default: false, which keeps playing). The queue is kept.
+   * It's not applied while casting or while Android Auto is connected. Saved on the device, so it also
+   * applies when the service runs without JS; the first configure() of each launch sets it.
    */
   androidStopOnTaskRemoved?: boolean
 

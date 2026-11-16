@@ -46,12 +46,18 @@ class NitroPlayerPlaybackService : MediaSessionService() {
         private const val PREFS_NAME = "NitroPlayerPlaybackService"
         private const val KEY_STOP_ON_TASK_REMOVED = "stopOnTaskRemoved"
 
-        // Persisted: a service restarted without JS can still be swiped away
-        fun setStopOnTaskRemoved(
+        @Volatile
+        private var stopOnTaskRemovedConfigured = false
+
+        // Persisted: a service restarted without JS can still be swiped away. The first configure()
+        // of a process decides, so an app that drops the option turns it off again.
+        fun configureStopOnTaskRemoved(
             context: Context,
-            enabled: Boolean,
+            enabled: Boolean?,
         ) {
-            prefs(context).edit().putBoolean(KEY_STOP_ON_TASK_REMOVED, enabled).apply()
+            if (enabled == null && stopOnTaskRemovedConfigured) return
+            stopOnTaskRemovedConfigured = true
+            prefs(context).edit().putBoolean(KEY_STOP_ON_TASK_REMOVED, enabled ?: false).apply()
         }
 
         private fun prefs(context: Context) = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -270,10 +276,12 @@ class NitroPlayerPlaybackService : MediaSessionService() {
                 !NitroPlayerMediaBrowserService.isAndroidAutoConnected
         if (stopOnTaskRemoved) {
             NitroPlayerLogger.log("PlaybackService") { "task removed: stopping playback (androidStopOnTaskRemoved)" }
-            pauseAllPlayersAndStopSelf()
+            // Not pauseAllPlayersAndStopSelf(): it turns off Media3's paused-foreground grace for good.
             // The JS side stays bound, so the service isn't destroyed and Media3 would keep the paused
             // notification; removing the session drops it. readdSessionListener adds it back on play.
-            session?.let { removeSession(it) }
+            session?.player?.pause()
+            session?.takeIf { isSessionAdded(it) }?.let { removeSession(it) }
+            stopSelf()
             return
         }
         if (session == null || !session.player.playWhenReady) {
