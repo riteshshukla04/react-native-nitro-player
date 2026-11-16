@@ -5,6 +5,7 @@ import {
   beforeEach,
   afterEach,
 } from 'react-native-harness';
+import { Platform } from 'react-native';
 import { TrackPlayer, PlayerQueue, TrackItem } from 'react-native-nitro-player';
 
 const createTestTrack = (id: string, songNumber: number): TrackItem => ({
@@ -18,6 +19,9 @@ const createTestTrack = (id: string, songNumber: number): TrackItem => ({
 
 const wait = (ms: number) =>
   new Promise<void>(resolve => setTimeout(resolve, ms));
+
+// Android reports a manual move as 'user_action'; iOS reports 'skip'.
+const manualReason = Platform.OS === 'ios' ? 'skip' : 'user_action';
 
 const waitUntil = async (condition: () => boolean, timeoutMs: number) => {
   const deadline = Date.now() + timeoutMs;
@@ -68,6 +72,7 @@ describe('TrackPlayer - onChangeTrack reason', () => {
     await PlayerQueue.addTracksToPlaylist(playlistId, [
       createTestTrack('1', 1),
       createTestTrack('2', 2),
+      createTestTrack('3', 3),
     ]);
     changes = [];
     listening = true;
@@ -100,7 +105,7 @@ describe('TrackPlayer - onChangeTrack reason', () => {
     expect(reasonForTrack('2')).toBe('end');
   });
 
-  it('should report "skip" when skipToNext moves to the next track', async () => {
+  it('should report a manual reason when skipToNext moves to the next track', async () => {
     if (!(await startPlaying())) return;
 
     await TrackPlayer.skipToNext();
@@ -112,6 +117,41 @@ describe('TrackPlayer - onChangeTrack reason', () => {
     console.log(`[track-change-reason] skipToNext: ${reasonForTrack('2')}`);
 
     expect(advanced).toBe(true);
-    expect(reasonForTrack('2')).toBe('skip');
+    expect(reasonForTrack('2')).toBe(manualReason);
+  });
+
+  it('should report "end" when a track finishes into a play-next track', async () => {
+    if (!(await startPlaying())) return;
+    await TrackPlayer.playNext('3');
+
+    const { totalDuration } = await TrackPlayer.getState();
+    await TrackPlayer.seek(Math.max(totalDuration - 3, 0));
+
+    const advanced = await waitUntil(
+      () => reasonForTrack('3') !== undefined,
+      30000,
+    );
+    console.log(`[track-change-reason] natural end into play-next: ${reasonForTrack('3')}`);
+
+    expect(advanced).toBe(true);
+    expect(reasonForTrack('3')).toBe('end');
+    expect(changes.filter(change => change.trackId === '3')).toHaveLength(1);
+  });
+
+  it('should report a manual reason when skipToIndex jumps into a play-next track', async () => {
+    if (!(await startPlaying())) return;
+    await TrackPlayer.playNext('3');
+
+    // The actual queue is [1, 3 (play next), 2, 3]
+    await TrackPlayer.skipToIndex(1);
+
+    const advanced = await waitUntil(
+      () => reasonForTrack('3') !== undefined,
+      10000,
+    );
+    console.log(`[track-change-reason] skipToIndex into play-next: ${reasonForTrack('3')}`);
+
+    expect(advanced).toBe(true);
+    expect(reasonForTrack('3')).toBe(manualReason);
   });
 });

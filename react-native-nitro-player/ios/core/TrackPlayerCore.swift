@@ -101,6 +101,9 @@ class TrackPlayerCore: NSObject {
   // by itself, so it reports `skip` or `end`. Consumed (cleared) by the next `currentItemDidChange`.
   internal var selfInitiatedItemChange = false
   internal var lastCurrentItemTrackId: String?
+  // The item `currentItemDidChange` last handled. One queue change can fire the KVO several
+  // times for the same final item, so a temporary track is announced only once.
+  internal weak var lastHandledItem: AVPlayerItem?
   // Last observed playback position, used to resume after recreating a failed item.
   internal var lastKnownPosition: Double = 0
   // Per-track retry budget for recreating AVPlayerItems that hit status == .failed.

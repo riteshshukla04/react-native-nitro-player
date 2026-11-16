@@ -223,7 +223,7 @@ extension TrackPlayerCore {
       } else {
         rebuildAVQueueFromCurrentPosition()
       }
-      selfInitiatedItemChange = true
+      selfInitiatedItemChange = player?.currentItem != nil
       player?.advanceToNextItem()
       return true
     }
@@ -241,7 +241,7 @@ extension TrackPlayerCore {
       } else {
         rebuildAVQueueFromCurrentPosition()
       }
-      selfInitiatedItemChange = true
+      selfInitiatedItemChange = player?.currentItem != nil
       player?.advanceToNextItem()
       return true
     }

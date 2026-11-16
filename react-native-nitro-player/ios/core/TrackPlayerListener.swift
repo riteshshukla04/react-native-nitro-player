@@ -458,6 +458,8 @@ extension TrackPlayerCore {
       && currentItem.trackId == lastCurrentItemTrackId
     let previousItemTrackId = lastCurrentItemTrackId
     lastCurrentItemTrackId = currentItem.trackId
+    let isSameItem = currentItem === lastHandledItem
+    lastHandledItem = currentItem
 
     #if DEBUG
     NitroPlayerLogger.log("TrackPlayerCore", "\n" + String(repeating: "▶", count: Constants.separatorLineLength))
@@ -531,7 +533,7 @@ extension TrackPlayerCore {
         if currentTemporaryType == .playNext { tempTrack = playNextStack.first(where: { $0.id == trackId }) }
         else if currentTemporaryType == .upNext { tempTrack = upNextQueue.first(where: { $0.id == trackId }) }
         if let track = tempTrack {
-          if isRecoveryReplace || isRepeatLoop || isBackendTransfer {
+          if isRecoveryReplace || isRepeatLoop || isBackendTransfer || isSameItem {
             NitroPlayerLogger.log("TrackPlayerCore",
               "   ♻️ Same-track transition for '\(track.title)' — suppressing onChangeTrack")
           } else {
