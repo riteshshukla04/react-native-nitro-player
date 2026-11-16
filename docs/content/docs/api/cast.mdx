@@ -55,7 +55,7 @@ build in CI). The library then compiles
 without `play-services-cast-framework`, `media3-cast` and `mediarouter`, and the
 `Cast` API stays callable as inert no-ops: `getCastState()` reports
 `'no_devices_available'`, `isCasting()` is `false`, and `showCastPicker()` does
-nothing. Hide `CastButton` in that build, since there are no devices to pick.
+nothing. `CastButton` hides itself unless you pass `hideWhenNoDevices={false}`.
 
 ---
 

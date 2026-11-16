@@ -39,8 +39,9 @@ def getExtOrIntegerDefault(name) {
 // (or pass -PnitroPlayerCastEnabled=false) to build without the proprietary Cast SDK,
 // e.g. for F-Droid. Cast APIs then become inert no-ops. Defaults to NitroPlayer_castEnabled.
 def isCastEnabled() {
-  def value = rootProject.findProperty("nitroPlayerCastEnabled") ?: project.properties["NitroPlayer_castEnabled"]
-  return value == null ? true : value.toString().toBoolean()
+  def value = rootProject.findProperty("nitroPlayerCastEnabled")
+  if (value == null) value = project.findProperty("NitroPlayer_castEnabled")
+  return value == null || value.toString().trim().toBoolean()
 }
 
 android {
