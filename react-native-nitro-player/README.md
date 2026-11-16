@@ -49,8 +49,8 @@ Command-style methods return **`Promise<void>`** (or another **`Promise`**) and 
 | `play()`                    | Both     | **Async**. Resumes playback.                                        |
 | `pause()`                   | Both     | **Async**. Pauses playback.                                         |
 | `playSong(id, playlistId?)` | Both     | **Async**. Plays a specific song, optionally from a playlist.       |
-| `skipToNext()`              | Both     | **Async**. Skips to the next track in the queue.                    |
-| `skipToPrevious()`          | Both     | **Async**. Skips to the previous track.                             |
+| `skipToNext()`              | Both     | **Async**. Skips to the next track in the queue. Wraps to the first under `'Playlist'` repeat (restarts a single-track queue). |
+| `skipToPrevious()`          | Both     | **Async**. Skips to the previous track, or restarts it past 2 seconds. Wraps to the last under `'Playlist'` repeat. |
 | `seek(position)`            | Both     | **Async**. Seeks to a specific time position in seconds.           |
 | `setPlaybackSpeed(speed)`   | Both     | **Async**. Sets playback speed; rejects non-finite and non-positive values. |
 | `getPlaybackSpeed()`        | Both     | **Async**. Gets the current playback speed.                         |

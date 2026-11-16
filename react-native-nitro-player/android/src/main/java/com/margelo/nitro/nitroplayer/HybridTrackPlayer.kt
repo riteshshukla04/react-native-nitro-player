@@ -145,6 +145,13 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
 
     override fun isAndroidAutoConnected(): Boolean = core.isAndroidAutoConnected()
 
+    // ── Notification buttons ─────────────────────────────────────────────────
+
+    override fun setNotificationButtonState(state: NotificationButtonState) {
+        val trackIds = state.trackIds?.toList()
+        core.enqueue { core.mediaSessionManager?.setNotificationButtonState(state.buttonId, trackIds, state.isActive) }
+    }
+
     // ── Event listeners ───────────────────────────────────────────────────────
 
     override fun onChangeTrack(callback: (track: TrackItem, reason: Reason?) -> Unit) {
@@ -183,6 +190,11 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
         listenerIds += "appStartedWithNotification" to id
     }
 
+    override fun onNotificationButtonPress(callback: (buttonId: String, track: TrackItem, event: NotificationButtonEvent) -> Unit) {
+        val id = core.addOnNotificationButtonPressListener(callback)
+        listenerIds += "onNotificationButtonPress" to id
+    }
+
     override fun onTracksNeedUpdate(callback: (tracks: Array<TrackItem>, lookahead: Double) -> Unit) {
         val id =
             core.addOnTracksNeedUpdateListener { tracks, lookahead ->
@@ -219,6 +231,7 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
                 "onTemporaryQueueChange" -> core.removeOnTemporaryQueueChangeListener(id)
                 "onTimedMetadata" -> core.removeOnTimedMetadataListener(id)
                 "appStartedWithNotification" -> core.removeOnNotificationLaunchListener(id)
+                "onNotificationButtonPress" -> core.removeOnNotificationButtonPressListener(id)
             }
         }
         listenerIds.clear()

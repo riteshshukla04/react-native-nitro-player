@@ -59,6 +59,8 @@ await TrackPlayer.playSong('track-123', 'playlist-456');
 
 Skip to the next track. Follows the queue priority: playNext stack → upNext queue → playlist.
 
+At the last track, wraps to the first when repeat mode is `'Playlist'` (with a single-track queue, this restarts the track); otherwise does nothing.
+
 ```typescript
 await TrackPlayer.skipToNext();
 ```
@@ -69,7 +71,9 @@ await TrackPlayer.skipToNext();
 
 ### `skipToPrevious()`
 
-Skip to the previous track.
+Skip to the previous track. If more than 2 seconds into the current track, restarts it instead.
+
+At the first track, wraps to the last when repeat mode is `'Playlist'`; otherwise, or with a single-track queue, restarts the current track.
 
 ```typescript
 await TrackPlayer.skipToPrevious();
@@ -190,6 +194,10 @@ await TrackPlayer.setRepeatMode('track');
 |---|---|---|---|
 | `mode` | `RepeatMode` | Yes | `'off'` \| `'Playlist'` \| `'track'` |
 
+<Callout type="warn">
+On Android while casting, `'Playlist'` repeat doesn't yet loop the queue when the last track ends on its own. `skipToNext()` at the last track still wraps.
+</Callout>
+
 **Returns:** `Promise<void>`
 
 ---
@@ -219,8 +227,11 @@ await TrackPlayer.configure({
   lookaheadCount: 10,
   androidNotificationIcon: 'ic_notification', // Android-only custom notification icon
   androidAudioFocus: 'duck', // Android-only: 'pause' (default) | 'duck' | 'ignore'
+  notificationButtons: { android: [{ id: 'favorite', title: 'Favorite', icon: 'heart', activeIcon: 'heart_filled' }] },
 });
 ```
+
+`notificationButtons` adds buttons to the notification, lock screen, Android Auto and CarPlay: see [Notification Buttons](/docs/guides/notification-buttons).
 
 Keep playing at a lower volume when a notification or call interrupts:
 
@@ -255,6 +266,8 @@ const queue = await TrackPlayer.getActualQueue();
 ### `updateTracks(tracks)`
 
 Update entire track objects across all playlists. Matches by `track.id` and updates all properties (url, artwork, title, etc.). Useful for lazy loading URLs.
+
+Every queue position holding a track's `id` receives the update, including copies added with `playNext` or `addToUpNext`. The track that is currently playing is the exception: once it has a URL, an update that changes that URL is skipped for every copy of it, to keep playback gapless (on iOS a new URL is still accepted if its player item has failed). Updates that keep its URL, such as a new title or artwork, still apply. If `tracks` contains the same `id` more than once, the last entry that can be applied wins. Entries without a URL are never applied, so they can't replace an earlier entry that has one.
 
 ```typescript
 await TrackPlayer.updateTracks([
@@ -409,7 +422,7 @@ For tracks with empty URLs (e.g., DRM or token-based streams), Nitro Player supp
 
 ### `getTracksNeedingUrls()`
 
-Get tracks in the current playlist that have missing or empty URLs.
+Get tracks in the current playlist that have missing or empty URLs. Each `id` appears once, even if that track is queued more than once, so the result doesn't line up with queue positions.
 
 ```typescript
 const tracks = await TrackPlayer.getTracksNeedingUrls();
@@ -462,7 +475,7 @@ TrackPlayer.onTracksNeedUpdate((tracks, lookahead) => {
 
 | Param | Type | Description |
 |---|---|---|
-| `tracks` | `TrackItem[]` | Tracks needing URLs |
+| `tracks` | `TrackItem[]` | Tracks needing URLs, one entry per `id` |
 | `lookahead` | `number` | Configured lookahead count |
 
 ---
@@ -597,6 +610,34 @@ TrackPlayer.onAndroidAutoConnectionChange((connected) => {
   console.log(`Android Auto: ${connected ? 'connected' : 'disconnected'}`);
 });
 ```
+
+---
+
+### `onNotificationButtonPress(callback)`
+
+Called when a button from `notificationButtons` is pressed, with the track it was showing for. Toggles have already flipped their icon; `event` says what changed. See [Notification Buttons](/docs/guides/notification-buttons).
+
+```typescript
+TrackPlayer.onNotificationButtonPress((buttonId, track, event) => {
+  if (buttonId === 'favorite') saveFavorite(track.id, event.isActive ?? false);
+});
+```
+
+---
+
+### `setNotificationButtonState(state)`
+
+Sets whether a toggle from `notificationButtons` shows as active, for some tracks or (without `trackIds`) for every track. Tracks start inactive.
+
+```typescript
+TrackPlayer.setNotificationButtonState({ buttonId: 'favorite', trackIds: likedIds, isActive: true });
+```
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `state.buttonId` | `string` | Yes | The button's `id` |
+| `state.trackIds` | `string[]` | No | Tracks to set; leave out to set every track |
+| `state.isActive` | `boolean` | Yes | Show the active icon |
 
 ---
 

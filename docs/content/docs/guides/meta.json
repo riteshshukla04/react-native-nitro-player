@@ -3,6 +3,8 @@
   "pages": [
     "queue-management",
     "offline-playback",
-    "android-auto"
+    "android-auto",
+    "carplay",
+    "notification-buttons"
   ]
 }

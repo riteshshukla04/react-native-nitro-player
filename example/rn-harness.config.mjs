@@ -34,7 +34,7 @@ const config = {
         process.env.HARNESS_IOS_DEVICE ?? 'iPhone 17',
         process.env.HARNESS_IOS_VERSION ?? '26.5'
       ),
-      bundleId: 'org.reactjs.native.example.example', // Your iOS bundle ID
+      bundleId: 'com.cosmonautical.rnnp-example', // Your iOS bundle ID
     }),
   ],
 };

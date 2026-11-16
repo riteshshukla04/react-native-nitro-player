@@ -325,7 +325,8 @@ class PlaylistManager {
    * @return Dictionary of playlistId -> count of tracks updated
    */
   func updateTracks(tracks: [TrackItem]) -> [String: Int] {
-    let tracksMap = Dictionary(uniqueKeysWithValues: tracks.map { ($0.id, $0) })
+    // A queue can hold the same track more than once; last one wins (matches Android's associateBy)
+    let tracksMap = Dictionary(tracks.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last })
     var affectedPlaylists: [String: Int] = [:]
 
     queue.sync {

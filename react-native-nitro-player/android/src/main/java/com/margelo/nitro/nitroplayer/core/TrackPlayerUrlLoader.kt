@@ -20,24 +20,32 @@ internal fun TrackPlayerCore.updateTracksOnQueue(tracks: List<TrackItem>) {
         val currentTrack = getCurrentTrack()
         val currentTrackId = currentTrack?.id
         val currentTrackIsEmpty = currentTrack?.url.isNullOrEmpty()
-        val currentTrackUpdate = if (currentTrackId != null) tracks.find { it.id == currentTrackId } else null
 
-        val safeTracks =
+        val applicableTracks =
             tracks.filter { track ->
                 when {
+                    // Checked first so an entry without a URL can never win the dedupe below
+                    // and blank out every copy of a track.
+                    track.url.isEmpty() -> false
+
                     // Same URL is a metadata-only edit (a title or artwork refresh): it reaches
                     // the session without touching the media, so gapless is unaffected.
+                    // A URL change for the playing track is skipped to preserve gapless.
                     track.id == currentTrackId && !currentTrackIsEmpty -> track.url == currentTrack?.url
-
-                    // preserve gapless
-                    track.id == currentTrackId && currentTrackIsEmpty -> track.url.isNotEmpty()
-
-                    track.url.isEmpty() -> false
 
                     else -> true
                 }
             }
+        // A queue can hold the same track more than once, so a payload may repeat an id.
+        // Keep the last applicable update per id so every step below applies the same track.
+        val safeTracks = applicableTracks.distinctByKeepingLast { it.id }
+        if (safeTracks.size != applicableTracks.size) {
+            NitroPlayerLogger.log("TrackPlayerCore") {
+                "updateTracks repeated ${applicableTracks.size - safeTracks.size} track id(s); last update per id applied"
+            }
+        }
         if (safeTracks.isEmpty()) return@run
+        val currentTrackUpdate = currentTrackId?.let { id -> safeTracks.find { it.id == id } }
         safeTracks.forEach { urlRequestedAt.remove(it.id) }
 
         val affectedPlaylists: Map<String, Int> = playlistManager.updateTracks(safeTracks)
@@ -56,13 +64,17 @@ internal fun TrackPlayerCore.updateTracksOnQueue(tracks: List<TrackItem>) {
             }
         }
 
-        if (currentPlaylistId != null && affectedPlaylists.containsKey(currentPlaylistId)) {
-            val refreshedPlaylist = playlistManager.getPlaylist(currentPlaylistId!!)
-            if (refreshedPlaylist != null) {
-                assignCurrentTracks(refreshedPlaylist.tracks)
-                val updatedById = currentTracks.associateBy { it.id }
-                playNextStack.forEachIndexed { i, t -> updatedById[t.id]?.let { if (it !== t) playNextStack[i] = it } }
-                upNextQueue.forEachIndexed { i, t -> updatedById[t.id]?.let { if (it !== t) upNextQueue[i] = it } }
+        // playNext/upNext hold their own copies of queued tracks (possibly of tracks in no
+        // playlist at all); give them the same update.
+        val updatedById = safeTracks.associateBy { it.id }
+        val tempQueuesUpdated = playNextStack.any { it.id in updatedById } || upNextQueue.any { it.id in updatedById }
+        playNextStack.forEachIndexed { i, t -> updatedById[t.id]?.let { playNextStack[i] = it } }
+        upNextQueue.forEachIndexed { i, t -> updatedById[t.id]?.let { upNextQueue[i] = it } }
+
+        val currentPlaylistAffected = currentPlaylistId?.let { affectedPlaylists.containsKey(it) } == true
+        if (currentPlaylistAffected || tempQueuesUpdated) {
+            if (currentPlaylistAffected) {
+                playlistManager.getPlaylist(currentPlaylistId!!)?.let { assignCurrentTracks(it.tracks) }
             }
 
             if (isCastingField) {
@@ -88,7 +100,8 @@ suspend fun TrackPlayerCore.getTracksNeedingUrls(): List<TrackItem> = withPlayer
 
 internal fun TrackPlayerCore.getTracksNeedingUrlsInternal(): List<TrackItem> {
     val pid = currentPlaylistId ?: return emptyList()
-    return playlistManager.getPlaylist(pid)?.tracks?.filter { it.url.isEmpty() } ?: emptyList()
+    // A queue can hold the same track more than once; ask for each id only once.
+    return playlistManager.getPlaylist(pid)?.tracks?.filter { it.url.isEmpty() }?.distinctBy { it.id } ?: emptyList()
 }
 
 suspend fun TrackPlayerCore.getNextTracks(count: Int): List<TrackItem> = withPlayerContext { getNextTracksInternal(count) }
@@ -151,7 +164,8 @@ internal fun TrackPlayerCore.checkUpcomingTracksForUrls(
     val currentTrack = getCurrentTrack()
     val currentNeedsUrl = currentTrack != null && currentTrack.url.isEmpty()
     val candidates = if (currentNeedsUrl) listOf(currentTrack!!) + upcomingTracks else upcomingTracks
-    val needUrls = candidates.filter { it.url.isEmpty() }
+    // The same track can be queued back to back; ask for each id only once.
+    val needUrls = candidates.filter { it.url.isEmpty() }.distinctBy { it.id }
     val now = SystemClock.elapsedRealtime()
     val ask = if (force) needUrls else needUrls.filter { track -> urlRequestedAt[track.id]?.let { now - it < URL_REQUEST_COALESCE_MS } != true }
     if (ask.isEmpty()) return
@@ -159,3 +173,6 @@ internal fun TrackPlayerCore.checkUpcomingTracksForUrls(
     ask.forEach { urlRequestedAt[it.id] = now }
     notifyTracksNeedUpdate(ask, lookahead)
 }
+
+/** Order-preserving dedupe that keeps the last element per key (the counterpart of [distinctBy]). */
+private inline fun <T, K> List<T>.distinctByKeepingLast(selector: (T) -> K): List<T> = asReversed().distinctBy(selector).reversed()

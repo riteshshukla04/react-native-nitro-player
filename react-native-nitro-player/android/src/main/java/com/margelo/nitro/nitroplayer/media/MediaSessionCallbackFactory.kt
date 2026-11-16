@@ -206,6 +206,12 @@ object MediaSessionCallbackFactory {
                 args: android.os.Bundle,
             ): ListenableFuture<SessionResult> {
                 val manager = service.trackPlayerCore?.mediaSessionManager
+                val pressedTrackId =
+                    args.getString(MediaSessionManager.EXTRA_BUTTON_TRACK_ID)
+                        ?: customCommand.customExtras.getString(MediaSessionManager.EXTRA_BUTTON_TRACK_ID)
+                if (manager?.onNotificationButtonCommand(customCommand.customAction, pressedTrackId) == true) {
+                    return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                }
                 if (manager?.handlesSessionButton(customCommand.customAction) == true) {
                     manager.onSessionButtonPress?.invoke(customCommand.customAction)
                 }

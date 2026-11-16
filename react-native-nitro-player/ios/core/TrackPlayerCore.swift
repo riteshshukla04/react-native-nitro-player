@@ -33,6 +33,9 @@ class TrackPlayerCore: NSObject {
     // Stall & failure recovery
     static let maxFailedItemRetries: Int = 3
     static let failedItemRetryDelay: TimeInterval = 2.0
+    /// How long a waiting item may go without receiving any media before it is recreated.
+    /// Each window in which media arrives re-arms it, so a slow download is never cut off.
+    static let stallWatchdogDelay: TimeInterval = 20.0
   }
 
   // MARK: - Thread infrastructure
@@ -80,9 +83,9 @@ class TrackPlayerCore: NSObject {
   // MARK: - Stall & network recovery
   // Whether the user/app wants playback ongoing (true after play(), false after pause()).
   internal var intendedToPlay = false
-  // Set when AVPlayer stalls on a buffer underrun; cleared once the buffer refills.
+  // Set when AVPlayer stalls on a buffer underrun; cleared once playback resumes.
   // Needed because automaticallyWaitsToMinimizeStalling == false means AVPlayer
-  // will NOT auto-resume after a stall — we must re-issue play() ourselves.
+  // will NOT auto-resume after a stall — the stall handler re-enables waiting so it can.
   internal var isRecoveringFromStall = false
   // True while an audio-session interruption (phone call, Siri, other app) is active.
   // Recovery must NOT resume playback during this window even though `intendedToPlay`
@@ -98,6 +101,16 @@ class TrackPlayerCore: NSObject {
   internal var lastKnownPosition: Double = 0
   // Per-track retry budget for recreating AVPlayerItems that hit status == .failed.
   internal var failedItemRetryCounts: [String: Int] = [:]
+  // Players replaced after failing since playback last actually ran (see replaceFailedPlayer).
+  internal var failedPlayerReplacements = 0
+  // A seek waiting for its item to reach .readyToPlay (see seekInternal).
+  internal weak var pendingSeekItem: AVPlayerItem?
+  internal var pendingSeekPosition: Double = 0
+  // The pending stall watchdog; re-arming cancels the previous one so only the latest can act.
+  internal var stallWatchdog: DispatchWorkItem?
+  // Watchdog recreations since playback last actually ran. Reset on `.playing` and on a
+  // track change, so separate stalls in one long track don't add up to a give-up.
+  internal var stallWatchdogRecoveries = 0
   // Monitors network path changes (VPN toggle, Wi-Fi band switch) to drive recovery.
   internal var pathMonitor: NWPathMonitor?
   // Starts unsatisfied so the first genuine `.satisfied` update is treated as a
@@ -122,6 +135,7 @@ class TrackPlayerCore: NSObject {
   internal let onTemporaryQueueChangeListeners = ListenerRegistry<([TrackItem], [TrackItem]) -> Void>()
   internal let onTimedMetadataListeners       = ListenerRegistry<(TimedMetadata) -> Void>()
   internal let onCastStateChangeListeners     = ListenerRegistry<(CastState, String?) -> Void>()
+  internal let onNotificationButtonPressListeners = ListenerRegistry<(String, TrackItem, NotificationButtonEvent) -> Void>()
 
   // MARK: - Google Cast
   /// Owns the GoogleCast session; created on the main thread in init. Cast features
@@ -164,6 +178,12 @@ class TrackPlayerCore: NSObject {
   }
 
   private var audioSessionActivated = false
+
+  /// A media services reset drops the session's category and activation, so set both up again.
+  internal func resetAudioSession() {
+    audioSessionActivated = false
+    setupAudioSession()
+  }
 
   internal func activateAudioSessionIfNeeded() {
     guard !audioSessionActivated else { return }
@@ -253,6 +273,13 @@ class TrackPlayerCore: NSObject {
     onCastStateChangeListeners.remove(id: id)
   }
 
+  @discardableResult func addOnNotificationButtonPressListener(_ cb: @escaping (String, TrackItem, NotificationButtonEvent) -> Void) -> Int64 {
+    onNotificationButtonPressListeners.add(cb)
+  }
+  @discardableResult func removeOnNotificationButtonPressListener(id: Int64) -> Bool {
+    onNotificationButtonPressListeners.remove(id: id)
+  }
+
   // MARK: - Simple accessors
   func getCurrentPlaylistId() -> String? { currentPlaylistId }
   func getPlaylistManager() -> PlaylistManager { playlistManager }
@@ -270,10 +297,7 @@ class TrackPlayerCore: NSObject {
       self.detachMetadataOutput()
       self.backendTransferTargetId = nil
       if let p = self.player {
-        p.removeObserver(self, forKeyPath: "status")
-        p.removeObserver(self, forKeyPath: "rate")
-        p.removeObserver(self, forKeyPath: "timeControlStatus")
-        p.removeObserver(self, forKeyPath: "currentItem")
+        for keyPath in Self.observedPlayerKeyPaths { p.removeObserver(self, forKeyPath: keyPath) }
       }
       NotificationCenter.default.removeObserver(self)
       self.pathMonitor?.cancel()
@@ -301,7 +325,10 @@ extension TrackPlayerCore {
     let anchor = old[safe: currentTrackIndex]
     currentTracks = next
     guard let anchor else { return .none }
-    if let newIndex = next.firstIndex(where: { $0.id == anchor.id }) {
+    // A repeated track keeps its rank among the occurrences, so editing elsewhere does not jump to another copy.
+    let rank = old[..<currentTrackIndex].filter { $0.id == anchor.id }.count
+    let occurrences = next.indices.filter { next[$0].id == anchor.id }
+    if let newIndex = occurrences[safe: rank] ?? occurrences.last {
       currentTrackIndex = newIndex
       return .kept
     }
@@ -310,6 +337,18 @@ extension TrackPlayerCore {
     let resume = followerId.flatMap { id in next.firstIndex { $0.id == id } } ?? next.count
     currentTrackIndex = resume - 1
     return .removed
+  }
+
+  /// Index of `trackId` in currentTracks, searching forward from `from` and wrapping, so a
+  /// repeated track resolves to the copy at or after the hint rather than its first one.
+  func currentTrackIndexOf(_ trackId: String, from: Int) -> Int? {
+    let count = currentTracks.count
+    let start = (0..<count).contains(from) ? from : 0
+    for offset in 0..<count {
+      let index = (start + offset) % count
+      if currentTracks[index].id == trackId { return index }
+    }
+    return nil
   }
 
   /// True while the playing item was removed from the playlist and is finishing.
@@ -332,5 +371,12 @@ extension AVPlayerItem {
   var trackId: String? {
     get { objc_getAssociatedObject(self, &trackIdKey) as? String }
     set { objc_setAssociatedObject(self, &trackIdKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
+  }
+
+  /// `duration` in seconds once the item is ready, NaN before. Reading `duration` while the item
+  /// still loads waits on the system media server, and a slow stream makes that wait run out:
+  /// iOS then kills the server and every player in the app fails.
+  var readyDurationSeconds: Double {
+    status == .readyToPlay ? duration.seconds : .nan
   }
 }
