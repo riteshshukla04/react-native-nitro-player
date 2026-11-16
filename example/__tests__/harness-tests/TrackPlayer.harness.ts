@@ -1749,7 +1749,7 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             await PlayerQueue.loadPlaylist(playlist1Id);
             await TrackPlayer.playSong('1', playlist1Id);
             await TrackPlayer.play();
-            await waitForPlaying();
+            expect((await waitForPlaying()).currentState).toBe('playing');
 
             // Dismissing the notification sends the same stop: ExoPlayer goes idle, queue kept.
             announceReady('stop');
