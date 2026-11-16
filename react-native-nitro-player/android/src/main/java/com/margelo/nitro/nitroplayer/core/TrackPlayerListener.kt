@@ -167,6 +167,14 @@ internal class TrackPlayerEventListener(
         core.emitStateChange()
     }
 
+    /** Runs after the individual callbacks of a batch, when the player's getters are up to date. */
+    override fun onEvents(
+        player: Player,
+        events: Player.Events,
+    ) {
+        core.reconcileStateChange()
+    }
+
     override fun onPositionDiscontinuity(
         oldPosition: Player.PositionInfo,
         newPosition: Player.PositionInfo,

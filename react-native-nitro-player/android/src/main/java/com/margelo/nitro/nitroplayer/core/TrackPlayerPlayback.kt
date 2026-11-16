@@ -248,19 +248,33 @@ internal fun TrackPlayerCore.playSongInternal(
 
 // ── State emission (called from player thread) ─────────────────────────────
 
+private fun TrackPlayerCore.currentPlaybackState(): TrackPlayerState =
+    when (exo.playbackState) {
+        Player.STATE_IDLE -> TrackPlayerState.STOPPED
+        Player.STATE_BUFFERING -> if (exo.playWhenReady) TrackPlayerState.BUFFERING else TrackPlayerState.PAUSED
+        Player.STATE_READY -> if (exo.isPlaying) TrackPlayerState.PLAYING else TrackPlayerState.PAUSED
+        Player.STATE_ENDED -> TrackPlayerState.STOPPED
+        else -> TrackPlayerState.STOPPED
+    }
+
 internal fun TrackPlayerCore.emitStateChange(reason: Reason? = null) {
     if (!isExoInitialized) return
-    val state =
-        when (exo.playbackState) {
-            Player.STATE_IDLE -> TrackPlayerState.STOPPED
-            Player.STATE_BUFFERING -> if (exo.playWhenReady) TrackPlayerState.BUFFERING else TrackPlayerState.PAUSED
-            Player.STATE_READY -> if (exo.isPlaying) TrackPlayerState.PLAYING else TrackPlayerState.PAUSED
-            Player.STATE_ENDED -> TrackPlayerState.STOPPED
-            else -> TrackPlayerState.STOPPED
-        }
+    val state = currentPlaybackState()
+    lastEmittedPlaybackState = state
     val actualReason = reason ?: if (exo.playbackState == Player.STATE_ENDED) Reason.END else null
     notifyPlaybackStateChange(state, actualReason)
     mediaSessionManager?.onPlaybackStateChanged(state == TrackPlayerState.PLAYING)
+}
+
+/**
+ * Re-emits the state when the player's getters no longer match what JS was last told. media3's CastPlayer
+ * (1.9) delivers onPlaybackStateChanged / onIsPlayingChanged before its getters reflect the change, and
+ * doesn't repeat them once they do, so the emits from those callbacks read the old state (a receiver that
+ * starts playing stays "stopped" in JS). Called once per event batch, when the getters are up to date.
+ */
+internal fun TrackPlayerCore.reconcileStateChange() {
+    if (!isExoInitialized) return
+    if (currentPlaybackState() != lastEmittedPlaybackState) emitStateChange()
 }
 
 // ── Playback speed ────────────────────────────────────────────────────────

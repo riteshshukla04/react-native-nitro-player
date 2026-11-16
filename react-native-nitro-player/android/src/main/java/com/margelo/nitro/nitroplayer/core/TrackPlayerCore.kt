@@ -133,6 +133,9 @@ class TrackPlayerCore private constructor(
     /** True while the active backend is the CastPlayer (audio routed to a remote device). */
     @Volatile internal var isCastingField: Boolean = false
 
+    /** Last state sent to JS — lets an event batch catch a change the individual callbacks reported stale. */
+    internal var lastEmittedPlaybackState: com.margelo.nitro.nitroplayer.TrackPlayerState? = null
+
     /** Last track announced from a cast "waiting for URL" state — dedups onChangeTrack across updateTracks re-entries. */
     internal var lastCastWaitTrackId: String? = null
 
