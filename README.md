@@ -145,6 +145,8 @@ Remote skip intervals are in seconds. iOS uses them for AirPods/Control Center f
 
 The skip buttons are left out for a live stream or any track that can't seek, and previous/next are left out when there is no track to move to (a live stream on its own shows only play/pause). Set `showRemoteSkipButtons: false` to hide the skip buttons for every track.
 
+On Android, playback keeps going when the app is swiped away from recent apps. Set `androidStopOnTaskRemoved: true` to pause playback and remove the notification instead; the queue and position are kept, so a headset play button can resume it. It doesn't apply while casting or while Android Auto is connected, and iOS ignores it.
+
 ### 2. Create Playlists
 
 ```typescript
