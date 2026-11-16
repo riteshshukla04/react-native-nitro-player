@@ -4,7 +4,7 @@ import NitroModules
 extension AnyMap {
   /// Restores a saved `extraPayload`, keeping nested objects and arrays (e.g. `headers`), nulls
   /// and booleans. Nitro's `fromDictionaryIgnoreIncompatible` drops a whole key over one nested
-  /// null and reads JSON booleans back as numbers.
+  /// null and reads JSON booleans back as numbers. Numbers come back as doubles, as on Android.
   static func fromJSON(_ dictionary: [String: Any?]) -> AnyMap {
     let map = AnyMap()
     for (key, value) in dictionary {
@@ -22,11 +22,11 @@ extension AnyMap {
   }
 }
 
+// `as?` looks through Optionals boxed in Any (in-memory payloads from `toDictionary()`); a boxed nil
+// matches no case and becomes null.
 private func jsonAnyValue(_ value: Any?) -> AnyValue {
-  guard let value = unwrapOptional(value) else { return .null }
+  guard let value else { return .null }
   switch value {
-  case is NSNull:
-    return .null
   case let string as String:
     return .string(string)
   case let number as NSNumber:
@@ -35,22 +35,9 @@ private func jsonAnyValue(_ value: Any?) -> AnyValue {
     return .number(number.doubleValue)
   case let array as [Any]:
     return .array(array.map { jsonAnyValue($0) })
-  case let array as [Any?]:
-    return .array(array.map { jsonAnyValue($0) })
   case let object as [String: Any]:
-    return .object(object.mapValues { jsonAnyValue($0) })
-  case let object as [String: Any?]:
     return .object(object.mapValues { jsonAnyValue($0) })
   default:
     return .null
   }
-}
-
-/// In-memory payloads come from `toDictionary()`, whose nested values can be Optionals boxed in Any.
-private func unwrapOptional(_ value: Any?) -> Any? {
-  guard let value else { return nil }
-  let mirror = Mirror(reflecting: value)
-  guard mirror.displayStyle == .optional else { return value }
-  guard let wrapped = mirror.children.first?.value else { return nil }
-  return unwrapOptional(wrapped)
 }
