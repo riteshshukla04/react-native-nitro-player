@@ -149,8 +149,7 @@ final class DownloadManagerCore: NSObject {
       )
 
       // Respect max concurrent downloads
-      let activeCount = self.activeTasks.values.filter { $0.state == .running }.count
-      if activeCount < Int(self.config.maxConcurrentDownloads ?? 3) {
+      if self.hasFreeDownloadSlot() {
         task.resume()
         self.taskMetadata[downloadId]?.state = .downloading
         self.taskMetadata[downloadId]?.startedAt = Date().timeIntervalSince1970
@@ -179,72 +178,22 @@ final class DownloadManagerCore: NSObject {
 
   func pauseDownload(downloadId: String) {
     queue.async(flags: .barrier) {
-      guard let task = self.activeTasks[downloadId] else { return }
-
-      task.cancel(byProducingResumeData: { resumeData in
-        // Runs on the URLSession delegate queue — hop back for the shared dict
-        self.queue.async(flags: .barrier) {
-          self.taskMetadata[downloadId]?.resumeData = resumeData
-        }
-      })
-
-      self.taskMetadata[downloadId]?.state = .paused
-
-      if let trackId = self.taskMetadata[downloadId]?.trackId {
-        self.notifyStateChange(downloadId: downloadId, trackId: trackId, state: .paused, error: nil)
-      }
-
-      // The slot is free: without this, pending downloads wait for a completion that may never come
+      self._pauseDownloadUnsafe(downloadId: downloadId)
+      // Pausing may free a slot for a pending download
       self.startNextPendingDownload()
     }
   }
 
   func resumeDownload(downloadId: String) {
     queue.async(flags: .barrier) {
-      guard let metadata = self.taskMetadata[downloadId] else { return }
-
-      var task: URLSessionDownloadTask
-
-      if let resumeData = metadata.resumeData {
-        task = self.backgroundSession.downloadTask(withResumeData: resumeData)
-      } else if let track = self.trackMetadata[metadata.trackId],
-        let url = URL(string: track.url)
-      {
-        task = self.backgroundSession.downloadTask(with: url)
-      } else {
-        return
-      }
-
-      task.taskDescription = "\(downloadId)|\(metadata.trackId)"
-      self.activeTasks[downloadId] = task
-      self.taskMetadata[downloadId]?.state = .downloading
-      self.taskMetadata[downloadId]?.resumeData = nil
-
-      task.resume()
-
-      self.notifyStateChange(
-        downloadId: downloadId, trackId: metadata.trackId, state: .downloading, error: nil)
+      self._resumeDownloadUnsafe(downloadId: downloadId)
     }
   }
 
   func cancelDownload(downloadId: String) {
     queue.async(flags: .barrier) {
-      guard let task = self.activeTasks[downloadId] else { return }
-
-      task.cancel()
-
-      if let trackId = self.taskMetadata[downloadId]?.trackId {
-        self.taskMetadata[downloadId]?.state = .cancelled
-        self.notifyStateChange(
-          downloadId: downloadId, trackId: trackId, state: .cancelled, error: nil)
-        // Clean up persisted metadata
-        self.cleanupPersistedMetadata(trackId: trackId, downloadId: downloadId)
-      }
-
-      self.activeTasks.removeValue(forKey: downloadId)
-      self.taskMetadata.removeValue(forKey: downloadId)
-
-      // The slot is free: without this, pending downloads wait for a completion that may never come
+      self._cancelDownloadUnsafe(downloadId: downloadId)
+      // Cancelling may free a slot for a pending download
       self.startNextPendingDownload()
     }
   }
@@ -274,6 +223,7 @@ final class DownloadManagerCore: NSObject {
   private func _pauseDownloadUnsafe(downloadId: String) {
     guard let task = self.activeTasks[downloadId] else { return }
     task.cancel(byProducingResumeData: { resumeData in
+      // Runs on the URLSession delegate queue — hop back for the shared dict
       self.queue.async(flags: .barrier) {
         self.taskMetadata[downloadId]?.resumeData = resumeData
       }
@@ -282,7 +232,6 @@ final class DownloadManagerCore: NSObject {
     if let trackId = self.taskMetadata[downloadId]?.trackId {
       self.notifyStateChange(downloadId: downloadId, trackId: trackId, state: .paused, error: nil)
     }
-    self.startNextPendingDownload()
   }
 
   private func _resumeDownloadUnsafe(downloadId: String) {
@@ -291,15 +240,28 @@ final class DownloadManagerCore: NSObject {
     if let resumeData = metadata.resumeData {
       task = self.backgroundSession.downloadTask(withResumeData: resumeData)
     } else if let track = self.trackMetadata[metadata.trackId],
-              let url = URL(string: track.url) {
+      let url = URL(string: track.url)
+    {
       task = self.backgroundSession.downloadTask(with: url)
-    } else { return }
+    } else {
+      return
+    }
     task.taskDescription = "\(downloadId)|\(metadata.trackId)"
     self.activeTasks[downloadId] = task
-    self.taskMetadata[downloadId]?.state = .downloading
     self.taskMetadata[downloadId]?.resumeData = nil
+
+    // With every slot taken, wait in the queue like a new download
+    guard self.hasFreeDownloadSlot() else {
+      self.taskMetadata[downloadId]?.state = .pending
+      self.notifyStateChange(
+        downloadId: downloadId, trackId: metadata.trackId, state: .pending, error: nil)
+      return
+    }
+
+    self.taskMetadata[downloadId]?.state = .downloading
     task.resume()
-    self.notifyStateChange(downloadId: downloadId, trackId: metadata.trackId, state: .downloading, error: nil)
+    self.notifyStateChange(
+      downloadId: downloadId, trackId: metadata.trackId, state: .downloading, error: nil)
   }
 
   private func _cancelDownloadUnsafe(downloadId: String) {
@@ -308,11 +270,11 @@ final class DownloadManagerCore: NSObject {
     if let trackId = self.taskMetadata[downloadId]?.trackId {
       self.taskMetadata[downloadId]?.state = .cancelled
       self.notifyStateChange(downloadId: downloadId, trackId: trackId, state: .cancelled, error: nil)
+      // Clean up persisted metadata
       self.cleanupPersistedMetadata(trackId: trackId, downloadId: downloadId)
     }
     self.activeTasks.removeValue(forKey: downloadId)
     self.taskMetadata.removeValue(forKey: downloadId)
-    self.startNextPendingDownload()
   }
 
   func pauseAllDownloads() {
@@ -795,14 +757,19 @@ final class DownloadManagerCore: NSObject {
     }
   }
 
+  // Counted from our own state, which changes inside the barrier: a task resumed a moment ago
+  // may not report `.running` yet. Call on `queue`.
+  private func hasFreeDownloadSlot() -> Bool {
+    let downloading = taskMetadata.values.filter { $0.state == .downloading }.count
+    return downloading < Int(config.maxConcurrentDownloads ?? 3)
+  }
+
   private func startNextPendingDownload() {
     queue.async(flags: .barrier) {
-      let activeCount = self.activeTasks.values.filter { $0.state == .running }.count
-      let maxConcurrent = Int(self.config.maxConcurrentDownloads ?? 3)
-
-      if activeCount >= maxConcurrent { return }
-
-      if let pendingId = self.taskMetadata.first(where: { $0.value.state == .pending })?.key,
+      while self.hasFreeDownloadSlot(),
+        let pendingId = self.taskMetadata.first(where: {
+          $0.value.state == .pending && self.activeTasks[$0.key] != nil
+        })?.key,
         let task = self.activeTasks[pendingId]
       {
         task.resume()
