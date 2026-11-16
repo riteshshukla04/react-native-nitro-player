@@ -11,7 +11,9 @@
 #include "IOSNotificationButtons.hpp"
 
 #include "CarPlayButton.hpp"
+#include "CarPlayButtonType.hpp"
 #include "JCarPlayButton.hpp"
+#include "JCarPlayButtonType.hpp"
 #include "JLockScreenButton.hpp"
 #include "JLockScreenCommand.hpp"
 #include "LockScreenButton.hpp"

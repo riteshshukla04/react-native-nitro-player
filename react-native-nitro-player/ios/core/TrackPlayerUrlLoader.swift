@@ -109,8 +109,14 @@ extension TrackPlayerCore {
       let update = safeTracks.first(where: { $0.id == currentTrackId }), !update.url.isEmpty {
       NitroPlayerLogger.log("TrackPlayerCore",
         "🔄 Replacing current AVPlayerItem for track with resolved URL: \(update.id)")
-      if let newItem = self.createGaplessPlayerItem(for: update, isPreload: false) {
-        self.player?.replaceCurrentItem(with: newItem)
+      if let newItem = self.createGaplessPlayerItem(for: update, isPreload: false),
+        let player = self.player {
+        player.replaceCurrentItem(with: newItem)
+        // A play() made while the URL was missing found no item, and AVPlayer dropped its rate
+        if self.intendedToPlay, !self.isInterrupted, player.rate == 0 {
+          self.activateAudioSessionIfNeeded()
+          player.rate = Float(self.currentPlaybackSpeed)
+        }
       }
     }
 

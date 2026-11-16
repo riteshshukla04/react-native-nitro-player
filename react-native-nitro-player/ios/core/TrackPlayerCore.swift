@@ -101,6 +101,11 @@ class TrackPlayerCore: NSObject {
   internal var lastKnownPosition: Double = 0
   // Per-track retry budget for recreating AVPlayerItems that hit status == .failed.
   internal var failedItemRetryCounts: [String: Int] = [:]
+  // Players replaced after failing since playback last actually ran (see replaceFailedPlayer).
+  internal var failedPlayerReplacements = 0
+  // A seek waiting for its item to reach .readyToPlay (see seekInternal).
+  internal weak var pendingSeekItem: AVPlayerItem?
+  internal var pendingSeekPosition: Double = 0
   // The pending stall watchdog; re-arming cancels the previous one so only the latest can act.
   internal var stallWatchdog: DispatchWorkItem?
   // Watchdog recreations since playback last actually ran. Reset on `.playing` and on a
@@ -173,6 +178,12 @@ class TrackPlayerCore: NSObject {
   }
 
   private var audioSessionActivated = false
+
+  /// A media services reset drops the session's category and activation, so set both up again.
+  internal func resetAudioSession() {
+    audioSessionActivated = false
+    setupAudioSession()
+  }
 
   internal func activateAudioSessionIfNeeded() {
     guard !audioSessionActivated else { return }
@@ -286,10 +297,7 @@ class TrackPlayerCore: NSObject {
       self.detachMetadataOutput()
       self.backendTransferTargetId = nil
       if let p = self.player {
-        p.removeObserver(self, forKeyPath: "status")
-        p.removeObserver(self, forKeyPath: "rate")
-        p.removeObserver(self, forKeyPath: "timeControlStatus")
-        p.removeObserver(self, forKeyPath: "currentItem")
+        for keyPath in Self.observedPlayerKeyPaths { p.removeObserver(self, forKeyPath: keyPath) }
       }
       NotificationCenter.default.removeObserver(self)
       self.pathMonitor?.cancel()
@@ -363,5 +371,12 @@ extension AVPlayerItem {
   var trackId: String? {
     get { objc_getAssociatedObject(self, &trackIdKey) as? String }
     set { objc_setAssociatedObject(self, &trackIdKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
+  }
+
+  /// `duration` in seconds once the item is ready, NaN before. Reading `duration` while the item
+  /// still loads waits on the system media server, and a slow stream makes that wait run out:
+  /// iOS then kills the server and every player in the app fails.
+  var readyDurationSeconds: Double {
+    status == .readyToPlay ? duration.seconds : .nan
   }
 }

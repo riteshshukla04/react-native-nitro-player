@@ -11,6 +11,7 @@ import { TrackPlayer } from 'react-native-nitro-player';
 import AppNavigator from './src/navigation/AppNavigator';
 import BenchScreen from './src/screens/BenchScreen';
 import { registerAndroidAuto } from './src/androidAuto';
+import { registerCarPlay } from './src/carPlay';
 import { registerNotificationButtons } from './src/notificationButtons';
 
 const RUN_BENCH = false;
@@ -25,15 +26,19 @@ void TrackPlayer.configure({
   androidNotificationIcon: 'ic_notification', // Android Only
 });
 
-// Module scope, not a component: Android Auto can start the app without any UI
+// Module scope, not a component: Android Auto and CarPlay can start the app without any UI
 registerAndroidAuto().catch((e) => console.error('Android Auto demo failed', e));
+registerCarPlay().catch((e) => console.error('CarPlay demo failed', e));
 registerNotificationButtons().catch((e) => console.error('Notification buttons demo failed', e));
 
 TrackPlayer.appStartedWithNotification((track) => {
   console.info(`🔔 appStartedWithNotification fired! track: ${track.id} - ${track.title}`);
 });
 
-TrackPlayer.onTracksNeedUpdate(async (tracks, lookahead) => {
+TrackPlayer.onTracksNeedUpdate(async (allTracks, lookahead) => {
+  // src/carPlay.ts resolves its own cp- tracks
+  const tracks = allTracks.filter((t) => !t.id.startsWith('cp-'));
+  if (tracks.length === 0) return;
   console.info(`🔄 onTracksNeedUpdate fired! ${tracks.length} tracks need URLs (lookahead: ${lookahead})`);
   console.info('Tracks:', tracks.map((t) => ({ id: t.id, title: t.title })));
   

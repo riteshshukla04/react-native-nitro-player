@@ -48,6 +48,18 @@ public final class NitroPlayerAutolinking {
     return HybridAudioRoutePicker.self is any RecyclableView.Type
   }
   
+  public static func createCarPlay() -> bridge.std__shared_ptr_HybridCarPlaySpec_ {
+    let hybridObject = HybridCarPlay()
+    return { () -> bridge.std__shared_ptr_HybridCarPlaySpec_ in
+      let __cxxWrapped = hybridObject.getCxxWrapper()
+      return __cxxWrapped.getCxxPart()
+    }()
+  }
+  
+  public static func isCarPlayRecyclable() -> Bool {
+    return HybridCarPlay.self is any RecyclableView.Type
+  }
+  
   public static func createCast() -> bridge.std__shared_ptr_HybridCastSpec_ {
     let hybridObject = HybridCast()
     return { () -> bridge.std__shared_ptr_HybridCastSpec_ in
