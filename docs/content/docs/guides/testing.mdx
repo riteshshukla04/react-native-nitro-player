@@ -3,7 +3,7 @@ title: Testing
 description: Mock Nitro Player in Jest without writing the mocks yourself
 ---
 
-Nitro Player talks to native code, so it can't run under Jest as-is. The package ships a ready-made mock: every native method is a `jest.fn()` that resolves to an empty value, and every hook returns its initial state.
+Nitro Player talks to native code, so it can't run under Jest as-is. The package ships a ready-made mock: every native method is a `jest.fn()` that resolves to an empty value, and every hook returns its settled state with no data (`isReady: true`, `isLoading: false`).
 
 ## Setup
 
@@ -15,7 +15,13 @@ jest.mock('react-native-nitro-player', () =>
 );
 ```
 
-Jest needs to transform the package. React Native's Jest preset already does this for `react-native-*` packages. If you have your own `transformIgnorePatterns`, keep `react-native-nitro-player` in the transformed list.
+The mock is shipped as an ES module, so Jest has to transform it. React Native's Jest preset only transforms `react-native` and `@react-native`, so add the package to `transformIgnorePatterns` in your Jest config:
+
+```js
+transformIgnorePatterns: [
+  'node_modules/(?!((jest-)?react-native|@react-native(-community)?|react-native-nitro-player)/)',
+],
+```
 
 ### With `resetMocks` or `jest.resetAllMocks()`
 
@@ -57,6 +63,6 @@ Each hook returns the same object on every render, so callbacks such as `usePlay
 
 ## Notes
 
-- `AndroidAutoMediaLibrary`, `AudioDevices` and `AudioRoutePicker` are `null` on the platform that doesn't support them. In the mock they are always objects, so tests on either platform can assert on them. To test the `null` case, use `jest.replaceProperty(require('react-native-nitro-player/mock'), 'AudioDevices', null)`. Hooks are mocked separately and don't read these objects, so override the hook as well, for example `useAudioDevices.mockReturnValue({ devices: [] })`.
-- `AndroidAutoMediaLibraryHelper.isAvailable()` returns `false`, so Android Auto code paths stay off unless a test opts in with `mockReturnValue(true)`.
+- `AndroidAutoMediaLibrary`, `AudioDevices`, `AudioRoutePicker` and `CarPlay` are `null` on the platform that doesn't support them. In the mock they are always objects, so tests on either platform can assert on them. To test the `null` case, use `jest.replaceProperty(require('react-native-nitro-player/mock'), 'AudioDevices', null)`. Hooks are mocked separately and don't read these objects, so override the hook as well, for example `useAudioDevices.mockReturnValue({ devices: [] })`.
+- `AndroidAutoMediaLibraryHelper.isAvailable()` and `CarPlayHelper.isAvailable()` return `false`, so Android Auto and CarPlay code paths stay off unless a test opts in with `mockReturnValue(true)`.
 - The mock is typechecked against the native specs, so it covers every method and export in the version you install.

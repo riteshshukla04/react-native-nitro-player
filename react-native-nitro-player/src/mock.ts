@@ -1,9 +1,9 @@
-/// <reference types="jest" />
+/// <reference types="jest" preserve="true" />
 /**
  * Jest mock for react-native-nitro-player.
  *
  * Every native method is a `jest.fn()` that resolves to an empty, valid value,
- * and every hook returns its initial state, so tests run without native modules:
+ * and every hook returns its settled, empty state, so tests run without native modules:
  *
  * ```ts
  * jest.mock('react-native-nitro-player', () =>
@@ -24,6 +24,7 @@ import type {
 import type { AndroidAutoMediaLibrary as AndroidAutoMediaLibraryType } from './specs/AndroidAutoMediaLibrary.nitro'
 import type { AudioDevices as AudioDevicesType } from './specs/AudioDevices.nitro'
 import type { AudioRoutePicker as AudioRoutePickerType } from './specs/AudioRoutePicker.nitro'
+import type { CarPlay as CarPlayType } from './specs/CarPlay.nitro'
 import type { Cast as CastType } from './specs/Cast.nitro'
 import type { DownloadManager as DownloadManagerType } from './specs/DownloadManager.nitro'
 import type { Equalizer as EqualizerType } from './specs/Equalizer.nitro'
@@ -123,7 +124,7 @@ export const PlayerQueue: MockedHybridObject<PlayerQueueType> = {
   deletePlaylist: resolved(undefined),
   updatePlaylist: resolved(undefined),
   getPlaylist: returns(null),
-  getAllPlaylists: returns([]),
+  getAllPlaylists: mock(() => []),
   addTrackToPlaylist: resolved(undefined),
   addTracksToPlaylist: resolved(undefined),
   removeTrackFromPlaylist: resolved(undefined),
@@ -200,6 +201,22 @@ export const AudioDevices: MockedHybridObject<AudioDevicesType> = {
 
 export const AudioRoutePicker: MockedHybridObject<AudioRoutePickerType> = {
   showRoutePicker: noop(),
+}
+
+export const CarPlay: MockedHybridObject<CarPlayType> = {
+  setRoot: noop(),
+  pushTemplate: noop(),
+  popTemplate: noop(),
+  popToRoot: noop(),
+  showNowPlaying: noop(),
+  updateTemplate: noop(),
+  reload: noop(),
+  isConnected: returns(false),
+  onConnectionChange: noop(),
+  onSelect: noop(),
+  onLoadTemplate: noop(),
+  resolveTemplate: noop(),
+  onAlbumArtistPress: noop(),
 }
 
 export const Cast: MockedHybridObject<CastType> = {
@@ -295,7 +312,7 @@ const CAST_STATE_RESULT: UseCastStateResult = frozen({
   state: 'no_devices_available',
   deviceName: null,
   isCasting: false,
-  isReady: false,
+  isReady: true,
 })
 
 const DOWNLOAD_PROGRESS_RESULT: ReturnType<
@@ -342,7 +359,7 @@ const DOWNLOAD_ACTIONS_RESULT: UseDownloadActionsResult = frozen({
 })
 
 const DOWNLOAD_STORAGE_RESULT: UseDownloadStorageResult = frozen({
-  storageInfo: null,
+  storageInfo: EMPTY_STORAGE_INFO,
   isLoading: false,
   refresh: resolved(undefined),
   formattedSize: '0 B',
@@ -376,7 +393,7 @@ const EQUALIZER_PRESETS_RESULT: UseEqualizerPresetsResult = frozen({
 
 // mockReturnValue / mockImplementation to drive a component into another state
 export const useOnChangeTrack: MockedExport<'useOnChangeTrack'> = returns(
-  frozen({ track: null, reason: undefined, isReady: false })
+  frozen({ track: null, reason: undefined, isReady: true })
 )
 
 export const useOnPlaybackStateChange: MockedExport<'useOnPlaybackStateChange'> =
@@ -384,7 +401,7 @@ export const useOnPlaybackStateChange: MockedExport<'useOnPlaybackStateChange'> 
     frozen({
       state: 'stopped',
       reason: undefined,
-      isReady: false,
+      isReady: true,
     })
   )
 
@@ -408,6 +425,9 @@ export const useOnNotificationButtonPress: MockedExport<'useOnNotificationButton
   noop()
 
 export const useAndroidAutoConnection: MockedExport<'useAndroidAutoConnection'> =
+  returns(frozen({ isConnected: false }))
+
+export const useCarPlayConnection: MockedExport<'useCarPlayConnection'> =
   returns(frozen({ isConnected: false }))
 
 export const useAudioDevices: MockedExport<'useAudioDevices'> = returns(
@@ -467,6 +487,26 @@ export const AndroidAutoMediaLibraryHelper: {
   onSessionButtonPress: noop(),
   onPlaybackResumption: noop(),
   // Opt in with mockReturnValue(true) so the Android Auto path doesn't run in every test
+  isAvailable: returns(false),
+}
+
+export const CarPlayHelper: {
+  [K in keyof typeof NitroPlayer.CarPlayHelper]: jest.MockedFunction<
+    (typeof NitroPlayer.CarPlayHelper)[K]
+  >
+} = {
+  set: noop(),
+  push: noop(),
+  pop: noop(),
+  popToRoot: noop(),
+  showNowPlaying: noop(),
+  update: noop(),
+  reload: noop(),
+  setTemplateLoader: noop(),
+  onSelect: noop(),
+  onAlbumArtistPress: noop(),
+  onConnectionChange: returns(() => {}),
+  isConnected: returns(false),
   isAvailable: returns(false),
 }
 

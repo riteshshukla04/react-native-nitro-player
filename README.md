@@ -1287,6 +1287,8 @@ Each method is a `jest.fn()` resolving to an empty value, so override it per tes
 
 Import from `react-native-nitro-player/mock` in tests to get the mocks typed. If you use `resetMocks: true`, add `beforeEach(() => resetNitroPlayerMock())` to restore the defaults.
 
+Add `react-native-nitro-player` to `transformIgnorePatterns` so Jest transforms the mock, for example `'node_modules/(?!((jest-)?react-native|@react-native(-community)?|react-native-nitro-player)/)'`.
+
 ## TypeScript Support
 
 The library is written in TypeScript and includes full type definitions. All types are exported for your convenience:
