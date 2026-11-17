@@ -84,7 +84,8 @@ export interface PlayerConfig {
    */
   remoteSkipBackwardInterval?: number
   /**
-   * iOS only, ignored on Android: the lock screen, Control Center and CarPlay side buttons skip by the remote skip intervals instead of changing track (default: false)
+   * iOS only, ignored on Android: the lock screen, Control Center and CarPlay side buttons skip by the remote skip intervals instead of changing track,
+   * and so do the next/previous commands from headphones, car buttons and Siri (default: false). On a live stream they still change track.
    */
   preferRemoteSkipIntervals?: boolean
   /**
