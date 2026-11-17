@@ -91,7 +91,10 @@ internal fun TrackPlayerCore.rebuildQueueAndPlayFromIndex(index: Int) {
         val castTracks = castableUpcoming(currentTracks.subList(index, currentTracks.size))
         if (castTracks.isEmpty()) {
             // Lazy target — silence the receiver and wait for updateTracks to reload (dedup so re-entries don't spam JS).
-            if (exo.mediaItemCount > 0) exo.clearMediaItems()
+            if (exo.mediaItemCount > 0) {
+                exo.clearMediaItems()
+                markCastLoadInFlight()
+            }
             if (lastCastWaitTrackId != target.id) {
                 lastCastWaitTrackId = target.id
                 notifyTrackChange(target, Reason.SKIP)
@@ -101,6 +104,7 @@ internal fun TrackPlayerCore.rebuildQueueAndPlayFromIndex(index: Int) {
         }
         lastCastWaitTrackId = null
         // Single atomic queueLoad — no separate clear (each queue op is a receiver RPC).
+        markCastLoadInFlight()
         exo.setMediaItems(castTracks.map { makeMediaItem(it, mediaIdFor(it)) }, true)
         exo.prepare()
         checkUpcomingTracksForUrls(lookaheadCount)
@@ -269,7 +273,10 @@ internal fun TrackPlayerCore.updatePlayerQueue(tracks: List<TrackItem>) {
         val castTracks = castableUpcoming(tracks)
         if (castTracks.isEmpty()) {
             // Lazy first track — silence the receiver and wait for updateTracks to supply URLs.
-            if (exo.mediaItemCount > 0) exo.clearMediaItems()
+            if (exo.mediaItemCount > 0) {
+                exo.clearMediaItems()
+                markCastLoadInFlight()
+            }
             val first = tracks.firstOrNull()
             if (first != null && lastCastWaitTrackId != first.id) {
                 lastCastWaitTrackId = first.id
@@ -279,6 +286,7 @@ internal fun TrackPlayerCore.updatePlayerQueue(tracks: List<TrackItem>) {
             return
         }
         lastCastWaitTrackId = null
+        markCastLoadInFlight()
         exo.setMediaItems(castTracks.map { makeMediaItem(it, mediaIdFor(it)) }, true)
         exo.prepare()
         return

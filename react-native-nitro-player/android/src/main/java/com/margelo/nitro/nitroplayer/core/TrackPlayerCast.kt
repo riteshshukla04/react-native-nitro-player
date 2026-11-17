@@ -46,7 +46,8 @@ internal fun TrackPlayerCore.switchToCastPlayer() {
     castUrlRequestedAt.clear()
     castResume = null
     castPendingList = null
-    castLoadInFlight = false
+    clearCastLoadInFlight()
+    castLoadRetried = false
     exo = ExoPlayerCore(controller.castPlayer)
     playerListener?.let { controller.castPlayer.addListener(it) }
     setMediaSessionPlayer(controller.castPlayer)
@@ -63,7 +64,7 @@ internal fun TrackPlayerCore.switchToCastPlayer() {
         val items = playable.map { makeMediaItem(it, mediaIdFor(it)) }
         // Resume mid-track only when the receiver starts on the locally playing track.
         val resumeFromCurrent = currentTrack != null && playable.first().id == currentTrack.id
-        castLoadInFlight = suppliesCastUrls
+        markCastLoadInFlight()
         controller.castPlayer.setMediaItems(items, 0, if (resumeFromCurrent) positionMs else 0L)
         controller.castPlayer.prepare()
     } else {
@@ -102,7 +103,7 @@ internal fun TrackPlayerCore.switchToLocalPlayer() {
     castUrlRequestedAt.clear()
     castResume = null
     castPendingList = null
-    castLoadInFlight = false
+    clearCastLoadInFlight()
     playerHandler.removeCallbacks(castUrlRetryRunnable)
     exo = ExoPlayerCore(controller.localPlayer)
     playerListener?.let { controller.localPlayer.addListener(it) }
@@ -154,7 +155,7 @@ internal fun TrackPlayerCore.setCastUrlsOnQueue(urls: Map<String, String>) {
         castResume = null
         val controller = castSessionController ?: return
         // The receiver hasn't reported the queue yet; the first item transition re-checks the URLs it needs
-        castLoadInFlight = true
+        markCastLoadInFlight()
         controller.castPlayer.setMediaItems(playable.map { makeMediaItem(it, mediaIdFor(it)) }, 0, resume)
         controller.castPlayer.prepare()
         return
@@ -162,6 +163,45 @@ internal fun TrackPlayerCore.setCastUrlsOnQueue(urls: Map<String, String>) {
 
     if (currentTracks.getOrNull(currentTrackIndex) == null) return
     rebuildQueueAndPlayFromIndex(currentTrackIndex)
+}
+
+private const val CAST_LOAD_TIMEOUT_MS = 10_000L
+
+/**
+ * Marks a queue change sent to the receiver. media3's cast player only sends it: the local timeline
+ * stays as it was until the receiver reports, so until then URL answers and edits only accumulate.
+ */
+internal fun TrackPlayerCore.markCastLoadInFlight() {
+    if (!suppliesCastUrls) return
+    castLoadInFlight = true
+    playerHandler.removeCallbacks(castLoadTimeoutRunnable)
+    playerHandler.postDelayed(castLoadTimeoutRunnable, CAST_LOAD_TIMEOUT_MS)
+}
+
+internal fun TrackPlayerCore.clearCastLoadInFlight() {
+    castLoadInFlight = false
+    playerHandler.removeCallbacks(castLoadTimeoutRunnable)
+}
+
+/** The receiver reported an in-flight load: apply the URLs and edits that arrived meanwhile, once. */
+internal fun TrackPlayerCore.finishCastLoad(receiverEmpty: Boolean) {
+    clearCastLoadInFlight()
+    castLoadRetried = false
+    if (!receiverEmpty) {
+        rebuildQueueFromCurrentPosition()
+    } else if (currentTracks.isNotEmpty()) {
+        // A cleared receiver (waiting on a track's URL): load it if the URL arrived meanwhile
+        rebuildQueueAndPlayFromIndex(currentTrackIndex.coerceIn(0, currentTracks.size - 1))
+    }
+}
+
+/** No report after the timeout: the receiver likely rejected the load. Retry once while it sits empty. */
+internal fun TrackPlayerCore.onCastLoadTimeout() {
+    if (!castLoadInFlight) return
+    clearCastLoadInFlight()
+    if (!isCastingField || !isExoInitialized || exo.mediaItemCount > 0 || currentTracks.isEmpty() || castLoadRetried) return
+    castLoadRetried = true
+    rebuildQueueAndPlayFromIndex(currentTrackIndex.coerceIn(0, currentTracks.size - 1))
 }
 
 /** Keeps the connect-time Cast queue in step with a playlist edit made while its URLs are still pending. */

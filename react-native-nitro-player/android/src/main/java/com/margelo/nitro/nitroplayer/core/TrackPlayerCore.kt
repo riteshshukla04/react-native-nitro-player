@@ -154,8 +154,14 @@ class TrackPlayerCore private constructor(
     /** The current and upcoming tracks at connect, loaded once their Cast URLs arrive if the receiver started empty. */
     internal var castPendingList: List<TrackItem>? = null
 
-    /** A queue load was sent to the receiver and it hasn't reported it yet; the first item transition finishes it. */
+    /** A queue change was sent to the receiver and it hasn't reported it yet; the first item transition finishes it. */
     internal var castLoadInFlight = false
+
+    /** Whether an unreported receiver load was already retried once since the receiver last reported. */
+    internal var castLoadRetried = false
+
+    /** Ends an in-flight receiver load that never reported (a rejected LOAD sends no status). */
+    internal val castLoadTimeoutRunnable = Runnable { onCastLoadTimeout() }
 
     /** Asks again while the receiver waits on the current track's Cast URL, in case the app never answers. */
     internal val castUrlRetryRunnable = Runnable { checkUpcomingTracksForCastUrls(lookaheadCount) }
