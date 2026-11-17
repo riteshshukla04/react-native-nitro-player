@@ -74,9 +74,10 @@ internal class TrackPlayerEventListener(
                 currentTrackIndex == 0 && previousTrackIndex == currentTracks.size - 1
 
             if (isCastingField && castLoadInFlight) {
-                // The receiver reported a queue change sent while URLs or edits kept arriving: apply them once
-                // (instead of the top-up below, which would send the same change a second time)
-                finishCastLoad(receiverEmpty = mediaItem == null)
+                // While a queue change is in flight, only its report counts: apply what arrived meanwhile, once
+                // (instead of the top-up below, which would send the same change again). A transition on the
+                // stale timeline (a skip or auto-advance before the report) changes nothing.
+                if (isCastLoadReport(mediaItem)) finishCastLoad(receiverEmpty = mediaItem == null)
             } else if (mediaItem != null &&
                 exo.mediaItemCount - exo.currentMediaItemIndex - 1 < QUEUE_WINDOW_SIZE
             ) {

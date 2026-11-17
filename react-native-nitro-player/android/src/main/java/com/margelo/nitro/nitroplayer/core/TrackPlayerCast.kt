@@ -64,7 +64,7 @@ internal fun TrackPlayerCore.switchToCastPlayer() {
         val items = playable.map { makeMediaItem(it, mediaIdFor(it)) }
         // Resume mid-track only when the receiver starts on the locally playing track.
         val resumeFromCurrent = currentTrack != null && playable.first().id == currentTrack.id
-        markCastLoadInFlight()
+        markCastLoadInFlight(items.first().mediaId)
         controller.castPlayer.setMediaItems(items, 0, if (resumeFromCurrent) positionMs else 0L)
         controller.castPlayer.prepare()
     } else {
@@ -155,8 +155,9 @@ internal fun TrackPlayerCore.setCastUrlsOnQueue(urls: Map<String, String>) {
         castResume = null
         val controller = castSessionController ?: return
         // The receiver hasn't reported the queue yet; the first item transition re-checks the URLs it needs
-        markCastLoadInFlight()
-        controller.castPlayer.setMediaItems(playable.map { makeMediaItem(it, mediaIdFor(it)) }, 0, resume)
+        val items = playable.map { makeMediaItem(it, mediaIdFor(it)) }
+        markCastLoadInFlight(items.first().mediaId)
+        controller.castPlayer.setMediaItems(items, 0, resume)
         controller.castPlayer.prepare()
         return
     }
@@ -165,41 +166,48 @@ internal fun TrackPlayerCore.setCastUrlsOnQueue(urls: Map<String, String>) {
     rebuildQueueAndPlayFromIndex(currentTrackIndex)
 }
 
-private const val CAST_LOAD_TIMEOUT_MS = 10_000L
+private const val CAST_LOAD_TIMEOUT_MS = 15_000L
 
 /**
- * Marks a queue change sent to the receiver. media3's cast player only sends it: the local timeline
- * stays as it was until the receiver reports, so until then URL answers and edits only accumulate.
+ * Marks a queue change sent to the receiver, expecting [expectedHeadMediaId] as its first item (null for a
+ * clear). media3's cast player only sends the change: the local timeline stays as it was until the receiver
+ * reports, so until the matching transition URL answers and edits only accumulate.
  */
-internal fun TrackPlayerCore.markCastLoadInFlight() {
+internal fun TrackPlayerCore.markCastLoadInFlight(expectedHeadMediaId: String?) {
     if (!suppliesCastUrls) return
     castLoadInFlight = true
+    castLoadExpectedHead = expectedHeadMediaId
     playerHandler.removeCallbacks(castLoadTimeoutRunnable)
     playerHandler.postDelayed(castLoadTimeoutRunnable, CAST_LOAD_TIMEOUT_MS)
 }
 
 internal fun TrackPlayerCore.clearCastLoadInFlight() {
     castLoadInFlight = false
+    castLoadExpectedHead = null
     playerHandler.removeCallbacks(castLoadTimeoutRunnable)
 }
 
-/** The receiver reported an in-flight load: apply the URLs and edits that arrived meanwhile, once. */
+/** Whether a transition to [mediaItem] is the receiver reporting the queue change in flight. */
+internal fun TrackPlayerCore.isCastLoadReport(mediaItem: androidx.media3.common.MediaItem?): Boolean =
+    castLoadInFlight && mediaItem?.mediaId == castLoadExpectedHead
+
+/** The receiver reported an in-flight change: apply the URLs and edits that arrived meanwhile, once. */
 internal fun TrackPlayerCore.finishCastLoad(receiverEmpty: Boolean) {
     clearCastLoadInFlight()
-    castLoadRetried = false
     if (!receiverEmpty) {
+        castLoadRetried = false
         rebuildQueueFromCurrentPosition()
-    } else if (currentTracks.isNotEmpty()) {
-        // A cleared receiver (waiting on a track's URL): load it if the URL arrived meanwhile
+    } else if (lastCastWaitTrackId != null && currentTracks.isNotEmpty()) {
+        // Cleared while waiting on a track's URL: load it if the URL arrived meanwhile
         rebuildQueueAndPlayFromIndex(currentTrackIndex.coerceIn(0, currentTracks.size - 1))
     }
 }
 
-/** No report after the timeout: the receiver likely rejected the load. Retry once while it sits empty. */
+/** No report after the timeout (e.g. a rejected LOAD sends none): send the current target once more. */
 internal fun TrackPlayerCore.onCastLoadTimeout() {
     if (!castLoadInFlight) return
     clearCastLoadInFlight()
-    if (!isCastingField || !isExoInitialized || exo.mediaItemCount > 0 || currentTracks.isEmpty() || castLoadRetried) return
+    if (!isCastingField || !isExoInitialized || currentTracks.isEmpty() || castLoadRetried) return
     castLoadRetried = true
     rebuildQueueAndPlayFromIndex(currentTrackIndex.coerceIn(0, currentTracks.size - 1))
 }

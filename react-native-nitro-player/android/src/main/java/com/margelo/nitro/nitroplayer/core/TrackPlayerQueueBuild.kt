@@ -93,7 +93,7 @@ internal fun TrackPlayerCore.rebuildQueueAndPlayFromIndex(index: Int) {
             // Lazy target — silence the receiver and wait for updateTracks to reload (dedup so re-entries don't spam JS).
             if (exo.mediaItemCount > 0) {
                 exo.clearMediaItems()
-                markCastLoadInFlight()
+                markCastLoadInFlight(null)
             }
             if (lastCastWaitTrackId != target.id) {
                 lastCastWaitTrackId = target.id
@@ -104,8 +104,9 @@ internal fun TrackPlayerCore.rebuildQueueAndPlayFromIndex(index: Int) {
         }
         lastCastWaitTrackId = null
         // Single atomic queueLoad — no separate clear (each queue op is a receiver RPC).
-        markCastLoadInFlight()
-        exo.setMediaItems(castTracks.map { makeMediaItem(it, mediaIdFor(it)) }, true)
+        val castItems = castTracks.map { makeMediaItem(it, mediaIdFor(it)) }
+        markCastLoadInFlight(castItems.first().mediaId)
+        exo.setMediaItems(castItems, true)
         exo.prepare()
         checkUpcomingTracksForUrls(lookaheadCount)
         return
@@ -275,7 +276,7 @@ internal fun TrackPlayerCore.updatePlayerQueue(tracks: List<TrackItem>) {
             // Lazy first track — silence the receiver and wait for updateTracks to supply URLs.
             if (exo.mediaItemCount > 0) {
                 exo.clearMediaItems()
-                markCastLoadInFlight()
+                markCastLoadInFlight(null)
             }
             val first = tracks.firstOrNull()
             if (first != null && lastCastWaitTrackId != first.id) {
@@ -286,8 +287,9 @@ internal fun TrackPlayerCore.updatePlayerQueue(tracks: List<TrackItem>) {
             return
         }
         lastCastWaitTrackId = null
-        markCastLoadInFlight()
-        exo.setMediaItems(castTracks.map { makeMediaItem(it, mediaIdFor(it)) }, true)
+        val castItems = castTracks.map { makeMediaItem(it, mediaIdFor(it)) }
+        markCastLoadInFlight(castItems.first().mediaId)
+        exo.setMediaItems(castItems, true)
         exo.prepare()
         return
     }

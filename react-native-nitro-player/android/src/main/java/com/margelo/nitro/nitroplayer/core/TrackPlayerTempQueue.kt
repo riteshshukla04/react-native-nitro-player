@@ -168,9 +168,9 @@ suspend fun TrackPlayerCore.getUpNextQueue(): List<TrackItem> = withPlayerContex
 private fun TrackPlayerCore.syncQueueAfterTempEdit() {
     if (!isExoInitialized) return
     when {
-        exo.currentMediaItem != null -> rebuildQueueFromCurrentPosition()
-        // The first transition of an in-flight receiver load rebuilds the queue with this edit
+        // The receiver hasn't reported a queue change yet (its timeline is stale); that report applies this edit
         isCastingField && castLoadInFlight -> Unit
+        exo.currentMediaItem != null -> rebuildQueueFromCurrentPosition()
         isCastingField && castPendingList != null -> refreshCastPendingList()
     }
 }

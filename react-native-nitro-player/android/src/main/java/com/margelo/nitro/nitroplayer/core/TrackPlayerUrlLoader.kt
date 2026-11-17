@@ -79,7 +79,8 @@ internal fun TrackPlayerCore.updateTracksOnQueue(tracks: List<TrackItem>) {
 
             if (isCastingField && suppliesCastUrls) {
                 // The receiver loads Cast URLs, so a new `url` changes nothing there — only resync newly queued tracks.
-                if (exo.mediaItemCount > 0) rebuildQueueFromCurrentPosition() else checkUpcomingTracksForCastUrls(lookaheadCount)
+                // While a queue change is in flight the timeline is stale; its report rebuilds the queue
+                if (exo.mediaItemCount > 0 && !castLoadInFlight) rebuildQueueFromCurrentPosition() else checkUpcomingTracksForCastUrls(lookaheadCount)
                 return@run
             }
 
