@@ -86,7 +86,9 @@ export interface Cast extends HybridObject<{
    * tracks that have a Cast URL, and waits on the first one that doesn't.
    * Without one, the receiver loads each track's `url`.
    *
-   * Each track id is asked for at most once every few seconds while unanswered.
+   * Answer every id; to cast a track as it is, return its own `url`. While the
+   * receiver waits on the playing track, it is asked for again every 5 seconds
+   * until answered. Registering a callback replaces the previous one.
    *
    * @param callback Called with the tracks that need a Cast URL, one per id
    */
@@ -94,7 +96,8 @@ export interface Cast extends HybridObject<{
 
   /**
    * Supply the URLs the Cast receiver loads, keyed by track id. Merged into
-   * the URLs already supplied; empty strings are ignored.
+   * the URLs already supplied; empty strings are ignored, and so is a call
+   * made while not casting.
    *
    * Cast URLs are cleared whenever a Cast session starts or ends, so each
    * session asks for fresh ones through {@link onTracksNeedCastUrls}.

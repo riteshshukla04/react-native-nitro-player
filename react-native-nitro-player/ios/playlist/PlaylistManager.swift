@@ -177,8 +177,10 @@ class PlaylistManager {
 
     // Update TrackPlayerCore if this is the current playlist
     if currentPlaylistId == playlistId {
-      TrackPlayerCore.shared.updatePlaylist(playlistId: playlistId)
-      TrackPlayerCore.shared.checkUpcomingTracksForUrls(lookahead: TrackPlayerCore.shared.lookaheadCount)
+      let core = TrackPlayerCore.shared
+      core.updatePlaylist(playlistId: playlistId)
+      // The URL checks touch player-queue state
+      core.playerQueue.async { core.checkUpcomingTracksForUrls(lookahead: core.lookaheadCount) }
     }
 
     return true

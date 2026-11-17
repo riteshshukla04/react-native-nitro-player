@@ -64,6 +64,12 @@ extension TrackPlayerCore {
       let rawPosition = self.player?.currentTime().seconds ?? 0
       let position = rawPosition.isFinite ? rawPosition : 0
 
+      // A resumed session (network blip, relaunch with a live session) keeps its Cast URLs and receiver queue
+      if self.isCasting, self.suppliesCastUrls {
+        self.syncCastQueueAfterCurrent()
+        return
+      }
+
       self.isCasting = true
       self.player?.pause() // silence local output — audio now comes from the device
 
@@ -87,6 +93,8 @@ extension TrackPlayerCore {
       self.castManager?.clearCastUrls()
       self.castUrlRequestedAt.removeAll()
       self.castResume = nil
+      self.castUrlRetryWork?.cancel()
+      self.castUrlRetryWork = nil
 
       // A backend transfer is not a track change.
       self.backendTransferTargetId = remoteTrackId
@@ -224,6 +232,8 @@ extension TrackPlayerCore {
 
   /// Apply app-supplied Cast URLs: load the receiver if it was waiting, reload items whose URL changed, else extend the queue.
   func setCastUrlsInternal(_ urls: [String: String]) {
+    // URLs belong to a session; a late answer after disconnecting must not leak into the next one
+    guard isCasting else { return }
     let urls = urls.filter { !$0.value.isEmpty }
     guard !urls.isEmpty, let cast = castManager else { return }
 
@@ -233,7 +243,6 @@ extension TrackPlayerCore {
     cast.setCastUrls(urls)
     for id in urls.keys { castUrlRequestedAt.removeValue(forKey: id) }
 
-    guard isCasting else { return }
     if !cast.hasLoadedMedia {
       let current = getCurrentTrack()
       let resume = castResume.flatMap { $0.trackId == current?.id ? $0.position : nil } ?? 0

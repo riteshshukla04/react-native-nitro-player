@@ -55,11 +55,10 @@ final class HybridCast: HybridCastSpec {
   }
 
   func onTracksNeedCastUrls(callback: @escaping ([TrackItem]) -> Void) throws {
-    // Replace any prior listener so JS reloads don't accumulate handlers.
-    for id in castUrlListenerIds { core.removeOnTracksNeedCastUrlsListener(id: id) }
-    castUrlListenerIds.removeAll()
-
-    castUrlListenerIds.append(core.addOnTracksNeedCastUrlsListener(callback))
+    // Replaces any earlier callback; add the new one first so the app never looks unregistered in between.
+    let previous = castUrlListenerIds
+    castUrlListenerIds = [core.addOnTracksNeedCastUrlsListener(callback)]
+    for id in previous { core.removeOnTracksNeedCastUrlsListener(id: id) }
   }
 
   func setCastUrls(urls: [String: String]) throws -> Promise<Void> {

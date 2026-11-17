@@ -304,7 +304,8 @@ final class CastSessionManager: NSObject {
 
   private func makeQueueItem(for track: TrackItem, autoplay: Bool) -> GCKMediaQueueItem? {
     // The receiver fetches media itself — only remote URLs are playable (callers pre-filter with isTrackCastable).
-    let urlString = castUrl(for: track.id) ?? track.url
+    // When the app supplies Cast URLs, a track without one is not loadable (never fall back to the phone's URL)
+    let urlString = castUrl(for: track.id) ?? ((core?.suppliesCastUrls ?? false) ? "" : track.url)
     guard !urlString.isEmpty, let contentURL = URL(string: urlString) else { return nil }
 
     let metadata = GCKMediaMetadata(metadataType: .musicTrack)

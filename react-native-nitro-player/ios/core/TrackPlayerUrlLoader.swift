@@ -272,10 +272,23 @@ extension TrackPlayerCore {
 
   /// While casting, asks the app for the receiver URLs of the current and upcoming tracks that have none.
   func checkUpcomingTracksForCastUrls(lookahead: Int) {
+    castUrlRetryWork?.cancel()
+    castUrlRetryWork = nil
     guard isCasting, suppliesCastUrls, let cast = castManager else { return }
 
+    let current = getCurrentTrack()
+    // The receiver waits on a current track without a Cast URL; ask again later in case this request goes unanswered
+    if let current, cast.castUrl(for: current.id) == nil {
+      let work = DispatchWorkItem { [weak self] in
+        guard let self else { return }
+        self.checkUpcomingTracksForCastUrls(lookahead: self.lookaheadCount)
+      }
+      castUrlRetryWork = work
+      playerQueue.asyncAfter(deadline: .now() + Constants.castUrlRequestInterval + 0.1, execute: work)
+    }
+
     let now = ProcessInfo.processInfo.systemUptime
-    let candidates = (getCurrentTrack().map { [$0] } ?? []) + getNextTracksInternal(count: lookahead)
+    let candidates = (current.map { [$0] } ?? []) + getNextTracksInternal(count: lookahead)
     let ask = candidates
       .filter { cast.castUrl(for: $0.id) == nil }
       .filter { castUrlRequestedAt[$0.id].map { now - $0 >= Constants.castUrlRequestInterval } ?? true }

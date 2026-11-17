@@ -157,6 +157,8 @@ class TrackPlayerCore: NSObject {
   internal var castUrlRequestedAt: [String: TimeInterval] = [:]
   /// Where local playback was when the session started, applied once the track's Cast URL arrives.
   internal var castResume: (trackId: String, position: Double)?
+  /// Asks again while the receiver waits on the current track's Cast URL, in case the app never answers.
+  internal var castUrlRetryWork: DispatchWorkItem?
 
   // MARK: - Singleton
   static let shared = TrackPlayerCore()
