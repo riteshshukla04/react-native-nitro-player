@@ -22,6 +22,7 @@ internal fun TrackPlayerCore.handlePlayerError(error: PlaybackException) {
         checkUpcomingTracksForUrls(lookaheadCount, force = true)
         return
     }
+    lastEmittedPlaybackState = TrackPlayerState.STOPPED
     notifyPlaybackStateChange(TrackPlayerState.STOPPED, Reason.ERROR)
     if (error.isConnectivityError() && !isNetworkValidated()) {
         awaitNetworkThenRetry()

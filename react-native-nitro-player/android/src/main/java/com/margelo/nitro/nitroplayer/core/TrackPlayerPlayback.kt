@@ -286,19 +286,33 @@ internal fun TrackPlayerCore.playSongInternal(
 
 // ── State emission (called from player thread) ─────────────────────────────
 
+internal fun TrackPlayerCore.currentPlaybackState(): TrackPlayerState =
+    when (exo.playbackState) {
+        Player.STATE_IDLE -> TrackPlayerState.STOPPED
+        Player.STATE_BUFFERING -> if (exo.playWhenReady) TrackPlayerState.BUFFERING else TrackPlayerState.PAUSED
+        Player.STATE_READY -> if (exo.isPlaying) TrackPlayerState.PLAYING else TrackPlayerState.PAUSED
+        Player.STATE_ENDED -> TrackPlayerState.STOPPED
+        else -> TrackPlayerState.STOPPED
+    }
+
 internal fun TrackPlayerCore.emitStateChange(reason: Reason? = null) {
     if (!isExoInitialized) return
-    val state =
-        when (exo.playbackState) {
-            Player.STATE_IDLE -> TrackPlayerState.STOPPED
-            Player.STATE_BUFFERING -> if (exo.playWhenReady) TrackPlayerState.BUFFERING else TrackPlayerState.PAUSED
-            Player.STATE_READY -> if (exo.isPlaying) TrackPlayerState.PLAYING else TrackPlayerState.PAUSED
-            Player.STATE_ENDED -> TrackPlayerState.STOPPED
-            else -> TrackPlayerState.STOPPED
-        }
+    val state = currentPlaybackState()
+    lastEmittedPlaybackState = state
     val actualReason = reason ?: if (exo.playbackState == Player.STATE_ENDED) Reason.END else null
     notifyPlaybackStateChange(state, actualReason)
     mediaSessionManager?.onPlaybackStateChanged(state == TrackPlayerState.PLAYING)
+}
+
+/**
+ * Re-emits the state when the player's getters no longer match what JS was last told. media3's
+ * RemoteCastPlayer reports IDLE while its timeline is empty, and sends no state event when the timeline
+ * fills or empties, so the emits from the receiver's status callbacks read the old state (a receiver that
+ * starts playing stays "stopped" in JS). Called from onEvents, after a batch's callbacks.
+ */
+internal fun TrackPlayerCore.reconcileStateChange() {
+    if (!isExoInitialized) return
+    if (currentPlaybackState() != lastEmittedPlaybackState) emitStateChange()
 }
 
 // ── Playback speed ────────────────────────────────────────────────────────

@@ -135,11 +135,13 @@ internal class TrackPlayerEventListener(
         }
     }
 
-    // A live stream, a queue edge or a new timeline can change what previous / next / ±N skip can do
+    /** Runs after the individual callbacks of a batch, when the player's getters are up to date. */
     override fun onEvents(
         player: Player,
         events: Player.Events,
     ) {
+        core.reconcileStateChange()
+        // A live stream, a queue edge or a new timeline can change what previous / next / ±N skip can do
         if (events.containsAny(
                 Player.EVENT_TIMELINE_CHANGED,
                 Player.EVENT_MEDIA_ITEM_TRANSITION,
