@@ -172,8 +172,8 @@ AndroidAutoMediaLibraryHelper.onPlaybackResumption(() => {
 });
 ```
 
-- The card needs the `NitroPlayerMediaBrowserService` declaration from [AndroidManifest Setup](#media-browser-service), even in an app that doesn't target cars.
-- It shows the track that played last. Artwork only shows for `content://`, `android.resource://` and `file://` URLs, so a track with web artwork gets a card without its picture.
+- The card needs the `NitroPlayerMediaBrowserService` `<service>` element from [AndroidManifest Setup](#media-browser-service), even in an app that doesn't target cars. Such an app should leave out the `com.google.android.gms.car.application` meta-data, which is what lists it in Android Auto.
+- It shows the track that played last. Artwork only shows for `content://` and `android.resource://` URLs, or a `file://` path the system can read (not one in your app's private storage), so a track with web artwork gets a card without its picture.
 - Pressing play starts your app's JavaScript in the background and calls the handler. Playback starts once it loads a queue; after 10s with nothing loaded, the press is dropped.
 - Without a handler there is nothing to resume, so Android shows no resume button. The handler is the same one the car's "Start music automatically" uses.
 

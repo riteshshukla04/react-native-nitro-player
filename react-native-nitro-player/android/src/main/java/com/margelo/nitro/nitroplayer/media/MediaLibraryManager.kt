@@ -46,6 +46,10 @@ class MediaLibraryManager private constructor(
         requester?.invoke()
     }
 
+    fun cancelPendingResumption() {
+        synchronized(this) { resumptionPending = false }
+    }
+
     @Volatile
     var searchRequester: ((requestId: String, query: String) -> Unit)? = null
 

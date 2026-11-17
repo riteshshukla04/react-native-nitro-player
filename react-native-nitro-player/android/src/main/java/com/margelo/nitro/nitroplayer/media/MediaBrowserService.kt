@@ -85,6 +85,8 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
                 .apply()
         }
 
+        fun isResumptionSupported(context: Context): Boolean = prefs(context).getBoolean(KEY_RESUMPTION, false)
+
         private fun prefs(context: Context) = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
 
@@ -349,7 +351,8 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
     private fun recentMediaItem(): MediaBrowserCompat.MediaItem? {
         val prefs = prefs(this)
         if (!prefs.getBoolean(KEY_RESUMPTION, false)) return null
-        val mediaId = prefs.getString(KEY_RECENT_MEDIA_ID, null) ?: return null
+        // MediaItem refuses an empty id, and throwing here would crash the app on every boot
+        val mediaId = prefs.getString(KEY_RECENT_MEDIA_ID, null)?.takeIf { it.isNotEmpty() } ?: return null
         // SystemUI drops a card without a title
         val title = prefs.getString(KEY_RECENT_TITLE, null)?.takeIf { it.isNotBlank() } ?: applicationInfo.loadLabel(packageManager)
         val description =
