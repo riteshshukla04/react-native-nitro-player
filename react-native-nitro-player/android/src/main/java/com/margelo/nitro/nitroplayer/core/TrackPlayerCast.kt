@@ -68,7 +68,8 @@ internal fun TrackPlayerCore.switchToCastPlayer() {
         controller.castPlayer.prepare()
     } else {
         // Nothing castable yet (lazy queue) — request URLs; updateTracks will load, playing if the handed-off track was.
-        pendingCastAutoplay = currentTrack?.let { it.id to wasPlaying }
+        // A receiver that already has media (a reattach) keeps it and loads nothing, so nothing waits then.
+        pendingCastAutoplay = currentTrack?.takeIf { controller.castPlayer.mediaItemCount == 0 }?.let { it.id to wasPlaying }
         checkUpcomingTracksForUrls(lookaheadCount)
     }
 
@@ -85,9 +86,9 @@ internal fun TrackPlayerCore.switchToLocalPlayer() {
     val currentId = cast.currentMediaItem?.mediaId?.let { extractTrackId(it) }
     val currentTrack = getCurrentTrack() ?: currentTracks.getOrNull(currentTrackIndex)
     val upcoming = buildUpcomingQueueTracks(currentId)
-    // A live stream's receiver position is just time listened; start it fresh on the phone. The receiver
-    // reports live streams as buffered with no duration, so an unknown duration counts as live here.
-    val positionMs = if (isLiveStream(cast) || hasUnknownDuration(cast)) 0L else cast.currentPosition.coerceAtLeast(0L)
+    // A live stream's receiver position is just time listened; start it at its default position (the live edge)
+    // on the phone. The receiver reports live streams as buffered with no duration, so that counts as live here.
+    val positionMs = if (isLiveStream(cast) || hasUnknownDuration(cast)) C.TIME_UNSET else cast.currentPosition.coerceAtLeast(0L)
     val wasPlaying = cast.playWhenReady
     val repeat = cast.repeatMode
 
@@ -123,10 +124,13 @@ private fun loadedWindow(player: Player): Timeline.Window? {
     return timeline.getWindow(player.currentMediaItemIndex, Timeline.Window()).takeUnless { it.isPlaceholder }
 }
 
-/** A live stream: its position is time listened, which can't be carried to another player. */
-private fun isLiveStream(player: Player): Boolean = loadedWindow(player)?.isLive == true
+// A transcode without a length header reads as live to ExoPlayer; the app-supplied duration says otherwise
+private fun hasAppDuration(player: Player): Boolean = (player.currentMediaItem?.mediaMetadata?.durationMs ?: 0L) > 0
 
-private fun hasUnknownDuration(player: Player): Boolean = loadedWindow(player)?.durationMs == C.TIME_UNSET
+/** A live stream: its position is time listened, which can't be carried to another player. */
+private fun isLiveStream(player: Player): Boolean = loadedWindow(player)?.isLive == true && !hasAppDuration(player)
+
+private fun hasUnknownDuration(player: Player): Boolean = loadedWindow(player)?.durationMs == C.TIME_UNSET && !hasAppDuration(player)
 
 /**
  * Applies the play state of a connect that had nothing castable yet, just before a deferred cast load.
