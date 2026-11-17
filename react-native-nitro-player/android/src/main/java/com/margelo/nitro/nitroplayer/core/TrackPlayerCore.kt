@@ -154,11 +154,17 @@ class TrackPlayerCore private constructor(
     /** The current and upcoming tracks at connect, loaded once their Cast URLs arrive if the receiver started empty. */
     internal var castPendingList: List<TrackItem>? = null
 
-    /** A queue change was sent to the receiver and it hasn't reported it yet; the first item transition finishes it. */
+    /** A queue change was sent to the receiver and it hasn't reported it yet; that report finishes it. */
     internal var castLoadInFlight = false
 
-    /** The first item's mediaId of the queue change in flight (null: a clear), so only its report finishes it. */
-    internal var castLoadExpectedHead: String? = null
+    /** What the queue change in flight does to the receiver's queue. */
+    internal var castLoadChange = CastQueueChange.LOAD
+
+    /** The receiver's item ids when that change was sent: its report shows new ones (or, for a clear, none). */
+    internal var castLoadStaleUids: Set<Any> = emptySet()
+
+    /** A rebuild (an edit, a URL answer, a top-up) waited on the report. */
+    internal var castRebuildDeferred = false
 
     /** Whether an unreported receiver load was already retried once since the receiver last reported. */
     internal var castLoadRetried = false
@@ -226,7 +232,8 @@ class TrackPlayerCore private constructor(
         val playlist = playlistManager.getPlaylist(id) ?: return
         assignCurrentTracks(playlist.tracks)
         if (isCastingField && castLoadInFlight) {
-            // The receiver hasn't reported the queue change yet (its timeline is stale); that report applies this edit
+            // The receiver hasn't reported a queue change yet (its timeline is stale); that report applies this edit
+            castRebuildDeferred = true
         } else if (::exo.isInitialized &&
             exo.currentMediaItem != null &&
             exo.currentMediaItemIndex >= 0

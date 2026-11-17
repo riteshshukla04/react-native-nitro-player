@@ -92,8 +92,8 @@ internal fun TrackPlayerCore.rebuildQueueAndPlayFromIndex(index: Int) {
         if (castTracks.isEmpty()) {
             // Lazy target — silence the receiver and wait for updateTracks to reload (dedup so re-entries don't spam JS).
             if (exo.mediaItemCount > 0) {
+                markCastLoadInFlight(CastQueueChange.CLEAR)
                 exo.clearMediaItems()
-                markCastLoadInFlight(null)
             }
             if (lastCastWaitTrackId != target.id) {
                 lastCastWaitTrackId = target.id
@@ -105,7 +105,7 @@ internal fun TrackPlayerCore.rebuildQueueAndPlayFromIndex(index: Int) {
         lastCastWaitTrackId = null
         // Single atomic queueLoad — no separate clear (each queue op is a receiver RPC).
         val castItems = castTracks.map { makeMediaItem(it, mediaIdFor(it)) }
-        markCastLoadInFlight(castItems.first().mediaId)
+        markCastLoadInFlight(CastQueueChange.LOAD)
         exo.setMediaItems(castItems, true)
         exo.prepare()
         checkUpcomingTracksForUrls(lookaheadCount)
@@ -212,7 +212,10 @@ internal fun TrackPlayerCore.rebuildQueueFromCurrentPosition() {
         commonPrefix++
     }
 
-    if (exo.mediaItemCount > currentIndex + 1 + commonPrefix) {
+    val removesItems = exo.mediaItemCount > currentIndex + 1 + commonPrefix
+    // The receiver applies inserts and removals later; until it reports them, another rebuild would repeat them
+    if (isCastingField && (removesItems || commonPrefix < newQueueTracks.size)) markCastLoadInFlight(CastQueueChange.EDIT)
+    if (removesItems) {
         exo.removeMediaItems(currentIndex + 1 + commonPrefix, exo.mediaItemCount)
     }
     if (commonPrefix < newQueueTracks.size) {
@@ -275,8 +278,8 @@ internal fun TrackPlayerCore.updatePlayerQueue(tracks: List<TrackItem>) {
         if (castTracks.isEmpty()) {
             // Lazy first track — silence the receiver and wait for updateTracks to supply URLs.
             if (exo.mediaItemCount > 0) {
+                markCastLoadInFlight(CastQueueChange.CLEAR)
                 exo.clearMediaItems()
-                markCastLoadInFlight(null)
             }
             val first = tracks.firstOrNull()
             if (first != null && lastCastWaitTrackId != first.id) {
@@ -288,7 +291,7 @@ internal fun TrackPlayerCore.updatePlayerQueue(tracks: List<TrackItem>) {
         }
         lastCastWaitTrackId = null
         val castItems = castTracks.map { makeMediaItem(it, mediaIdFor(it)) }
-        markCastLoadInFlight(castItems.first().mediaId)
+        markCastLoadInFlight(CastQueueChange.LOAD)
         exo.setMediaItems(castItems, true)
         exo.prepare()
         return

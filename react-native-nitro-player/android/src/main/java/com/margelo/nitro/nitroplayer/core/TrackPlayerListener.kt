@@ -32,6 +32,10 @@ internal class TrackPlayerEventListener(
             // TRACK repeat: REPEAT_MODE_ONE fires this every loop — not a real track change
             if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT) return
             exo.holdLazyCurrent()
+            // While a new receiver queue is on its way, a move on the queue it replaces (an auto-advance, or a
+            // skip the receiver applied first) is ignored: the track picked meanwhile stays current
+            val castReport = castQueueReplaceInFlight()
+            if (castReport && !isCastLoadReport(mediaItem)) return
 
             // Remove the track that just finished/was skipped from temp lists
             if ((
@@ -73,11 +77,13 @@ internal class TrackPlayerEventListener(
             val wrappedToStart = currentRepeatMode == RepeatMode.PLAYLIST &&
                 currentTrackIndex == 0 && previousTrackIndex == currentTracks.size - 1
 
-            if (isCastingField && castLoadInFlight) {
-                // While a queue change is in flight, only its report counts: apply what arrived meanwhile, once
-                // (instead of the top-up below, which would send the same change again). A transition on the
-                // stale timeline (a skip or auto-advance before the report) changes nothing.
-                if (isCastLoadReport(mediaItem)) finishCastLoad(receiverEmpty = mediaItem == null)
+            if (castReport) {
+                // The receiver reported the new queue: apply what arrived meanwhile, once (instead of the
+                // top-up below, which would send the same change again)
+                finishCastLoad(receiverEmpty = mediaItem == null)
+            } else if (isCastingField && castLoadInFlight) {
+                // An insert or removal is unreported, so the timeline is stale: its report tops the queue up
+                if (mediaItem != null) castRebuildDeferred = true
             } else if (mediaItem != null &&
                 exo.mediaItemCount - exo.currentMediaItemIndex - 1 < QUEUE_WINDOW_SIZE
             ) {
@@ -146,6 +152,7 @@ internal class TrackPlayerEventListener(
         events: Player.Events,
     ) {
         core.reconcileStateChange()
+        if (events.contains(Player.EVENT_TIMELINE_CHANGED)) core.onCastTimelineEvents()
         // A live stream, a queue edge or a new timeline can change what previous / next / ±N skip can do
         if (events.containsAny(
                 Player.EVENT_TIMELINE_CHANGED,

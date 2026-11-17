@@ -169,7 +169,7 @@ private fun TrackPlayerCore.syncQueueAfterTempEdit() {
     if (!isExoInitialized) return
     when {
         // The receiver hasn't reported a queue change yet (its timeline is stale); that report applies this edit
-        isCastingField && castLoadInFlight -> Unit
+        isCastingField && castLoadInFlight -> castRebuildDeferred = true
         exo.currentMediaItem != null -> rebuildQueueFromCurrentPosition()
         isCastingField && castPendingList != null -> refreshCastPendingList()
     }

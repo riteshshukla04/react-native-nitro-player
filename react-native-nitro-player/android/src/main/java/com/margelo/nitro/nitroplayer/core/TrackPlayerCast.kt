@@ -3,6 +3,7 @@
 package com.margelo.nitro.nitroplayer.core
 
 import android.app.Activity
+import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import com.margelo.nitro.nitroplayer.CastState
 import com.margelo.nitro.nitroplayer.TrackItem
@@ -64,7 +65,7 @@ internal fun TrackPlayerCore.switchToCastPlayer() {
         val items = playable.map { makeMediaItem(it, mediaIdFor(it)) }
         // Resume mid-track only when the receiver starts on the locally playing track.
         val resumeFromCurrent = currentTrack != null && playable.first().id == currentTrack.id
-        markCastLoadInFlight(items.first().mediaId)
+        markCastLoadInFlight(CastQueueChange.LOAD)
         controller.castPlayer.setMediaItems(items, 0, if (resumeFromCurrent) positionMs else 0L)
         controller.castPlayer.prepare()
     } else {
@@ -156,7 +157,7 @@ internal fun TrackPlayerCore.setCastUrlsOnQueue(urls: Map<String, String>) {
         val controller = castSessionController ?: return
         // The receiver hasn't reported the queue yet; the first item transition re-checks the URLs it needs
         val items = playable.map { makeMediaItem(it, mediaIdFor(it)) }
-        markCastLoadInFlight(items.first().mediaId)
+        markCastLoadInFlight(CastQueueChange.LOAD)
         controller.castPlayer.setMediaItems(items, 0, resume)
         controller.castPlayer.prepare()
         return
@@ -168,30 +169,44 @@ internal fun TrackPlayerCore.setCastUrlsOnQueue(urls: Map<String, String>) {
 
 private const val CAST_LOAD_TIMEOUT_MS = 15_000L
 
+/** A queue change sent to the receiver: a whole new queue, an emptied one, or items inserted or removed after the current one. */
+internal enum class CastQueueChange { LOAD, CLEAR, EDIT }
+
 /**
- * Marks a queue change sent to the receiver, expecting [expectedHeadMediaId] as its first item (null for a
- * clear). media3's cast player only sends the change: the local timeline stays as it was until the receiver
- * reports, so until the matching transition URL answers and edits only accumulate.
+ * Marks a queue change about to be sent to the receiver. media3's cast player only sends it: the local timeline
+ * stays as it was until the receiver reports, so until then URL answers and edits only accumulate. The receiver
+ * gives every item it loads or inserts a new id, so its report is the first timeline without the same ids.
  */
-internal fun TrackPlayerCore.markCastLoadInFlight(expectedHeadMediaId: String?) {
+internal fun TrackPlayerCore.markCastLoadInFlight(change: CastQueueChange) {
     if (!suppliesCastUrls) return
+    // An edit sent before a load or clear reports doesn't change which report is awaited
+    if (change == CastQueueChange.EDIT && castLoadInFlight) return
     castLoadInFlight = true
-    castLoadExpectedHead = expectedHeadMediaId
+    castLoadChange = change
+    castLoadStaleUids = exo.player.currentTimeline.let { t -> (0 until t.periodCount).mapTo(HashSet()) { t.getUidOfPeriod(it) } }
     playerHandler.removeCallbacks(castLoadTimeoutRunnable)
     playerHandler.postDelayed(castLoadTimeoutRunnable, CAST_LOAD_TIMEOUT_MS)
 }
 
 internal fun TrackPlayerCore.clearCastLoadInFlight() {
     castLoadInFlight = false
-    castLoadExpectedHead = null
+    castLoadStaleUids = emptySet()
+    castRebuildDeferred = false
     playerHandler.removeCallbacks(castLoadTimeoutRunnable)
 }
 
-/** Whether a transition to [mediaItem] is the receiver reporting the queue change in flight. */
-internal fun TrackPlayerCore.isCastLoadReport(mediaItem: androidx.media3.common.MediaItem?): Boolean =
-    castLoadInFlight && mediaItem?.mediaId == castLoadExpectedHead
+/** A load or clear in flight, which replaces the whole receiver queue. */
+internal fun TrackPlayerCore.castQueueReplaceInFlight(): Boolean = isCastingField && castLoadInFlight && castLoadChange != CastQueueChange.EDIT
 
-/** The receiver reported an in-flight change: apply the URLs and edits that arrived meanwhile, once. */
+/** Whether a transition to [mediaItem] is the receiver reporting the load or clear in flight (not a move on the queue it replaces). */
+internal fun TrackPlayerCore.isCastLoadReport(mediaItem: MediaItem?): Boolean {
+    if (castLoadChange == CastQueueChange.CLEAR) return mediaItem == null
+    val timeline = exo.player.currentTimeline
+    if (mediaItem == null || timeline.isEmpty) return false
+    return timeline.getUidOfPeriod(exo.player.currentPeriodIndex) !in castLoadStaleUids
+}
+
+/** The receiver reported an in-flight load or clear: apply the URLs and edits that arrived meanwhile, once. */
 internal fun TrackPlayerCore.finishCastLoad(receiverEmpty: Boolean) {
     clearCastLoadInFlight()
     if (!receiverEmpty) {
@@ -203,11 +218,30 @@ internal fun TrackPlayerCore.finishCastLoad(receiverEmpty: Boolean) {
     }
 }
 
+/** After a batch of player events: an in-flight edit is reported once the receiver's item ids change. */
+internal fun TrackPlayerCore.onCastTimelineEvents() {
+    if (!isCastingField || !castLoadInFlight || castLoadChange != CastQueueChange.EDIT) return
+    val timeline = exo.player.currentTimeline
+    val uids = (0 until timeline.periodCount).mapTo(HashSet()) { timeline.getUidOfPeriod(it) }
+    if (uids == castLoadStaleUids) return
+    val deferred = castRebuildDeferred
+    clearCastLoadInFlight()
+    if (deferred) rebuildQueueFromCurrentPosition()
+}
+
 /** No report after the timeout (e.g. a rejected LOAD sends none): send the current target once more. */
 internal fun TrackPlayerCore.onCastLoadTimeout() {
     if (!castLoadInFlight) return
+    val change = castLoadChange
+    val deferred = castRebuildDeferred
     clearCastLoadInFlight()
-    if (!isCastingField || !isExoInitialized || currentTracks.isEmpty() || castLoadRetried) return
+    if (!isCastingField || !isExoInitialized || currentTracks.isEmpty()) return
+    if (change == CastQueueChange.EDIT) {
+        // Insert or remove only: the next rebuild compares against whatever the receiver holds by then
+        if (deferred) rebuildQueueFromCurrentPosition()
+        return
+    }
+    if (castLoadRetried) return
     castLoadRetried = true
     rebuildQueueAndPlayFromIndex(currentTrackIndex.coerceIn(0, currentTracks.size - 1))
 }
