@@ -619,6 +619,8 @@ TrackPlayer.onAndroidAutoConnectionChange((connected) => {
 });
 ```
 
+Each call adds a listener, and there is no way to remove one, so call it once (for example at app start). In components use `useAndroidAutoConnection`, which this never affects.
+
 ---
 
 ### `onNotificationButtonPress(callback)`

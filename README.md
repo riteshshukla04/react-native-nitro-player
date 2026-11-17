@@ -1275,6 +1275,22 @@ See the [CarPlay guide](https://nitroplayer.riteshshukla.in/docs/guides/carplay)
 - ✅ **Offline Downloads**: Download tracks and playlists for offline playback
 - ✅ **Google Cast**: Seamless casting to Chromecast / Google TV (iOS & Android)
 
+## Testing
+
+The package ships a Jest mock covering every native method, hook and component. Add this to a Jest setup file:
+
+```ts
+jest.mock('react-native-nitro-player', () =>
+  require('react-native-nitro-player/mock')
+)
+```
+
+Each method is a `jest.fn()` resolving to an empty value, so override it per test with `mockResolvedValue` / `mockReturnValue`.
+
+Import from `react-native-nitro-player/mock` in tests to get the mocks typed. If you use `resetMocks: true`, add `beforeEach(() => resetNitroPlayerMock())` to restore the defaults.
+
+Add `react-native-nitro-player` to `transformIgnorePatterns` so Jest transforms the mock, for example `'node_modules/(?!((jest-)?react-native|@react-native(-community)?|react-native-nitro-player)/)'`.
+
 ## TypeScript Support
 
 The library is written in TypeScript and includes full type definitions. All types are exported for your convenience:

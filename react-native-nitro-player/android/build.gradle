@@ -54,7 +54,7 @@ android {
     minSdkVersion getExtOrIntegerDefault("minSdkVersion")
     targetSdkVersion getExtOrIntegerDefault("targetSdkVersion")
     buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", isNewArchitectureEnabled().toString()
-    // Keep the Cast OptionsProvider (referenced reflectively from the manifest) under R8.
+    // R8 keep rules for classes created by reflection (Cast OptionsProvider, Room database).
     consumerProguardFiles "consumer-rules.pro"
 
     externalNativeBuild {

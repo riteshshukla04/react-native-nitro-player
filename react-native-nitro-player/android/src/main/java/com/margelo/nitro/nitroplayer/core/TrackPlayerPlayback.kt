@@ -23,6 +23,11 @@ suspend fun TrackPlayerCore.play() = withPlayerContext { playOnQueue() }
 
 internal fun TrackPlayerCore.playOnQueue() {
     audioFocusController?.acquire()
+    // A media-session stop (e.g. dismissing the notification) leaves ExoPlayer idle with its
+    // queue intact; prepare it again, as a session play request does.
+    if (exo.playbackState == Player.STATE_IDLE && exo.mediaItemCount > 0) {
+        exo.prepare()
+    }
     exo.play()
 }
 
