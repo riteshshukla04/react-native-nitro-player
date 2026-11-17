@@ -82,6 +82,8 @@ internal fun TrackPlayerCore.updateTracksOnQueue(tracks: List<TrackItem>) {
                 if (currentTrackResolvedNow || exo.mediaItemCount == 0) {
                     rebuildQueueAndPlayFromIndex(currentTrackIndex)
                 } else {
+                    // The receiver already plays something (a reattach): no deferred hand-off load is coming
+                    pendingCastAutoplay = null
                     rebuildQueueFromCurrentPosition()
                 }
                 return@run

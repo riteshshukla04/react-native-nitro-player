@@ -124,7 +124,7 @@ private fun loadedWindow(player: Player): Timeline.Window? {
     return timeline.getWindow(player.currentMediaItemIndex, Timeline.Window()).takeUnless { it.isPlaceholder }
 }
 
-// A transcode without a length header reads as live to ExoPlayer; the app-supplied duration says otherwise
+// A transcode without a length header reads as live (or, on the receiver, reports no duration); the app-supplied duration says it's finite
 private fun hasAppDuration(player: Player): Boolean = (player.currentMediaItem?.mediaMetadata?.durationMs ?: 0L) > 0
 
 /** A live stream: its position is time listened, which can't be carried to another player. */
