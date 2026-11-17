@@ -36,9 +36,9 @@ internal fun TrackPlayerCore.switchToCastPlayer() {
     val currentTrack = getCurrentTrack() ?: currentTracks.getOrNull(currentTrackIndex)
     val upcoming = buildUpcomingQueueTracks(currentId)
     val positionMs = local.currentPosition.coerceAtLeast(0L)
-    // A live or open-ended stream's position is just time listened, so there is nothing at that offset to resume.
+    // A live stream's position is just time listened, so there is nothing at that offset to resume.
     // An item that hasn't loaded yet (placeholder window) keeps its position.
-    val canResumePosition = !isOpenEndedStream(local)
+    val canResumePosition = !isLiveStream(local)
     val wasPlaying = local.playWhenReady
     val repeat = local.repeatMode
 
@@ -67,8 +67,8 @@ internal fun TrackPlayerCore.switchToCastPlayer() {
         controller.castPlayer.setMediaItems(items, 0, if (resumeFromCurrent) positionMs else 0L)
         controller.castPlayer.prepare()
     } else {
-        // Nothing castable yet (lazy queue) — request URLs; updateTracks will load, with this autoplay intent.
-        pendingCastAutoplay = wasPlaying
+        // Nothing castable yet (lazy queue) — request URLs; updateTracks will load, playing if the handed-off track was.
+        pendingCastAutoplay = currentTrack?.let { it.id to wasPlaying }
         checkUpcomingTracksForUrls(lookaheadCount)
     }
 
@@ -85,8 +85,9 @@ internal fun TrackPlayerCore.switchToLocalPlayer() {
     val currentId = cast.currentMediaItem?.mediaId?.let { extractTrackId(it) }
     val currentTrack = getCurrentTrack() ?: currentTracks.getOrNull(currentTrackIndex)
     val upcoming = buildUpcomingQueueTracks(currentId)
-    // A live stream's receiver position is just time listened; start it fresh on the phone.
-    val positionMs = if (isOpenEndedStream(cast)) 0L else cast.currentPosition.coerceAtLeast(0L)
+    // A live stream's receiver position is just time listened; start it fresh on the phone. The receiver
+    // reports live streams as buffered with no duration, so an unknown duration counts as live here.
+    val positionMs = if (isLiveStream(cast) || hasUnknownDuration(cast)) 0L else cast.currentPosition.coerceAtLeast(0L)
     val wasPlaying = cast.playWhenReady
     val repeat = cast.repeatMode
 
@@ -115,19 +116,26 @@ internal fun TrackPlayerCore.switchToLocalPlayer() {
     notifyCastStateChange(controller.getCastState(), controller.currentDeviceName())
 }
 
-/** A live stream, or one with no known duration: its position can't be carried to another player. */
-private fun isOpenEndedStream(player: Player): Boolean {
+/** The current item's loaded window, or null while there is none or it is still a placeholder. */
+private fun loadedWindow(player: Player): Timeline.Window? {
     val timeline = player.currentTimeline
-    if (timeline.isEmpty) return false
-    val window = timeline.getWindow(player.currentMediaItemIndex, Timeline.Window())
-    return !window.isPlaceholder && (window.isLive || window.durationUs == C.TIME_UNSET)
+    if (timeline.isEmpty) return null
+    return timeline.getWindow(player.currentMediaItemIndex, Timeline.Window()).takeUnless { it.isPlaceholder }
 }
 
-/** Applies the autoplay intent from a connect that had nothing castable yet, just before the deferred cast load. */
-internal fun TrackPlayerCore.applyPendingCastAutoplay() {
-    val autoplay = pendingCastAutoplay ?: return
+/** A live stream: its position is time listened, which can't be carried to another player. */
+private fun isLiveStream(player: Player): Boolean = loadedWindow(player)?.isLive == true
+
+private fun hasUnknownDuration(player: Player): Boolean = loadedWindow(player)?.durationMs == C.TIME_UNSET
+
+/**
+ * Applies the play state of a connect that had nothing castable yet, just before a deferred cast load.
+ * Only a load that starts on the handed-off track carries it; any other load is the user's own.
+ */
+internal fun TrackPlayerCore.applyPendingCastAutoplay(firstTrackId: String) {
+    val (trackId, autoplay) = pendingCastAutoplay ?: return
     pendingCastAutoplay = null
-    exo.player.playWhenReady = autoplay
+    if (trackId == firstTrackId) exo.playWhenReady = autoplay
 }
 
 private fun TrackPlayerCore.setMediaSessionPlayer(target: Player) {

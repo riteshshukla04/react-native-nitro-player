@@ -87,7 +87,7 @@ internal fun TrackPlayerCore.rebuildQueueAndPlayFromIndex(index: Int) {
         }
         lastCastWaitTrackId = null
         // Single atomic queueLoad — no separate clear (each queue op is a receiver RPC).
-        applyPendingCastAutoplay()
+        applyPendingCastAutoplay(castTracks.first().id)
         exo.setMediaItems(castTracks.map { makeMediaItem(it, mediaIdFor(it)) }, true)
         exo.prepare()
         checkUpcomingTracksForUrls(lookaheadCount)
@@ -259,7 +259,7 @@ internal fun TrackPlayerCore.updatePlayerQueue(tracks: List<TrackItem>) {
             return
         }
         lastCastWaitTrackId = null
-        applyPendingCastAutoplay()
+        applyPendingCastAutoplay(castTracks.first().id)
         exo.setMediaItems(castTracks.map { makeMediaItem(it, mediaIdFor(it)) }, true)
         exo.prepare()
         return
