@@ -147,30 +147,30 @@ namespace margelo::nitro::nitroplayer {
   }
   std::shared_ptr<Promise<std::vector<std::string>>> JHybridDownloadManagerSpec::downloadPlaylist(const std::string& playlistId, const std::vector<TrackItem>& tracks) {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* playlistId */, jni::alias_ref<jni::JArrayClass<JTrackItem>> /* tracks */)>("downloadPlaylist");
-    auto __result = method(_javaPart, jni::make_jstring(playlistId), [&]() {
-      size_t __size = tracks.size();
+    auto __result = method(_javaPart, jni::make_jstring(playlistId), [&](auto&& __input) {
+      size_t __size = __input.size();
       jni::local_ref<jni::JArrayClass<JTrackItem>> __array = jni::JArrayClass<JTrackItem>::newArray(__size);
       for (size_t __i = 0; __i < __size; __i++) {
-        const auto& __element = tracks[__i];
+        const auto& __element = __input[__i];
         auto __elementJni = JTrackItem::fromCpp(__element);
         __array->setElement(__i, *__elementJni);
       }
       return __array;
-    }());
+    }(tracks));
     return [&]() {
       auto __promise = Promise<std::vector<std::string>>::create();
       __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {
         auto __result = jni::static_ref_cast<jni::JArrayClass<jni::JString>>(__boxedResult);
-        __promise->resolve([&]() {
-          size_t __size = __result->size();
+        __promise->resolve([&](auto&& __input) {
+          size_t __size = __input->size();
           std::vector<std::string> __vector;
           __vector.reserve(__size);
           for (size_t __i = 0; __i < __size; __i++) {
-            auto __element = __result->getElement(__i);
+            auto __element = __input->getElement(__i);
             __vector.push_back(__element->toStdString());
           }
           return __vector;
-        }());
+        }(__result));
       });
       __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
         jni::JniException __jniError(__throwable);
@@ -292,16 +292,16 @@ namespace margelo::nitro::nitroplayer {
   std::vector<DownloadTask> JHybridDownloadManagerSpec::getActiveDownloads() {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<jni::JArrayClass<JDownloadTask>>()>("getActiveDownloads");
     auto __result = method(_javaPart);
-    return [&]() {
-      size_t __size = __result->size();
+    return [&](auto&& __input) {
+      size_t __size = __input->size();
       std::vector<DownloadTask> __vector;
       __vector.reserve(__size);
       for (size_t __i = 0; __i < __size; __i++) {
-        auto __element = __result->getElement(__i);
+        auto __element = __input->getElement(__i);
         __vector.push_back(__element->toCpp());
       }
       return __vector;
-    }();
+    }(__result);
   }
   DownloadQueueStatus JHybridDownloadManagerSpec::getQueueStatus() {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JDownloadQueueStatus>()>("getQueueStatus");
@@ -389,16 +389,16 @@ namespace margelo::nitro::nitroplayer {
       auto __promise = Promise<std::vector<DownloadedTrack>>::create();
       __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {
         auto __result = jni::static_ref_cast<jni::JArrayClass<JDownloadedTrack>>(__boxedResult);
-        __promise->resolve([&]() {
-          size_t __size = __result->size();
+        __promise->resolve([&](auto&& __input) {
+          size_t __size = __input->size();
           std::vector<DownloadedTrack> __vector;
           __vector.reserve(__size);
           for (size_t __i = 0; __i < __size; __i++) {
-            auto __element = __result->getElement(__i);
+            auto __element = __input->getElement(__i);
             __vector.push_back(__element->toCpp());
           }
           return __vector;
-        }());
+        }(__result));
       });
       __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
         jni::JniException __jniError(__throwable);
@@ -430,16 +430,16 @@ namespace margelo::nitro::nitroplayer {
       auto __promise = Promise<std::vector<DownloadedPlaylist>>::create();
       __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {
         auto __result = jni::static_ref_cast<jni::JArrayClass<JDownloadedPlaylist>>(__boxedResult);
-        __promise->resolve([&]() {
-          size_t __size = __result->size();
+        __promise->resolve([&](auto&& __input) {
+          size_t __size = __input->size();
           std::vector<DownloadedPlaylist> __vector;
           __vector.reserve(__size);
           for (size_t __i = 0; __i < __size; __i++) {
-            auto __element = __result->getElement(__i);
+            auto __element = __input->getElement(__i);
             __vector.push_back(__element->toCpp());
           }
           return __vector;
-        }());
+        }(__result));
       });
       __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
         jni::JniException __jniError(__throwable);

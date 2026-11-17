@@ -17,7 +17,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "DownloadStorageInfo" and the the Kotlin data class "DownloadStorageInfo".
+   * The C++ JNI bridge between the C++ struct "DownloadStorageInfo" and the Kotlin data class "DownloadStorageInfo".
    */
   struct JDownloadStorageInfo final: public jni::JavaClass<JDownloadStorageInfo> {
   public:

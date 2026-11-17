@@ -35,16 +35,16 @@ namespace margelo::nitro::nitroplayer {
      */
     void invoke(const std::vector<EqualizerBand>& bands) const {
       static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<jni::JArrayClass<JEqualizerBand>> /* bands */)>("invoke");
-      method(self(), [&]() {
-        size_t __size = bands.size();
+      method(self(), [&](auto&& __input) {
+        size_t __size = __input.size();
         jni::local_ref<jni::JArrayClass<JEqualizerBand>> __array = jni::JArrayClass<JEqualizerBand>::newArray(__size);
         for (size_t __i = 0; __i < __size; __i++) {
-          const auto& __element = bands[__i];
+          const auto& __element = __input[__i];
           auto __elementJni = JEqualizerBand::fromCpp(__element);
           __array->setElement(__i, *__elementJni);
         }
         return __array;
-      }());
+      }(bands));
     }
   };
 
@@ -62,16 +62,16 @@ namespace margelo::nitro::nitroplayer {
      * Invokes the C++ `std::function<...>` this `JFunc_void_std__vector_EqualizerBand__cxx` instance holds.
      */
     void invoke_cxx(jni::alias_ref<jni::JArrayClass<JEqualizerBand>> bands) {
-      _func([&]() {
-              size_t __size = bands->size();
-              std::vector<EqualizerBand> __vector;
-              __vector.reserve(__size);
-              for (size_t __i = 0; __i < __size; __i++) {
-                auto __element = bands->getElement(__i);
-                __vector.push_back(__element->toCpp());
-              }
-              return __vector;
-            }());
+      _func([&](auto&& __input) {
+        size_t __size = __input->size();
+        std::vector<EqualizerBand> __vector;
+        __vector.reserve(__size);
+        for (size_t __i = 0; __i < __size; __i++) {
+          auto __element = __input->getElement(__i);
+          __vector.push_back(__element->toCpp());
+        }
+        return __vector;
+      }(bands));
     }
 
   public:

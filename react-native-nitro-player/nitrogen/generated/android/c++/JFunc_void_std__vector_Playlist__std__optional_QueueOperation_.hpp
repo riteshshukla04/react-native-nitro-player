@@ -46,16 +46,16 @@ namespace margelo::nitro::nitroplayer {
      */
     void invoke(const std::vector<Playlist>& playlists, std::optional<QueueOperation> operation) const {
       static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<jni::JArrayClass<JPlaylist>> /* playlists */, jni::alias_ref<JQueueOperation> /* operation */)>("invoke");
-      method(self(), [&]() {
-        size_t __size = playlists.size();
+      method(self(), [&](auto&& __input) {
+        size_t __size = __input.size();
         jni::local_ref<jni::JArrayClass<JPlaylist>> __array = jni::JArrayClass<JPlaylist>::newArray(__size);
         for (size_t __i = 0; __i < __size; __i++) {
-          const auto& __element = playlists[__i];
+          const auto& __element = __input[__i];
           auto __elementJni = JPlaylist::fromCpp(__element);
           __array->setElement(__i, *__elementJni);
         }
         return __array;
-      }(), operation.has_value() ? JQueueOperation::fromCpp(operation.value()) : nullptr);
+      }(playlists), operation.has_value() ? JQueueOperation::fromCpp(operation.value()) : nullptr);
     }
   };
 
@@ -73,16 +73,16 @@ namespace margelo::nitro::nitroplayer {
      * Invokes the C++ `std::function<...>` this `JFunc_void_std__vector_Playlist__std__optional_QueueOperation__cxx` instance holds.
      */
     void invoke_cxx(jni::alias_ref<jni::JArrayClass<JPlaylist>> playlists, jni::alias_ref<JQueueOperation> operation) {
-      _func([&]() {
-              size_t __size = playlists->size();
-              std::vector<Playlist> __vector;
-              __vector.reserve(__size);
-              for (size_t __i = 0; __i < __size; __i++) {
-                auto __element = playlists->getElement(__i);
-                __vector.push_back(__element->toCpp());
-              }
-              return __vector;
-            }(), operation != nullptr ? std::make_optional(operation->toCpp()) : std::nullopt);
+      _func([&](auto&& __input) {
+        size_t __size = __input->size();
+        std::vector<Playlist> __vector;
+        __vector.reserve(__size);
+        for (size_t __i = 0; __i < __size; __i++) {
+          auto __element = __input->getElement(__i);
+          __vector.push_back(__element->toCpp());
+        }
+        return __vector;
+      }(playlists), operation != nullptr ? std::make_optional(operation->toCpp()) : std::nullopt);
     }
 
   public:

@@ -9,6 +9,7 @@ package com.margelo.nitro.nitroplayer
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 
 
 /**
@@ -55,6 +56,40 @@ data class PlayerConfig(
   val notificationButtons: NotificationButtons?
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is PlayerConfig) return false
+    return Objects.deepEquals(this.androidAutoEnabled, other.androidAutoEnabled)
+      && Objects.deepEquals(this.carPlayEnabled, other.carPlayEnabled)
+      && Objects.deepEquals(this.showInNotification, other.showInNotification)
+      && Objects.deepEquals(this.remoteSkipForwardInterval, other.remoteSkipForwardInterval)
+      && Objects.deepEquals(this.remoteSkipBackwardInterval, other.remoteSkipBackwardInterval)
+      && Objects.deepEquals(this.preferRemoteSkipIntervals, other.preferRemoteSkipIntervals)
+      && Objects.deepEquals(this.androidShowRemoteSkipButtons, other.androidShowRemoteSkipButtons)
+      && Objects.deepEquals(this.lookaheadCount, other.lookaheadCount)
+      && Objects.deepEquals(this.androidNotificationIcon, other.androidNotificationIcon)
+      && Objects.deepEquals(this.androidAudioFocus, other.androidAudioFocus)
+      && Objects.deepEquals(this.androidStopOnTaskRemoved, other.androidStopOnTaskRemoved)
+      && Objects.deepEquals(this.notificationButtons, other.notificationButtons)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      androidAutoEnabled,
+      carPlayEnabled,
+      showInNotification,
+      remoteSkipForwardInterval,
+      remoteSkipBackwardInterval,
+      preferRemoteSkipIntervals,
+      androidShowRemoteSkipButtons,
+      lookaheadCount,
+      androidNotificationIcon,
+      androidAudioFocus,
+      androidStopOnTaskRemoved,
+      notificationButtons
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

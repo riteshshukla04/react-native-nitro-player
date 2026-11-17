@@ -15,7 +15,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ enum "TrackPlayerState" and the the Kotlin enum "TrackPlayerState".
+   * The C++ JNI bridge between the C++ enum "TrackPlayerState" and the Kotlin enum "TrackPlayerState".
    */
   struct JTrackPlayerState final: public jni::JavaClass<JTrackPlayerState> {
   public:

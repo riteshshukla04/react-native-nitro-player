@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -10,8 +10,8 @@ import {
 } from 'react-native';
 import {
   TrackPlayer,
-  AudioDevices,
   CastButton,
+  useAudioOutputs,
   useCastState,
 } from 'react-native-nitro-player';
 import { colors, commonStyles, spacing, borderRadius } from '../styles/theme';
@@ -23,7 +23,7 @@ const NOTIFICATION_ICONS = [
 
 export default function MoreScreen() {
   const [volume, setVolume] = useState(50);
-  const [audioDevices, setAudioDevices] = useState<any[]>([]);
+  const { outputs } = useAudioOutputs();
   const [notificationIcon, setNotificationIcon] = useState('ic_notification');
   const { state: castState, deviceName, isCasting } = useCastState();
 
@@ -35,19 +35,6 @@ export default function MoreScreen() {
         : castState === 'no_devices_available'
           ? 'No Cast devices found'
           : 'Tap to cast';
-
-  useEffect(() => {
-    if (Platform.OS === 'ios') {
-      try {
-        const devices = AudioDevices?.getAudioDevices();
-        if (devices) {
-          setAudioDevices(devices);
-        }
-      } catch {
-        console.log('AudioDevices not available');
-      }
-    }
-  }, []);
 
   const handleVolumeChange = (newVolume: number) => {
     setVolume(newVolume);
@@ -132,22 +119,22 @@ export default function MoreScreen() {
           </View>
         )}
 
-        {/* Audio Devices (iOS) */}
-        {Platform.OS === 'ios' && (
-          <View style={commonStyles.section}>
-            <Text style={commonStyles.sectionTitle}>Audio Devices</Text>
-            {audioDevices.length > 0 ? (
-              audioDevices.map((device: any, index: number) => (
-                <View key={index} style={styles.deviceCard}>
-                  <Text style={styles.deviceName}>{device.name || 'Unknown'}</Text>
-                  <Text style={styles.deviceType}>{device.type || 'Unknown'}</Text>
-                </View>
-              ))
-            ) : (
-              <Text style={commonStyles.infoText}>No audio devices detected</Text>
-            )}
-          </View>
-        )}
+        {/* Audio Output: updates when headphones connect or disconnect */}
+        <View style={commonStyles.section}>
+          <Text style={commonStyles.sectionTitle}>Audio Output</Text>
+          {outputs.length > 0 ? (
+            outputs.map(output => (
+              <View key={output.id} style={styles.deviceCard}>
+                <Text style={styles.deviceName}>{output.name}</Text>
+                <Text style={styles.deviceType}>
+                  {output.type} · {output.id}
+                </Text>
+              </View>
+            ))
+          ) : (
+            <Text style={commonStyles.infoText}>No audio output detected</Text>
+          )}
+        </View>
 
         {/* App Info */}
         <View style={commonStyles.section}>

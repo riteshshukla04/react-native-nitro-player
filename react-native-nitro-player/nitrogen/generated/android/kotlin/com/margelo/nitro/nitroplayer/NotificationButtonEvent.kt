@@ -9,6 +9,7 @@ package com.margelo.nitro.nitroplayer
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 
 
 /**
@@ -28,6 +29,22 @@ data class NotificationButtonEvent(
   val repeatMode: RepeatMode?
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is NotificationButtonEvent) return false
+    return Objects.deepEquals(this.isActive, other.isActive)
+      && Objects.deepEquals(this.rating, other.rating)
+      && Objects.deepEquals(this.repeatMode, other.repeatMode)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      isActive,
+      rating,
+      repeatMode
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

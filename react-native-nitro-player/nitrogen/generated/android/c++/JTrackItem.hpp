@@ -24,7 +24,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "TrackItem" and the the Kotlin data class "TrackItem".
+   * The C++ JNI bridge between the C++ struct "TrackItem" and the Kotlin data class "TrackItem".
    */
   struct JTrackItem final: public jni::JavaClass<JTrackItem> {
   public:

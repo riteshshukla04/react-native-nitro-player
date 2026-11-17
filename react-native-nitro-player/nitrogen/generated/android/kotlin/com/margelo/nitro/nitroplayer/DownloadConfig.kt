@@ -9,6 +9,7 @@ package com.margelo.nitro.nitroplayer
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 import com.margelo.nitro.core.NullType
 
 /**
@@ -43,6 +44,32 @@ data class DownloadConfig(
   val wifiOnlyDownloads: Boolean?
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is DownloadConfig) return false
+    return Objects.deepEquals(this.storageLocation, other.storageLocation)
+      && Objects.deepEquals(this.maxConcurrentDownloads, other.maxConcurrentDownloads)
+      && Objects.deepEquals(this.autoRetry, other.autoRetry)
+      && Objects.deepEquals(this.maxRetryAttempts, other.maxRetryAttempts)
+      && Objects.deepEquals(this.backgroundDownloadsEnabled, other.backgroundDownloadsEnabled)
+      && Objects.deepEquals(this.downloadArtwork, other.downloadArtwork)
+      && Objects.deepEquals(this.customDownloadPath, other.customDownloadPath)
+      && Objects.deepEquals(this.wifiOnlyDownloads, other.wifiOnlyDownloads)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      storageLocation,
+      maxConcurrentDownloads,
+      autoRetry,
+      maxRetryAttempts,
+      backgroundDownloadsEnabled,
+      downloadArtwork,
+      customDownloadPath,
+      wifiOnlyDownloads
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

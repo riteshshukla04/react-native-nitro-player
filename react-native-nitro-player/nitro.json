@@ -36,6 +36,10 @@
       }
     },
     "AudioDevices": {
+      "ios": {
+        "language": "swift",
+        "implementationClassName": "HybridAudioDevices"
+      },
       "android": {
         "language": "kotlin",
         "implementationClassName": "HybridAudioDevices"

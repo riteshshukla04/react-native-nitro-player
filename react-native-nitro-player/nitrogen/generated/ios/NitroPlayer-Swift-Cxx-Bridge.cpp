@@ -8,6 +8,7 @@
 #include "NitroPlayer-Swift-Cxx-Bridge.hpp"
 
 // Include C++ implementation defined types
+#include "HybridAudioDevicesSpecSwift.hpp"
 #include "HybridAudioRoutePickerSpecSwift.hpp"
 #include "HybridCarPlaySpecSwift.hpp"
 #include "HybridCastSpecSwift.hpp"
@@ -20,6 +21,46 @@
 
 namespace margelo::nitro::nitroplayer::bridge::swift {
 
+  // pragma MARK: std::function<void()>
+  Func_void create_Func_void(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)]() mutable -> void {
+      swiftClosure.call();
+    };
+  }
+  
+  // pragma MARK: std::function<void(const std::exception_ptr& /* error */)>
+  Func_void_std__exception_ptr create_Func_void_std__exception_ptr(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_std__exception_ptr::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const std::exception_ptr& error) mutable -> void {
+      swiftClosure.call(error);
+    };
+  }
+  
+  // pragma MARK: std::function<void(const std::vector<TAudioOutput>& /* outputs */, TAudioOutputChangeReason /* reason */)>
+  Func_void_std__vector_TAudioOutput__TAudioOutputChangeReason create_Func_void_std__vector_TAudioOutput__TAudioOutputChangeReason(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlayer::Func_void_std__vector_TAudioOutput__TAudioOutputChangeReason::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const std::vector<TAudioOutput>& outputs, TAudioOutputChangeReason reason) mutable -> void {
+      swiftClosure.call(outputs, static_cast<int>(reason));
+    };
+  }
+  
+  // pragma MARK: std::shared_ptr<HybridAudioDevicesSpec>
+  std::shared_ptr<HybridAudioDevicesSpec> create_std__shared_ptr_HybridAudioDevicesSpec_(void* NON_NULL swiftUnsafePointer) noexcept {
+    NitroPlayer::HybridAudioDevicesSpec_cxx swiftPart = NitroPlayer::HybridAudioDevicesSpec_cxx::fromUnsafe(swiftUnsafePointer);
+    return std::make_shared<margelo::nitro::nitroplayer::HybridAudioDevicesSpecSwift>(swiftPart);
+  }
+  void* NON_NULL get_std__shared_ptr_HybridAudioDevicesSpec_(std__shared_ptr_HybridAudioDevicesSpec_ cppType) {
+    std::shared_ptr<margelo::nitro::nitroplayer::HybridAudioDevicesSpecSwift> swiftWrapper = std::dynamic_pointer_cast<margelo::nitro::nitroplayer::HybridAudioDevicesSpecSwift>(cppType);
+    #ifdef NITRO_DEBUG
+    if (swiftWrapper == nullptr) [[unlikely]] {
+      throw std::runtime_error("Class \"HybridAudioDevicesSpec\" is not implemented in Swift!");
+    }
+    #endif
+    NitroPlayer::HybridAudioDevicesSpec_cxx& swiftPart = swiftWrapper->getSwiftPart();
+    return swiftPart.toUnsafe();
+  }
+  
   // pragma MARK: std::shared_ptr<HybridAudioRoutePickerSpec>
   std::shared_ptr<HybridAudioRoutePickerSpec> create_std__shared_ptr_HybridAudioRoutePickerSpec_(void* NON_NULL swiftUnsafePointer) noexcept {
     NitroPlayer::HybridAudioRoutePickerSpec_cxx swiftPart = NitroPlayer::HybridAudioRoutePickerSpec_cxx::fromUnsafe(swiftUnsafePointer);
@@ -74,22 +115,6 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     #endif
     NitroPlayer::HybridCarPlaySpec_cxx& swiftPart = swiftWrapper->getSwiftPart();
     return swiftPart.toUnsafe();
-  }
-  
-  // pragma MARK: std::function<void()>
-  Func_void create_Func_void(void* NON_NULL swiftClosureWrapper) noexcept {
-    auto swiftClosure = NitroPlayer::Func_void::fromUnsafe(swiftClosureWrapper);
-    return [swiftClosure = std::move(swiftClosure)]() mutable -> void {
-      swiftClosure.call();
-    };
-  }
-  
-  // pragma MARK: std::function<void(const std::exception_ptr& /* error */)>
-  Func_void_std__exception_ptr create_Func_void_std__exception_ptr(void* NON_NULL swiftClosureWrapper) noexcept {
-    auto swiftClosure = NitroPlayer::Func_void_std__exception_ptr::fromUnsafe(swiftClosureWrapper);
-    return [swiftClosure = std::move(swiftClosure)](const std::exception_ptr& error) mutable -> void {
-      swiftClosure.call(error);
-    };
   }
   
   // pragma MARK: std::function<void(CastState /* state */, const std::optional<std::variant<nitro::NullType, std::string>>& /* deviceName */)>

@@ -25,7 +25,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "EqualizerState" and the the Kotlin data class "EqualizerState".
+   * The C++ JNI bridge between the C++ struct "EqualizerState" and the Kotlin data class "EqualizerState".
    */
   struct JEqualizerState final: public jni::JavaClass<JEqualizerState> {
   public:
@@ -47,16 +47,16 @@ namespace margelo::nitro::nitroplayer {
       jni::local_ref<JVariant_NullType_String> currentPreset = this->getFieldValue(fieldCurrentPreset);
       return EqualizerState(
         static_cast<bool>(enabled),
-        [&]() {
-          size_t __size = bands->size();
+        [&](auto&& __input) {
+          size_t __size = __input->size();
           std::vector<EqualizerBand> __vector;
           __vector.reserve(__size);
           for (size_t __i = 0; __i < __size; __i++) {
-            auto __element = bands->getElement(__i);
+            auto __element = __input->getElement(__i);
             __vector.push_back(__element->toCpp());
           }
           return __vector;
-        }(),
+        }(bands),
         currentPreset != nullptr ? std::make_optional(currentPreset->toCpp()) : std::nullopt
       );
     }
@@ -73,16 +73,16 @@ namespace margelo::nitro::nitroplayer {
       return create(
         clazz,
         value.enabled,
-        [&]() {
-          size_t __size = value.bands.size();
+        [&](auto&& __input) {
+          size_t __size = __input.size();
           jni::local_ref<jni::JArrayClass<JEqualizerBand>> __array = jni::JArrayClass<JEqualizerBand>::newArray(__size);
           for (size_t __i = 0; __i < __size; __i++) {
-            const auto& __element = value.bands[__i];
+            const auto& __element = __input[__i];
             auto __elementJni = JEqualizerBand::fromCpp(__element);
             __array->setElement(__i, *__elementJni);
           }
           return __array;
-        }(),
+        }(value.bands),
         value.currentPreset.has_value() ? JVariant_NullType_String::fromCpp(value.currentPreset.value()) : nullptr
       );
     }

@@ -15,7 +15,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ enum "DownloadState" and the the Kotlin enum "DownloadState".
+   * The C++ JNI bridge between the C++ enum "DownloadState" and the Kotlin enum "DownloadState".
    */
   struct JDownloadState final: public jni::JavaClass<JDownloadState> {
   public:

@@ -27,7 +27,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "IOSNotificationButtons" and the the Kotlin data class "IOSNotificationButtons".
+   * The C++ JNI bridge between the C++ struct "IOSNotificationButtons" and the Kotlin data class "IOSNotificationButtons".
    */
   struct JIOSNotificationButtons final: public jni::JavaClass<JIOSNotificationButtons> {
   public:
@@ -46,26 +46,26 @@ namespace margelo::nitro::nitroplayer {
       static const auto fieldCarPlay = clazz->getField<jni::JArrayClass<JCarPlayButton>>("carPlay");
       jni::local_ref<jni::JArrayClass<JCarPlayButton>> carPlay = this->getFieldValue(fieldCarPlay);
       return IOSNotificationButtons(
-        lockScreen != nullptr ? std::make_optional([&]() {
-          size_t __size = lockScreen->size();
+        lockScreen != nullptr ? std::make_optional([&](auto&& __input) {
+          size_t __size = __input->size();
           std::vector<LockScreenButton> __vector;
           __vector.reserve(__size);
           for (size_t __i = 0; __i < __size; __i++) {
-            auto __element = lockScreen->getElement(__i);
+            auto __element = __input->getElement(__i);
             __vector.push_back(__element->toCpp());
           }
           return __vector;
-        }()) : std::nullopt,
-        carPlay != nullptr ? std::make_optional([&]() {
-          size_t __size = carPlay->size();
+        }(lockScreen)) : std::nullopt,
+        carPlay != nullptr ? std::make_optional([&](auto&& __input) {
+          size_t __size = __input->size();
           std::vector<CarPlayButton> __vector;
           __vector.reserve(__size);
           for (size_t __i = 0; __i < __size; __i++) {
-            auto __element = carPlay->getElement(__i);
+            auto __element = __input->getElement(__i);
             __vector.push_back(__element->toCpp());
           }
           return __vector;
-        }()) : std::nullopt
+        }(carPlay)) : std::nullopt
       );
     }
 
@@ -80,26 +80,26 @@ namespace margelo::nitro::nitroplayer {
       static const auto create = clazz->getStaticMethod<JSignature>("fromCpp");
       return create(
         clazz,
-        value.lockScreen.has_value() ? [&]() {
-          size_t __size = value.lockScreen.value().size();
+        value.lockScreen.has_value() ? [&](auto&& __input) {
+          size_t __size = __input.size();
           jni::local_ref<jni::JArrayClass<JLockScreenButton>> __array = jni::JArrayClass<JLockScreenButton>::newArray(__size);
           for (size_t __i = 0; __i < __size; __i++) {
-            const auto& __element = value.lockScreen.value()[__i];
+            const auto& __element = __input[__i];
             auto __elementJni = JLockScreenButton::fromCpp(__element);
             __array->setElement(__i, *__elementJni);
           }
           return __array;
-        }() : nullptr,
-        value.carPlay.has_value() ? [&]() {
-          size_t __size = value.carPlay.value().size();
+        }(value.lockScreen.value()) : nullptr,
+        value.carPlay.has_value() ? [&](auto&& __input) {
+          size_t __size = __input.size();
           jni::local_ref<jni::JArrayClass<JCarPlayButton>> __array = jni::JArrayClass<JCarPlayButton>::newArray(__size);
           for (size_t __i = 0; __i < __size; __i++) {
-            const auto& __element = value.carPlay.value()[__i];
+            const auto& __element = __input[__i];
             auto __elementJni = JCarPlayButton::fromCpp(__element);
             __array->setElement(__i, *__elementJni);
           }
           return __array;
-        }() : nullptr
+        }(value.carPlay.value()) : nullptr
       );
     }
   };

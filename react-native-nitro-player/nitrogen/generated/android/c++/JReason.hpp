@@ -15,7 +15,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ enum "Reason" and the the Kotlin enum "Reason".
+   * The C++ JNI bridge between the C++ enum "Reason" and the Kotlin enum "Reason".
    */
   struct JReason final: public jni::JavaClass<JReason> {
   public:

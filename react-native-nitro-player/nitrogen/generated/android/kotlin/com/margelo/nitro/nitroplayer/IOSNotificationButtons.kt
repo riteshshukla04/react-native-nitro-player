@@ -9,6 +9,7 @@ package com.margelo.nitro.nitroplayer
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 
 
 /**
@@ -25,6 +26,20 @@ data class IOSNotificationButtons(
   val carPlay: Array<CarPlayButton>?
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is IOSNotificationButtons) return false
+    return Objects.deepEquals(this.lockScreen, other.lockScreen)
+      && Objects.deepEquals(this.carPlay, other.carPlay)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      lockScreen,
+      carPlay
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

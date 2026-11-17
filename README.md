@@ -38,6 +38,7 @@ npm install react-native-nitro-modules
 | `useAndroidAutoConnection`    | Both     | Monitors Android Auto connection status.                                        |
 | `useCarPlayConnection`        | iOS      | Monitors CarPlay connection status.                                             |
 | `useAudioDevices`             | Android  | Returns list of available audio output devices.                                 |
+| `useAudioOutputs`             | Both     | Returns the devices audio plays through, updated when they change.              |
 | `useDownloadProgress`         | Both     | Tracks download progress for tracks. Returns progress map and overall status.   |
 | `useDownloadedTracks`         | Both     | Returns all downloaded tracks and playlists with query helpers.                 |
 
@@ -92,6 +93,8 @@ Mutations return **`Promise<void>`** (or **`Promise<string>`** for `createPlayli
 | ---------------------------------------- | -------- | ------------------------------------------------- |
 | `AudioDevices.getAudioDevices()`         | Android  | Returns list of available audio devices.          |
 | `AudioDevices.setAudioDevice(id)`        | Android  | Sets the active audio output device.              |
+| `AudioDevices.getCurrentOutputs()`       | Both     | Returns the devices audio plays through now.      |
+| `AudioDevices.onOutputsChange(cb)`       | Both     | Fires when headphones connect, disconnect, etc.   |
 | `AudioRoutePicker.showRoutePicker()`     | iOS      | Opens the native AirPlay/Audio Route picker menu. |
 | `Cast.showCastPicker()`                  | iOS & Android | Opens the native Google Cast device picker.  |
 | `Cast.isCasting()` / `useIsCasting()`    | iOS & Android | Whether playback is routed to a Cast device. |
@@ -449,11 +452,20 @@ Monitors Android Auto connection status.
 
 ### `useAudioDevices()` (Android only)
 
-Automatically polls for audio device changes every 2 seconds.
+Automatically polls for audio device changes every 2 seconds. Returns an empty list on iOS.
 
 **Returns:**
 
 - `devices: TAudioDevice[]` - Array of available audio devices
+
+### `useAudioOutputs()`
+
+Returns the devices audio plays through, and updates when they change (for example when Bluetooth headphones connect or headphones are unplugged). Works on iOS and Android.
+
+**Returns:**
+
+- `outputs: TAudioOutput[]` - The current outputs, usually one
+- `isReady: boolean` - `true` once the outputs have been read from native
 
 ### `useNowPlaying()`
 
@@ -545,13 +557,36 @@ function PlaylistView() {
 
 ## Audio Device APIs
 
-### `AudioDevices` (Android only)
+### `AudioDevices`
 
-Android-specific API for managing audio output devices.
+Audio output devices. `getCurrentOutputs()` and `onOutputsChange()` work on iOS and Android; `getAudioDevices()` and `setAudioDevice()` are Android only.
 
-#### `getAudioDevices(): TAudioDevice[]`
+#### `getCurrentOutputs(): TAudioOutput[]`
 
-Returns the list of available audio output devices.
+Returns the devices audio plays through right now, usually one. Each `TAudioOutput` has:
+
+- `id: string` - Identifies the output; stays the same when the device reconnects
+- `name: string` - Device name (e.g., "WH-1000XM4"); wired outputs usually report "Headphones" or "USB Audio"
+- `type: TAudioOutputType` - `'built_in_speaker'`, `'built_in_earpiece'`, `'wired_headphones'`, `'line_out'`, `'bluetooth'`, `'usb'`, `'airplay'`, `'car_audio'`, `'hdmi'` or `'unknown'`
+
+#### `onOutputsChange(callback: (outputs: TAudioOutput[], reason: TAudioOutputChangeReason) => void): void`
+
+Fires when the outputs change: Bluetooth headphones connect or disconnect, headphones or a USB DAC are plugged in, or playback falls back to the speaker. `reason` is `'device_connected'`, `'device_disconnected'` or `'route_changed'`. Each call adds a listener that can't be removed, so register it once at app start; in components, use `useAudioOutputs()`.
+
+**Example:**
+
+```typescript
+import { AudioDevices } from 'react-native-nitro-player'
+
+AudioDevices.onOutputsChange((outputs) => {
+  const output = outputs[0]
+  if (output) applyEqProfileFor(output.id)
+})
+```
+
+#### `getAudioDevices(): TAudioDevice[]` (Android only)
+
+Returns the list of available audio output devices. Returns an empty list on iOS.
 
 **Returns:** Array of `TAudioDevice` objects with:
 
@@ -565,33 +600,27 @@ Returns the list of available audio output devices.
 ```typescript
 import { AudioDevices } from 'react-native-nitro-player'
 
-if (AudioDevices) {
-  const devices = AudioDevices.getAudioDevices()
-  devices.forEach((device) => {
-    console.log(`${device.name} - Active: ${device.isActive}`)
-  })
-}
+// Android only; an empty list on iOS
+const devices = AudioDevices.getAudioDevices()
+devices.forEach((device) => {
+  console.log(`${device.name} - Active: ${device.isActive}`)
+})
 ```
 
-#### `setAudioDevice(deviceId: number): boolean`
+#### `setAudioDevice(deviceId: number): Promise<void>` (Android only)
 
-Sets the active audio output device.
+Sets the active audio output device. Rejects if the device can't be set, and always on iOS.
 
 **Parameters:**
 
 - `deviceId: number` - The ID of the device to activate
-
-**Returns:** `true` if successful, `false` otherwise
 
 **Example:**
 
 ```typescript
 import { AudioDevices } from 'react-native-nitro-player'
 
-if (AudioDevices) {
-  const success = AudioDevices.setAudioDevice(deviceId)
-  console.log(`Device switch: ${success ? 'success' : 'failed'}`)
-}
+await AudioDevices.setAudioDevice(deviceId)
 ```
 
 ### `AudioRoutePicker` (iOS only)

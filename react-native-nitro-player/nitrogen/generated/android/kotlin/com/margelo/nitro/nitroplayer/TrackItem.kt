@@ -9,6 +9,7 @@ package com.margelo.nitro.nitroplayer
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 import com.margelo.nitro.core.NullType
 import com.margelo.nitro.core.AnyMap
 
@@ -44,6 +45,32 @@ data class TrackItem(
   val extraPayload: AnyMap?
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is TrackItem) return false
+    return Objects.deepEquals(this.id, other.id)
+      && Objects.deepEquals(this.title, other.title)
+      && Objects.deepEquals(this.artist, other.artist)
+      && Objects.deepEquals(this.album, other.album)
+      && Objects.deepEquals(this.duration, other.duration)
+      && Objects.deepEquals(this.url, other.url)
+      && Objects.deepEquals(this.artwork, other.artwork)
+      && Objects.deepEquals(this.extraPayload, other.extraPayload)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      id,
+      title,
+      artist,
+      album,
+      duration,
+      url,
+      artwork,
+      extraPayload
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

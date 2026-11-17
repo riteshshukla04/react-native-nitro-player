@@ -9,6 +9,7 @@ package com.margelo.nitro.nitroplayer
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 import com.margelo.nitro.core.NullType
 
 /**
@@ -49,6 +50,36 @@ data class DownloadTask(
   val retryCount: Double
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is DownloadTask) return false
+    return Objects.deepEquals(this.downloadId, other.downloadId)
+      && Objects.deepEquals(this.trackId, other.trackId)
+      && Objects.deepEquals(this.playlistId, other.playlistId)
+      && Objects.deepEquals(this.state, other.state)
+      && Objects.deepEquals(this.progress, other.progress)
+      && Objects.deepEquals(this.createdAt, other.createdAt)
+      && Objects.deepEquals(this.startedAt, other.startedAt)
+      && Objects.deepEquals(this.completedAt, other.completedAt)
+      && Objects.deepEquals(this.error, other.error)
+      && Objects.deepEquals(this.retryCount, other.retryCount)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      downloadId,
+      trackId,
+      playlistId,
+      state,
+      progress,
+      createdAt,
+      startedAt,
+      completedAt,
+      error,
+      retryCount
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

@@ -15,7 +15,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ enum "DownloadErrorReason" and the the Kotlin enum "DownloadErrorReason".
+   * The C++ JNI bridge between the C++ enum "DownloadErrorReason" and the Kotlin enum "DownloadErrorReason".
    */
   struct JDownloadErrorReason final: public jni::JavaClass<JDownloadErrorReason> {
   public:

@@ -282,16 +282,16 @@ namespace margelo::nitro::nitroplayer {
       auto __promise = Promise<std::vector<TrackItem>>::create();
       __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {
         auto __result = jni::static_ref_cast<jni::JArrayClass<JTrackItem>>(__boxedResult);
-        __promise->resolve([&]() {
-          size_t __size = __result->size();
+        __promise->resolve([&](auto&& __input) {
+          size_t __size = __input->size();
           std::vector<TrackItem> __vector;
           __vector.reserve(__size);
           for (size_t __i = 0; __i < __size; __i++) {
-            auto __element = __result->getElement(__i);
+            auto __element = __input->getElement(__i);
             __vector.push_back(__element->toCpp());
           }
           return __vector;
-        }());
+        }(__result));
       });
       __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
         jni::JniException __jniError(__throwable);
@@ -409,16 +409,16 @@ namespace margelo::nitro::nitroplayer {
   }
   std::shared_ptr<Promise<void>> JHybridTrackPlayerSpec::updateTracks(const std::vector<TrackItem>& tracks) {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JArrayClass<JTrackItem>> /* tracks */)>("updateTracks");
-    auto __result = method(_javaPart, [&]() {
-      size_t __size = tracks.size();
+    auto __result = method(_javaPart, [&](auto&& __input) {
+      size_t __size = __input.size();
       jni::local_ref<jni::JArrayClass<JTrackItem>> __array = jni::JArrayClass<JTrackItem>::newArray(__size);
       for (size_t __i = 0; __i < __size; __i++) {
-        const auto& __element = tracks[__i];
+        const auto& __element = __input[__i];
         auto __elementJni = JTrackItem::fromCpp(__element);
         __array->setElement(__i, *__elementJni);
       }
       return __array;
-    }());
+    }(tracks));
     return [&]() {
       auto __promise = Promise<void>::create();
       __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& /* unit */) {
@@ -433,30 +433,30 @@ namespace margelo::nitro::nitroplayer {
   }
   std::shared_ptr<Promise<std::vector<TrackItem>>> JHybridTrackPlayerSpec::getTracksById(const std::vector<std::string>& trackIds) {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JArrayClass<jni::JString>> /* trackIds */)>("getTracksById");
-    auto __result = method(_javaPart, [&]() {
-      size_t __size = trackIds.size();
+    auto __result = method(_javaPart, [&](auto&& __input) {
+      size_t __size = __input.size();
       jni::local_ref<jni::JArrayClass<jni::JString>> __array = jni::JArrayClass<jni::JString>::newArray(__size);
       for (size_t __i = 0; __i < __size; __i++) {
-        const auto& __element = trackIds[__i];
+        const auto& __element = __input[__i];
         auto __elementJni = jni::make_jstring(__element);
         __array->setElement(__i, *__elementJni);
       }
       return __array;
-    }());
+    }(trackIds));
     return [&]() {
       auto __promise = Promise<std::vector<TrackItem>>::create();
       __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {
         auto __result = jni::static_ref_cast<jni::JArrayClass<JTrackItem>>(__boxedResult);
-        __promise->resolve([&]() {
-          size_t __size = __result->size();
+        __promise->resolve([&](auto&& __input) {
+          size_t __size = __input->size();
           std::vector<TrackItem> __vector;
           __vector.reserve(__size);
           for (size_t __i = 0; __i < __size; __i++) {
-            auto __element = __result->getElement(__i);
+            auto __element = __input->getElement(__i);
             __vector.push_back(__element->toCpp());
           }
           return __vector;
-        }());
+        }(__result));
       });
       __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
         jni::JniException __jniError(__throwable);
@@ -472,16 +472,16 @@ namespace margelo::nitro::nitroplayer {
       auto __promise = Promise<std::vector<TrackItem>>::create();
       __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {
         auto __result = jni::static_ref_cast<jni::JArrayClass<JTrackItem>>(__boxedResult);
-        __promise->resolve([&]() {
-          size_t __size = __result->size();
+        __promise->resolve([&](auto&& __input) {
+          size_t __size = __input->size();
           std::vector<TrackItem> __vector;
           __vector.reserve(__size);
           for (size_t __i = 0; __i < __size; __i++) {
-            auto __element = __result->getElement(__i);
+            auto __element = __input->getElement(__i);
             __vector.push_back(__element->toCpp());
           }
           return __vector;
-        }());
+        }(__result));
       });
       __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
         jni::JniException __jniError(__throwable);
@@ -497,16 +497,16 @@ namespace margelo::nitro::nitroplayer {
       auto __promise = Promise<std::vector<TrackItem>>::create();
       __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {
         auto __result = jni::static_ref_cast<jni::JArrayClass<JTrackItem>>(__boxedResult);
-        __promise->resolve([&]() {
-          size_t __size = __result->size();
+        __promise->resolve([&](auto&& __input) {
+          size_t __size = __input->size();
           std::vector<TrackItem> __vector;
           __vector.reserve(__size);
           for (size_t __i = 0; __i < __size; __i++) {
-            auto __element = __result->getElement(__i);
+            auto __element = __input->getElement(__i);
             __vector.push_back(__element->toCpp());
           }
           return __vector;
-        }());
+        }(__result));
       });
       __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
         jni::JniException __jniError(__throwable);
@@ -651,16 +651,16 @@ namespace margelo::nitro::nitroplayer {
       auto __promise = Promise<std::vector<TrackItem>>::create();
       __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {
         auto __result = jni::static_ref_cast<jni::JArrayClass<JTrackItem>>(__boxedResult);
-        __promise->resolve([&]() {
-          size_t __size = __result->size();
+        __promise->resolve([&](auto&& __input) {
+          size_t __size = __input->size();
           std::vector<TrackItem> __vector;
           __vector.reserve(__size);
           for (size_t __i = 0; __i < __size; __i++) {
-            auto __element = __result->getElement(__i);
+            auto __element = __input->getElement(__i);
             __vector.push_back(__element->toCpp());
           }
           return __vector;
-        }());
+        }(__result));
       });
       __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
         jni::JniException __jniError(__throwable);
@@ -676,16 +676,16 @@ namespace margelo::nitro::nitroplayer {
       auto __promise = Promise<std::vector<TrackItem>>::create();
       __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {
         auto __result = jni::static_ref_cast<jni::JArrayClass<JTrackItem>>(__boxedResult);
-        __promise->resolve([&]() {
-          size_t __size = __result->size();
+        __promise->resolve([&](auto&& __input) {
+          size_t __size = __input->size();
           std::vector<TrackItem> __vector;
           __vector.reserve(__size);
           for (size_t __i = 0; __i < __size; __i++) {
-            auto __element = __result->getElement(__i);
+            auto __element = __input->getElement(__i);
             __vector.push_back(__element->toCpp());
           }
           return __vector;
-        }());
+        }(__result));
       });
       __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
         jni::JniException __jniError(__throwable);

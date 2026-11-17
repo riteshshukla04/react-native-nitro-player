@@ -15,7 +15,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ enum "PresetType" and the the Kotlin enum "PresetType".
+   * The C++ JNI bridge between the C++ enum "PresetType" and the Kotlin enum "PresetType".
    */
   struct JPresetType final: public jni::JavaClass<JPresetType> {
   public:

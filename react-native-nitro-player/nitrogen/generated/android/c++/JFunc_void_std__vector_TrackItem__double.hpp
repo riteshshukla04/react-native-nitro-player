@@ -42,16 +42,16 @@ namespace margelo::nitro::nitroplayer {
      */
     void invoke(const std::vector<TrackItem>& tracks, double lookahead) const {
       static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<jni::JArrayClass<JTrackItem>> /* tracks */, double /* lookahead */)>("invoke");
-      method(self(), [&]() {
-        size_t __size = tracks.size();
+      method(self(), [&](auto&& __input) {
+        size_t __size = __input.size();
         jni::local_ref<jni::JArrayClass<JTrackItem>> __array = jni::JArrayClass<JTrackItem>::newArray(__size);
         for (size_t __i = 0; __i < __size; __i++) {
-          const auto& __element = tracks[__i];
+          const auto& __element = __input[__i];
           auto __elementJni = JTrackItem::fromCpp(__element);
           __array->setElement(__i, *__elementJni);
         }
         return __array;
-      }(), lookahead);
+      }(tracks), lookahead);
     }
   };
 
@@ -69,16 +69,16 @@ namespace margelo::nitro::nitroplayer {
      * Invokes the C++ `std::function<...>` this `JFunc_void_std__vector_TrackItem__double_cxx` instance holds.
      */
     void invoke_cxx(jni::alias_ref<jni::JArrayClass<JTrackItem>> tracks, double lookahead) {
-      _func([&]() {
-              size_t __size = tracks->size();
-              std::vector<TrackItem> __vector;
-              __vector.reserve(__size);
-              for (size_t __i = 0; __i < __size; __i++) {
-                auto __element = tracks->getElement(__i);
-                __vector.push_back(__element->toCpp());
-              }
-              return __vector;
-            }(), lookahead);
+      _func([&](auto&& __input) {
+        size_t __size = __input->size();
+        std::vector<TrackItem> __vector;
+        __vector.reserve(__size);
+        for (size_t __i = 0; __i < __size; __i++) {
+          auto __element = __input->getElement(__i);
+          __vector.push_back(__element->toCpp());
+        }
+        return __vector;
+      }(tracks), lookahead);
     }
 
   public:

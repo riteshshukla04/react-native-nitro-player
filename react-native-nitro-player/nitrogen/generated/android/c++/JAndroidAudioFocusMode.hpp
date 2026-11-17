@@ -15,7 +15,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ enum "AndroidAudioFocusMode" and the the Kotlin enum "AndroidAudioFocusMode".
+   * The C++ JNI bridge between the C++ enum "AndroidAudioFocusMode" and the Kotlin enum "AndroidAudioFocusMode".
    */
   struct JAndroidAudioFocusMode final: public jni::JavaClass<JAndroidAudioFocusMode> {
   public:

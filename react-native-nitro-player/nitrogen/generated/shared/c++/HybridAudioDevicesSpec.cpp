@@ -16,6 +16,8 @@ namespace margelo::nitro::nitroplayer {
     registerHybrids(this, [](Prototype& prototype) {
       prototype.registerHybridMethod("getAudioDevices", &HybridAudioDevicesSpec::getAudioDevices);
       prototype.registerHybridMethod("setAudioDevice", &HybridAudioDevicesSpec::setAudioDevice);
+      prototype.registerHybridMethod("getCurrentOutputs", &HybridAudioDevicesSpec::getCurrentOutputs);
+      prototype.registerHybridMethod("onOutputsChange", &HybridAudioDevicesSpec::onOutputsChange);
     });
   }
 

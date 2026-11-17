@@ -9,6 +9,7 @@ package com.margelo.nitro.nitroplayer
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 
 
 /**
@@ -40,6 +41,30 @@ data class DownloadQueueStatus(
   val overallProgress: Double
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is DownloadQueueStatus) return false
+    return Objects.deepEquals(this.pendingCount, other.pendingCount)
+      && Objects.deepEquals(this.activeCount, other.activeCount)
+      && Objects.deepEquals(this.completedCount, other.completedCount)
+      && Objects.deepEquals(this.failedCount, other.failedCount)
+      && Objects.deepEquals(this.totalBytesToDownload, other.totalBytesToDownload)
+      && Objects.deepEquals(this.totalBytesDownloaded, other.totalBytesDownloaded)
+      && Objects.deepEquals(this.overallProgress, other.overallProgress)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      pendingCount,
+      activeCount,
+      completedCount,
+      failedCount,
+      totalBytesToDownload,
+      totalBytesDownloaded,
+      overallProgress
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

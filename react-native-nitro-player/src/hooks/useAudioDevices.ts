@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Platform } from 'react-native'
 import { AudioDevices } from '../index'
 import type { TAudioDevice } from '../specs/AudioDevices.nitro'
 
@@ -33,13 +34,14 @@ export function useAudioDevices() {
   const [devices, setDevices] = useState<TAudioDevice[]>([])
 
   useEffect(() => {
-    if (!AudioDevices) {
+    // The device list is Android-only; on iOS use useAudioOutputs
+    if (Platform.OS !== 'android') {
       return undefined
     }
 
     const updateDevices = () => {
       try {
-        const currentDevices = AudioDevices!.getAudioDevices()
+        const currentDevices = AudioDevices.getAudioDevices()
         // Bail when nothing changed — the bridge returns a fresh array identity
         // every tick, which would otherwise re-render every consumer at 0.5Hz
         setDevices((prev) =>

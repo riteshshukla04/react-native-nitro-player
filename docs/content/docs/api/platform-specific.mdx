@@ -1,24 +1,89 @@
 ---
 title: Platform-Specific APIs
-description: AudioDevices (Android), AudioRoutePicker (iOS), and AndroidAutoMediaLibrary
+description: AudioDevices, AudioRoutePicker (iOS), and AndroidAutoMediaLibrary
 ---
 
-## AudioDevices (Android Only)
+## AudioDevices
 
-Manage audio output devices on Android — Bluetooth, USB, wired headsets, speakers, etc.
+Audio output devices: Bluetooth, USB, wired headphones, the speaker, AirPlay and so on.
 
 ```typescript
 import { AudioDevices } from 'react-native-nitro-player';
 ```
 
-> `AudioDevices` is `null` on iOS. Always check availability before use.
+- `getCurrentOutputs()` and `onOutputsChange()` work on **iOS and Android**. Use them to react when the output changes, e.g. to apply a per-headphone EQ.
+- `getAudioDevices()` and `setAudioDevice()` are **Android only**. On iOS `getAudioDevices()` returns an empty list and `setAudioDevice()` rejects. To let iOS users pick an output, use [`AudioRoutePicker`](#audioroutepicker-ios-only).
 
-### `getAudioDevices()`
+### `getCurrentOutputs()`
 
-Get all available audio output devices. **Synchronous.**
+The devices media plays through right now: usually one, more when audio is mirrored to several outputs (e.g. multi-room AirPlay). **Synchronous.** iOS and Android.
 
 ```typescript
-const devices = AudioDevices?.getAudioDevices() ?? [];
+const [output] = AudioDevices.getCurrentOutputs();
+console.log(`Playing on ${output?.name}`); // e.g. "WH-1000XM4"
+```
+
+**Returns:** `TAudioOutput[]`
+
+```typescript
+type TAudioOutput = {
+  id: string;   // Identifies the output; stays the same when the device reconnects (see below)
+  name: string; // e.g. "WH-1000XM4"; wired outputs usually report "Headphones" or "USB Audio"
+  type: TAudioOutputType;
+};
+
+type TAudioOutputType =
+  | 'built_in_speaker'
+  | 'built_in_earpiece'
+  | 'wired_headphones'
+  | 'line_out'
+  | 'bluetooth'
+  | 'usb'
+  | 'airplay'
+  | 'car_audio'
+  | 'hdmi'
+  | 'unknown';
+```
+
+**About `id`:** it stays the same when the device reconnects, so you can key settings such as an EQ profile on it.
+
+- Bluetooth outputs are identified by their address: the full address on iOS (the same for A2DP and hands-free), and its last two octets on Android, which is all Android 13+ shows apps without the Nearby devices permission. An LE Audio device can report a different address than the same headphones over classic Bluetooth.
+- Other outputs use the port UID on iOS, and type plus name on Android. Two identical wired or USB devices can share an id.
+
+On Android 12 and below, Android can't be asked where media goes, so the output is inferred from the connected devices: the Bluetooth, wired or USB device connected last (on Android 10 and below, Bluetooth first), otherwise the speaker.
+
+---
+
+### `onOutputsChange(callback)`
+
+Fires when the devices media plays through change: Bluetooth headphones connect or disconnect, headphones or a USB DAC are plugged in, or playback falls back to the speaker. It only fires when the outputs actually change. iOS and Android.
+
+```typescript
+AudioDevices.onOutputsChange((outputs, reason) => {
+  const output = outputs[0];
+  if (output) applyEqProfileFor(output.id);
+});
+```
+
+The player already pauses when headphones are unplugged or disconnect, so there's no need to pause here.
+
+| Param | Type | Description |
+|---|---|---|
+| `outputs` | `TAudioOutput[]` | The new outputs, as `getCurrentOutputs()` returns them |
+| `reason` | `'device_connected' \| 'device_disconnected' \| 'route_changed'` | Why they changed. Switching from one device to a newly connected one is `device_connected`; `route_changed` covers everything else, e.g. the user picked another output |
+
+Each call adds a listener, and there is no way to remove one, so register it once at app start, not in a component effect. Inside components, use [`useAudioOutputs`](/docs/hooks/platform-hooks#useaudiooutputs).
+
+On Android the event fires when a device connects or disconnects; Android has no public notification for other routing changes.
+
+---
+
+### `getAudioDevices()` (Android only)
+
+Get all available audio output devices. **Synchronous.** Returns an empty list on iOS.
+
+```typescript
+const devices = AudioDevices.getAudioDevices();
 ```
 
 **Returns:** `TAudioDevice[]`
@@ -34,12 +99,12 @@ type TAudioDevice = {
 
 ---
 
-### `setAudioDevice(deviceId)`
+### `setAudioDevice(deviceId)` (Android only)
 
-Route audio output to a specific device.
+Route audio output to a specific device. Rejects on iOS.
 
 ```typescript
-await AudioDevices?.setAudioDevice(device.id);
+await AudioDevices.setAudioDevice(device.id);
 ```
 
 | Param | Type | Required | Description |

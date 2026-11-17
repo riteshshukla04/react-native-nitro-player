@@ -9,6 +9,7 @@ package com.margelo.nitro.nitroplayer
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 
 
 /**
@@ -34,6 +35,26 @@ data class DownloadStorageInfo(
   val totalSpace: Double
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is DownloadStorageInfo) return false
+    return Objects.deepEquals(this.totalDownloadedSize, other.totalDownloadedSize)
+      && Objects.deepEquals(this.trackCount, other.trackCount)
+      && Objects.deepEquals(this.playlistCount, other.playlistCount)
+      && Objects.deepEquals(this.availableSpace, other.availableSpace)
+      && Objects.deepEquals(this.totalSpace, other.totalSpace)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      totalDownloadedSize,
+      trackCount,
+      playlistCount,
+      availableSpace,
+      totalSpace
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

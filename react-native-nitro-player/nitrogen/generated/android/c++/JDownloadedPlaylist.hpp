@@ -33,7 +33,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "DownloadedPlaylist" and the the Kotlin data class "DownloadedPlaylist".
+   * The C++ JNI bridge between the C++ struct "DownloadedPlaylist" and the Kotlin data class "DownloadedPlaylist".
    */
   struct JDownloadedPlaylist final: public jni::JavaClass<JDownloadedPlaylist> {
   public:
@@ -62,16 +62,16 @@ namespace margelo::nitro::nitroplayer {
       return DownloadedPlaylist(
         playlistId->toStdString(),
         originalPlaylist->toCpp(),
-        [&]() {
-          size_t __size = downloadedTracks->size();
+        [&](auto&& __input) {
+          size_t __size = __input->size();
           std::vector<DownloadedTrack> __vector;
           __vector.reserve(__size);
           for (size_t __i = 0; __i < __size; __i++) {
-            auto __element = downloadedTracks->getElement(__i);
+            auto __element = __input->getElement(__i);
             __vector.push_back(__element->toCpp());
           }
           return __vector;
-        }(),
+        }(downloadedTracks),
         totalSize,
         downloadedAt,
         static_cast<bool>(isComplete)
@@ -91,16 +91,16 @@ namespace margelo::nitro::nitroplayer {
         clazz,
         jni::make_jstring(value.playlistId),
         JPlaylist::fromCpp(value.originalPlaylist),
-        [&]() {
-          size_t __size = value.downloadedTracks.size();
+        [&](auto&& __input) {
+          size_t __size = __input.size();
           jni::local_ref<jni::JArrayClass<JDownloadedTrack>> __array = jni::JArrayClass<JDownloadedTrack>::newArray(__size);
           for (size_t __i = 0; __i < __size; __i++) {
-            const auto& __element = value.downloadedTracks[__i];
+            const auto& __element = __input[__i];
             auto __elementJni = JDownloadedTrack::fromCpp(__element);
             __array->setElement(__i, *__elementJni);
           }
           return __array;
-        }(),
+        }(value.downloadedTracks),
         value.totalSize,
         value.downloadedAt,
         value.isComplete

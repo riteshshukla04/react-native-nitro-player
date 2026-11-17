@@ -31,7 +31,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "NotificationButtons" and the the Kotlin data class "NotificationButtons".
+   * The C++ JNI bridge between the C++ struct "NotificationButtons" and the Kotlin data class "NotificationButtons".
    */
   struct JNotificationButtons final: public jni::JavaClass<JNotificationButtons> {
   public:
@@ -50,16 +50,16 @@ namespace margelo::nitro::nitroplayer {
       static const auto fieldIos = clazz->getField<JIOSNotificationButtons>("ios");
       jni::local_ref<JIOSNotificationButtons> ios = this->getFieldValue(fieldIos);
       return NotificationButtons(
-        android != nullptr ? std::make_optional([&]() {
-          size_t __size = android->size();
+        android != nullptr ? std::make_optional([&](auto&& __input) {
+          size_t __size = __input->size();
           std::vector<AndroidNotificationButton> __vector;
           __vector.reserve(__size);
           for (size_t __i = 0; __i < __size; __i++) {
-            auto __element = android->getElement(__i);
+            auto __element = __input->getElement(__i);
             __vector.push_back(__element->toCpp());
           }
           return __vector;
-        }()) : std::nullopt,
+        }(android)) : std::nullopt,
         ios != nullptr ? std::make_optional(ios->toCpp()) : std::nullopt
       );
     }
@@ -75,16 +75,16 @@ namespace margelo::nitro::nitroplayer {
       static const auto create = clazz->getStaticMethod<JSignature>("fromCpp");
       return create(
         clazz,
-        value.android.has_value() ? [&]() {
-          size_t __size = value.android.value().size();
+        value.android.has_value() ? [&](auto&& __input) {
+          size_t __size = __input.size();
           jni::local_ref<jni::JArrayClass<JAndroidNotificationButton>> __array = jni::JArrayClass<JAndroidNotificationButton>::newArray(__size);
           for (size_t __i = 0; __i < __size; __i++) {
-            const auto& __element = value.android.value()[__i];
+            const auto& __element = __input[__i];
             auto __elementJni = JAndroidNotificationButton::fromCpp(__element);
             __array->setElement(__i, *__elementJni);
           }
           return __array;
-        }() : nullptr,
+        }(value.android.value()) : nullptr,
         value.ios.has_value() ? JIOSNotificationButtons::fromCpp(value.ios.value()) : nullptr
       );
     }
