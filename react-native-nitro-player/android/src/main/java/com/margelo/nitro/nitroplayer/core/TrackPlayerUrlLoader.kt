@@ -80,8 +80,16 @@ internal fun TrackPlayerCore.updateTracksOnQueue(tracks: List<TrackItem>) {
             if (isCastingField && suppliesCastUrls) {
                 // The receiver loads Cast URLs, so a new `url` changes nothing there — only resync newly queued tracks.
                 // While a queue change is in flight the timeline is stale; its report rebuilds the queue
-                if (castLoadInFlight) castRebuildDeferred = true
-                if (exo.mediaItemCount > 0 && !castLoadInFlight) rebuildQueueFromCurrentPosition() else checkUpcomingTracksForCastUrls(lookaheadCount)
+                if (castLoadInFlight) {
+                    castRebuildDeferred = true
+                    checkUpcomingTracksForCastUrls(lookaheadCount)
+                } else if (exo.mediaItemCount > 0) {
+                    // The receiver already plays something: no deferred hand-off load is coming
+                    pendingCastAutoplay = null
+                    rebuildQueueFromCurrentPosition()
+                } else {
+                    checkUpcomingTracksForCastUrls(lookaheadCount)
+                }
                 return@run
             }
 
@@ -90,6 +98,8 @@ internal fun TrackPlayerCore.updateTracksOnQueue(tracks: List<TrackItem>) {
                 if (currentTrackResolvedNow || exo.mediaItemCount == 0) {
                     rebuildQueueAndPlayFromIndex(currentTrackIndex)
                 } else {
+                    // The receiver already plays something (a reattach): no deferred hand-off load is coming
+                    pendingCastAutoplay = null
                     rebuildQueueFromCurrentPosition()
                 }
                 return@run

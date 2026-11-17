@@ -62,7 +62,15 @@ extension TrackPlayerCore {
       guard let self else { return }
       let wasPlaying = (self.player?.rate ?? 0) > 0 || self.intendedToPlay
       let rawPosition = self.player?.currentTime().seconds ?? 0
-      let position = rawPosition.isFinite ? rawPosition : 0
+      // A live stream (indefinite duration) has no position to resume: currentTime is just time listened.
+      // A transcode can read as indefinite too; the app-supplied duration says it's finite.
+      let item = self.player?.currentItem
+      let appDuration = item?.trackId.flatMap { id in
+        (self.currentTracks.first { $0.id == id } ?? self.playNextStack.first { $0.id == id }
+          ?? self.upNextQueue.first { $0.id == id })?.duration
+      } ?? 0
+      let isLive = item?.status == .readyToPlay && item?.duration.isIndefinite == true && appDuration <= 0
+      let position = rawPosition.isFinite && !isLive ? rawPosition : 0
 
       // A resumed session (network blip, relaunch with a live session) keeps its Cast URLs instead of asking again
       if self.isCasting, self.suppliesCastUrls {

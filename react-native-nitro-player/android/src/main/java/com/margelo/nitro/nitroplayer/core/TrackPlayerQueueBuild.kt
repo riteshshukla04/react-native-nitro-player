@@ -105,6 +105,7 @@ internal fun TrackPlayerCore.rebuildQueueAndPlayFromIndex(index: Int) {
         lastCastWaitTrackId = null
         // Single atomic queueLoad — no separate clear (each queue op is a receiver RPC).
         val castItems = castTracks.map { makeMediaItem(it, mediaIdFor(it)) }
+        applyPendingCastAutoplay(castTracks.first().id)
         markCastLoadInFlight(CastQueueChange.LOAD)
         exo.setMediaItems(castItems, true)
         exo.prepare()
@@ -291,6 +292,7 @@ internal fun TrackPlayerCore.updatePlayerQueue(tracks: List<TrackItem>) {
         }
         lastCastWaitTrackId = null
         val castItems = castTracks.map { makeMediaItem(it, mediaIdFor(it)) }
+        applyPendingCastAutoplay(castTracks.first().id)
         markCastLoadInFlight(CastQueueChange.LOAD)
         exo.setMediaItems(castItems, true)
         exo.prepare()

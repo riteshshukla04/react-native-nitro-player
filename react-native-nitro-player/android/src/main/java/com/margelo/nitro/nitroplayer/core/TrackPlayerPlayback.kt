@@ -23,6 +23,8 @@ import com.margelo.nitro.nitroplayer.media.resolveNotificationButtons
 suspend fun TrackPlayerCore.play() = withPlayerContext { playOnQueue() }
 
 internal fun TrackPlayerCore.playOnQueue() {
+    // While the receiver waits on the handed-off track, remember the user's choice for its load
+    pendingCastAutoplay = pendingCastAutoplay?.copy(second = true)
     audioFocusController?.acquire()
     // A media-session stop (e.g. dismissing the notification) leaves ExoPlayer idle with its
     // queue intact; prepare it again, as a session play request does.
@@ -35,6 +37,7 @@ internal fun TrackPlayerCore.playOnQueue() {
 suspend fun TrackPlayerCore.pause() = withPlayerContext { pauseOnQueue() }
 
 internal fun TrackPlayerCore.pauseOnQueue() {
+    pendingCastAutoplay = pendingCastAutoplay?.copy(second = false)
     exo.pause()
     audioFocusController?.abandon()
 }

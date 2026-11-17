@@ -175,6 +175,9 @@ class TrackPlayerCore private constructor(
     /** Asks again while the receiver waits on the current track's Cast URL, in case the app never answers. */
     internal val castUrlRetryRunnable = Runnable { checkUpcomingTracksForCastUrls(lookaheadCount) }
 
+    /** The handed-off track (id) and whether it was playing, for a connect that had nothing castable yet. */
+    internal var pendingCastAutoplay: Pair<String, Boolean>? = null
+
     // ── Progress & playlist-update runnables ───────────────────────────────
 
     /**
