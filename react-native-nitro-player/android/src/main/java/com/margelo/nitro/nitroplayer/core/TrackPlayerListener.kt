@@ -36,6 +36,12 @@ internal class TrackPlayerEventListener(
             // skip the receiver applied first) is ignored: the track picked meanwhile stays current
             val castReport = castQueueReplaceInFlight()
             if (castReport && !isCastLoadReport(mediaItem)) return
+            if (isCastingField && castLoadInFlight && castReloadDeferred) {
+                // A newer target waits on the change in flight, so whatever plays now is already superseded:
+                // its report sends that target (an edit's report arrives through onEvents)
+                if (castReport) finishCastLoad(receiverEmpty = mediaItem == null)
+                return
+            }
 
             // Remove the track that just finished/was skipped from temp lists
             if ((
@@ -81,9 +87,6 @@ internal class TrackPlayerEventListener(
                 // The receiver reported the new queue: apply what arrived meanwhile, once (instead of the
                 // top-up below, which would send the same change again)
                 finishCastLoad(receiverEmpty = mediaItem == null)
-            } else if (isCastingField && castLoadInFlight) {
-                // An insert or removal is unreported, so the timeline is stale: its report tops the queue up
-                if (mediaItem != null) castRebuildDeferred = true
             } else if (mediaItem != null &&
                 exo.mediaItemCount - exo.currentMediaItemIndex - 1 < QUEUE_WINDOW_SIZE
             ) {

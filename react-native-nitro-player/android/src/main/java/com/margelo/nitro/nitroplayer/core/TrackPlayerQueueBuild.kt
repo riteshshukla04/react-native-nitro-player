@@ -89,9 +89,12 @@ internal fun TrackPlayerCore.rebuildQueueAndPlayFromIndex(index: Int) {
         currentTrackIndex = index
         val target = currentTracks[index]
         val castTracks = castableUpcoming(currentTracks.subList(index, currentTracks.size))
+        // One queue change at a time: until the receiver reports the one in flight, the local timeline is stale
+        // (a clear would miss what that change loads). Its report sends this target.
+        val deferred = deferCastReload()
         if (castTracks.isEmpty()) {
             // Lazy target — silence the receiver and wait for updateTracks to reload (dedup so re-entries don't spam JS).
-            if (exo.mediaItemCount > 0) {
+            if (!deferred && exo.mediaItemCount > 0) {
                 markCastLoadInFlight(CastQueueChange.CLEAR)
                 exo.clearMediaItems()
             }
@@ -103,6 +106,10 @@ internal fun TrackPlayerCore.rebuildQueueAndPlayFromIndex(index: Int) {
             return
         }
         lastCastWaitTrackId = null
+        if (deferred) {
+            checkUpcomingTracksForUrls(lookaheadCount)
+            return
+        }
         // Single atomic queueLoad — no separate clear (each queue op is a receiver RPC).
         val castItems = castTracks.map { makeMediaItem(it, mediaIdFor(it)) }
         applyPendingCastAutoplay(castTracks.first().id)
@@ -129,6 +136,11 @@ internal fun TrackPlayerCore.rebuildQueueAndPlayFromIndex(index: Int) {
 
 internal fun TrackPlayerCore.rebuildQueueFromCurrentPosition() {
     if (!isExoInitialized) return
+    // Until the receiver reports the queue change in flight the timeline is stale; that report rebuilds
+    if (isCastingField && castLoadInFlight) {
+        castRebuildDeferred = true
+        return
+    }
     val currentIndex = exo.currentMediaItemIndex
     if (currentIndex < 0) return
 
@@ -214,8 +226,12 @@ internal fun TrackPlayerCore.rebuildQueueFromCurrentPosition() {
     }
 
     val removesItems = exo.mediaItemCount > currentIndex + 1 + commonPrefix
-    // The receiver applies inserts and removals later; until it reports them, another rebuild would repeat them
-    if (isCastingField && (removesItems || commonPrefix < newQueueTracks.size)) markCastLoadInFlight(CastQueueChange.EDIT)
+    // The receiver applies inserts and removals later; until it reports both, another rebuild would repeat them
+    if (isCastingField && (removesItems || commonPrefix < newQueueTracks.size)) {
+        val timeline = exo.player.currentTimeline
+        val removed = (currentIndex + 1 + commonPrefix until exo.mediaItemCount).mapTo(HashSet()) { timeline.getUidOfPeriod(it) }
+        markCastEditInFlight(removed, newQueueTracks.size - commonPrefix)
+    }
     if (removesItems) {
         exo.removeMediaItems(currentIndex + 1 + commonPrefix, exo.mediaItemCount)
     }
@@ -276,9 +292,11 @@ internal fun TrackPlayerCore.updatePlayerQueue(tracks: List<TrackItem>) {
         castResume = null
         currentTrackIndex = 0
         val castTracks = castableUpcoming(tracks)
+        // One queue change at a time (see rebuildQueueAndPlayFromIndex)
+        val deferred = deferCastReload()
         if (castTracks.isEmpty()) {
             // Lazy first track — silence the receiver and wait for updateTracks to supply URLs.
-            if (exo.mediaItemCount > 0) {
+            if (!deferred && exo.mediaItemCount > 0) {
                 markCastLoadInFlight(CastQueueChange.CLEAR)
                 exo.clearMediaItems()
             }
@@ -291,6 +309,7 @@ internal fun TrackPlayerCore.updatePlayerQueue(tracks: List<TrackItem>) {
             return
         }
         lastCastWaitTrackId = null
+        if (deferred) return
         val castItems = castTracks.map { makeMediaItem(it, mediaIdFor(it)) }
         applyPendingCastAutoplay(castTracks.first().id)
         markCastLoadInFlight(CastQueueChange.LOAD)

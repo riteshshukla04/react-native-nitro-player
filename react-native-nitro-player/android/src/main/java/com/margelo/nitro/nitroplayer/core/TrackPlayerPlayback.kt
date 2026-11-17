@@ -282,7 +282,9 @@ internal fun TrackPlayerCore.playSongInternal(
     if (currentPlaylistId != targetPlaylistId) {
         val playlist = playlistManager.getPlaylist(targetPlaylistId) ?: return
         currentPlaylistId = targetPlaylistId
-        updatePlayerQueue(playlist.tracks)
+        // While casting, the load below replaces the receiver's queue at once; loading track 0 first would
+        // only send it a queue it drops a moment later
+        if (isCastingField) currentTracks = playlist.tracks else updatePlayerQueue(playlist.tracks)
     }
     playFromIndexInternal(songIndex)
 }

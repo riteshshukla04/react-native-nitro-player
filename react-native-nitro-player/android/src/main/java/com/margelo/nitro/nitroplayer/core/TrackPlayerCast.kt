@@ -173,8 +173,11 @@ internal fun TrackPlayerCore.setCastUrlsOnQueue(urls: Map<String, String>) {
     if (supplied.isEmpty()) return
     castUrls.putAll(supplied)
     supplied.keys.forEach { castUrlRequestedAt.remove(it) }
-    // A load is on its way to the receiver; its first transition rebuilds the queue with these URLs
-    if (castLoadInFlight) return
+    // A queue change is on its way to the receiver; its report applies these URLs
+    if (castLoadInFlight) {
+        castRebuildDeferred = true
+        return
+    }
 
     if (exo.mediaItemCount > 0) {
         // Upcoming items whose URL changed are replaced; the playing one keeps its URL.
@@ -212,18 +215,33 @@ private const val CAST_LOAD_TIMEOUT_MS = 15_000L
 /** A queue change sent to the receiver: a whole new queue, an emptied one, or items inserted or removed after the current one. */
 internal enum class CastQueueChange { LOAD, CLEAR, EDIT }
 
+private fun Timeline.periodUids(): Set<Any> = (0 until periodCount).mapTo(HashSet()) { getUidOfPeriod(it) }
+
 /**
- * Marks a queue change about to be sent to the receiver. media3's cast player only sends it: the local timeline
- * stays as it was until the receiver reports, so until then URL answers and edits only accumulate. The receiver
- * gives every item it loads or inserts a new id, so its report is the first timeline without the same ids.
+ * Marks a load or clear about to be sent to the receiver. media3's cast player only sends it: the local timeline
+ * stays as it was until the receiver reports, so until then URL answers, edits and new targets only accumulate.
+ * The receiver gives every item it loads a new id, so a load's report is the first transition onto an unknown id.
  */
 internal fun TrackPlayerCore.markCastLoadInFlight(change: CastQueueChange) {
     if (!suppliesCastUrls) return
-    // An edit sent before a load or clear reports doesn't change which report is awaited
-    if (change == CastQueueChange.EDIT && castLoadInFlight) return
+    armCastChange(change)
+}
+
+/** Marks an edit about to be sent: reported once [removedUids] are gone and [insertCount] new ids are there. */
+internal fun TrackPlayerCore.markCastEditInFlight(
+    removedUids: Set<Any>,
+    insertCount: Int,
+) {
+    if (!suppliesCastUrls) return
+    castEditRemovedUids = removedUids
+    castEditInsertCount = insertCount
+    armCastChange(CastQueueChange.EDIT)
+}
+
+private fun TrackPlayerCore.armCastChange(change: CastQueueChange) {
     castLoadInFlight = true
     castLoadChange = change
-    castLoadStaleUids = exo.player.currentTimeline.let { t -> (0 until t.periodCount).mapTo(HashSet()) { t.getUidOfPeriod(it) } }
+    castLoadStaleUids = exo.player.currentTimeline.periodUids()
     playerHandler.removeCallbacks(castLoadTimeoutRunnable)
     playerHandler.postDelayed(castLoadTimeoutRunnable, CAST_LOAD_TIMEOUT_MS)
 }
@@ -232,7 +250,17 @@ internal fun TrackPlayerCore.clearCastLoadInFlight() {
     castLoadInFlight = false
     castLoadStaleUids = emptySet()
     castRebuildDeferred = false
+    castReloadDeferred = false
+    castEditRemovedUids = emptySet()
+    castEditInsertCount = 0
     playerHandler.removeCallbacks(castLoadTimeoutRunnable)
+}
+
+/** While a queue change is in flight, a new target waits for its report instead of going out on a stale timeline. */
+internal fun TrackPlayerCore.deferCastReload(): Boolean {
+    if (!castLoadInFlight) return false
+    castReloadDeferred = true
+    return true
 }
 
 /** A load or clear in flight, which replaces the whole receiver queue. */
@@ -246,44 +274,54 @@ internal fun TrackPlayerCore.isCastLoadReport(mediaItem: MediaItem?): Boolean {
     return timeline.getUidOfPeriod(exo.player.currentPeriodIndex) !in castLoadStaleUids
 }
 
-/** The receiver reported an in-flight load or clear: apply the URLs and edits that arrived meanwhile, once. */
-internal fun TrackPlayerCore.finishCastLoad(receiverEmpty: Boolean) {
+/** The receiver reported an in-flight change: send a target picked meanwhile, else apply what arrived, once. */
+private fun TrackPlayerCore.finishCastChange(receiverEmpty: Boolean) {
+    val change = castLoadChange
+    val reload = castReloadDeferred
+    val rebuild = castRebuildDeferred
     clearCastLoadInFlight()
-    if (!receiverEmpty) {
-        castLoadRetried = false
-        rebuildQueueFromCurrentPosition()
-    } else if (lastCastWaitTrackId != null && currentTracks.isNotEmpty()) {
+    if (!receiverEmpty) castLoadRetried = false
+    when {
+        reload && currentTracks.isNotEmpty() -> rebuildQueueAndPlayFromIndex(currentTrackIndex.coerceIn(0, currentTracks.size - 1))
+        // A load's report also tops the queue up (the listener skips its own top-up for it)
+        change == CastQueueChange.LOAD -> rebuildQueueFromCurrentPosition()
+        change == CastQueueChange.EDIT -> if (rebuild) rebuildQueueFromCurrentPosition()
         // Cleared while waiting on a track's URL: load it if the URL arrived meanwhile
-        rebuildQueueAndPlayFromIndex(currentTrackIndex.coerceIn(0, currentTracks.size - 1))
+        lastCastWaitTrackId != null && currentTracks.isNotEmpty() ->
+            rebuildQueueAndPlayFromIndex(currentTrackIndex.coerceIn(0, currentTracks.size - 1))
     }
 }
 
-/** After a batch of player events: an in-flight edit is reported once the receiver's item ids change. */
+/** The receiver reported the load or clear in flight (see [isCastLoadReport]). */
+internal fun TrackPlayerCore.finishCastLoad(receiverEmpty: Boolean) = finishCastChange(receiverEmpty)
+
+/** After a batch of player events: an in-flight edit is reported once its removals are gone and its inserts are there. */
 internal fun TrackPlayerCore.onCastTimelineEvents() {
     if (!isCastingField || !castLoadInFlight || castLoadChange != CastQueueChange.EDIT) return
-    val timeline = exo.player.currentTimeline
-    val uids = (0 until timeline.periodCount).mapTo(HashSet()) { timeline.getUidOfPeriod(it) }
-    if (uids == castLoadStaleUids) return
-    val deferred = castRebuildDeferred
-    clearCastLoadInFlight()
-    if (deferred) rebuildQueueFromCurrentPosition()
+    val uids = exo.player.currentTimeline.periodUids()
+    if (uids.any { it in castEditRemovedUids }) return
+    if (uids.count { it !in castLoadStaleUids } < castEditInsertCount) return
+    finishCastChange(receiverEmpty = uids.isEmpty())
 }
 
 /** No report after the timeout (e.g. a rejected LOAD sends none): send the current target once more. */
 internal fun TrackPlayerCore.onCastLoadTimeout() {
     if (!castLoadInFlight) return
     val change = castLoadChange
-    val deferred = castRebuildDeferred
+    val reload = castReloadDeferred
+    val rebuild = castRebuildDeferred
     clearCastLoadInFlight()
     if (!isCastingField || !isExoInitialized || currentTracks.isEmpty()) return
-    if (change == CastQueueChange.EDIT) {
+    val target = currentTrackIndex.coerceIn(0, currentTracks.size - 1)
+    when {
+        reload -> rebuildQueueAndPlayFromIndex(target)
         // Insert or remove only: the next rebuild compares against whatever the receiver holds by then
-        if (deferred) rebuildQueueFromCurrentPosition()
-        return
+        change == CastQueueChange.EDIT -> if (rebuild) rebuildQueueFromCurrentPosition()
+        !castLoadRetried -> {
+            castLoadRetried = true
+            rebuildQueueAndPlayFromIndex(target)
+        }
     }
-    if (castLoadRetried) return
-    castLoadRetried = true
-    rebuildQueueAndPlayFromIndex(currentTrackIndex.coerceIn(0, currentTracks.size - 1))
 }
 
 /** Keeps the connect-time Cast queue in step with a playlist edit made while its URLs are still pending. */

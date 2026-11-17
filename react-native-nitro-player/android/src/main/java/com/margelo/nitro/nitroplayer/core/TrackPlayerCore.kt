@@ -166,6 +166,13 @@ class TrackPlayerCore private constructor(
     /** A rebuild (an edit, a URL answer, a top-up) waited on the report. */
     internal var castRebuildDeferred = false
 
+    /** A new target (a pick, a new playlist) waited on the report; it supersedes the queue that report brings. */
+    internal var castReloadDeferred = false
+
+    /** For an edit in flight: the receiver item ids it removes and how many items it inserts. */
+    internal var castEditRemovedUids: Set<Any> = emptySet()
+    internal var castEditInsertCount = 0
+
     /** Whether an unreported receiver load was already retried once since the receiver last reported. */
     internal var castLoadRetried = false
 
