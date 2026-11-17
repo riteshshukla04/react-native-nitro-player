@@ -24,14 +24,18 @@ import kotlinx.coroutines.launch
 class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
     companion object {
         private const val ROOT_ID = "root"
-        private const val RECENT_ROOT_ID = "recent"
+        // Reserved: an app's own browse folder can't take this id
+        private const val RECENT_ROOT_ID = "__nitro_recent__"
         private const val PLAYLIST_PREFIX = "playlist_"
         private const val ANDROID_AUTO_PACKAGE = "com.google.android.projection.gearhead"
         private const val PREFS_NAME = "NitroPlayerAndroidAuto"
         private const val KEY_ENABLED = "enabled"
         private const val KEY_SEARCH = "search"
-        private const val KEY_LAST_TRACK = "lastTrackId"
         private const val KEY_RESUMPTION = "resumption"
+        private const val KEY_RECENT_MEDIA_ID = "recentMediaId"
+        private const val KEY_RECENT_TITLE = "recentTitle"
+        private const val KEY_RECENT_ARTIST = "recentArtist"
+        private const val KEY_RECENT_ARTWORK = "recentArtwork"
 
         var isAndroidAutoConnected: Boolean = false
 
@@ -57,7 +61,8 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
             prefs(context).edit().putBoolean(KEY_SEARCH, supported).apply()
         }
 
-        // Persisted: SystemUI asks for a resumable item at boot, long before JS registers its handler
+        // Persisted: SystemUI asks for a resumable item at boot, long before JS registers its handler. Reset each
+        // time JS starts (before the app registers), so an app that stops handling resumption stops offering it.
         fun setResumptionSupported(
             context: Context,
             supported: Boolean,
@@ -65,12 +70,19 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
             prefs(context).edit().putBoolean(KEY_RESUMPTION, supported).apply()
         }
 
-        // Playlists are saved but not the position in them; a recent-media request needs the track without JS
-        fun rememberCurrentTrack(
+        // What played last, for the resume card: SystemUI asks without JS, possibly at boot before any playlist loads
+        fun rememberRecentTrack(
             context: Context,
-            trackId: String,
+            mediaId: String,
+            track: TrackItem,
         ) {
-            prefs(context).edit().putString(KEY_LAST_TRACK, trackId).apply()
+            prefs(context)
+                .edit()
+                .putString(KEY_RECENT_MEDIA_ID, mediaId)
+                .putString(KEY_RECENT_TITLE, track.title)
+                .putString(KEY_RECENT_ARTIST, track.artist)
+                .putString(KEY_RECENT_ARTWORK, track.artwork?.asSecondOrNull())
+                .apply()
         }
 
         private fun prefs(context: Context) = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -153,8 +165,7 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
 
         if (parentId == RECENT_ROOT_ID) {
             // The item only fills the resume card; resuming goes through onPlaybackResumption, not this id
-            val recent = recentTrack()?.takeIf { prefs(this).getBoolean(KEY_RESUMPTION, false) }
-            result.sendResult(recent?.let { (playlist, track) -> mutableListOf(recentMediaItem(playlist, track)) } ?: mutableListOf())
+            result.sendResult(recentMediaItem()?.let { mutableListOf(it) } ?: mutableListOf())
             return
         }
 
@@ -334,24 +345,21 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
         }
     }
 
-    private fun recentTrack(): Pair<Playlist, TrackItem>? {
-        val playlist = core.playlistManager.getCurrentPlaylist() ?: return null
-        val lastTrackId = prefs(this).getString(KEY_LAST_TRACK, null)
-        val track = playlist.tracks.firstOrNull { it.id == lastTrackId } ?: playlist.tracks.firstOrNull() ?: return null
-        return playlist to track
-    }
-
-    private fun recentMediaItem(
-        playlist: Playlist,
-        track: TrackItem,
-    ): MediaBrowserCompat.MediaItem {
+    /** The last played track as a playable item, when the app can resume it (see onLoadChildren). */
+    private fun recentMediaItem(): MediaBrowserCompat.MediaItem? {
+        val prefs = prefs(this)
+        if (!prefs.getBoolean(KEY_RESUMPTION, false)) return null
+        val mediaId = prefs.getString(KEY_RECENT_MEDIA_ID, null) ?: return null
+        // SystemUI drops a card without a title
+        val title = prefs.getString(KEY_RECENT_TITLE, null)?.takeIf { it.isNotBlank() } ?: applicationInfo.loadLabel(packageManager)
         val description =
             MediaDescriptionCompat
                 .Builder()
-                .setMediaId("${playlist.id}:${track.id}")
-                .setTitle(track.title)
-                .setSubtitle(track.artist)
-                .setIconUri(track.artwork?.asSecondOrNull()?.let { Uri.parse(it) })
+                .setMediaId(mediaId)
+                .setTitle(title)
+                .setSubtitle(prefs.getString(KEY_RECENT_ARTIST, null))
+                // SystemUI only shows content://, android.resource:// and file:// artwork on a resume card
+                .setIconUri(prefs.getString(KEY_RECENT_ARTWORK, null)?.takeIf { it.isNotEmpty() }?.let { Uri.parse(it) })
                 .build()
         return MediaBrowserCompat.MediaItem(description, MediaBrowserCompat.MediaItem.FLAG_PLAYABLE)
     }

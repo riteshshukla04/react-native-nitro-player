@@ -72,6 +72,9 @@ class TrackPlayerCore private constructor(
     internal var isManuallySeeked = false
 
     @Volatile internal var isAndroidAutoConnectedField: Boolean = false
+
+    /** The media id last saved for the phone's resume card, so an unchanged track isn't written again. */
+    internal var lastRecentMediaId: String? = null
     internal var androidAutoConnectionDetector: AndroidAutoConnectionDetector? = null
     internal var previousMediaItem: androidx.media3.common.MediaItem? = null
 

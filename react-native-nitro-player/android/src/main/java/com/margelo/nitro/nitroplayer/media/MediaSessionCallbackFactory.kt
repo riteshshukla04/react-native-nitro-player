@@ -19,6 +19,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
 import com.margelo.nitro.nitroplayer.TrackItem
 import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
+import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
 import com.margelo.nitro.nitroplayer.playlist.Playlist
 import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
 import kotlinx.coroutines.CoroutineScope
@@ -167,7 +168,9 @@ object MediaSessionCallbackFactory {
                 controller: MediaSession.ControllerInfo,
                 isForPlayback: Boolean,
             ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
-                service.trackPlayerCore?.startJsRuntimeIfNeeded()
+                // A process the system started just for this session (a service restarted after the app was
+                // killed, a headset button) has no player core yet; creating it starts the runtime as well
+                TrackPlayerCore.getInstance(service.applicationContext).startJsRuntimeIfNeeded()
                 MediaLibraryManager.getInstance(service).requestResumption()
                 val future = SettableFuture.create<MediaSession.MediaItemsWithStartPosition>()
                 val player = mediaSession.player
