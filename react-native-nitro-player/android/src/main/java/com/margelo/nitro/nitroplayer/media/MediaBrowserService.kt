@@ -113,16 +113,16 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
         clientPackageName: String,
         clientUid: Int,
         rootHints: Bundle?,
-    ): BrowserRoot? {
+    ): BrowserRoot {
         NitroPlayerLogger.log("MediaBrowserService", "📂 NitroPlayerMediaBrowserService: onGetRoot called from $clientPackageName")
 
         if (clientPackageName == ANDROID_AUTO_PACKAGE) core.onAndroidAutoBrowserConnected()
 
         // SystemUI's media resumption asks for one playable recent item, without JS running, and only shows
         // its resume card when it gets one. Its play button then sends play() to the session, which media3
-        // turns into onPlaybackResumption. So only offer an item when the app handles that.
+        // turns into onPlaybackResumption. So only offer an item when the app handles that (see onLoadChildren).
+        // Never null: that refuses the whole connection, and some clients (Android Auto) send this hint too.
         if (rootHints?.getBoolean(BrowserRoot.EXTRA_RECENT) == true) {
-            if (!prefs(this).getBoolean(KEY_RESUMPTION, false) || recentTrack() == null) return null
             return BrowserRoot(RECENT_ROOT_ID, Bundle().apply { putBoolean(BrowserRoot.EXTRA_RECENT, true) })
         }
 
@@ -153,7 +153,7 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
 
         if (parentId == RECENT_ROOT_ID) {
             // The item only fills the resume card; resuming goes through onPlaybackResumption, not this id
-            val recent = recentTrack()
+            val recent = recentTrack()?.takeIf { prefs(this).getBoolean(KEY_RESUMPTION, false) }
             result.sendResult(recent?.let { (playlist, track) -> mutableListOf(recentMediaItem(playlist, track)) } ?: mutableListOf())
             return
         }
