@@ -15,7 +15,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ enum "TAudioOutputChangeReason" and the the Kotlin enum "TAudioOutputChangeReason".
+   * The C++ JNI bridge between the C++ enum "TAudioOutputChangeReason" and the Kotlin enum "TAudioOutputChangeReason".
    */
   struct JTAudioOutputChangeReason final: public jni::JavaClass<JTAudioOutputChangeReason> {
   public:

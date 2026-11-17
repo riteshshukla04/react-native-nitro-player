@@ -17,7 +17,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "TAudioDevice" and the the Kotlin data class "TAudioDevice".
+   * The C++ JNI bridge between the C++ struct "TAudioDevice" and the Kotlin data class "TAudioDevice".
    */
   struct JTAudioDevice final: public jni::JavaClass<JTAudioDevice> {
   public:

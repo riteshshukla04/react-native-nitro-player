@@ -15,7 +15,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ enum "StorageLocation" and the the Kotlin enum "StorageLocation".
+   * The C++ JNI bridge between the C++ enum "StorageLocation" and the Kotlin enum "StorageLocation".
    */
   struct JStorageLocation final: public jni::JavaClass<JStorageLocation> {
   public:

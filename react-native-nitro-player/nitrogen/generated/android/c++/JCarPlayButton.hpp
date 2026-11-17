@@ -20,7 +20,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "CarPlayButton" and the the Kotlin data class "CarPlayButton".
+   * The C++ JNI bridge between the C++ struct "CarPlayButton" and the Kotlin data class "CarPlayButton".
    */
   struct JCarPlayButton final: public jni::JavaClass<JCarPlayButton> {
   public:

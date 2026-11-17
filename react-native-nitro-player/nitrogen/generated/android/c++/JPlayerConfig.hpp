@@ -35,7 +35,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "PlayerConfig" and the the Kotlin data class "PlayerConfig".
+   * The C++ JNI bridge between the C++ struct "PlayerConfig" and the Kotlin data class "PlayerConfig".
    */
   struct JPlayerConfig final: public jni::JavaClass<JPlayerConfig> {
   public:

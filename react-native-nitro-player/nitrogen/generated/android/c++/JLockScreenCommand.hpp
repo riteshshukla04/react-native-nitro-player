@@ -15,7 +15,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ enum "LockScreenCommand" and the the Kotlin enum "LockScreenCommand".
+   * The C++ JNI bridge between the C++ enum "LockScreenCommand" and the Kotlin enum "LockScreenCommand".
    */
   struct JLockScreenCommand final: public jni::JavaClass<JLockScreenCommand> {
   public:

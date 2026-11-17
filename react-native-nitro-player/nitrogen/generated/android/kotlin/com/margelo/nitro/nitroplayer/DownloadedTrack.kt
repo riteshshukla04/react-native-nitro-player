@@ -9,6 +9,7 @@ package com.margelo.nitro.nitroplayer
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 import com.margelo.nitro.core.NullType
 
 /**
@@ -40,6 +41,30 @@ data class DownloadedTrack(
   val storageLocation: StorageLocation
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is DownloadedTrack) return false
+    return Objects.deepEquals(this.trackId, other.trackId)
+      && Objects.deepEquals(this.originalTrack, other.originalTrack)
+      && Objects.deepEquals(this.localPath, other.localPath)
+      && Objects.deepEquals(this.localArtworkPath, other.localArtworkPath)
+      && Objects.deepEquals(this.downloadedAt, other.downloadedAt)
+      && Objects.deepEquals(this.fileSize, other.fileSize)
+      && Objects.deepEquals(this.storageLocation, other.storageLocation)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      trackId,
+      originalTrack,
+      localPath,
+      localArtworkPath,
+      downloadedAt,
+      fileSize,
+      storageLocation
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

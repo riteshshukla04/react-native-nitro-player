@@ -39,16 +39,16 @@ namespace margelo::nitro::nitroplayer {
      */
     void invoke(const std::vector<TAudioOutput>& outputs, TAudioOutputChangeReason reason) const {
       static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<jni::JArrayClass<JTAudioOutput>> /* outputs */, jni::alias_ref<JTAudioOutputChangeReason> /* reason */)>("invoke");
-      method(self(), [&]() {
-        size_t __size = outputs.size();
+      method(self(), [&](auto&& __input) {
+        size_t __size = __input.size();
         jni::local_ref<jni::JArrayClass<JTAudioOutput>> __array = jni::JArrayClass<JTAudioOutput>::newArray(__size);
         for (size_t __i = 0; __i < __size; __i++) {
-          const auto& __element = outputs[__i];
+          const auto& __element = __input[__i];
           auto __elementJni = JTAudioOutput::fromCpp(__element);
           __array->setElement(__i, *__elementJni);
         }
         return __array;
-      }(), JTAudioOutputChangeReason::fromCpp(reason));
+      }(outputs), JTAudioOutputChangeReason::fromCpp(reason));
     }
   };
 
@@ -66,16 +66,16 @@ namespace margelo::nitro::nitroplayer {
      * Invokes the C++ `std::function<...>` this `JFunc_void_std__vector_TAudioOutput__TAudioOutputChangeReason_cxx` instance holds.
      */
     void invoke_cxx(jni::alias_ref<jni::JArrayClass<JTAudioOutput>> outputs, jni::alias_ref<JTAudioOutputChangeReason> reason) {
-      _func([&]() {
-              size_t __size = outputs->size();
-              std::vector<TAudioOutput> __vector;
-              __vector.reserve(__size);
-              for (size_t __i = 0; __i < __size; __i++) {
-                auto __element = outputs->getElement(__i);
-                __vector.push_back(__element->toCpp());
-              }
-              return __vector;
-            }(), reason->toCpp());
+      _func([&](auto&& __input) {
+        size_t __size = __input->size();
+        std::vector<TAudioOutput> __vector;
+        __vector.reserve(__size);
+        for (size_t __i = 0; __i < __size; __i++) {
+          auto __element = __input->getElement(__i);
+          __vector.push_back(__element->toCpp());
+        }
+        return __vector;
+      }(outputs), reason->toCpp());
     }
 
   public:

@@ -17,7 +17,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "GainRange" and the the Kotlin data class "GainRange".
+   * The C++ JNI bridge between the C++ struct "GainRange" and the Kotlin data class "GainRange".
    */
   struct JGainRange final: public jni::JavaClass<JGainRange> {
   public:

@@ -19,7 +19,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "NotificationButtonEvent" and the the Kotlin data class "NotificationButtonEvent".
+   * The C++ JNI bridge between the C++ struct "NotificationButtonEvent" and the Kotlin data class "NotificationButtonEvent".
    */
   struct JNotificationButtonEvent final: public jni::JavaClass<JNotificationButtonEvent> {
   public:

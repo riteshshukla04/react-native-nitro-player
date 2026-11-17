@@ -15,7 +15,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ enum "PlaybackSource" and the the Kotlin enum "PlaybackSource".
+   * The C++ JNI bridge between the C++ enum "PlaybackSource" and the Kotlin enum "PlaybackSource".
    */
   struct JPlaybackSource final: public jni::JavaClass<JPlaybackSource> {
   public:

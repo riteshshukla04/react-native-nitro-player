@@ -9,6 +9,7 @@ package com.margelo.nitro.nitroplayer
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 
 
 /**
@@ -37,6 +38,28 @@ data class DownloadProgress(
   val state: DownloadState
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is DownloadProgress) return false
+    return Objects.deepEquals(this.trackId, other.trackId)
+      && Objects.deepEquals(this.downloadId, other.downloadId)
+      && Objects.deepEquals(this.bytesDownloaded, other.bytesDownloaded)
+      && Objects.deepEquals(this.totalBytes, other.totalBytes)
+      && Objects.deepEquals(this.progress, other.progress)
+      && Objects.deepEquals(this.state, other.state)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      trackId,
+      downloadId,
+      bytesDownloaded,
+      totalBytes,
+      progress,
+      state
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

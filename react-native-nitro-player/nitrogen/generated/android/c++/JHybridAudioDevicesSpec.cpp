@@ -69,16 +69,16 @@ namespace margelo::nitro::nitroplayer {
   std::vector<TAudioDevice> JHybridAudioDevicesSpec::getAudioDevices() {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<jni::JArrayClass<JTAudioDevice>>()>("getAudioDevices");
     auto __result = method(_javaPart);
-    return [&]() {
-      size_t __size = __result->size();
+    return [&](auto&& __input) {
+      size_t __size = __input->size();
       std::vector<TAudioDevice> __vector;
       __vector.reserve(__size);
       for (size_t __i = 0; __i < __size; __i++) {
-        auto __element = __result->getElement(__i);
+        auto __element = __input->getElement(__i);
         __vector.push_back(__element->toCpp());
       }
       return __vector;
-    }();
+    }(__result);
   }
   std::shared_ptr<Promise<void>> JHybridAudioDevicesSpec::setAudioDevice(double deviceId) {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(double /* deviceId */)>("setAudioDevice");
@@ -98,16 +98,16 @@ namespace margelo::nitro::nitroplayer {
   std::vector<TAudioOutput> JHybridAudioDevicesSpec::getCurrentOutputs() {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<jni::JArrayClass<JTAudioOutput>>()>("getCurrentOutputs");
     auto __result = method(_javaPart);
-    return [&]() {
-      size_t __size = __result->size();
+    return [&](auto&& __input) {
+      size_t __size = __input->size();
       std::vector<TAudioOutput> __vector;
       __vector.reserve(__size);
       for (size_t __i = 0; __i < __size; __i++) {
-        auto __element = __result->getElement(__i);
+        auto __element = __input->getElement(__i);
         __vector.push_back(__element->toCpp());
       }
       return __vector;
-    }();
+    }(__result);
   }
   void JHybridAudioDevicesSpec::onOutputsChange(const std::function<void(const std::vector<TAudioOutput>& /* outputs */, TAudioOutputChangeReason /* reason */)>& callback) {
     static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<JFunc_void_std__vector_TAudioOutput__TAudioOutputChangeReason::javaobject> /* callback */)>("onOutputsChange_cxx");

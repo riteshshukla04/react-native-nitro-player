@@ -17,7 +17,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "EqualizerBand" and the the Kotlin data class "EqualizerBand".
+   * The C++ JNI bridge between the C++ struct "EqualizerBand" and the Kotlin data class "EqualizerBand".
    */
   struct JEqualizerBand final: public jni::JavaClass<JEqualizerBand> {
   public:

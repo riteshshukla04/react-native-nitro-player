@@ -15,7 +15,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ enum "CastState" and the the Kotlin enum "CastState".
+   * The C++ JNI bridge between the C++ enum "CastState" and the Kotlin enum "CastState".
    */
   struct JCastState final: public jni::JavaClass<JCastState> {
   public:

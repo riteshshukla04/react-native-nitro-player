@@ -9,6 +9,7 @@ package com.margelo.nitro.nitroplayer
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 
 
 /**
@@ -28,6 +29,22 @@ data class EqualizerPreset(
   val type: PresetType
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is EqualizerPreset) return false
+    return Objects.deepEquals(this.name, other.name)
+      && Objects.deepEquals(this.gains, other.gains)
+      && Objects.deepEquals(this.type, other.type)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      name,
+      gains,
+      type
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

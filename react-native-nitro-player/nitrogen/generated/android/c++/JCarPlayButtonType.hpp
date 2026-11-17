@@ -15,7 +15,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ enum "CarPlayButtonType" and the the Kotlin enum "CarPlayButtonType".
+   * The C++ JNI bridge between the C++ enum "CarPlayButtonType" and the Kotlin enum "CarPlayButtonType".
    */
   struct JCarPlayButtonType final: public jni::JavaClass<JCarPlayButtonType> {
   public:

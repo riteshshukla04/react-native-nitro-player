@@ -15,7 +15,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ enum "QueueOperation" and the the Kotlin enum "QueueOperation".
+   * The C++ JNI bridge between the C++ enum "QueueOperation" and the Kotlin enum "QueueOperation".
    */
   struct JQueueOperation final: public jni::JavaClass<JQueueOperation> {
   public:

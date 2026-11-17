@@ -20,7 +20,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "EqualizerPreset" and the the Kotlin data class "EqualizerPreset".
+   * The C++ JNI bridge between the C++ struct "EqualizerPreset" and the Kotlin data class "EqualizerPreset".
    */
   struct JEqualizerPreset final: public jni::JavaClass<JEqualizerPreset> {
   public:

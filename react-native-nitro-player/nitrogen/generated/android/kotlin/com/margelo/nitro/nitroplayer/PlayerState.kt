@@ -9,6 +9,7 @@ package com.margelo.nitro.nitroplayer
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 import com.margelo.nitro.core.NullType
 
 /**
@@ -40,6 +41,30 @@ data class PlayerState(
   val currentPlayingType: CurrentPlayingType
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is PlayerState) return false
+    return Objects.deepEquals(this.currentTrack, other.currentTrack)
+      && Objects.deepEquals(this.currentPosition, other.currentPosition)
+      && Objects.deepEquals(this.totalDuration, other.totalDuration)
+      && Objects.deepEquals(this.currentState, other.currentState)
+      && Objects.deepEquals(this.currentPlaylistId, other.currentPlaylistId)
+      && Objects.deepEquals(this.currentIndex, other.currentIndex)
+      && Objects.deepEquals(this.currentPlayingType, other.currentPlayingType)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      currentTrack,
+      currentPosition,
+      totalDuration,
+      currentState,
+      currentPlaylistId,
+      currentIndex,
+      currentPlayingType
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

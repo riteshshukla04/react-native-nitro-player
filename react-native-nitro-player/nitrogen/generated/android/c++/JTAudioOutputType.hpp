@@ -15,7 +15,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ enum "TAudioOutputType" and the the Kotlin enum "TAudioOutputType".
+   * The C++ JNI bridge between the C++ enum "TAudioOutputType" and the Kotlin enum "TAudioOutputType".
    */
   struct JTAudioOutputType final: public jni::JavaClass<JTAudioOutputType> {
   public:
