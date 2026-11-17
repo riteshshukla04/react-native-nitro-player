@@ -137,6 +137,8 @@ internal fun TrackPlayerCore.rebuildQueueFromCurrentPosition() {
             currentTrackIndex = resolvedIndex
         }
     }
+    // Tracks added or removed before the current one move the index without any player event
+    mediaSessionManager?.refreshStandardButtons()
 
     val currentId = exo.currentMediaItem?.mediaId?.let { extractTrackId(it) }
     var newQueueTracks: List<TrackItem> = buildUpcomingQueueTracks(currentId)

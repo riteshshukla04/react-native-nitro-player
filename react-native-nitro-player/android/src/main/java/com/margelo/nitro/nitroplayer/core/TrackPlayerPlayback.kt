@@ -3,6 +3,7 @@
 package com.margelo.nitro.nitroplayer.core
 
 import androidx.annotation.OptIn
+import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
@@ -74,10 +75,39 @@ internal fun TrackPlayerCore.skipToNextOnQueue() {
 
 suspend fun TrackPlayerCore.skipToPrevious() = withPlayerContext { skipToPreviousOnQueue() }
 
+/** Whether the current item can go back to its start: anything but a live stream, including transcodes that can't seek but know their duration. */
+internal fun TrackPlayerCore.canRestartCurrentItem(): Boolean {
+    val player = exo.player
+    if (player.isCurrentMediaItemSeekable) return true
+    // A transcode without a length header reads as live to ExoPlayer; the app-supplied duration says otherwise
+    if ((player.currentMediaItem?.mediaMetadata?.durationMs ?: 0L) > 0) return true
+    return !player.isCurrentMediaItemLive && player.duration != C.TIME_UNSET
+}
+
+/** Whether [skipToNextOnQueue] would move anywhere: off for a live stream alone in the queue. */
+internal fun TrackPlayerCore.canSkipToNextOnQueue(): Boolean {
+    if (!isExoInitialized) return false
+    // The timeline is windowed, so also ask the logical queue
+    if (exo.hasNextMediaItem() || currentTrackIndex < currentTracks.size - 1) return true
+    if (currentRepeatMode != RepeatMode.PLAYLIST || currentTracks.isEmpty()) return false
+    // The wrap restarts a lone playlist track in place, which a live stream can't do
+    return currentTracks.size > 1 || currentTemporaryType != TrackPlayerCore.TemporaryType.NONE || canRestartCurrentItem()
+}
+
+/** Whether [skipToPreviousOnQueue] would do more than restart a stream that can't seek. */
+internal fun TrackPlayerCore.canSkipToPreviousOnQueue(): Boolean {
+    if (!isExoInitialized) return false
+    return canRestartCurrentItem() ||
+        (currentTemporaryType != TrackPlayerCore.TemporaryType.NONE && currentTracks.isNotEmpty()) ||
+        currentTrackIndex > 0 ||
+        (currentRepeatMode == RepeatMode.PLAYLIST && currentTracks.size > 1)
+}
+
 internal fun TrackPlayerCore.skipToPreviousOnQueue() {
     val currentPosition = exo.currentPosition
     when {
-        currentPosition > 2000 -> {
+        // A live stream's position is always past 2s, and restarting it would only reconnect
+        currentPosition > 2000 && canRestartCurrentItem() -> {
             exo.seekTo(0)
         }
 
@@ -116,6 +146,7 @@ internal fun TrackPlayerCore.setRepeatModeOnQueue(mode: RepeatMode) {
     ) {
         rebuildQueueFromCurrentPosition()
     }
+    mediaSessionManager?.refreshStandardButtons()
 }
 
 /** True while the playing item was removed from the playlist and is finishing. */
@@ -170,6 +201,7 @@ internal fun TrackPlayerCore.configureOnQueue(config: PlayerConfig) {
         config.showInNotification,
         remoteSkipForwardIntervalMs,
         remoteSkipBackwardIntervalMs,
+        config.androidShowRemoteSkipButtons,
     )
     notificationButtons?.let { mediaSessionManager?.setNotificationButtons(it) }
 }

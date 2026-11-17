@@ -567,12 +567,23 @@ class MediaSessionManager {
 
     let playerDuration = state.totalDuration
     let hasDuration = playerDuration > 0 && !playerDuration.isNaN && !playerDuration.isInfinite
+    // Until the item loads the player reports no duration; the track's own duration tells a
+    // regular track from a live stream, so the buttons don't flicker on every load.
+    let isFinite = hasDuration || (cachedTrack?.duration ?? 0) > 0
 
-    commandCenter.nextTrackCommand.isEnabled = hasCurrentTrack && isNotLast
-    commandCenter.previousTrackCommand.isEnabled = hasCurrentTrack
+    // Without a duration (a live stream) previous could only restart a stream that can't seek
+    let canGoBack =
+      positionInQueue > 0 || isFinite || (cachedRepeatMode == .playlist && queueCount > 1)
+    // skipToNext wraps under playlist repeat; a lone live stream would only reconnect
+    let canGoForward =
+      isNotLast || (cachedRepeatMode == .playlist && (queueCount > 1 || isFinite))
     // iOS shows enabled skip-interval commands in place of next/previous, so they stay off unless the app prefers them
-    commandCenter.skipForwardCommand.isEnabled = hasCurrentTrack && preferRemoteSkipIntervals
-    commandCenter.skipBackwardCommand.isEnabled = hasCurrentTrack && preferRemoteSkipIntervals
+    let showSkips = preferRemoteSkipIntervals && isFinite
+
+    commandCenter.nextTrackCommand.isEnabled = hasCurrentTrack && canGoForward
+    commandCenter.previousTrackCommand.isEnabled = hasCurrentTrack && canGoBack
+    commandCenter.skipForwardCommand.isEnabled = hasCurrentTrack && showSkips
+    commandCenter.skipBackwardCommand.isEnabled = hasCurrentTrack && showSkips
     commandCenter.changePlaybackRateCommand.isEnabled = hasCurrentTrack
     commandCenter.changePlaybackPositionCommand.isEnabled = hasCurrentTrack && hasDuration
 

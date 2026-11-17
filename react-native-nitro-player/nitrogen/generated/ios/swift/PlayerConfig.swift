@@ -18,7 +18,7 @@ public extension PlayerConfig {
   /**
    * Create a new instance of `PlayerConfig`.
    */
-  init(androidAutoEnabled: Bool?, carPlayEnabled: Bool?, showInNotification: Bool?, remoteSkipForwardInterval: Double?, remoteSkipBackwardInterval: Double?, preferRemoteSkipIntervals: Bool?, lookaheadCount: Double?, androidNotificationIcon: String?, androidAudioFocus: AndroidAudioFocusMode?, androidStopOnTaskRemoved: Bool?, notificationButtons: NotificationButtons?) {
+  init(androidAutoEnabled: Bool?, carPlayEnabled: Bool?, showInNotification: Bool?, remoteSkipForwardInterval: Double?, remoteSkipBackwardInterval: Double?, preferRemoteSkipIntervals: Bool?, androidShowRemoteSkipButtons: Bool?, lookaheadCount: Double?, androidNotificationIcon: String?, androidAudioFocus: AndroidAudioFocusMode?, androidStopOnTaskRemoved: Bool?, notificationButtons: NotificationButtons?) {
     self.init({ () -> bridge.std__optional_bool_ in
       if let __unwrappedValue = androidAutoEnabled {
         return bridge.create_std__optional_bool_(__unwrappedValue)
@@ -51,6 +51,12 @@ public extension PlayerConfig {
       }
     }(), { () -> bridge.std__optional_bool_ in
       if let __unwrappedValue = preferRemoteSkipIntervals {
+        return bridge.create_std__optional_bool_(__unwrappedValue)
+      } else {
+        return .init()
+      }
+    }(), { () -> bridge.std__optional_bool_ in
+      if let __unwrappedValue = androidShowRemoteSkipButtons {
         return bridge.create_std__optional_bool_(__unwrappedValue)
       } else {
         return .init()
@@ -153,6 +159,18 @@ public extension PlayerConfig {
     return { () -> Bool? in
       if bridge.has_value_std__optional_bool_(self.__preferRemoteSkipIntervals) {
         let __unwrapped = bridge.get_std__optional_bool_(self.__preferRemoteSkipIntervals)
+        return __unwrapped
+      } else {
+        return nil
+      }
+    }()
+  }
+  
+  @inline(__always)
+  var androidShowRemoteSkipButtons: Bool? {
+    return { () -> Bool? in
+      if bridge.has_value_std__optional_bool_(self.__androidShowRemoteSkipButtons) {
+        let __unwrapped = bridge.get_std__optional_bool_(self.__androidShowRemoteSkipButtons)
         return __unwrapped
       } else {
         return nil
