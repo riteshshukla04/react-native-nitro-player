@@ -148,14 +148,28 @@ internal fun TrackPlayerCore.setCastUrlsOnQueue(urls: Map<String, String>) {
         val resume = castResume?.takeIf { it.first == playable.first().id }?.second ?: 0L
         castResume = null
         val controller = castSessionController ?: return
+        // The receiver hasn't reported the queue yet; the first item transition re-checks the URLs it needs
         controller.castPlayer.setMediaItems(playable.map { makeMediaItem(it, mediaIdFor(it)) }, 0, resume)
         controller.castPlayer.prepare()
-        checkUpcomingTracksForUrls(lookaheadCount)
         return
     }
 
     if (currentTracks.getOrNull(currentTrackIndex) == null) return
     rebuildQueueAndPlayFromIndex(currentTrackIndex)
+}
+
+/** Keeps the connect-time Cast queue in step with a playlist edit made while its URLs are still pending. */
+internal fun TrackPlayerCore.refreshCastPendingList() {
+    val head = castPendingList?.firstOrNull() ?: return
+    val removed = currentTemporaryType == TrackPlayerCore.TemporaryType.NONE && currentTracks.none { it.id == head.id }
+    if (removed) {
+        castPendingList = null
+        castResume = null
+        // Like a removed playing track: move on to the one that took its place
+        if (currentTracks.isNotEmpty()) playFromIndexInternal(minOf(currentTrackIndex + 1, currentTracks.size - 1))
+        return
+    }
+    castPendingList = listOf(head) + buildUpcomingQueueTracks(head.id)
 }
 
 private fun TrackPlayerCore.setMediaSessionPlayer(target: Player) {
