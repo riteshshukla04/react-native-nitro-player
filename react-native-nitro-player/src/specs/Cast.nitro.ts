@@ -65,6 +65,11 @@ export interface Cast extends HybridObject<{
    * Register a callback fired whenever the Cast connection state changes.
    * The callback receives the new {@link CastState} and the connected device
    * name (or `null`).
+   *
+   * Each call adds a listener and there is no way to remove one, so register
+   * once (e.g. at app start), not in a component effect; inside components use
+   * `useCastState` or `useIsCasting`. Calling it never affects those hooks or
+   * `CastButton`.
    */
   onCastStateChange(
     callback: (state: CastState, deviceName: string | null) => void
