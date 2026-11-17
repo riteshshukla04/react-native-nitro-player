@@ -4,6 +4,7 @@ package com.margelo.nitro.nitroplayer.media
 
 import android.app.Activity
 import android.os.Handler
+import android.os.SystemClock
 import androidx.media3.cast.CastPlayer
 import androidx.media3.cast.SessionAvailabilityListener
 import androidx.media3.common.Player
@@ -14,6 +15,7 @@ import androidx.mediarouter.media.MediaRouteSelector
 import androidx.mediarouter.media.MediaRouter
 import com.google.android.gms.cast.framework.CastContext
 import com.google.android.gms.cast.framework.CastStateListener
+import com.google.android.gms.cast.framework.media.RemoteMediaClient
 import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
 import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
 import com.margelo.nitro.nitroplayer.core.notifyCastStateChange
@@ -53,6 +55,41 @@ class CastSessionController(
     // thread, so we keep a main-thread-updated cache and serve the getters from it.
     @Volatile private var cachedState: CastState = CastState.NO_DEVICES_AVAILABLE
     @Volatile private var cachedDeviceName: String? = null
+
+    // ── Play intent across a receiver load (main thread only) ──
+    // A play()/pause() made while a load is in flight goes to the receiver's previous media session and is
+    // lost; the new media starts with the load's autoplay flag. So the last user play/pause during a load is
+    // kept and re-sent once the receiver reports the media session that load created.
+    private var remoteClient: RemoteMediaClient? = null
+    private var loadPending = false
+    private var loadBaseSessionId: Long? = null
+    private var loadStartedAtMs = 0L
+    private var playIntentDuringLoad: Boolean? = null
+
+    private val playIntentListener =
+        object : Player.Listener {
+            override fun onPlayWhenReadyChanged(
+                playWhenReady: Boolean,
+                reason: Int,
+            ) {
+                if (reason == Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST && isLoadPending()) {
+                    playIntentDuringLoad = playWhenReady
+                }
+            }
+        }
+
+    private val remoteStatusCallback =
+        object : RemoteMediaClient.Callback() {
+            override fun onStatusUpdated() {
+                if (!isLoadPending()) return
+                val sessionId = currentMediaSessionId() ?: return
+                if (sessionId == loadBaseSessionId) return
+                val intent = playIntentDuringLoad
+                clearPendingLoad()
+                // Re-send even if castPlayer already reports it: the receiver may still be paused.
+                if (intent != null) castPlayer.playWhenReady = intent
+            }
+        }
 
     private val castStateListener =
         CastStateListener {
@@ -103,6 +140,7 @@ class CastSessionController(
             override fun onCastSessionAvailable() {
                 mainHandler.post {
                     refreshCacheOnMain()
+                    bindRemoteClient()
                     core?.switchToCastPlayer()
                 }
             }
@@ -110,6 +148,7 @@ class CastSessionController(
             override fun onCastSessionUnavailable() {
                 mainHandler.post {
                     refreshCacheOnMain()
+                    unbindRemoteClient()
                     core?.switchToLocalPlayer()
                 }
             }
@@ -120,10 +159,14 @@ class CastSessionController(
         this.core = core
         castPlayer.setSessionAvailabilityListener(sessionAvailabilityListener)
         castContext.addCastStateListener(castStateListener)
+        castPlayer.addListener(playIntentListener)
 
         // If a session is already live (e.g. resumed on app launch), adopt it.
         if (castPlayer.isCastSessionAvailable) {
-            mainHandler.post { core.switchToCastPlayer() }
+            mainHandler.post {
+                bindRemoteClient()
+                core.switchToCastPlayer()
+            }
         }
         // Emit the current state so JS reflects reality immediately.
         mainHandler.post {
@@ -149,6 +192,57 @@ class CastSessionController(
 
     /** Cached value — safe to call from the JS thread. */
     fun currentDeviceName(): String? = cachedDeviceName
+
+    /** Call on the main thread right before sending a receiver load (CastPlayer.setMediaItems). */
+    fun onCastLoadStarting() {
+        loadPending = true
+        loadBaseSessionId = currentMediaSessionId()
+        loadStartedAtMs = SystemClock.elapsedRealtime()
+        playIntentDuringLoad = null
+    }
+
+    // Bounded so a load that never creates a session can't capture later play/pause calls.
+    private fun isLoadPending(): Boolean {
+        if (loadPending && SystemClock.elapsedRealtime() - loadStartedAtMs > LOAD_TIMEOUT_MS) clearPendingLoad()
+        return loadPending
+    }
+
+    // MediaStatus has no public getter for it; toJson() carries the protocol's mediaSessionId field.
+    private fun currentMediaSessionId(): Long? =
+        try {
+            remoteClient
+                ?.mediaStatus
+                ?.toJson()
+                ?.optLong("mediaSessionId", -1L)
+                ?.takeIf { it >= 0 }
+        } catch (_: Exception) {
+            null
+        }
+
+    private fun clearPendingLoad() {
+        loadPending = false
+        loadBaseSessionId = null
+        playIntentDuringLoad = null
+    }
+
+    private fun bindRemoteClient() {
+        val client =
+            try {
+                castContext.sessionManager.currentCastSession?.remoteMediaClient
+            } catch (_: Exception) {
+                null
+            }
+        if (client === remoteClient) return
+        unbindRemoteClient()
+        remoteClient = client
+        client?.registerCallback(remoteStatusCallback)
+    }
+
+    private fun unbindRemoteClient() {
+        remoteClient?.unregisterCallback(remoteStatusCallback)
+        remoteClient = null
+        clearPendingLoad()
+    }
 
     /** Re-read the live Cast state into the cache. MUST run on the main thread. */
     private fun refreshCacheOnMain() {
@@ -216,9 +310,15 @@ class CastSessionController(
         try {
             castPlayer.setSessionAvailabilityListener(null)
             castContext.removeCastStateListener(castStateListener)
+            castPlayer.removeListener(playIntentListener)
+            unbindRemoteClient()
             castPlayer.release()
         } catch (_: Exception) {
         }
+    }
+
+    private companion object {
+        const val LOAD_TIMEOUT_MS = 15_000L
     }
 
     private fun mapCastState(state: Int): CastState =
