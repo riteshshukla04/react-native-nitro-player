@@ -5,6 +5,7 @@
     "offline-playback",
     "android-auto",
     "carplay",
-    "notification-buttons"
+    "notification-buttons",
+    "testing"
   ]
 }

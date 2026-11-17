@@ -2,7 +2,6 @@
 
 package com.margelo.nitro.nitroplayer.core
 
-import androidx.media3.common.Player
 import com.margelo.nitro.nitroplayer.CurrentPlayingType
 import com.margelo.nitro.nitroplayer.PlayerState
 import com.margelo.nitro.nitroplayer.TrackItem
@@ -35,14 +34,7 @@ internal fun TrackPlayerCore.getStateInternal(): PlayerState {
     val currentTrack: Variant_NullType_TrackItem? = track?.let { Variant_NullType_TrackItem.create(it) }
     val position = exo.currentPosition / 1000.0
     val duration = if (exo.duration > 0) exo.duration / 1000.0 else 0.0
-    val state =
-        when (exo.playbackState) {
-            Player.STATE_IDLE -> TrackPlayerState.STOPPED
-            Player.STATE_BUFFERING -> if (exo.playWhenReady) TrackPlayerState.BUFFERING else TrackPlayerState.PAUSED
-            Player.STATE_READY -> if (exo.isPlaying) TrackPlayerState.PLAYING else TrackPlayerState.PAUSED
-            Player.STATE_ENDED -> TrackPlayerState.STOPPED
-            else -> TrackPlayerState.STOPPED
-        }
+    val state = currentPlaybackState()
     val playingType =
         if (track == null) {
             CurrentPlayingType.NOT_PLAYING

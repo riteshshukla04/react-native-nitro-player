@@ -129,10 +129,12 @@ interface PlayerConfig {
   showInNotification?: boolean;   // Default: true
   remoteSkipForwardInterval?: number;   // Default: 15 — seconds
   remoteSkipBackwardInterval?: number;  // Default: 15 — seconds
-  preferRemoteSkipIntervals?: boolean;  // Default: false — iOS shows skip-interval buttons instead of next/previous
+  preferRemoteSkipIntervals?: boolean;  // Default: false — iOS shows skip-interval buttons instead of next/previous; headset, car and Siri next/previous skip by the interval too (not on live streams)
+  androidShowRemoteSkipButtons?: boolean; // Default: true — Android only, false hides the skip-interval buttons on every track
   lookaheadCount?: number;        // Default: 5 — tracks to preload URLs for
   androidNotificationIcon?: string; // Android only — host-app drawable name for the notification small icon (white monochrome)
   androidAudioFocus?: AndroidAudioFocusMode; // Default: 'pause' — Android only
+  androidStopOnTaskRemoved?: boolean; // Default: false — Android only, swiping the app away pauses playback and removes the notification
 }
 ```
 

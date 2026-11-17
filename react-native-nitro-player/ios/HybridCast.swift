@@ -47,10 +47,7 @@ final class HybridCast: HybridCastSpec {
   }
 
   func onCastStateChange(callback: @escaping (CastState, Variant_NullType_String?) -> Void) throws {
-    // Replace any prior listener so JS reloads don't accumulate handlers.
-    for id in listenerIds { core.removeOnCastStateChangeListener(id: id) }
-    listenerIds.removeAll()
-
+    // Additive like the other callbacks: replacing would drop the hooks' shared listener.
     let id = core.addOnCastStateChangeListener { state, deviceName in
       callback(state, deviceName.map { .second($0) })
     }

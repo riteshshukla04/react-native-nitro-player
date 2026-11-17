@@ -52,3 +52,6 @@ jobs:
       - name: Build Android
         working-directory: example/android
         run: ./gradlew assembleDebug --no-daemon
+      - name: Compile without Google Cast
+        working-directory: example/android
+        run: ./gradlew :react-native-nitro-player:compileDebugKotlin -PnitroPlayerCastEnabled=false --no-daemon

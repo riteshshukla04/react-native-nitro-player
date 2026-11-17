@@ -61,11 +61,7 @@ class HybridCast : HybridCastSpec() {
     override fun endCastSession(): Promise<Unit> = Promise.async { core.endCastSession() }
 
     override fun onCastStateChange(callback: (state: CastState, deviceName: Variant_NullType_String?) -> Unit) {
-        // Replace any prior listener registered through this HybridObject so JS
-        // reloads (Fast Refresh) don't accumulate handlers.
-        listenerIds.forEach { core.removeOnCastStateChangeListener(it) }
-        listenerIds.clear()
-
+        // Additive like the other callbacks: replacing would drop the hooks' shared listener.
         val id =
             core.addOnCastStateChangeListener { state, deviceName ->
                 callback(state, deviceName?.let { Variant_NullType_String.create(it) })
