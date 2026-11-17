@@ -197,6 +197,8 @@ export const AndroidAutoMediaLibrary: MockedHybridObject<AndroidAutoMediaLibrary
 export const AudioDevices: MockedHybridObject<AudioDevicesType> = {
   getAudioDevices: mock(() => []),
   setAudioDevice: resolved(undefined),
+  getCurrentOutputs: mock(() => []),
+  onOutputsChange: noop(),
 }
 
 export const AudioRoutePicker: MockedHybridObject<AudioRoutePickerType> = {
@@ -432,6 +434,10 @@ export const useCarPlayConnection: MockedExport<'useCarPlayConnection'> =
 
 export const useAudioDevices: MockedExport<'useAudioDevices'> = returns(
   frozen({ devices: [] })
+)
+
+export const useAudioOutputs: MockedExport<'useAudioOutputs'> = returns(
+  frozen({ outputs: [], isReady: true })
 )
 
 export const useNowPlaying: MockedExport<'useNowPlaying'> =

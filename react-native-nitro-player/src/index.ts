@@ -35,11 +35,9 @@ export const AndroidAutoMediaLibrary =
       )
     : null
 
-// Android-only: Audio Devices
+// Audio devices: the current outputs on iOS + Android; listing and selecting devices on Android
 export const AudioDevices =
-  Platform.OS === 'android'
-    ? NitroModules.createHybridObject<AudioDevicesType>('AudioDevices')
-    : null
+  NitroModules.createHybridObject<AudioDevicesType>('AudioDevices')
 
 // iOS-only: Audio Route Picker
 export const AudioRoutePicker =
@@ -78,6 +76,7 @@ export * from './types/NotificationButtons'
 export * from './types/AndroidAutoMediaLibrary'
 export * from './types/CarPlay'
 export * from './types/DownloadTypes'
+export * from './types/AudioOutput'
 export * from './types/EqualizerTypes'
 export type { TAudioDevice } from './specs/AudioDevices.nitro'
 export type { RepeatMode } from './specs/TrackPlayer.nitro'

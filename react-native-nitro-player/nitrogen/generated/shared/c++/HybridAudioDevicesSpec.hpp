@@ -15,10 +15,17 @@
 
 // Forward declaration of `TAudioDevice` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct TAudioDevice; }
+// Forward declaration of `TAudioOutput` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct TAudioOutput; }
+// Forward declaration of `TAudioOutputChangeReason` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class TAudioOutputChangeReason; }
 
 #include "TAudioDevice.hpp"
 #include <vector>
 #include <NitroModules/Promise.hpp>
+#include "TAudioOutput.hpp"
+#include "TAudioOutputChangeReason.hpp"
+#include <functional>
 
 namespace margelo::nitro::nitroplayer {
 
@@ -53,6 +60,8 @@ namespace margelo::nitro::nitroplayer {
       // Methods
       virtual std::vector<TAudioDevice> getAudioDevices() = 0;
       virtual std::shared_ptr<Promise<void>> setAudioDevice(double deviceId) = 0;
+      virtual std::vector<TAudioOutput> getCurrentOutputs() = 0;
+      virtual void onOutputsChange(const std::function<void(const std::vector<TAudioOutput>& /* outputs */, TAudioOutputChangeReason /* reason */)>& callback) = 0;
 
     protected:
       // Hybrid Setup
