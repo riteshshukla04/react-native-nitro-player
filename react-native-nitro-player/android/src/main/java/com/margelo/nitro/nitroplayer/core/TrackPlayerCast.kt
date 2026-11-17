@@ -67,8 +67,10 @@ internal fun TrackPlayerCore.switchToCastPlayer() {
     } else {
         // Nothing castable yet (lazy queue or Cast URLs pending) — request URLs; updateTracks / setCastUrls will load.
         // Remember what was playing so it resumes there once its Cast URL arrives.
-        castPendingList = castList.takeIf { it.isNotEmpty() }
-        castResume = currentTrack?.let { it.id to positionMs }
+        if (suppliesCastUrls && castList.isNotEmpty()) {
+            castPendingList = castList
+            castResume = currentTrack?.let { it.id to positionMs }
+        }
         checkUpcomingTracksForUrls(lookaheadCount)
     }
 
@@ -148,15 +150,12 @@ internal fun TrackPlayerCore.setCastUrlsOnQueue(urls: Map<String, String>) {
         val controller = castSessionController ?: return
         controller.castPlayer.setMediaItems(playable.map { makeMediaItem(it, mediaIdFor(it)) }, 0, resume)
         controller.castPlayer.prepare()
+        checkUpcomingTracksForUrls(lookaheadCount)
         return
     }
 
-    val target = currentTracks.getOrNull(currentTrackIndex) ?: return
-    val resume = castResume?.takeIf { it.first == target.id }?.second
+    if (currentTracks.getOrNull(currentTrackIndex) == null) return
     rebuildQueueAndPlayFromIndex(currentTrackIndex)
-    if (resume != null && resume > 0 && exo.mediaItemCount > 0 && extractTrackId(exo.getMediaItemAt(0).mediaId) == target.id) {
-        exo.seekTo(resume)
-    }
 }
 
 private fun TrackPlayerCore.setMediaSessionPlayer(target: Player) {

@@ -218,6 +218,8 @@ class TrackPlayerCore private constructor(
             exo.currentMediaItemIndex >= 0
         ) {
             rebuildQueueFromCurrentPosition()
+        } else if (isCastingField && castPendingList != null) {
+            // Still waiting on Cast URLs for the connect-time queue; keep it, the check below asks for what's missing
         } else {
             updatePlayerQueue(playlist.tracks)
         }
