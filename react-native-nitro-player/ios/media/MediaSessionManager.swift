@@ -425,19 +425,29 @@ class MediaSessionManager {
       return .success
     }
 
-    // Next track
+    // Next / previous track. Headphones, car buttons and Siri send these even when the lock screen
+    // shows interval skips, so with preferRemoteSkipIntervals they skip by the interval too.
     commandCenter.nextTrackCommand.isEnabled = false
     commandCenter.nextTrackCommand.addTarget { [weak self] _ in
-      guard let core = self?.trackPlayerCore else { return .commandFailed }
-      Task { await core.skipToNext() }
+      guard let self, let core = self.trackPlayerCore else { return .commandFailed }
+      if self.intervalSkipsApply {
+        let interval = self.remoteSkipForwardInterval
+        Task { await core.seekBy(offset: interval) }
+      } else {
+        Task { await core.skipToNext() }
+      }
       return .success
     }
 
-    // Previous track
     commandCenter.previousTrackCommand.isEnabled = false
     commandCenter.previousTrackCommand.addTarget { [weak self] _ in
-      guard let core = self?.trackPlayerCore else { return .commandFailed }
-      Task { await core.skipToPrevious() }
+      guard let self, let core = self.trackPlayerCore else { return .commandFailed }
+      if self.intervalSkipsApply {
+        let interval = self.remoteSkipBackwardInterval
+        Task { await core.seekBy(offset: -interval) }
+      } else {
+        Task { await core.skipToPrevious() }
+      }
       return .success
     }
 
@@ -556,6 +566,23 @@ class MediaSessionManager {
     }
   }
 
+  private static func hasDuration(_ state: PlayerState) -> Bool {
+    let duration = state.totalDuration
+    return duration > 0 && !duration.isNaN && !duration.isInfinite
+  }
+
+  // Until the item loads the player reports no duration; the track's own duration tells a
+  // regular track from a live stream, so the buttons don't flicker on every load.
+  private func isCurrentItemFinite(_ state: PlayerState) -> Bool {
+    Self.hasDuration(state) || (cachedTrack?.duration ?? 0) > 0
+  }
+
+  // Remote next/previous skip by the intervals only where seeking works; a live stream changes track
+  private var intervalSkipsApply: Bool {
+    guard preferRemoteSkipIntervals, let state = cachedState else { return false }
+    return isCurrentItemFinite(state)
+  }
+
   private func updateCommandCenterState(
     state: PlayerState,
     queueCount: Int,
@@ -565,14 +592,23 @@ class MediaSessionManager {
     let hasCurrentTrack = positionInQueue >= 0
     let isNotLast = positionInQueue < queueCount - 1
 
-    let playerDuration = state.totalDuration
-    let hasDuration = playerDuration > 0 && !playerDuration.isNaN && !playerDuration.isInfinite
+    let hasDuration = Self.hasDuration(state)
+    let isFinite = isCurrentItemFinite(state)
 
-    commandCenter.nextTrackCommand.isEnabled = hasCurrentTrack && isNotLast
-    commandCenter.previousTrackCommand.isEnabled = hasCurrentTrack
+    // Without a duration (a live stream) previous could only restart a stream that can't seek
+    let canGoBack =
+      positionInQueue > 0 || isFinite || (cachedRepeatMode == .playlist && queueCount > 1)
+    // skipToNext wraps under playlist repeat; a lone live stream would only reconnect
+    let canGoForward =
+      isNotLast || (cachedRepeatMode == .playlist && (queueCount > 1 || isFinite))
     // iOS shows enabled skip-interval commands in place of next/previous, so they stay off unless the app prefers them
-    commandCenter.skipForwardCommand.isEnabled = hasCurrentTrack && preferRemoteSkipIntervals
-    commandCenter.skipBackwardCommand.isEnabled = hasCurrentTrack && preferRemoteSkipIntervals
+    let showSkips = preferRemoteSkipIntervals && isFinite
+
+    // A forward interval skip works on the last track too
+    commandCenter.nextTrackCommand.isEnabled = hasCurrentTrack && (canGoForward || showSkips)
+    commandCenter.previousTrackCommand.isEnabled = hasCurrentTrack && canGoBack
+    commandCenter.skipForwardCommand.isEnabled = hasCurrentTrack && showSkips
+    commandCenter.skipBackwardCommand.isEnabled = hasCurrentTrack && showSkips
     commandCenter.changePlaybackRateCommand.isEnabled = hasCurrentTrack
     commandCenter.changePlaybackPositionCommand.isEnabled = hasCurrentTrack && hasDuration
 

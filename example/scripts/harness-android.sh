@@ -5,7 +5,7 @@
 # they need on stdout and this fires it.
 #
 #   AUDIO_FOCUS_READY <mode>   -> incoming call (transient focus loss). Emulator only.
-#   REMOTE_DISPATCH <button>   -> media session button (previous/next/play/pause)
+#   REMOTE_DISPATCH <button>   -> media session button (previous/next/play/pause/stop)
 set -uo pipefail
 
 SERIAL="${ANDROID_SERIAL:-$(adb devices | awk 'NR>1 && $2=="device" {print $1; exit}')}"

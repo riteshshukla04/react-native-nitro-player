@@ -1,13 +1,13 @@
 package com.margelo.nitro.nitroplayer.media
 
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Binder
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
-import androidx.media3.cast.CastPlayer
 import androidx.media3.common.C
 import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.MediaItem
@@ -17,7 +17,6 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
-import com.google.android.gms.cast.framework.CastContext
 import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
 import com.margelo.nitro.nitroplayer.core.checkUpcomingTracksForUrls
 import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
@@ -44,6 +43,24 @@ class NitroPlayerPlaybackService : MediaSessionService() {
     companion object {
         const val ACTION_LOCAL_BIND = "com.margelo.nitro.nitroplayer.LOCAL_BIND"
         const val EXTRA_STARTED_FROM_NOTIFICATION = "com.margelo.nitro.nitroplayer.STARTED_FROM_NOTIFICATION"
+        private const val PREFS_NAME = "NitroPlayerPlaybackService"
+        private const val KEY_STOP_ON_TASK_REMOVED = "stopOnTaskRemoved"
+
+        @Volatile
+        private var stopOnTaskRemovedConfigured = false
+
+        // Persisted: a service restarted without JS can still be swiped away. The first configure()
+        // of a process decides, so an app that drops the option turns it off again.
+        internal fun configureStopOnTaskRemoved(
+            context: Context,
+            enabled: Boolean?,
+        ) {
+            if (enabled == null && stopOnTaskRemovedConfigured) return
+            stopOnTaskRemovedConfigured = true
+            prefs(context).edit().putBoolean(KEY_STOP_ON_TASK_REMOVED, enabled ?: false).apply()
+        }
+
+        private fun prefs(context: Context) = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
         @Volatile
         var notificationSmallIconResName: String? = null
@@ -64,6 +81,18 @@ class NitroPlayerPlaybackService : MediaSessionService() {
     private lateinit var sessionPlayer: Player
     private var notificationProvider: DefaultMediaNotificationProvider? = null
     private val mainHandler = Handler(Looper.getMainLooper())
+
+    // Puts the session back under the service (and its notification) once playback starts after a stopping swipe
+    private val readdSessionListener =
+        object : Player.Listener {
+            override fun onPlayWhenReadyChanged(
+                playWhenReady: Boolean,
+                reason: Int,
+            ) {
+                val session = mediaSession ?: return
+                if (playWhenReady && !isSessionAdded(session)) addSession(session)
+            }
+        }
 
     /** Owns the CastPlayer + Cast session lifecycle; null when Cast is unavailable. */
     private var castSessionController: CastSessionController? = null
@@ -175,38 +204,22 @@ class NitroPlayerPlaybackService : MediaSessionService() {
         setMediaNotificationProvider(provider)
 
         addSession(mediaSession!!)
+        player.addListener(readdSessionListener)
 
         initCast()
     }
 
-    /**
-     * Initialize Google Cast. Best-effort: when Google Play services or the Cast
-     * framework are unavailable (older devices, no Play services), the controller
-     * stays null and all Cast features become inert no-ops.
-     */
+    /** Initialize Google Cast; see [CastSessionFactory] (null when Cast is unavailable or not compiled in). */
     private fun initCast() {
-        try {
-            val castContext = CastContext.getSharedInstance(this)
-            val castPlayer =
-                CastPlayer(
-                    castContext,
-                    NitroMediaItemConverter(),
-                    ExoPlayerBuilder.DEFAULT_REMOTE_SKIP_INTERVAL_MS,
-                    ExoPlayerBuilder.DEFAULT_REMOTE_SKIP_INTERVAL_MS,
-                )
-            castSessionController =
-                CastSessionController(
-                    castContext = castContext,
-                    castPlayer = castPlayer,
-                    localPlayer = player,
-                    localSessionPlayer = sessionPlayer,
-                    mediaSession = mediaSession!!,
-                    mainHandler = mainHandler,
-                )
-        } catch (e: Exception) {
-            NitroPlayerLogger.log("PlaybackService") { "Cast unavailable: ${e.message}" }
-            castSessionController = null
-        }
+        castSessionController =
+            CastSessionFactory.create(
+                context = this,
+                localPlayer = player,
+                localSessionPlayer = sessionPlayer,
+                mediaSession = mediaSession!!,
+                mainHandler = mainHandler,
+            )
+        castSessionController?.castPlayer?.addListener(readdSessionListener)
     }
 
     // Content intent for the notification tap — newer Android has no fallback without it
@@ -256,6 +269,21 @@ class NitroPlayerPlaybackService : MediaSessionService() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         val session = mediaSession
+        // Not while casting or in the car: swiping the phone app away shouldn't stop the TV or the car
+        val stopOnTaskRemoved =
+            prefs(this).getBoolean(KEY_STOP_ON_TASK_REMOVED, false) &&
+                session?.player === sessionPlayer &&
+                !NitroPlayerMediaBrowserService.isAndroidAutoConnected
+        if (stopOnTaskRemoved) {
+            NitroPlayerLogger.log("PlaybackService") { "task removed: pausing playback (androidStopOnTaskRemoved)" }
+            // Not pauseAllPlayersAndStopSelf(): it turns off Media3's paused-foreground grace for good.
+            // The JS side stays bound, so the service isn't destroyed and Media3 would keep the paused
+            // notification; removing the session drops it. readdSessionListener adds it back on play.
+            session?.player?.pause()
+            session?.takeIf { isSessionAdded(it) }?.let { removeSession(it) }
+            stopSelf()
+            return
+        }
         if (session == null || !session.player.playWhenReady) {
             stopSelf()
         }

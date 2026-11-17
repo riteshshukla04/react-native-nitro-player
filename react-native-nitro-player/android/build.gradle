@@ -35,6 +35,15 @@ def getExtOrIntegerDefault(name) {
   return rootProject.ext.has(name) ? rootProject.ext.get(name) : (project.properties["NitroPlayer_" + name]).toInteger()
 }
 
+// Google Cast support. Set `nitroPlayerCastEnabled=false` in the app's android/gradle.properties
+// (or pass -PnitroPlayerCastEnabled=false) to build without the proprietary Cast SDK,
+// e.g. for F-Droid. Cast APIs then become inert no-ops. Defaults to NitroPlayer_castEnabled.
+def isCastEnabled() {
+  def value = rootProject.findProperty("nitroPlayerCastEnabled")
+  if (value == null) value = project.findProperty("NitroPlayer_castEnabled")
+  return value == null || value.toString().trim().toBoolean()
+}
+
 android {
   namespace "com.margelo.nitro.nitroplayer"
 
@@ -45,7 +54,7 @@ android {
     minSdkVersion getExtOrIntegerDefault("minSdkVersion")
     targetSdkVersion getExtOrIntegerDefault("targetSdkVersion")
     buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", isNewArchitectureEnabled().toString()
-    // Keep the Cast OptionsProvider (referenced reflectively from the manifest) under R8.
+    // R8 keep rules for classes created by reflection (Cast OptionsProvider, Room database).
     consumerProguardFiles "consumer-rules.pro"
 
     externalNativeBuild {
@@ -121,6 +130,8 @@ android {
           "${project.buildDir}/generated/source/codegen/java"
         ]
       }
+      // Cast SDK-backed sources, or no-op stubs with the same API when Cast is disabled.
+      java.srcDirs += [isCastEnabled() ? "src/cast/java" : "src/nocast/java"]
     }
   }
 }
@@ -151,9 +162,11 @@ dependencies {
 
   // Google Cast: CastPlayer (drop-in Media3 Player), the Cast framework and the
   // MediaRouter chooser/controller dialogs used by Cast.showCastPicker().
-  implementation "androidx.media3:media3-cast:$media3_version"
-  implementation "com.google.android.gms:play-services-cast-framework:21.5.0"
-  implementation "androidx.mediarouter:mediarouter:1.7.0"
+  if (isCastEnabled()) {
+    implementation "androidx.media3:media3-cast:$media3_version"
+    implementation "com.google.android.gms:play-services-cast-framework:21.5.0"
+    implementation "androidx.mediarouter:mediarouter:1.7.0"
+  }
 
   // WorkManager for background downloads.
   implementation "androidx.work:work-runtime-ktx:2.10.5" // Latest version of 2.10
