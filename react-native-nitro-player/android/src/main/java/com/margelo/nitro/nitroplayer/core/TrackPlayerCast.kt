@@ -45,6 +45,7 @@ internal fun TrackPlayerCore.switchToCastPlayer() {
     castUrls.clear()
     castUrlRequestedAt.clear()
     castResume = currentTrack?.let { it.id to positionMs }
+    castPendingList = null
     exo = ExoPlayerCore(controller.castPlayer)
     playerListener?.let { controller.castPlayer.addListener(it) }
     setMediaSessionPlayer(controller.castPlayer)
@@ -64,7 +65,8 @@ internal fun TrackPlayerCore.switchToCastPlayer() {
         controller.castPlayer.setMediaItems(items, 0, if (resumeFromCurrent) positionMs else 0L)
         controller.castPlayer.prepare()
     } else {
-        // Nothing castable yet (lazy queue) — request URLs; updateTracks will load.
+        // Nothing castable yet (lazy queue or Cast URLs pending) — request URLs; updateTracks / setCastUrls will load.
+        castPendingList = castList
         checkUpcomingTracksForUrls(lookaheadCount)
     }
 
@@ -93,6 +95,8 @@ internal fun TrackPlayerCore.switchToLocalPlayer() {
     castUrls.clear()
     castUrlRequestedAt.clear()
     castResume = null
+    castPendingList = null
+    playerHandler.removeCallbacks(castUrlRetryRunnable)
     exo = ExoPlayerCore(controller.localPlayer)
     playerListener?.let { controller.localPlayer.addListener(it) }
     setMediaSessionPlayer(controller.localSessionPlayer)
@@ -116,11 +120,12 @@ internal fun TrackPlayerCore.switchToLocalPlayer() {
 
 /** Apply app-supplied Cast URLs: load the receiver if it was waiting, else resync the items after the current one. */
 internal fun TrackPlayerCore.setCastUrlsOnQueue(urls: Map<String, String>) {
+    // URLs belong to a session; a late answer after disconnecting must not leak into the next one
+    if (!isCastingField || !isExoInitialized) return
     val supplied = urls.filterValues { it.isNotEmpty() }
     if (supplied.isEmpty()) return
     castUrls.putAll(supplied)
     supplied.keys.forEach { castUrlRequestedAt.remove(it) }
-    if (!isCastingField || !isExoInitialized) return
 
     if (exo.mediaItemCount > 0) {
         // Upcoming items whose URL changed are replaced; the playing one keeps its URL.
@@ -128,12 +133,28 @@ internal fun TrackPlayerCore.setCastUrlsOnQueue(urls: Map<String, String>) {
         return
     }
 
+    // The receiver started empty: load what was playing at connect, temporary tracks included
+    val pending = castPendingList
+    if (pending != null) {
+        val playable = castableUpcoming(pending)
+        if (playable.isEmpty()) return
+        castPendingList = null
+        lastCastWaitTrackId = null
+        playerHandler.removeCallbacks(castUrlRetryRunnable)
+        val resume = castResume?.takeIf { it.first == playable.first().id }?.second ?: 0L
+        castResume = null
+        val controller = castSessionController ?: return
+        controller.castPlayer.setMediaItems(playable.map { makeMediaItem(it, mediaIdFor(it)) }, 0, resume)
+        controller.castPlayer.prepare()
+        return
+    }
+
     val target = currentTracks.getOrNull(currentTrackIndex) ?: return
     rebuildQueueAndPlayFromIndex(currentTrackIndex)
-    val resume = castResume?.takeIf { it.first == target.id }?.second ?: return
-    if (exo.mediaItemCount > 0 && extractTrackId(exo.getMediaItemAt(0).mediaId) == target.id) {
-        castResume = null
-        if (resume > 0) exo.seekTo(resume)
+    val resume = castResume?.takeIf { it.first == target.id }?.second
+    castResume = null
+    if (resume != null && resume > 0 && exo.mediaItemCount > 0 && extractTrackId(exo.getMediaItemAt(0).mediaId) == target.id) {
+        exo.seekTo(resume)
     }
 }
 

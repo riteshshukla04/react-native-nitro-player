@@ -188,9 +188,14 @@ private const val CAST_URL_REQUEST_INTERVAL_MS = 5_000L
 
 /** While casting, asks the app for the receiver URLs of the current and upcoming tracks that have none. */
 internal fun TrackPlayerCore.checkUpcomingTracksForCastUrls(lookahead: Int) {
+    playerHandler.removeCallbacks(castUrlRetryRunnable)
     if (!isCastingField || !suppliesCastUrls) return
-    // The receiver holds nothing while waiting on the current track's URL, so fall back to the cursor.
-    val current = getCurrentTrack() ?: currentTracks.getOrNull(currentTrackIndex)
+    // The receiver holds nothing while waiting on the current track's URL, so fall back to what was playing at connect.
+    val current = getCurrentTrack() ?: castPendingList?.firstOrNull() ?: currentTracks.getOrNull(currentTrackIndex)
+    // The receiver waits on a current track without a Cast URL; ask again later in case this request goes unanswered
+    if (current != null && !castUrls.containsKey(current.id)) {
+        playerHandler.postDelayed(castUrlRetryRunnable, CAST_URL_REQUEST_INTERVAL_MS + 100)
+    }
     val candidates = listOfNotNull(current) + getNextTracksInternal(lookahead)
     val now = SystemClock.elapsedRealtime()
     val ask =

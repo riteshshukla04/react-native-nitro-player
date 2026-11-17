@@ -70,11 +70,11 @@ class HybridCast : HybridCastSpec() {
     }
 
     override fun onTracksNeedCastUrls(callback: (tracks: Array<TrackItem>) -> Unit) {
-        // Replace any prior listener so JS reloads don't accumulate handlers.
-        castUrlListenerIds.forEach { core.removeOnTracksNeedCastUrlsListener(it) }
+        // Replaces any earlier callback; add the new one first so the app never looks unregistered in between.
+        val previous = castUrlListenerIds.toList()
         castUrlListenerIds.clear()
-
         castUrlListenerIds += core.addOnTracksNeedCastUrlsListener { tracks -> callback(tracks.toTypedArray()) }
+        previous.forEach { core.removeOnTracksNeedCastUrlsListener(it) }
     }
 
     // Appended to the player looper now (not from a coroutine), so it lands in JS call order.

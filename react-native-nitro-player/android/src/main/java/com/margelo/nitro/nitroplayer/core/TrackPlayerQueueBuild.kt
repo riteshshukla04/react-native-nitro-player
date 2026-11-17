@@ -168,8 +168,12 @@ internal fun TrackPlayerCore.rebuildQueueFromCurrentPosition() {
         if (itemCount - currentIndex - 1 == newQueueTracks.size) {
             var inSync = true
             for (i in newQueueTracks.indices) {
-                val existingId = extractTrackId(exo.getMediaItemAt(currentIndex + 1 + i).mediaId)
-                if (existingId != newQueueTracks[i].id) {
+                val existing = exo.getMediaItemAt(currentIndex + 1 + i)
+                val track = newQueueTracks[i]
+                // A newly supplied Cast URL counts as a change even when the ids line up
+                if (extractTrackId(existing.mediaId) != track.id ||
+                    (suppliesCastUrls && existing.localConfiguration?.uri?.toString().orEmpty() != castUrlFor(track))
+                ) {
                     inSync = false
                     break
                 }

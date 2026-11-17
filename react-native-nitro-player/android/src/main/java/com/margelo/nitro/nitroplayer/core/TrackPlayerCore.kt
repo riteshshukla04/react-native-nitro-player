@@ -151,6 +151,12 @@ class TrackPlayerCore private constructor(
     /** Where local playback was when the session started (track id to ms), applied once that track's Cast URL arrives. */
     internal var castResume: Pair<String, Long>? = null
 
+    /** The current and upcoming tracks at connect, loaded once their Cast URLs arrive if the receiver started empty. */
+    internal var castPendingList: List<TrackItem>? = null
+
+    /** Asks again while the receiver waits on the current track's Cast URL, in case the app never answers. */
+    internal val castUrlRetryRunnable = Runnable { checkUpcomingTracksForCastUrls(lookaheadCount) }
+
     // ── Progress & playlist-update runnables ───────────────────────────────
 
     /**
