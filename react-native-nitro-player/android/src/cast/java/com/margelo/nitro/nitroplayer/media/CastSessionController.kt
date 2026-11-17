@@ -44,6 +44,9 @@ class CastSessionController(
 ) {
     private var core: TrackPlayerCore? = null
 
+    // Set by release(); a route callback registration still queued on the main thread then does nothing
+    @Volatile private var released = false
+
     // Cast SDK reads (castState, current session) MUST happen on the main thread —
     // it throws IllegalStateException otherwise. Nitro sync getters run on the JS
     // thread, so we keep a main-thread-updated cache and serve the getters from it.
@@ -63,7 +66,7 @@ class CastSessionController(
     // publishes a device with the bare Cast category first and adds the receiver app's category a moment
     // later, MediaRouter then reports onRouteChanged, and the SDK ignores that for unselected routes. Its
     // CastState stays NO_DEVICES_AVAILABLE until the routes are rebuilt. So route changes are watched here
-    // too (passively — the SDK owns discovery) and also count as available devices.
+    // too, without requesting discovery of our own (the SDK owns it), and also count as available devices.
     private val routeCallback =
         object : MediaRouter.Callback() {
             override fun onRouteAdded(
@@ -118,7 +121,15 @@ class CastSessionController(
         }
         // Emit the current state so JS reflects reality immediately.
         mainHandler.post {
-            castContext.mergedSelector?.let { mediaRouter.addCallback(it, routeCallback, 0) }
+            if (released) return@post
+            try {
+                // Unfiltered: a route that stops matching the selector still refreshes the state
+                castContext.mergedSelector?.let {
+                    mediaRouter.addCallback(it, routeCallback, MediaRouter.CALLBACK_FLAG_UNFILTERED_EVENTS)
+                }
+            } catch (e: Exception) {
+                NitroPlayerLogger.log("CastSessionController") { "Route callback unavailable: ${e.message}" }
+            }
             refreshCacheOnMain()
             core.notifyCastStateChange(cachedState, cachedDeviceName)
         }
@@ -188,8 +199,12 @@ class CastSessionController(
     }
 
     fun release() {
+        released = true
         try {
             mediaRouter.removeCallback(routeCallback)
+        } catch (_: Exception) {
+        }
+        try {
             castPlayer.setSessionAvailabilityListener(null)
             castContext.removeCastStateListener(castStateListener)
             castPlayer.release()
