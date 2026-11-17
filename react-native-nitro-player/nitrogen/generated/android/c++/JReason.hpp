@@ -42,6 +42,9 @@ namespace margelo::nitro::nitroplayer {
     static jni::alias_ref<JReason> fromCpp(Reason value) {
       static const auto clazz = javaClassStatic();
       switch (value) {
+        case Reason::REPEAT:
+          static const auto fieldREPEAT = clazz->getStaticField<JReason>("REPEAT");
+          return clazz->getStaticFieldValue(fieldREPEAT);
         case Reason::USER_ACTION:
           static const auto fieldUSER_ACTION = clazz->getStaticField<JReason>("USER_ACTION");
           return clazz->getStaticFieldValue(fieldUSER_ACTION);
@@ -54,9 +57,6 @@ namespace margelo::nitro::nitroplayer {
         case Reason::ERROR:
           static const auto fieldERROR = clazz->getStaticField<JReason>("ERROR");
           return clazz->getStaticFieldValue(fieldERROR);
-        case Reason::REPEAT:
-          static const auto fieldREPEAT = clazz->getStaticField<JReason>("REPEAT");
-          return clazz->getStaticFieldValue(fieldREPEAT);
         default:
           std::string stringValue = std::to_string(static_cast<int>(value));
           throw std::invalid_argument("Invalid enum value (" + stringValue + "!");

@@ -122,6 +122,8 @@ class TrackPlayerCore private constructor(
         ListenerRegistry<(com.margelo.nitro.nitroplayer.CastState, String?) -> Unit>()
     internal val onNotificationLaunchListeners =
         ListenerRegistry<(TrackItem) -> Unit>()
+    internal val onNotificationButtonPressListeners =
+        ListenerRegistry<(String, TrackItem, com.margelo.nitro.nitroplayer.NotificationButtonEvent) -> Unit>()
 
     // ── Google Cast ──────────────────────────────────────────────────────────
 
@@ -130,6 +132,10 @@ class TrackPlayerCore private constructor(
 
     /** True while the active backend is the CastPlayer (audio routed to a remote device). */
     @Volatile internal var isCastingField: Boolean = false
+
+    /** Last state sent to JS — lets an event batch catch a change the individual callbacks reported stale. */
+    // What JS was last told (main thread only); JS starts out at stopped
+    internal var lastEmittedPlaybackState: TrackPlayerState = TrackPlayerState.STOPPED
 
     /** Last track announced from a cast "waiting for URL" state — dedups onChangeTrack across updateTracks re-entries. */
     internal var lastCastWaitTrackId: String? = null
@@ -485,6 +491,10 @@ class TrackPlayerCore private constructor(
     fun addOnCastStateChangeListener(cb: (com.margelo.nitro.nitroplayer.CastState, String?) -> Unit): Long = onCastStateChangeListeners.add(cb)
 
     fun removeOnCastStateChangeListener(id: Long): Boolean = onCastStateChangeListeners.remove(id)
+
+    fun addOnNotificationButtonPressListener(cb: (String, TrackItem, com.margelo.nitro.nitroplayer.NotificationButtonEvent) -> Unit): Long = onNotificationButtonPressListeners.add(cb)
+
+    fun removeOnNotificationButtonPressListener(id: Long): Boolean = onNotificationButtonPressListeners.remove(id)
 
     // ── Notification-launch detection ─────────────────────────────────────
 

@@ -537,6 +537,141 @@ describe('TrackPlayer - Comprehensive Tests', () => {
         });
     });
 
+    // ============================================
+    // PLAYLIST REPEAT WRAPPING
+    // ============================================
+
+    describe('Playlist repeat wrapping', () => {
+        afterEach(async () => {
+            await TrackPlayer.setRepeatMode('off');
+            await TrackPlayer.pause();
+        });
+
+        it('should wrap skipToNext from the last track to the first', async () => {
+            await PlayerQueue.loadPlaylist(playlist3Id);
+            await TrackPlayer.setRepeatMode('Playlist');
+            await TrackPlayer.playSong('p3-3', playlist3Id);
+
+            await TrackPlayer.skipToNext();
+
+            const state = await waitForState(s => s.currentTrack?.id === 'p3-1');
+            expect(state.currentTrack?.id).toBe('p3-1');
+            expect(state.currentIndex).toBe(0);
+        });
+
+        it('should wrap skipToPrevious from the first track to the last', async () => {
+            await PlayerQueue.loadPlaylist(playlist3Id);
+            await TrackPlayer.setRepeatMode('Playlist');
+            await TrackPlayer.playSong('p3-1', playlist3Id);
+
+            await TrackPlayer.skipToPrevious();
+
+            const state = await waitForState(s => s.currentTrack?.id === 'p3-3');
+            expect(state.currentTrack?.id).toBe('p3-3');
+            expect(state.currentIndex).toBe(2);
+        });
+
+        it('should wrap from a temporary track at the end to the first playlist track', async () => {
+            await PlayerQueue.loadPlaylist(playlist3Id);
+            await TrackPlayer.setRepeatMode('Playlist');
+            await TrackPlayer.playSong('p3-3', playlist3Id);
+            await TrackPlayer.playNext('4');
+
+            await TrackPlayer.skipToNext();
+            await waitForState(s => s.currentTrack?.id === '4');
+
+            await TrackPlayer.skipToNext();
+            const state = await waitForState(s => s.currentTrack?.id === 'p3-1');
+            expect(state.currentTrack?.id).toBe('p3-1');
+            expect(state.currentIndex).toBe(0);
+            const queue = await TrackPlayer.getActualQueue();
+            expect(queue.some(t => t.id === '4')).toBe(false);
+        });
+
+        it('should not wrap skipToNext at the last track with repeat off', async () => {
+            await TrackPlayer.setRepeatMode('off');
+            await PlayerQueue.loadPlaylist(playlist3Id);
+            await TrackPlayer.playSong('p3-3', playlist3Id);
+            await waitForPlaying();
+            await TrackPlayer.seek(30);
+            await waitForState(s => s.currentPosition >= 29);
+
+            await TrackPlayer.skipToNext();
+
+            // A wrap is a queue rebuild plus async callbacks, so give it time to show up
+            await new Promise<void>(resolve => setTimeout(resolve, 3000));
+            const state = await TrackPlayer.getState();
+            expect(state.currentTrack?.id).toBe('p3-3');
+            expect(state.currentPosition).toBeGreaterThanOrEqual(29);
+            await TrackPlayer.pause();
+        });
+
+        it('should not wrap skipToPrevious at the first track with repeat off', async () => {
+            await TrackPlayer.setRepeatMode('off');
+            await PlayerQueue.loadPlaylist(playlist3Id);
+            await TrackPlayer.playSong('p3-1', playlist3Id);
+
+            await TrackPlayer.skipToPrevious();
+
+            await new Promise<void>(resolve => setTimeout(resolve, 3000));
+            const state = await TrackPlayer.getState();
+            expect(state.currentTrack?.id).toBe('p3-1');
+        });
+
+        it('should restart a single-track queue on skipToNext', async () => {
+            const singleId = await PlayerQueue.createPlaylist('Single Track', 'One track');
+            createdPlaylistIds.push(singleId);
+            await PlayerQueue.addTracksToPlaylist(singleId, [createTestTrack('solo', 'Solo Track')]);
+            await PlayerQueue.loadPlaylist(singleId);
+            await TrackPlayer.setRepeatMode('Playlist');
+            await TrackPlayer.playSong('solo', singleId);
+            await waitForPlaying();
+            await TrackPlayer.seek(30);
+            await waitForState(s => s.currentPosition >= 29);
+
+            await TrackPlayer.skipToNext();
+
+            // Without the wrap this is a no-op and the position stays past 29s
+            const state = await waitForState(s => s.currentPosition < 5);
+            expect(state.currentTrack?.id).toBe('solo');
+            expect(state.currentPosition).toBeLessThan(5);
+            await TrackPlayer.pause();
+        });
+
+        it('should keep a paused queue paused when wrapping with skipToNext', async () => {
+            await PlayerQueue.loadPlaylist(playlist3Id);
+            await TrackPlayer.setRepeatMode('Playlist');
+            await TrackPlayer.playSong('p3-3', playlist3Id);
+            await waitForPlaying();
+            await TrackPlayer.pause();
+
+            await TrackPlayer.skipToNext();
+            await waitForState(s => s.currentTrack?.id === 'p3-1');
+            const state = await waitForState(s => s.currentState === 'paused');
+
+            expect(state.currentTrack?.id).toBe('p3-1');
+            expect(state.currentState).toBe('paused');
+        });
+
+        it('should keep a paused queue paused when wrapping with skipToPrevious', async () => {
+            await PlayerQueue.loadPlaylist(playlist3Id);
+            await TrackPlayer.setRepeatMode('Playlist');
+            await TrackPlayer.playSong('p3-1', playlist3Id);
+            await waitForPlaying();
+            await TrackPlayer.pause();
+            // Stay under the 2-second restart threshold so the skip wraps
+            await TrackPlayer.seek(0);
+            await waitForState(s => s.currentPosition < 2);
+
+            await TrackPlayer.skipToPrevious();
+            await waitForState(s => s.currentTrack?.id === 'p3-3');
+            const state = await waitForState(s => s.currentState === 'paused');
+
+            expect(state.currentTrack?.id).toBe('p3-3');
+            expect(state.currentState).toBe('paused');
+        });
+    });
+
     // // ============================================
     // // STATE MANAGEMENT
     // // ============================================
@@ -1215,6 +1350,84 @@ describe('TrackPlayer - Comprehensive Tests', () => {
         });
     });
 
+    describe('Notification Buttons', () => {
+        const validButtons = {
+            android: [
+                { id: 'favorite', title: 'Favorite', icon: 'heart', activeIcon: 'heart_filled' },
+                { id: 'refresh', title: 'Refresh', icon: 'sync' },
+            ],
+            ios: {
+                lockScreen: [{ id: 'favorite', command: 'like' as const }],
+                carPlay: [{ id: 'favorite', icon: 'heart', activeIcon: 'heart.fill' }],
+            },
+        };
+
+        afterEach(async () => {
+            await TrackPlayer.configure({ notificationButtons: {} });
+        });
+
+        it('should accept buttons and state while playing', async () => {
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playSong('2', playlist1Id);
+            await TrackPlayer.configure({ notificationButtons: validButtons });
+            TrackPlayer.setNotificationButtonState({ buttonId: 'favorite', trackIds: ['2'], isActive: true });
+            TrackPlayer.setNotificationButtonState({ buttonId: 'favorite', isActive: false });
+            await waitForNextTick();
+
+            const state = await TrackPlayer.getState();
+            expect(state.currentTrack?.id).toBe('2');
+            await TrackPlayer.pause();
+        });
+
+        it('should reject an unknown Android icon', async () => {
+            if (Platform.OS !== 'android') return;
+            await expect(
+                TrackPlayer.configure({
+                    notificationButtons: { android: [{ id: 'x', title: 'X', icon: 'not_an_icon_or_drawable' }] },
+                })
+            ).rejects.toThrow();
+        });
+
+        it('should reject a repeated Android id', async () => {
+            if (Platform.OS !== 'android') return;
+            await expect(
+                TrackPlayer.configure({
+                    notificationButtons: {
+                        android: [
+                            { id: 'x', title: 'X', icon: 'heart' },
+                            { id: 'x', title: 'Y', icon: 'star' },
+                        ],
+                    },
+                })
+            ).rejects.toThrow();
+        });
+
+        it('should reject a repeated iOS Lock Screen command', async () => {
+            if (Platform.OS !== 'ios') return;
+            await expect(
+                TrackPlayer.configure({
+                    notificationButtons: {
+                        ios: {
+                            lockScreen: [
+                                { id: 'a', command: 'like' },
+                                { id: 'b', command: 'like' },
+                            ],
+                        },
+                    },
+                })
+            ).rejects.toThrow();
+        });
+
+        it('should reject an unknown CarPlay icon', async () => {
+            if (Platform.OS !== 'ios') return;
+            await expect(
+                TrackPlayer.configure({
+                    notificationButtons: { ios: { carPlay: [{ id: 'x', icon: 'not.a.symbol.or.asset' }] } },
+                })
+            ).rejects.toThrow();
+        });
+    });
+
     describe('Android Auto', () => {
         it('should report a connection state without a head unit attached', () => {
             // No head unit in the harness, so this must be false rather than throwing.
@@ -1243,6 +1456,140 @@ describe('TrackPlayer - Comprehensive Tests', () => {
 
             expect(asked).toContain('lazy-1');
             expect((await TrackPlayer.getTracksNeedingUrls()).map(t => t.id)).toContain('lazy-1');
+        });
+
+        // Runs in both the Harness iOS and Harness Android CI jobs, so it pins both platforms.
+        it('should resolve a track that is queued more than once', async () => {
+            const repeated = { ...createTestTrack('repeat-1', 'Repeated'), url: '' };
+            const between = { ...createTestTrack('repeat-mid', 'Between'), url: '' };
+            const repeatPlaylistId = await PlayerQueue.createPlaylist('Repeated Track Test');
+            createdPlaylistIds.push(repeatPlaylistId);
+            // repeat-1 is repeated and current; repeat-mid is repeated and not current.
+            await PlayerQueue.addTracksToPlaylist(repeatPlaylistId, [repeated, between, repeated, between]);
+
+            // Listeners can't be removed, so this one stops recording once the test ends.
+            let recording = true;
+            const askedPayloads: string[][] = [];
+            // Checked as each payload arrives, so a late duplicate can't slip past the assertions.
+            const payloadsWithRepeats: string[][] = [];
+            TrackPlayer.onTracksNeedUpdate(tracks => {
+                if (!recording) return;
+                const ids = tracks.map(t => t.id);
+                askedPayloads.push(ids);
+                if (new Set(ids).size !== ids.length) payloadsWithRepeats.push(ids);
+            });
+            try {
+                await waitForNextTick();
+
+                await PlayerQueue.loadPlaylist(repeatPlaylistId);
+
+                // Poll rather than sleep: the lookahead fires asynchronously after the load.
+                await waitForValue(askedPayloads, ids => ids.includes('repeat-1'), 5000);
+                await waitForValue(askedPayloads, ids => ids.includes('repeat-mid'), 5000);
+
+                // The lookahead sees every queued copy, but each payload asks for an id once.
+                expect(askedPayloads.length).toBeGreaterThan(0);
+                expect(askedPayloads.flat()).toContain('repeat-1');
+                expect(askedPayloads.flat()).toContain('repeat-mid');
+            } finally {
+                recording = false;
+            }
+            expect(payloadsWithRepeats).toStrictEqual([]);
+
+            // The repeated track is also the current one, so the update below takes the
+            // "current track has no URL" path that replaces the active player item.
+            expect((await TrackPlayer.getState()).currentTrack?.id).toBe('repeat-1');
+
+            // Each id is asked for once, however many times it is queued.
+            expect((await TrackPlayer.getTracksNeedingUrls()).map(t => t.id)).toStrictEqual([
+                'repeat-1',
+                'repeat-mid',
+            ]);
+
+            // A payload that repeats an id used to crash iOS. The last applicable entry for an id
+            // wins, and a trailing entry without a URL is never applied, so it can't displace one.
+            await TrackPlayer.updateTracks([
+                { ...repeated, url: createTestTrack('repeat-1', '', 7).url, title: 'First Update' },
+                { ...repeated, url: createTestTrack('repeat-1', '', 8).url, title: 'Last Update' },
+                { ...repeated, url: '', title: 'No URL' },
+                { ...between, url: createTestTrack('repeat-mid', '', 9).url, title: 'Between First' },
+                { ...between, url: createTestTrack('repeat-mid', '', 10).url, title: 'Between Last' },
+                { ...between, url: '', title: 'No URL' },
+            ]);
+            await waitForNextTick();
+
+            const tracks = PlayerQueue.getPlaylist(repeatPlaylistId)?.tracks ?? [];
+            expect(tracks.map(t => t.title)).toStrictEqual([
+                'Last Update',
+                'Between Last',
+                'Last Update',
+                'Between Last',
+            ]);
+            expect(tracks[0].url).toBe(createTestTrack('repeat-1', '', 8).url);
+            expect(tracks[2].url).toBe(tracks[0].url);
+            expect(tracks[1].url).toBe(createTestTrack('repeat-mid', '', 10).url);
+            expect(tracks[3].url).toBe(tracks[1].url);
+            expect(await TrackPlayer.getTracksNeedingUrls()).toStrictEqual([]);
+
+            // The player's current track took the same update as the queue.
+            const { currentTrack } = await TrackPlayer.getState();
+            expect(currentTrack?.title).toBe('Last Update');
+            expect(currentTrack?.url).toBe(tracks[0].url);
+
+            // The player's own track list (which its native items are built from) matches at
+            // every position, not just the playlist copy checked above.
+            const actualQueue = await TrackPlayer.getActualQueue();
+            expect(actualQueue.map(t => t.id)).toStrictEqual(['repeat-1', 'repeat-mid', 'repeat-1', 'repeat-mid']);
+            expect(actualQueue.map(t => t.url)).toStrictEqual(tracks.map(t => t.url));
+        });
+
+        it('should stay on the playing copy of a repeated track when another track resolves', async () => {
+            const repeated = createTestTrack('copy-1', 'Repeated', 6);
+            const lazy = { ...createTestTrack('copy-lazy', 'Lazy'), url: '' };
+            const copyPlaylistId = await PlayerQueue.createPlaylist('Repeated Copy Test');
+            createdPlaylistIds.push(copyPlaylistId);
+            await PlayerQueue.addTracksToPlaylist(copyPlaylistId, [
+                repeated,
+                createTestTrack('copy-mid', 'Between', 7),
+                repeated,
+                lazy,
+            ]);
+            await PlayerQueue.loadPlaylist(copyPlaylistId);
+
+            // Step onto the second copy the way playback reaches it, one track at a time.
+            await TrackPlayer.skipToNext();
+            await waitForState(s => s.currentIndex === 1);
+            await TrackPlayer.skipToNext();
+            let state = await waitForState(s => s.currentIndex === 2);
+            expect(state.currentTrack?.id).toBe('copy-1');
+            expect(state.currentIndex).toBe(2);
+
+            // Resolving another track re-syncs the queue; it must not jump back to the first copy.
+            await TrackPlayer.updateTracks([{ ...lazy, url: createTestTrack('copy-lazy', '', 8).url }]);
+            await waitForNextTick();
+
+            state = await TrackPlayer.getState();
+            expect(state.currentTrack?.id).toBe('copy-1');
+            expect(state.currentIndex).toBe(2);
+            expect((await TrackPlayer.getNextTracks(5)).map(t => t.id)).toStrictEqual(['copy-lazy']);
+        });
+
+        it('should resolve a playNext copy of a lazy track', async () => {
+            const lazy = { ...createTestTrack('next-lazy', 'Lazy Next'), url: '' };
+            const nextPlaylistId = await PlayerQueue.createPlaylist('PlayNext Copy Test');
+            createdPlaylistIds.push(nextPlaylistId);
+            await PlayerQueue.addTracksToPlaylist(nextPlaylistId, [createTestTrack('next-first', 'First'), lazy]);
+            await PlayerQueue.loadPlaylist(nextPlaylistId);
+            await TrackPlayer.playNext('next-lazy');
+            await waitForNextTick();
+
+            const url = createTestTrack('next-lazy', '', 7).url;
+            await TrackPlayer.updateTracks([{ ...lazy, url }]);
+            await waitForNextTick();
+
+            // Both the playNext copy and the playlist copy took the update.
+            const copies = (await TrackPlayer.getActualQueue()).filter(t => t.id === 'next-lazy');
+            expect(copies.map(t => t.url)).toStrictEqual([url, url]);
         });
     });
 
@@ -1394,6 +1741,26 @@ describe('TrackPlayer - Comprehensive Tests', () => {
 
             const state = await waitForState(s => s.currentTrack?.id === '2', 30000);
             expect(state.currentTrack?.id).toBe('2');
+        });
+
+        it('should resume when play() is called after a media session stop', async () => {
+            if (Platform.OS !== 'android') return;
+
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.play();
+            expect((await waitForPlaying()).currentState).toBe('playing');
+
+            // Dismissing the notification sends the same stop: ExoPlayer goes idle, queue kept.
+            announceReady('stop');
+
+            const stopped = await waitForState(s => s.currentState === 'stopped', 30000);
+            expect(stopped.currentState).toBe('stopped');
+
+            await TrackPlayer.play();
+            const state = await waitForState(s => s.currentState === 'playing', 30000);
+            expect(state.currentState).toBe('playing');
+            expect(state.currentTrack?.id).toBe('1');
         });
     });
 });

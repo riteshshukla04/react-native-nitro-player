@@ -325,7 +325,8 @@ class PlaylistManager {
    * @return Dictionary of playlistId -> count of tracks updated
    */
   func updateTracks(tracks: [TrackItem]) -> [String: Int] {
-    let tracksMap = Dictionary(uniqueKeysWithValues: tracks.map { ($0.id, $0) })
+    // A queue can hold the same track more than once; last one wins (matches Android's associateBy)
+    let tracksMap = Dictionary(tracks.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last })
     var affectedPlaylists: [String: Int] = [:]
 
     queue.sync {
@@ -593,20 +594,9 @@ class PlaylistManager {
             !$0.isEmpty ? Variant_NullType_String.second($0) : nil
           }
 
-          var extraPayload: AnyMap? = nil
-          if let extraPayloadDict = trackDict["extraPayload"] as? [String: Any] {
-            extraPayload = AnyMap()
-            for (key, value) in extraPayloadDict {
-              if let stringValue = value as? String {
-                extraPayload?.setString(key: key, value: stringValue)
-              } else if let doubleValue = value as? Double {
-                extraPayload?.setDouble(key: key, value: doubleValue)
-              } else if let intValue = value as? Int {
-                extraPayload?.setDouble(key: key, value: Double(intValue))
-              } else if let boolValue = value as? Bool {
-                extraPayload?.setBoolean(key: key, value: boolValue)
-              }
-            }
+          // Keeps nested objects, arrays, nulls and booleans, e.g. extraPayload.headers
+          let extraPayload = (trackDict["extraPayload"] as? [String: Any]).map {
+            AnyMap.fromJSON($0)
           }
 
           return TrackItem(

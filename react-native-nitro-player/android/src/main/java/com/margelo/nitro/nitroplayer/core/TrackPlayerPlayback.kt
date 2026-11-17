@@ -3,6 +3,7 @@
 package com.margelo.nitro.nitroplayer.core
 
 import androidx.annotation.OptIn
+import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
@@ -12,6 +13,7 @@ import com.margelo.nitro.nitroplayer.RepeatMode
 import com.margelo.nitro.nitroplayer.TrackPlayerState
 import com.margelo.nitro.nitroplayer.media.NitroPlayerMediaBrowserService
 import com.margelo.nitro.nitroplayer.media.NitroPlayerPlaybackService
+import com.margelo.nitro.nitroplayer.media.resolveNotificationButtons
 
 /**
  * Playback control — all public functions are suspend and execute on the player thread
@@ -22,6 +24,11 @@ suspend fun TrackPlayerCore.play() = withPlayerContext { playOnQueue() }
 
 internal fun TrackPlayerCore.playOnQueue() {
     audioFocusController?.acquire()
+    // A media-session stop (e.g. dismissing the notification) leaves ExoPlayer idle with its
+    // queue intact; prepare it again, as a session play request does.
+    if (exo.playbackState == Player.STATE_IDLE && exo.mediaItemCount > 0) {
+        exo.prepare()
+    }
     exo.play()
 }
 
@@ -48,15 +55,59 @@ internal fun TrackPlayerCore.skipToNextOnQueue() {
     if (exo.hasNextMediaItem()) {
         exo.seekToNext()
         checkUpcomingTracksForUrls(lookaheadCount)
+    } else if (currentRepeatMode == RepeatMode.PLAYLIST && currentTracks.isNotEmpty()) {
+        // Manual skip at the last track wraps, matching natural-end behavior and iOS.
+        // The local timeline already holds the wrap; this covers casting (exo is the CastPlayer,
+        // whose queue has no wrap prefix) and a single track. A lone playlist track restarts in
+        // place, same as skipToPrevious; otherwise playFromIndexInternal keeps playWhenReady,
+        // so a paused queue stays paused. rebuildQueueFromCurrentPosition() above already put
+        // every remaining playNext/upNext item on the timeline and there is still no next item,
+        // so the only temp track left is the playing one; like natural end (STATE_ENDED) and iOS,
+        // the wrap leaves it for playlist track 0 (playFromIndexInternal clears both temp lists).
+        if (currentTracks.size == 1 && currentTemporaryType == TrackPlayerCore.TemporaryType.NONE) {
+            exo.seekTo(0)
+        } else {
+            playFromIndexInternal(0)
+        }
+        checkUpcomingTracksForUrls(lookaheadCount)
     }
 }
 
 suspend fun TrackPlayerCore.skipToPrevious() = withPlayerContext { skipToPreviousOnQueue() }
 
+/** Whether the current item can go back to its start: anything but a live stream, including transcodes that can't seek but know their duration. */
+internal fun TrackPlayerCore.canRestartCurrentItem(): Boolean {
+    val player = exo.player
+    if (player.isCurrentMediaItemSeekable) return true
+    // A transcode without a length header reads as live to ExoPlayer; the app-supplied duration says otherwise
+    if ((player.currentMediaItem?.mediaMetadata?.durationMs ?: 0L) > 0) return true
+    return !player.isCurrentMediaItemLive && player.duration != C.TIME_UNSET
+}
+
+/** Whether [skipToNextOnQueue] would move anywhere: off for a live stream alone in the queue. */
+internal fun TrackPlayerCore.canSkipToNextOnQueue(): Boolean {
+    if (!isExoInitialized) return false
+    // The timeline is windowed, so also ask the logical queue
+    if (exo.hasNextMediaItem() || currentTrackIndex < currentTracks.size - 1) return true
+    if (currentRepeatMode != RepeatMode.PLAYLIST || currentTracks.isEmpty()) return false
+    // The wrap restarts a lone playlist track in place, which a live stream can't do
+    return currentTracks.size > 1 || currentTemporaryType != TrackPlayerCore.TemporaryType.NONE || canRestartCurrentItem()
+}
+
+/** Whether [skipToPreviousOnQueue] would do more than restart a stream that can't seek. */
+internal fun TrackPlayerCore.canSkipToPreviousOnQueue(): Boolean {
+    if (!isExoInitialized) return false
+    return canRestartCurrentItem() ||
+        (currentTemporaryType != TrackPlayerCore.TemporaryType.NONE && currentTracks.isNotEmpty()) ||
+        currentTrackIndex > 0 ||
+        (currentRepeatMode == RepeatMode.PLAYLIST && currentTracks.size > 1)
+}
+
 internal fun TrackPlayerCore.skipToPreviousOnQueue() {
     val currentPosition = exo.currentPosition
     when {
-        currentPosition > 2000 -> {
+        // A live stream's position is always past 2s, and restarting it would only reconnect
+        currentPosition > 2000 && canRestartCurrentItem() -> {
             exo.seekTo(0)
         }
 
@@ -69,10 +120,18 @@ internal fun TrackPlayerCore.skipToPreviousOnQueue() {
             playFromIndexInternal(currentTrackIndex - 1)
         }
 
+        currentTrackIndex == 0 && currentRepeatMode == RepeatMode.PLAYLIST && currentTracks.size > 1 -> {
+            // At the first track under playlist repeat, wrap to the last. Temp tracks never get
+            // here (the currentTemporaryType arm above owns them). A single track falls through
+            // to the restart below, same result without rebuilding the queue.
+            playFromIndexInternal(currentTracks.size - 1)
+        }
+
         else -> {
             exo.seekTo(0)
         }
     }
+    // One lookahead refresh for every arm above, the wrap included
     checkUpcomingTracksForUrls(lookaheadCount)
 }
 
@@ -87,6 +146,7 @@ internal fun TrackPlayerCore.setRepeatModeOnQueue(mode: RepeatMode) {
     ) {
         rebuildQueueFromCurrentPosition()
     }
+    mediaSessionManager?.refreshStandardButtons()
 }
 
 /** True while the playing item was removed from the playlist and is finishing. */
@@ -123,9 +183,12 @@ internal fun TrackPlayerCore.setVolumeOnQueue(volume: Double) {
 suspend fun TrackPlayerCore.configure(config: PlayerConfig) = withPlayerContext { configureOnQueue(config) }
 
 internal fun TrackPlayerCore.configureOnQueue(config: PlayerConfig) {
+    // Resolved first: a bad button config rejects before anything else is applied
+    val notificationButtons = config.notificationButtons?.let { resolveNotificationButtons(context, it.android?.toList().orEmpty()) }
     // JS is calling, so the keep-alive task is registered: start it now if a headless start needs it
     updateJsKeepAlive()
     config.androidAudioFocus?.let { applyAudioFocusMode(it) }
+    NitroPlayerPlaybackService.configureStopOnTaskRemoved(context, config.androidStopOnTaskRemoved)
     config.androidAutoEnabled?.let { NitroPlayerMediaBrowserService.setAndroidAutoEnabled(context, it) }
     config.lookaheadCount?.let { lookaheadCount = it.toInt() }
     config.androidNotificationIcon?.let { NitroPlayerPlaybackService.notificationSmallIconResName = it }
@@ -138,7 +201,9 @@ internal fun TrackPlayerCore.configureOnQueue(config: PlayerConfig) {
         config.showInNotification,
         remoteSkipForwardIntervalMs,
         remoteSkipBackwardIntervalMs,
+        config.androidShowRemoteSkipButtons,
     )
+    notificationButtons?.let { mediaSessionManager?.setNotificationButtons(it) }
 }
 
 // Resolved from the cast controller: mid-cast `exo` is the CastPlayer, whose increments are fixed
@@ -221,19 +286,33 @@ internal fun TrackPlayerCore.playSongInternal(
 
 // ── State emission (called from player thread) ─────────────────────────────
 
+internal fun TrackPlayerCore.currentPlaybackState(): TrackPlayerState =
+    when (exo.playbackState) {
+        Player.STATE_IDLE -> TrackPlayerState.STOPPED
+        Player.STATE_BUFFERING -> if (exo.playWhenReady) TrackPlayerState.BUFFERING else TrackPlayerState.PAUSED
+        Player.STATE_READY -> if (exo.isPlaying) TrackPlayerState.PLAYING else TrackPlayerState.PAUSED
+        Player.STATE_ENDED -> TrackPlayerState.STOPPED
+        else -> TrackPlayerState.STOPPED
+    }
+
 internal fun TrackPlayerCore.emitStateChange(reason: Reason? = null) {
     if (!isExoInitialized) return
-    val state =
-        when (exo.playbackState) {
-            Player.STATE_IDLE -> TrackPlayerState.STOPPED
-            Player.STATE_BUFFERING -> if (exo.playWhenReady) TrackPlayerState.BUFFERING else TrackPlayerState.PAUSED
-            Player.STATE_READY -> if (exo.isPlaying) TrackPlayerState.PLAYING else TrackPlayerState.PAUSED
-            Player.STATE_ENDED -> TrackPlayerState.STOPPED
-            else -> TrackPlayerState.STOPPED
-        }
+    val state = currentPlaybackState()
+    lastEmittedPlaybackState = state
     val actualReason = reason ?: if (exo.playbackState == Player.STATE_ENDED) Reason.END else null
     notifyPlaybackStateChange(state, actualReason)
     mediaSessionManager?.onPlaybackStateChanged(state == TrackPlayerState.PLAYING)
+}
+
+/**
+ * Re-emits the state when the player's getters no longer match what JS was last told. media3's
+ * RemoteCastPlayer reports IDLE while its timeline is empty, and sends no state event when the timeline
+ * fills or empties, so the emits from the receiver's status callbacks read the old state (a receiver that
+ * starts playing stays "stopped" in JS). Called from onEvents, after a batch's callbacks.
+ */
+internal fun TrackPlayerCore.reconcileStateChange() {
+    if (!isExoInitialized) return
+    if (currentPlaybackState() != lastEmittedPlaybackState) emitStateChange()
 }
 
 // ── Playback speed ────────────────────────────────────────────────────────

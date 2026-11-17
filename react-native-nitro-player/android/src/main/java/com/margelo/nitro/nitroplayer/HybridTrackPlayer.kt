@@ -145,6 +145,13 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
 
     override fun isAndroidAutoConnected(): Boolean = core.isAndroidAutoConnected()
 
+    // ── Notification buttons ─────────────────────────────────────────────────
+
+    override fun setNotificationButtonState(state: NotificationButtonState) {
+        val trackIds = state.trackIds?.toList()
+        core.enqueue { core.mediaSessionManager?.setNotificationButtonState(state.buttonId, trackIds, state.isActive) }
+    }
+
     // ── Event listeners ───────────────────────────────────────────────────────
 
     override fun onChangeTrack(callback: (track: TrackItem, reason: Reason?) -> Unit) {
@@ -168,12 +175,7 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
     }
 
     override fun onAndroidAutoConnectionChange(callback: (connected: Boolean) -> Unit) {
-        // Replace any prior listener registered through this HybridObject so JS
-        // reloads (Fast Refresh, hot reload) don't accumulate handlers.
-        val existing = listenerIds.filter { it.first == "onAndroidAutoConnectionChange" }
-        existing.forEach { (_, oldId) -> core.removeOnAndroidAutoConnectionListener(oldId) }
-        listenerIds.removeAll { it.first == "onAndroidAutoConnectionChange" }
-
+        // Additive like the other callbacks: replacing would drop the hooks' shared listener.
         val id = core.addOnAndroidAutoConnectionListener(callback)
         listenerIds += "onAndroidAutoConnectionChange" to id
     }
@@ -181,6 +183,11 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
     override fun appStartedWithNotification(callback: (track: TrackItem) -> Unit) {
         val id = core.addOnNotificationLaunchListener(callback)
         listenerIds += "appStartedWithNotification" to id
+    }
+
+    override fun onNotificationButtonPress(callback: (buttonId: String, track: TrackItem, event: NotificationButtonEvent) -> Unit) {
+        val id = core.addOnNotificationButtonPressListener(callback)
+        listenerIds += "onNotificationButtonPress" to id
     }
 
     override fun onTracksNeedUpdate(callback: (tracks: Array<TrackItem>, lookahead: Double) -> Unit) {
@@ -219,6 +226,7 @@ class HybridTrackPlayer : HybridTrackPlayerSpec() {
                 "onTemporaryQueueChange" -> core.removeOnTemporaryQueueChangeListener(id)
                 "onTimedMetadata" -> core.removeOnTimedMetadataListener(id)
                 "appStartedWithNotification" -> core.removeOnNotificationLaunchListener(id)
+                "onNotificationButtonPress" -> core.removeOnNotificationButtonPressListener(id)
             }
         }
         listenerIds.clear()

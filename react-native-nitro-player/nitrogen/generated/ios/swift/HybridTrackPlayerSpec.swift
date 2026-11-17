@@ -35,6 +35,8 @@ public protocol HybridTrackPlayerSpec_protocol: HybridObject {
   func appStartedWithNotification(callback: @escaping (_ track: TrackItem) -> Void) throws -> Void
   func onAndroidAutoConnectionChange(callback: @escaping (_ connected: Bool) -> Void) throws -> Void
   func isAndroidAutoConnected() throws -> Bool
+  func setNotificationButtonState(state: NotificationButtonState) throws -> Void
+  func onNotificationButtonPress(callback: @escaping (_ buttonId: String, _ track: TrackItem, _ event: NotificationButtonEvent) -> Void) throws -> Void
   func setVolume(volume: Double) throws -> Promise<Void>
   func updateTracks(tracks: [TrackItem]) throws -> Promise<Void>
   func getTracksById(trackIds: [String]) throws -> Promise<[TrackItem]>

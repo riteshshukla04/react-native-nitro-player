@@ -8,6 +8,7 @@ import com.margelo.nitro.nitroplayer.*
 import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
 import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
 import com.margelo.nitro.nitroplayer.storage.NitroPlayerStorage
+import com.margelo.nitro.nitroplayer.storage.toAnyMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Dispatchers
@@ -460,20 +461,7 @@ class DownloadDatabase private constructor(
                 null
             }
 
-        val extraPayload: AnyMap? =
-            record.extraPayload?.let { extraPayloadJson ->
-                val map = AnyMap()
-                val keyIterator = extraPayloadJson.keys()
-                while (keyIterator.hasNext()) {
-                    val key = keyIterator.next()
-                    when (val value = extraPayloadJson.get(key)) {
-                        is String -> map.setString(key, value)
-                        is Number -> map.setDouble(key, value.toDouble())
-                        is Boolean -> map.setBoolean(key, value)
-                    }
-                }
-                map
-            }
+        val extraPayload: AnyMap? = record.extraPayload?.toAnyMap()
 
         return TrackItem(
             id = record.id,

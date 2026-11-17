@@ -141,6 +141,8 @@ extension TrackPlayerCore {
         self.player?.rate = Float(self.currentPlaybackSpeed)
       }
       if self.player?.currentItem?.trackId == remoteTrackId { self.backendTransferTargetId = nil }
+      // The rebuild's queued item-change callbacks run after this; they are not a track change
+      self.lastHandledItem = self.player?.currentItem
     }
   }
 
@@ -288,7 +290,8 @@ extension TrackPlayerCore {
     return true
   }
 
-  /// skipToPrevious while casting: restart after the threshold, otherwise step back through temp/original tracks.
+  /// skipToPrevious while casting: restart after the threshold, otherwise step back through temp/original tracks
+  /// (wrapping to the last track under playlist repeat).
   func skipToPreviousCastInternal() {
     let position = castManager?.lastKnownRemotePosition ?? 0
     if position > Constants.skipToPreviousThreshold {
@@ -318,6 +321,11 @@ extension TrackPlayerCore {
       notifyTemporaryQueueChange()
     } else if currentTrackIndex > 0 {
       currentTrackIndex -= 1
+    } else if currentTrackIndex == 0, currentRepeatMode == .playlist, currentTracks.count > 1 {
+      // At the first track under playlist repeat, wrap to the last (temp tracks were handled above).
+      // The reload below finds the target by track id and passes autoplay: intendedToPlay, like the
+      // step-back above; not yet verified on a receiver.
+      currentTrackIndex = currentTracks.count - 1
     } else {
       castManager?.seek(to: 0)
       return

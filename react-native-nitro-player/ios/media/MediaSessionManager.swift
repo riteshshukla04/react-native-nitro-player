@@ -11,6 +11,10 @@ import MediaPlayer
 import NitroModules
 import UIKit
 
+#if canImport(CarPlay)
+  import CarPlay
+#endif
+
 class MediaSessionManager {
   // MARK: - Constants
 
@@ -42,9 +46,34 @@ class MediaSessionManager {
   private var cachedQueueCount: Int = 0
   private var cachedPositionInQueue: Int = -1
   private var cachedPlaybackSpeed: Double = 1.0
+  private var cachedRepeatMode: RepeatMode = .off
+
+  // Buttons from PlayerConfig.notificationButtons — main-thread-only, like the cache above
+  private var lockScreenButtons: [LockScreenButton] = []
+  private var carPlayButtons: [CarPlayButton] = []
+  private let buttonStates = NotificationButtonStates()
+  // What CarPlay shows now; nil until the app configures CarPlay buttons, so its own are left alone
+  private var carPlayButtonsShown: [String]?
+  private var carPlayConnectObserver: NSObjectProtocol?
 
   init() {
     setupRemoteCommandCenter()
+    #if canImport(CarPlay)
+      // CarPlay buttons are pushed when CarPlay connects; until then CarPlay is never touched
+      carPlayConnectObserver = NotificationCenter.default.addObserver(
+        forName: UIScene.willConnectNotification, object: nil, queue: .main
+      ) { [weak self] notification in
+        guard #available(iOS 14.0, *),
+          (notification.object as? UIScene)?.session.role == .carTemplateApplication
+        else { return }
+        // After the scene finishes connecting, so CarPlay's Now Playing template exists
+        DispatchQueue.main.async { self?.updateCarPlayButtons(force: true) }
+      }
+    #endif
+  }
+
+  deinit {
+    if let observer = carPlayConnectObserver { NotificationCenter.default.removeObserver(observer) }
   }
 
   func setTrackPlayerCore(_ core: TrackPlayerCore) {
@@ -85,14 +114,165 @@ class MediaSessionManager {
 
   func updateFromPlayerQueue(
     track: TrackItem, state: PlayerState, queueCount: Int, positionInQueue: Int,
-    playbackSpeed: Double
+    playbackSpeed: Double, repeatMode: RepeatMode
   ) {
     cachedTrack = track
     cachedState = state
     cachedQueueCount = queueCount
     cachedPositionInQueue = positionInQueue
     cachedPlaybackSpeed = sanitizedPositive(playbackSpeed) ?? 1.0
+    cachedRepeatMode = repeatMode
     refreshInternal()
+  }
+
+  // MARK: - Notification buttons (main thread only)
+
+  func setNotificationButtons(_ config: IOSButtonConfig) {
+    lockScreenButtons = config.lockScreen
+    carPlayButtons = config.carPlay
+    refreshInternal()
+  }
+
+  func setNotificationButtonState(buttonId: String, trackIds: [String]?, isActive: Bool) {
+    buttonStates.set(buttonId, trackIds: trackIds, isActive: isActive)
+    refreshInternal()
+  }
+
+  private func lockScreenButton(for command: LockScreenCommand) -> LockScreenButton? {
+    lockScreenButtons.first { $0.command == command }
+  }
+
+  private var feedbackCommands: [(MPFeedbackCommand, LockScreenCommand, String)] {
+    let commandCenter = MPRemoteCommandCenter.shared()
+    return [
+      (commandCenter.likeCommand, .like, "Like"),
+      (commandCenter.dislikeCommand, .dislike, "Dislike"),
+      (commandCenter.bookmarkCommand, .bookmark, "Bookmark"),
+    ]
+  }
+
+  /// Records a toggle pressed for the current track, redraws, and reports it
+  private func pressToggle(_ buttonId: String, isActive: Bool) -> MPRemoteCommandHandlerStatus {
+    guard let track = cachedTrack else { return .commandFailed }
+    buttonStates.setFromPress(buttonId, trackId: track.id, isActive: isActive)
+    refreshInternal()
+    trackPlayerCore?.notifyNotificationButtonPress(
+      buttonId, track, NotificationButtonEvent(isActive: isActive, rating: nil, repeatMode: nil))
+    return .success
+  }
+
+  private static func repeatMode(from type: MPRepeatType) -> RepeatMode {
+    switch type {
+    case .one: return .track
+    case .all: return .playlist
+    default: return .off
+    }
+  }
+
+  private static func repeatType(from mode: RepeatMode) -> MPRepeatType {
+    switch mode {
+    case .track: return .one
+    case .playlist: return .all
+    default: return .off
+    }
+  }
+
+  private func updateCarPlayButtons(force: Bool = false) {
+    #if canImport(CarPlay)
+      guard #available(iOS 14.0, *) else { return }
+      guard !carPlayButtons.isEmpty || carPlayButtonsShown != nil else { return }
+      // Only with CarPlay connected: that needs the CarPlay entitlement, and the buttons only show there
+      guard
+        UIApplication.shared.connectedScenes.contains(where: {
+          $0.session.role == .carTemplateApplication
+        })
+      else { return }
+      let trackId = cachedTrack?.id
+      let looks = carPlayButtons.map { button -> String in
+        let isActive = buttonStates.isActive(button.id, trackId: trackId)
+        switch button.type ?? .image {
+        case .image:
+          guard let activeIcon = button.activeIcon, isActive else { return button.icon ?? "" }
+          return activeIcon
+        case .repeat: return cachedRepeatMode.stringValue
+        case .playbackrate, .more: return ""
+        case .shuffle, .addtolibrary: return isActive ? "on" : "off"
+        }
+      }
+      // Refreshes run on every state change; only push when what CarPlay shows changes
+      let shown = zip(carPlayButtons, looks).map { "\($0.id)=\($1)" }
+      guard force || shown != carPlayButtonsShown else { return }
+      carPlayButtonsShown = shown
+      let buttons = zip(carPlayButtons, looks).compactMap { button, look -> CPNowPlayingButton? in
+        let id = button.id
+        let handler: (CPNowPlayingButton) -> Void = { [weak self] _ in self?.onCarPlayButtonPress(id) }
+        switch button.type ?? .image {
+        case .image:
+          guard let image = IOSButtonConfig.image(named: look) else { return nil }
+          return CPNowPlayingImageButton(image: image, handler: handler)
+        case .shuffle:
+          let shuffle = CPNowPlayingShuffleButton(handler: handler)
+          shuffle.isSelected = look == "on"
+          return shuffle
+        case .addtolibrary:
+          let addToLibrary = CPNowPlayingAddToLibraryButton(handler: handler)
+          addToLibrary.isSelected = look == "on"
+          return addToLibrary
+        case .repeat:
+          let repeatButton = CPNowPlayingRepeatButton(handler: handler)
+          repeatButton.isSelected = cachedRepeatMode != .off
+          return repeatButton
+        case .playbackrate:
+          return CPNowPlayingPlaybackRateButton(handler: handler)
+        case .more:
+          return CPNowPlayingMoreButton(handler: handler)
+        }
+      }
+      CPNowPlayingTemplate.shared.updateNowPlayingButtons(buttons)
+    #endif
+  }
+
+  private func onCarPlayButtonPress(_ buttonId: String) {
+    guard let button = carPlayButtons.first(where: { $0.id == buttonId }),
+      let track = cachedTrack
+    else { return }
+    switch button.type ?? .image {
+    case .image where button.activeIcon != nil, .shuffle, .addtolibrary:
+      _ = pressToggle(buttonId, isActive: !buttonStates.isActive(buttonId, trackId: track.id))
+    case .repeat:
+      let mode = Self.nextRepeatMode(after: cachedRepeatMode)
+      cachedRepeatMode = mode
+      refreshInternal()
+      guard let core = trackPlayerCore else { return }
+      Task {
+        await core.setRepeatMode(mode: mode)
+        core.notifyNotificationButtonPress(
+          buttonId, track, NotificationButtonEvent(isActive: nil, rating: nil, repeatMode: mode))
+      }
+    case .playbackrate:
+      let rates = Constants.supportedPlaybackRates.map(Double.init)
+      let current = rates.firstIndex { abs($0 - cachedPlaybackSpeed) < 0.01 } ?? rates.firstIndex(of: 1.0) ?? 0
+      let speed = rates[(current + 1) % rates.count]
+      // The next press may come before the player reports the new speed
+      cachedPlaybackSpeed = speed
+      guard let core = trackPlayerCore else { return }
+      Task {
+        try? await core.setPlaybackSpeed(speed)
+        core.notifyNotificationButtonPress(
+          buttonId, track, NotificationButtonEvent(isActive: nil, rating: nil, repeatMode: nil))
+      }
+    default:
+      trackPlayerCore?.notifyNotificationButtonPress(
+        buttonId, track, NotificationButtonEvent(isActive: nil, rating: nil, repeatMode: nil))
+    }
+  }
+
+  private static func nextRepeatMode(after mode: RepeatMode) -> RepeatMode {
+    switch mode {
+    case .off: return .playlist
+    case .playlist: return .track
+    default: return .off
+    }
   }
 
   // MARK: - Refresh using cached values (main thread only)
@@ -125,6 +305,7 @@ class MediaSessionManager {
       queueCount: cachedQueueCount, positionInQueue: cachedPositionInQueue)
     updateCommandCenterState(
       state: state, queueCount: cachedQueueCount, positionInQueue: cachedPositionInQueue)
+    updateCarPlayButtons()
   }
 
   // MARK: - Now Playing Info
@@ -208,6 +389,12 @@ class MediaSessionManager {
     commandCenter.seekBackwardCommand.removeTarget(nil)
     commandCenter.changePlaybackRateCommand.removeTarget(nil)
     commandCenter.changePlaybackPositionCommand.removeTarget(nil)
+    commandCenter.likeCommand.removeTarget(nil)
+    commandCenter.dislikeCommand.removeTarget(nil)
+    commandCenter.bookmarkCommand.removeTarget(nil)
+    commandCenter.ratingCommand.removeTarget(nil)
+    commandCenter.changeRepeatModeCommand.removeTarget(nil)
+    commandCenter.changeShuffleModeCommand.removeTarget(nil)
 
     updateSkipCommandIntervals()
     commandCenter.changePlaybackRateCommand.supportedPlaybackRates =
@@ -238,31 +425,19 @@ class MediaSessionManager {
       return .success
     }
 
-    // Headphones can send next/previous even when the lock screen shows interval skips.
+    // Next track
     commandCenter.nextTrackCommand.isEnabled = false
     commandCenter.nextTrackCommand.addTarget { [weak self] _ in
-      guard let self = self, let core = self.trackPlayerCore else { return .commandFailed }
-      let preferIntervals = self.preferRemoteSkipIntervals
-      let interval = self.remoteSkipForwardInterval
-      Task {
-        await RemoteTrackCommands.next(
-          preferIntervals: preferIntervals, interval: interval,
-          seek: { await core.seekBy(offset: $0) }, skip: { await core.skipToNext() })
-      }
+      guard let core = self?.trackPlayerCore else { return .commandFailed }
+      Task { await core.skipToNext() }
       return .success
     }
 
     // Previous track
     commandCenter.previousTrackCommand.isEnabled = false
     commandCenter.previousTrackCommand.addTarget { [weak self] _ in
-      guard let self = self, let core = self.trackPlayerCore else { return .commandFailed }
-      let preferIntervals = self.preferRemoteSkipIntervals
-      let interval = self.remoteSkipBackwardInterval
-      Task {
-        await RemoteTrackCommands.previous(
-          preferIntervals: preferIntervals, interval: interval,
-          seek: { await core.seekBy(offset: $0) }, skip: { await core.skipToPrevious() })
-      }
+      guard let core = self?.trackPlayerCore else { return .commandFailed }
+      Task { await core.skipToPrevious() }
       return .success
     }
 
@@ -322,6 +497,63 @@ class MediaSessionManager {
       Task { await core.seek(position: positionEvent.positionTime) }
       return .success
     }
+
+    // Lock screen buttons from PlayerConfig.notificationButtons — off until configured
+    for (command, kind, _) in feedbackCommands {
+      command.isEnabled = false
+      command.addTarget { [weak self] event in
+        guard let self = self, let button = self.lockScreenButton(for: kind) else {
+          return .commandFailed
+        }
+        let isNegative = (event as? MPFeedbackCommandEvent)?.isNegative ?? false
+        return self.pressToggle(button.id, isActive: !isNegative)
+      }
+    }
+
+    commandCenter.ratingCommand.isEnabled = false
+    commandCenter.ratingCommand.minimumRating = 0
+    commandCenter.ratingCommand.maximumRating = 5
+    commandCenter.ratingCommand.addTarget { [weak self] event in
+      guard let self = self, let button = self.lockScreenButton(for: .rating),
+        let track = self.cachedTrack, let ratingEvent = event as? MPRatingCommandEvent
+      else {
+        return .commandFailed
+      }
+      self.trackPlayerCore?.notifyNotificationButtonPress(
+        button.id, track,
+        NotificationButtonEvent(isActive: nil, rating: Double(ratingEvent.rating), repeatMode: nil))
+      return .success
+    }
+
+    commandCenter.changeRepeatModeCommand.isEnabled = false
+    commandCenter.changeRepeatModeCommand.addTarget { [weak self] event in
+      guard let self = self, let core = self.trackPlayerCore,
+        let button = self.lockScreenButton(for: .repeat), let track = self.cachedTrack,
+        let repeatEvent = event as? MPChangeRepeatModeCommandEvent
+      else {
+        return .commandFailed
+      }
+      let mode = Self.repeatMode(from: repeatEvent.repeatType)
+      self.cachedRepeatMode = mode
+      self.refreshInternal()
+      let buttonId = button.id
+      Task {
+        await core.setRepeatMode(mode: mode)
+        core.notifyNotificationButtonPress(
+          buttonId, track, NotificationButtonEvent(isActive: nil, rating: nil, repeatMode: mode))
+      }
+      return .success
+    }
+
+    commandCenter.changeShuffleModeCommand.isEnabled = false
+    commandCenter.changeShuffleModeCommand.addTarget { [weak self] event in
+      guard let self = self, let button = self.lockScreenButton(for: .shuffle),
+        let shuffleEvent = event as? MPChangeShuffleModeCommandEvent
+      else {
+        return .commandFailed
+      }
+      return self.pressToggle(button.id, isActive: shuffleEvent.shuffleType != .off)
+    }
   }
 
   private func updateCommandCenterState(
@@ -335,16 +567,43 @@ class MediaSessionManager {
 
     let playerDuration = state.totalDuration
     let hasDuration = playerDuration > 0 && !playerDuration.isNaN && !playerDuration.isInfinite
+    // Until the item loads the player reports no duration; the track's own duration tells a
+    // regular track from a live stream, so the buttons don't flicker on every load.
+    let isFinite = hasDuration || (cachedTrack?.duration ?? 0) > 0
 
-    commandCenter.nextTrackCommand.isEnabled = RemoteTrackCommands.nextEnabled(
-      hasTrack: hasCurrentTrack, preferIntervals: preferRemoteSkipIntervals, isLastTrack: !isNotLast
-    )
-    commandCenter.previousTrackCommand.isEnabled = hasCurrentTrack
+    // Without a duration (a live stream) previous could only restart a stream that can't seek
+    let canGoBack =
+      positionInQueue > 0 || isFinite || (cachedRepeatMode == .playlist && queueCount > 1)
+    // skipToNext wraps under playlist repeat; a lone live stream would only reconnect
+    let canGoForward =
+      isNotLast || (cachedRepeatMode == .playlist && (queueCount > 1 || isFinite))
     // iOS shows enabled skip-interval commands in place of next/previous, so they stay off unless the app prefers them
-    commandCenter.skipForwardCommand.isEnabled = hasCurrentTrack && preferRemoteSkipIntervals
-    commandCenter.skipBackwardCommand.isEnabled = hasCurrentTrack && preferRemoteSkipIntervals
+    let showSkips = preferRemoteSkipIntervals && isFinite
+
+    commandCenter.nextTrackCommand.isEnabled = hasCurrentTrack && canGoForward
+    commandCenter.previousTrackCommand.isEnabled = hasCurrentTrack && canGoBack
+    commandCenter.skipForwardCommand.isEnabled = hasCurrentTrack && showSkips
+    commandCenter.skipBackwardCommand.isEnabled = hasCurrentTrack && showSkips
     commandCenter.changePlaybackRateCommand.isEnabled = hasCurrentTrack
     commandCenter.changePlaybackPositionCommand.isEnabled = hasCurrentTrack && hasDuration
+
+    let trackId = cachedTrack?.id
+    for (command, kind, defaultTitle) in feedbackCommands {
+      let button = lockScreenButton(for: kind)
+      command.isEnabled = hasCurrentTrack && button != nil
+      if let button = button {
+        command.isActive = buttonStates.isActive(button.id, trackId: trackId)
+        command.localizedTitle = button.title ?? defaultTitle
+      }
+    }
+    commandCenter.ratingCommand.isEnabled = hasCurrentTrack && lockScreenButton(for: .rating) != nil
+    commandCenter.changeRepeatModeCommand.isEnabled =
+      hasCurrentTrack && lockScreenButton(for: .repeat) != nil
+    commandCenter.changeRepeatModeCommand.currentRepeatType = Self.repeatType(from: cachedRepeatMode)
+    let shuffleButton = lockScreenButton(for: .shuffle)
+    commandCenter.changeShuffleModeCommand.isEnabled = hasCurrentTrack && shuffleButton != nil
+    commandCenter.changeShuffleModeCommand.currentShuffleType =
+      shuffleButton.map { buttonStates.isActive($0.id, trackId: trackId) } == true ? .items : .off
   }
 
   private func disableAllCommands() {
@@ -355,6 +614,10 @@ class MediaSessionManager {
     commandCenter.skipBackwardCommand.isEnabled = false
     commandCenter.changePlaybackRateCommand.isEnabled = false
     commandCenter.changePlaybackPositionCommand.isEnabled = false
+    for (command, _, _) in feedbackCommands { command.isEnabled = false }
+    commandCenter.ratingCommand.isEnabled = false
+    commandCenter.changeRepeatModeCommand.isEnabled = false
+    commandCenter.changeShuffleModeCommand.isEnabled = false
   }
 
   // MARK: - Helpers

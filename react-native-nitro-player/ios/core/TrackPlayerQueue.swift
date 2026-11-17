@@ -70,8 +70,8 @@ extension TrackPlayerCore {
       )
     }
     let currentTrack = getCurrentTrack()
-    let currentPosition = player.currentTime().seconds
-    let rawDuration = player.currentItem?.duration.seconds ?? 0.0
+    let currentPosition = player.currentItem.map(reportedPosition) ?? player.currentTime().seconds
+    let rawDuration = player.currentItem?.readyDurationSeconds ?? 0.0
     let totalDuration = (rawDuration > 0 && !rawDuration.isNaN && !rawDuration.isInfinite) ? rawDuration : 0.0
 
     let state: TrackPlayerState
@@ -223,6 +223,7 @@ extension TrackPlayerCore {
       } else {
         rebuildAVQueueFromCurrentPosition()
       }
+      selfInitiatedItemChange = player?.currentItem != nil
       player?.advanceToNextItem()
       return true
     }
@@ -240,6 +241,7 @@ extension TrackPlayerCore {
       } else {
         rebuildAVQueueFromCurrentPosition()
       }
+      selfInitiatedItemChange = player?.currentItem != nil
       player?.advanceToNextItem()
       return true
     }

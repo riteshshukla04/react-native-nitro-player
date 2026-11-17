@@ -36,6 +36,8 @@ namespace margelo::nitro::nitroplayer {
       prototype.registerHybridMethod("appStartedWithNotification", &HybridTrackPlayerSpec::appStartedWithNotification);
       prototype.registerHybridMethod("onAndroidAutoConnectionChange", &HybridTrackPlayerSpec::onAndroidAutoConnectionChange);
       prototype.registerHybridMethod("isAndroidAutoConnected", &HybridTrackPlayerSpec::isAndroidAutoConnected);
+      prototype.registerHybridMethod("setNotificationButtonState", &HybridTrackPlayerSpec::setNotificationButtonState);
+      prototype.registerHybridMethod("onNotificationButtonPress", &HybridTrackPlayerSpec::onNotificationButtonPress);
       prototype.registerHybridMethod("setVolume", &HybridTrackPlayerSpec::setVolume);
       prototype.registerHybridMethod("updateTracks", &HybridTrackPlayerSpec::updateTracks);
       prototype.registerHybridMethod("getTracksById", &HybridTrackPlayerSpec::getTracksById);

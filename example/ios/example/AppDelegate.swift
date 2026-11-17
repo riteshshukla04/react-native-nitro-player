@@ -6,8 +6,6 @@ import UIKit
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
-  var window: UIWindow?
-
   var reactNativeDelegate: ReactNativeDelegate?
   var reactNativeFactory: RCTReactNativeFactory?
 
@@ -22,13 +20,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     reactNativeDelegate = delegate
     reactNativeFactory = factory
 
-    window = UIWindow(frame: UIScreen.main.bounds)
-
-    factory.startReactNative(
-      withModuleName: "example",
-      in: window,
-      launchOptions: launchOptions
-    )
+    // The window is created by SceneDelegate: iOS 27 stops apps built with its SDK that skip the scene lifecycle
 
     // Setup CarPlay if available
     if #available(iOS 14.0, *) {
@@ -42,6 +34,24 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
   private func setupCarPlay() {
     // CarPlay will be handled automatically through CPTemplateApplicationSceneDelegate
     // when the user connects to CarPlay
+  }
+}
+
+class SceneDelegate: UIResponder, UIWindowSceneDelegate {
+  var window: UIWindow?
+
+  func scene(
+    _ scene: UIScene,
+    willConnectTo session: UISceneSession,
+    options connectionOptions: UIScene.ConnectionOptions
+  ) {
+    guard let windowScene = scene as? UIWindowScene,
+      let factory = (UIApplication.shared.delegate as? AppDelegate)?.reactNativeFactory
+    else { return }
+
+    let window = UIWindow(windowScene: windowScene)
+    self.window = window
+    factory.startReactNative(withModuleName: "example", in: window, launchOptions: nil)
   }
 }
 

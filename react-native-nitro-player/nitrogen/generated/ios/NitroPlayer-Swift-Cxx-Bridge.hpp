@@ -10,6 +10,12 @@
 // Forward declarations of C++ defined types
 // Forward declaration of `AndroidAudioFocusMode` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class AndroidAudioFocusMode; }
+// Forward declaration of `AndroidNotificationButton` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct AndroidNotificationButton; }
+// Forward declaration of `CarPlayButtonType` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class CarPlayButtonType; }
+// Forward declaration of `CarPlayButton` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct CarPlayButton; }
 // Forward declaration of `CastState` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class CastState; }
 // Forward declaration of `CurrentPlayingType` to properly resolve imports.
@@ -44,6 +50,8 @@ namespace margelo::nitro::nitroplayer { struct EqualizerState; }
 namespace margelo::nitro::nitroplayer { struct GainRange; }
 // Forward declaration of `HybridAudioRoutePickerSpec` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { class HybridAudioRoutePickerSpec; }
+// Forward declaration of `HybridCarPlaySpec` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { class HybridCarPlaySpec; }
 // Forward declaration of `HybridCastSpec` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { class HybridCastSpec; }
 // Forward declaration of `HybridDownloadManagerSpec` to properly resolve imports.
@@ -54,6 +62,16 @@ namespace margelo::nitro::nitroplayer { class HybridEqualizerSpec; }
 namespace margelo::nitro::nitroplayer { class HybridPlayerQueueSpec; }
 // Forward declaration of `HybridTrackPlayerSpec` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { class HybridTrackPlayerSpec; }
+// Forward declaration of `IOSNotificationButtons` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct IOSNotificationButtons; }
+// Forward declaration of `LockScreenButton` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct LockScreenButton; }
+// Forward declaration of `LockScreenCommand` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class LockScreenCommand; }
+// Forward declaration of `NotificationButtonEvent` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct NotificationButtonEvent; }
+// Forward declaration of `NotificationButtons` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct NotificationButtons; }
 // Forward declaration of `PlaybackSource` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class PlaybackSource; }
 // Forward declaration of `PlayerState` to properly resolve imports.
@@ -82,6 +100,8 @@ namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 // Forward declarations of Swift defined types
 // Forward declaration of `HybridAudioRoutePickerSpec_cxx` to properly resolve imports.
 namespace NitroPlayer { class HybridAudioRoutePickerSpec_cxx; }
+// Forward declaration of `HybridCarPlaySpec_cxx` to properly resolve imports.
+namespace NitroPlayer { class HybridCarPlaySpec_cxx; }
 // Forward declaration of `HybridCastSpec_cxx` to properly resolve imports.
 namespace NitroPlayer { class HybridCastSpec_cxx; }
 // Forward declaration of `HybridDownloadManagerSpec_cxx` to properly resolve imports.
@@ -95,6 +115,9 @@ namespace NitroPlayer { class HybridTrackPlayerSpec_cxx; }
 
 // Include C++ defined types
 #include "AndroidAudioFocusMode.hpp"
+#include "AndroidNotificationButton.hpp"
+#include "CarPlayButton.hpp"
+#include "CarPlayButtonType.hpp"
 #include "CastState.hpp"
 #include "CurrentPlayingType.hpp"
 #include "DownloadConfig.hpp"
@@ -112,11 +135,17 @@ namespace NitroPlayer { class HybridTrackPlayerSpec_cxx; }
 #include "EqualizerState.hpp"
 #include "GainRange.hpp"
 #include "HybridAudioRoutePickerSpec.hpp"
+#include "HybridCarPlaySpec.hpp"
 #include "HybridCastSpec.hpp"
 #include "HybridDownloadManagerSpec.hpp"
 #include "HybridEqualizerSpec.hpp"
 #include "HybridPlayerQueueSpec.hpp"
 #include "HybridTrackPlayerSpec.hpp"
+#include "IOSNotificationButtons.hpp"
+#include "LockScreenButton.hpp"
+#include "LockScreenCommand.hpp"
+#include "NotificationButtonEvent.hpp"
+#include "NotificationButtons.hpp"
 #include "PlaybackSource.hpp"
 #include "PlayerState.hpp"
 #include "Playlist.hpp"
@@ -167,6 +196,167 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
   }
   inline Result_void_ create_Result_void_(const std::exception_ptr& error) noexcept {
     return Result<void>::withError(error);
+  }
+  
+  // pragma MARK: std::optional<std::string>
+  /**
+   * Specialized version of `std::optional<std::string>`.
+   */
+  using std__optional_std__string_ = std::optional<std::string>;
+  inline std::optional<std::string> create_std__optional_std__string_(const std::string& value) noexcept {
+    return std::optional<std::string>(value);
+  }
+  inline bool has_value_std__optional_std__string_(const std::optional<std::string>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline std::string get_std__optional_std__string_(const std::optional<std::string>& optional) noexcept {
+    return optional.value();
+  }
+  
+  // pragma MARK: std::function<void(bool /* connected */)>
+  /**
+   * Specialized version of `std::function<void(bool)>`.
+   */
+  using Func_void_bool = std::function<void(bool /* connected */)>;
+  /**
+   * Wrapper class for a `std::function<void(bool / * connected * /)>`, this can be used from Swift.
+   */
+  class Func_void_bool_Wrapper final {
+  public:
+    explicit Func_void_bool_Wrapper(std::function<void(bool /* connected */)>&& func): _function(std::make_unique<std::function<void(bool /* connected */)>>(std::move(func))) {}
+    inline void call(bool connected) const noexcept {
+      _function->operator()(connected);
+    }
+  private:
+    std::unique_ptr<std::function<void(bool /* connected */)>> _function;
+  } SWIFT_NONCOPYABLE;
+  Func_void_bool create_Func_void_bool(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_bool_Wrapper wrap_Func_void_bool(Func_void_bool value) noexcept {
+    return Func_void_bool_Wrapper(std::move(value));
+  }
+  
+  // pragma MARK: std::function<void(const std::string& /* id */, const std::string& /* templateId */)>
+  /**
+   * Specialized version of `std::function<void(const std::string&, const std::string&)>`.
+   */
+  using Func_void_std__string_std__string = std::function<void(const std::string& /* id */, const std::string& /* templateId */)>;
+  /**
+   * Wrapper class for a `std::function<void(const std::string& / * id * /, const std::string& / * templateId * /)>`, this can be used from Swift.
+   */
+  class Func_void_std__string_std__string_Wrapper final {
+  public:
+    explicit Func_void_std__string_std__string_Wrapper(std::function<void(const std::string& /* id */, const std::string& /* templateId */)>&& func): _function(std::make_unique<std::function<void(const std::string& /* id */, const std::string& /* templateId */)>>(std::move(func))) {}
+    inline void call(std::string id, std::string templateId) const noexcept {
+      _function->operator()(id, templateId);
+    }
+  private:
+    std::unique_ptr<std::function<void(const std::string& /* id */, const std::string& /* templateId */)>> _function;
+  } SWIFT_NONCOPYABLE;
+  Func_void_std__string_std__string create_Func_void_std__string_std__string(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_std__string_std__string_Wrapper wrap_Func_void_std__string_std__string(Func_void_std__string_std__string value) noexcept {
+    return Func_void_std__string_std__string_Wrapper(std::move(value));
+  }
+  
+  // pragma MARK: std::variant<nitro::NullType, std::string>
+  /**
+   * Wrapper struct for `std::variant<nitro::NullType, std::string>`.
+   * std::variant cannot be used in Swift because of a Swift bug.
+   * Not even specializing it works. So we create a wrapper struct.
+   */
+  struct std__variant_nitro__NullType__std__string_ final {
+    std::variant<nitro::NullType, std::string> variant;
+    std__variant_nitro__NullType__std__string_(std::variant<nitro::NullType, std::string> variant): variant(variant) { }
+    operator std::variant<nitro::NullType, std::string>() const noexcept {
+      return variant;
+    }
+    inline size_t index() const noexcept {
+      return variant.index();
+    }
+    inline nitro::NullType get_0() const noexcept {
+      return std::get<0>(variant);
+    }
+    inline std::string get_1() const noexcept {
+      return std::get<1>(variant);
+    }
+  };
+  inline std__variant_nitro__NullType__std__string_ create_std__variant_nitro__NullType__std__string_(nitro::NullType value) noexcept {
+    return std__variant_nitro__NullType__std__string_(value);
+  }
+  inline std__variant_nitro__NullType__std__string_ create_std__variant_nitro__NullType__std__string_(const std::string& value) noexcept {
+    return std__variant_nitro__NullType__std__string_(value);
+  }
+  
+  // pragma MARK: std::optional<std::variant<nitro::NullType, std::string>>
+  /**
+   * Specialized version of `std::optional<std::variant<nitro::NullType, std::string>>`.
+   */
+  using std__optional_std__variant_nitro__NullType__std__string__ = std::optional<std::variant<nitro::NullType, std::string>>;
+  inline std::optional<std::variant<nitro::NullType, std::string>> create_std__optional_std__variant_nitro__NullType__std__string__(const std::variant<nitro::NullType, std::string>& value) noexcept {
+    return std::optional<std::variant<nitro::NullType, std::string>>(value);
+  }
+  inline bool has_value_std__optional_std__variant_nitro__NullType__std__string__(const std::optional<std::variant<nitro::NullType, std::string>>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline std::variant<nitro::NullType, std::string> get_std__optional_std__variant_nitro__NullType__std__string__(const std::optional<std::variant<nitro::NullType, std::string>>& optional) noexcept {
+    return optional.value();
+  }
+  
+  // pragma MARK: std::optional<std::shared_ptr<AnyMap>>
+  /**
+   * Specialized version of `std::optional<std::shared_ptr<AnyMap>>`.
+   */
+  using std__optional_std__shared_ptr_AnyMap__ = std::optional<std::shared_ptr<AnyMap>>;
+  inline std::optional<std::shared_ptr<AnyMap>> create_std__optional_std__shared_ptr_AnyMap__(const std::shared_ptr<AnyMap>& value) noexcept {
+    return std::optional<std::shared_ptr<AnyMap>>(value);
+  }
+  inline bool has_value_std__optional_std__shared_ptr_AnyMap__(const std::optional<std::shared_ptr<AnyMap>>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline std::shared_ptr<AnyMap> get_std__optional_std__shared_ptr_AnyMap__(const std::optional<std::shared_ptr<AnyMap>>& optional) noexcept {
+    return optional.value();
+  }
+  
+  // pragma MARK: std::function<void(const TrackItem& /* track */)>
+  /**
+   * Specialized version of `std::function<void(const TrackItem&)>`.
+   */
+  using Func_void_TrackItem = std::function<void(const TrackItem& /* track */)>;
+  /**
+   * Wrapper class for a `std::function<void(const TrackItem& / * track * /)>`, this can be used from Swift.
+   */
+  class Func_void_TrackItem_Wrapper final {
+  public:
+    explicit Func_void_TrackItem_Wrapper(std::function<void(const TrackItem& /* track */)>&& func): _function(std::make_unique<std::function<void(const TrackItem& /* track */)>>(std::move(func))) {}
+    inline void call(TrackItem track) const noexcept {
+      _function->operator()(track);
+    }
+  private:
+    std::unique_ptr<std::function<void(const TrackItem& /* track */)>> _function;
+  } SWIFT_NONCOPYABLE;
+  Func_void_TrackItem create_Func_void_TrackItem(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_TrackItem_Wrapper wrap_Func_void_TrackItem(Func_void_TrackItem value) noexcept {
+    return Func_void_TrackItem_Wrapper(std::move(value));
+  }
+  
+  // pragma MARK: std::shared_ptr<HybridCarPlaySpec>
+  /**
+   * Specialized version of `std::shared_ptr<HybridCarPlaySpec>`.
+   */
+  using std__shared_ptr_HybridCarPlaySpec_ = std::shared_ptr<HybridCarPlaySpec>;
+  std::shared_ptr<HybridCarPlaySpec> create_std__shared_ptr_HybridCarPlaySpec_(void* NON_NULL swiftUnsafePointer) noexcept;
+  void* NON_NULL get_std__shared_ptr_HybridCarPlaySpec_(std__shared_ptr_HybridCarPlaySpec_ cppType);
+  
+  // pragma MARK: std::weak_ptr<HybridCarPlaySpec>
+  using std__weak_ptr_HybridCarPlaySpec_ = std::weak_ptr<HybridCarPlaySpec>;
+  inline std__weak_ptr_HybridCarPlaySpec_ weakify_std__shared_ptr_HybridCarPlaySpec_(const std::shared_ptr<HybridCarPlaySpec>& strong) noexcept { return strong; }
+  
+  // pragma MARK: Result<bool>
+  using Result_bool_ = Result<bool>;
+  inline Result_bool_ create_Result_bool_(bool value) noexcept {
+    return Result<bool>::withValue(std::move(value));
+  }
+  inline Result_bool_ create_Result_bool_(const std::exception_ptr& error) noexcept {
+    return Result<bool>::withError(error);
   }
   
   // pragma MARK: std::shared_ptr<Promise<void>>
@@ -225,65 +415,6 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     return Func_void_std__exception_ptr_Wrapper(std::move(value));
   }
   
-  // pragma MARK: std::optional<std::string>
-  /**
-   * Specialized version of `std::optional<std::string>`.
-   */
-  using std__optional_std__string_ = std::optional<std::string>;
-  inline std::optional<std::string> create_std__optional_std__string_(const std::string& value) noexcept {
-    return std::optional<std::string>(value);
-  }
-  inline bool has_value_std__optional_std__string_(const std::optional<std::string>& optional) noexcept {
-    return optional.has_value();
-  }
-  inline std::string get_std__optional_std__string_(const std::optional<std::string>& optional) noexcept {
-    return optional.value();
-  }
-  
-  // pragma MARK: std::variant<nitro::NullType, std::string>
-  /**
-   * Wrapper struct for `std::variant<nitro::NullType, std::string>`.
-   * std::variant cannot be used in Swift because of a Swift bug.
-   * Not even specializing it works. So we create a wrapper struct.
-   */
-  struct std__variant_nitro__NullType__std__string_ final {
-    std::variant<nitro::NullType, std::string> variant;
-    std__variant_nitro__NullType__std__string_(std::variant<nitro::NullType, std::string> variant): variant(variant) { }
-    operator std::variant<nitro::NullType, std::string>() const noexcept {
-      return variant;
-    }
-    inline size_t index() const noexcept {
-      return variant.index();
-    }
-    inline nitro::NullType get_0() const noexcept {
-      return std::get<0>(variant);
-    }
-    inline std::string get_1() const noexcept {
-      return std::get<1>(variant);
-    }
-  };
-  inline std__variant_nitro__NullType__std__string_ create_std__variant_nitro__NullType__std__string_(nitro::NullType value) noexcept {
-    return std__variant_nitro__NullType__std__string_(value);
-  }
-  inline std__variant_nitro__NullType__std__string_ create_std__variant_nitro__NullType__std__string_(const std::string& value) noexcept {
-    return std__variant_nitro__NullType__std__string_(value);
-  }
-  
-  // pragma MARK: std::optional<std::variant<nitro::NullType, std::string>>
-  /**
-   * Specialized version of `std::optional<std::variant<nitro::NullType, std::string>>`.
-   */
-  using std__optional_std__variant_nitro__NullType__std__string__ = std::optional<std::variant<nitro::NullType, std::string>>;
-  inline std::optional<std::variant<nitro::NullType, std::string>> create_std__optional_std__variant_nitro__NullType__std__string__(const std::variant<nitro::NullType, std::string>& value) noexcept {
-    return std::optional<std::variant<nitro::NullType, std::string>>(value);
-  }
-  inline bool has_value_std__optional_std__variant_nitro__NullType__std__string__(const std::optional<std::variant<nitro::NullType, std::string>>& optional) noexcept {
-    return optional.has_value();
-  }
-  inline std::variant<nitro::NullType, std::string> get_std__optional_std__variant_nitro__NullType__std__string__(const std::optional<std::variant<nitro::NullType, std::string>>& optional) noexcept {
-    return optional.value();
-  }
-  
   // pragma MARK: std::function<void(CastState /* state */, const std::optional<std::variant<nitro::NullType, std::string>>& /* deviceName */)>
   /**
    * Specialized version of `std::function<void(CastState, const std::optional<std::variant<nitro::NullType, std::string>>&)>`.
@@ -325,15 +456,6 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
   }
   inline Result_std__shared_ptr_Promise_void___ create_Result_std__shared_ptr_Promise_void___(const std::exception_ptr& error) noexcept {
     return Result<std::shared_ptr<Promise<void>>>::withError(error);
-  }
-  
-  // pragma MARK: Result<bool>
-  using Result_bool_ = Result<bool>;
-  inline Result_bool_ create_Result_bool_(bool value) noexcept {
-    return Result<bool>::withValue(std::move(value));
-  }
-  inline Result_bool_ create_Result_bool_(const std::exception_ptr& error) noexcept {
-    return Result<bool>::withError(error);
   }
   
   // pragma MARK: Result<CastState>
@@ -431,21 +553,6 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
   Func_void_std__string create_Func_void_std__string(void* NON_NULL swiftClosureWrapper) noexcept;
   inline Func_void_std__string_Wrapper wrap_Func_void_std__string(Func_void_std__string value) noexcept {
     return Func_void_std__string_Wrapper(std::move(value));
-  }
-  
-  // pragma MARK: std::optional<std::shared_ptr<AnyMap>>
-  /**
-   * Specialized version of `std::optional<std::shared_ptr<AnyMap>>`.
-   */
-  using std__optional_std__shared_ptr_AnyMap__ = std::optional<std::shared_ptr<AnyMap>>;
-  inline std::optional<std::shared_ptr<AnyMap>> create_std__optional_std__shared_ptr_AnyMap__(const std::shared_ptr<AnyMap>& value) noexcept {
-    return std::optional<std::shared_ptr<AnyMap>>(value);
-  }
-  inline bool has_value_std__optional_std__shared_ptr_AnyMap__(const std::optional<std::shared_ptr<AnyMap>>& optional) noexcept {
-    return optional.has_value();
-  }
-  inline std::shared_ptr<AnyMap> get_std__optional_std__shared_ptr_AnyMap__(const std::optional<std::shared_ptr<AnyMap>>& optional) noexcept {
-    return optional.value();
   }
   
   // pragma MARK: std::vector<std::string>
@@ -642,28 +749,6 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
   }
   inline PromiseHolder<bool> wrap_std__shared_ptr_Promise_bool__(std::shared_ptr<Promise<bool>> promise) noexcept {
     return PromiseHolder<bool>(std::move(promise));
-  }
-  
-  // pragma MARK: std::function<void(bool /* result */)>
-  /**
-   * Specialized version of `std::function<void(bool)>`.
-   */
-  using Func_void_bool = std::function<void(bool /* result */)>;
-  /**
-   * Wrapper class for a `std::function<void(bool / * result * /)>`, this can be used from Swift.
-   */
-  class Func_void_bool_Wrapper final {
-  public:
-    explicit Func_void_bool_Wrapper(std::function<void(bool /* result */)>&& func): _function(std::make_unique<std::function<void(bool /* result */)>>(std::move(func))) {}
-    inline void call(bool result) const noexcept {
-      _function->operator()(result);
-    }
-  private:
-    std::unique_ptr<std::function<void(bool /* result */)>> _function;
-  } SWIFT_NONCOPYABLE;
-  Func_void_bool create_Func_void_bool(void* NON_NULL swiftClosureWrapper) noexcept;
-  inline Func_void_bool_Wrapper wrap_Func_void_bool(Func_void_bool value) noexcept {
-    return Func_void_bool_Wrapper(std::move(value));
   }
   
   // pragma MARK: std::variant<nitro::NullType, DownloadedTrack>
@@ -1663,6 +1748,129 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     return optional.value();
   }
   
+  // pragma MARK: std::vector<AndroidNotificationButton>
+  /**
+   * Specialized version of `std::vector<AndroidNotificationButton>`.
+   */
+  using std__vector_AndroidNotificationButton_ = std::vector<AndroidNotificationButton>;
+  inline std::vector<AndroidNotificationButton> create_std__vector_AndroidNotificationButton_(size_t size) noexcept {
+    std::vector<AndroidNotificationButton> vector;
+    vector.reserve(size);
+    return vector;
+  }
+  
+  // pragma MARK: std::optional<std::vector<AndroidNotificationButton>>
+  /**
+   * Specialized version of `std::optional<std::vector<AndroidNotificationButton>>`.
+   */
+  using std__optional_std__vector_AndroidNotificationButton__ = std::optional<std::vector<AndroidNotificationButton>>;
+  inline std::optional<std::vector<AndroidNotificationButton>> create_std__optional_std__vector_AndroidNotificationButton__(const std::vector<AndroidNotificationButton>& value) noexcept {
+    return std::optional<std::vector<AndroidNotificationButton>>(value);
+  }
+  inline bool has_value_std__optional_std__vector_AndroidNotificationButton__(const std::optional<std::vector<AndroidNotificationButton>>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline std::vector<AndroidNotificationButton> get_std__optional_std__vector_AndroidNotificationButton__(const std::optional<std::vector<AndroidNotificationButton>>& optional) noexcept {
+    return optional.value();
+  }
+  
+  // pragma MARK: std::vector<LockScreenButton>
+  /**
+   * Specialized version of `std::vector<LockScreenButton>`.
+   */
+  using std__vector_LockScreenButton_ = std::vector<LockScreenButton>;
+  inline std::vector<LockScreenButton> create_std__vector_LockScreenButton_(size_t size) noexcept {
+    std::vector<LockScreenButton> vector;
+    vector.reserve(size);
+    return vector;
+  }
+  
+  // pragma MARK: std::optional<std::vector<LockScreenButton>>
+  /**
+   * Specialized version of `std::optional<std::vector<LockScreenButton>>`.
+   */
+  using std__optional_std__vector_LockScreenButton__ = std::optional<std::vector<LockScreenButton>>;
+  inline std::optional<std::vector<LockScreenButton>> create_std__optional_std__vector_LockScreenButton__(const std::vector<LockScreenButton>& value) noexcept {
+    return std::optional<std::vector<LockScreenButton>>(value);
+  }
+  inline bool has_value_std__optional_std__vector_LockScreenButton__(const std::optional<std::vector<LockScreenButton>>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline std::vector<LockScreenButton> get_std__optional_std__vector_LockScreenButton__(const std::optional<std::vector<LockScreenButton>>& optional) noexcept {
+    return optional.value();
+  }
+  
+  // pragma MARK: std::optional<CarPlayButtonType>
+  /**
+   * Specialized version of `std::optional<CarPlayButtonType>`.
+   */
+  using std__optional_CarPlayButtonType_ = std::optional<CarPlayButtonType>;
+  inline std::optional<CarPlayButtonType> create_std__optional_CarPlayButtonType_(const CarPlayButtonType& value) noexcept {
+    return std::optional<CarPlayButtonType>(value);
+  }
+  inline bool has_value_std__optional_CarPlayButtonType_(const std::optional<CarPlayButtonType>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline CarPlayButtonType get_std__optional_CarPlayButtonType_(const std::optional<CarPlayButtonType>& optional) noexcept {
+    return optional.value();
+  }
+  
+  // pragma MARK: std::vector<CarPlayButton>
+  /**
+   * Specialized version of `std::vector<CarPlayButton>`.
+   */
+  using std__vector_CarPlayButton_ = std::vector<CarPlayButton>;
+  inline std::vector<CarPlayButton> create_std__vector_CarPlayButton_(size_t size) noexcept {
+    std::vector<CarPlayButton> vector;
+    vector.reserve(size);
+    return vector;
+  }
+  
+  // pragma MARK: std::optional<std::vector<CarPlayButton>>
+  /**
+   * Specialized version of `std::optional<std::vector<CarPlayButton>>`.
+   */
+  using std__optional_std__vector_CarPlayButton__ = std::optional<std::vector<CarPlayButton>>;
+  inline std::optional<std::vector<CarPlayButton>> create_std__optional_std__vector_CarPlayButton__(const std::vector<CarPlayButton>& value) noexcept {
+    return std::optional<std::vector<CarPlayButton>>(value);
+  }
+  inline bool has_value_std__optional_std__vector_CarPlayButton__(const std::optional<std::vector<CarPlayButton>>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline std::vector<CarPlayButton> get_std__optional_std__vector_CarPlayButton__(const std::optional<std::vector<CarPlayButton>>& optional) noexcept {
+    return optional.value();
+  }
+  
+  // pragma MARK: std::optional<IOSNotificationButtons>
+  /**
+   * Specialized version of `std::optional<IOSNotificationButtons>`.
+   */
+  using std__optional_IOSNotificationButtons_ = std::optional<IOSNotificationButtons>;
+  inline std::optional<IOSNotificationButtons> create_std__optional_IOSNotificationButtons_(const IOSNotificationButtons& value) noexcept {
+    return std::optional<IOSNotificationButtons>(value);
+  }
+  inline bool has_value_std__optional_IOSNotificationButtons_(const std::optional<IOSNotificationButtons>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline IOSNotificationButtons get_std__optional_IOSNotificationButtons_(const std::optional<IOSNotificationButtons>& optional) noexcept {
+    return optional.value();
+  }
+  
+  // pragma MARK: std::optional<NotificationButtons>
+  /**
+   * Specialized version of `std::optional<NotificationButtons>`.
+   */
+  using std__optional_NotificationButtons_ = std::optional<NotificationButtons>;
+  inline std::optional<NotificationButtons> create_std__optional_NotificationButtons_(const NotificationButtons& value) noexcept {
+    return std::optional<NotificationButtons>(value);
+  }
+  inline bool has_value_std__optional_NotificationButtons_(const std::optional<NotificationButtons>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline NotificationButtons get_std__optional_NotificationButtons_(const std::optional<NotificationButtons>& optional) noexcept {
+    return optional.value();
+  }
+  
   // pragma MARK: std::optional<Reason>
   /**
    * Specialized version of `std::optional<Reason>`.
@@ -1788,26 +1996,56 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     return Func_void_TimedMetadata_Wrapper(std::move(value));
   }
   
-  // pragma MARK: std::function<void(const TrackItem& /* track */)>
+  // pragma MARK: std::optional<std::vector<std::string>>
   /**
-   * Specialized version of `std::function<void(const TrackItem&)>`.
+   * Specialized version of `std::optional<std::vector<std::string>>`.
    */
-  using Func_void_TrackItem = std::function<void(const TrackItem& /* track */)>;
+  using std__optional_std__vector_std__string__ = std::optional<std::vector<std::string>>;
+  inline std::optional<std::vector<std::string>> create_std__optional_std__vector_std__string__(const std::vector<std::string>& value) noexcept {
+    return std::optional<std::vector<std::string>>(value);
+  }
+  inline bool has_value_std__optional_std__vector_std__string__(const std::optional<std::vector<std::string>>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline std::vector<std::string> get_std__optional_std__vector_std__string__(const std::optional<std::vector<std::string>>& optional) noexcept {
+    return optional.value();
+  }
+  
+  // pragma MARK: std::optional<RepeatMode>
   /**
-   * Wrapper class for a `std::function<void(const TrackItem& / * track * /)>`, this can be used from Swift.
+   * Specialized version of `std::optional<RepeatMode>`.
    */
-  class Func_void_TrackItem_Wrapper final {
+  using std__optional_RepeatMode_ = std::optional<RepeatMode>;
+  inline std::optional<RepeatMode> create_std__optional_RepeatMode_(const RepeatMode& value) noexcept {
+    return std::optional<RepeatMode>(value);
+  }
+  inline bool has_value_std__optional_RepeatMode_(const std::optional<RepeatMode>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline RepeatMode get_std__optional_RepeatMode_(const std::optional<RepeatMode>& optional) noexcept {
+    return optional.value();
+  }
+  
+  // pragma MARK: std::function<void(const std::string& /* buttonId */, const TrackItem& /* track */, const NotificationButtonEvent& /* event */)>
+  /**
+   * Specialized version of `std::function<void(const std::string&, const TrackItem&, const NotificationButtonEvent&)>`.
+   */
+  using Func_void_std__string_TrackItem_NotificationButtonEvent = std::function<void(const std::string& /* buttonId */, const TrackItem& /* track */, const NotificationButtonEvent& /* event */)>;
+  /**
+   * Wrapper class for a `std::function<void(const std::string& / * buttonId * /, const TrackItem& / * track * /, const NotificationButtonEvent& / * event * /)>`, this can be used from Swift.
+   */
+  class Func_void_std__string_TrackItem_NotificationButtonEvent_Wrapper final {
   public:
-    explicit Func_void_TrackItem_Wrapper(std::function<void(const TrackItem& /* track */)>&& func): _function(std::make_unique<std::function<void(const TrackItem& /* track */)>>(std::move(func))) {}
-    inline void call(TrackItem track) const noexcept {
-      _function->operator()(track);
+    explicit Func_void_std__string_TrackItem_NotificationButtonEvent_Wrapper(std::function<void(const std::string& /* buttonId */, const TrackItem& /* track */, const NotificationButtonEvent& /* event */)>&& func): _function(std::make_unique<std::function<void(const std::string& /* buttonId */, const TrackItem& /* track */, const NotificationButtonEvent& /* event */)>>(std::move(func))) {}
+    inline void call(std::string buttonId, TrackItem track, NotificationButtonEvent event) const noexcept {
+      _function->operator()(buttonId, track, event);
     }
   private:
-    std::unique_ptr<std::function<void(const TrackItem& /* track */)>> _function;
+    std::unique_ptr<std::function<void(const std::string& /* buttonId */, const TrackItem& /* track */, const NotificationButtonEvent& /* event */)>> _function;
   } SWIFT_NONCOPYABLE;
-  Func_void_TrackItem create_Func_void_TrackItem(void* NON_NULL swiftClosureWrapper) noexcept;
-  inline Func_void_TrackItem_Wrapper wrap_Func_void_TrackItem(Func_void_TrackItem value) noexcept {
-    return Func_void_TrackItem_Wrapper(std::move(value));
+  Func_void_std__string_TrackItem_NotificationButtonEvent create_Func_void_std__string_TrackItem_NotificationButtonEvent(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_std__string_TrackItem_NotificationButtonEvent_Wrapper wrap_Func_void_std__string_TrackItem_NotificationButtonEvent(Func_void_std__string_TrackItem_NotificationButtonEvent value) noexcept {
+    return Func_void_std__string_TrackItem_NotificationButtonEvent_Wrapper(std::move(value));
   }
   
   // pragma MARK: std::function<void(const std::vector<TrackItem>& /* tracks */, double /* lookahead */)>

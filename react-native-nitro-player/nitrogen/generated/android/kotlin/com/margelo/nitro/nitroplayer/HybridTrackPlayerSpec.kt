@@ -154,6 +154,19 @@ abstract class HybridTrackPlayerSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
+  abstract fun setNotificationButtonState(state: NotificationButtonState): Unit
+  
+  abstract fun onNotificationButtonPress(callback: (buttonId: String, track: TrackItem, event: NotificationButtonEvent) -> Unit): Unit
+  
+  @DoNotStrip
+  @Keep
+  private fun onNotificationButtonPress_cxx(callback: Func_void_std__string_TrackItem_NotificationButtonEvent): Unit {
+    val __result = onNotificationButtonPress(callback)
+    return __result
+  }
+  
+  @DoNotStrip
+  @Keep
   abstract fun setVolume(volume: Double): Promise<Unit>
   
   @DoNotStrip

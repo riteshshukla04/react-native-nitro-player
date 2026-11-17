@@ -27,6 +27,10 @@ namespace margelo::nitro::nitroplayer { enum class Reason; }
 namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 // Forward declaration of `TimedMetadata` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct TimedMetadata; }
+// Forward declaration of `NotificationButtonState` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct NotificationButtonState; }
+// Forward declaration of `NotificationButtonEvent` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct NotificationButtonEvent; }
 
 #include <NitroModules/Promise.hpp>
 #include <string>
@@ -40,6 +44,8 @@ namespace margelo::nitro::nitroplayer { struct TimedMetadata; }
 #include <functional>
 #include "TrackPlayerState.hpp"
 #include "TimedMetadata.hpp"
+#include "NotificationButtonState.hpp"
+#include "NotificationButtonEvent.hpp"
 
 namespace margelo::nitro::nitroplayer {
 
@@ -94,6 +100,8 @@ namespace margelo::nitro::nitroplayer {
       virtual void appStartedWithNotification(const std::function<void(const TrackItem& /* track */)>& callback) = 0;
       virtual void onAndroidAutoConnectionChange(const std::function<void(bool /* connected */)>& callback) = 0;
       virtual bool isAndroidAutoConnected() = 0;
+      virtual void setNotificationButtonState(const NotificationButtonState& state) = 0;
+      virtual void onNotificationButtonPress(const std::function<void(const std::string& /* buttonId */, const TrackItem& /* track */, const NotificationButtonEvent& /* event */)>& callback) = 0;
       virtual std::shared_ptr<Promise<void>> setVolume(double volume) = 0;
       virtual std::shared_ptr<Promise<void>> updateTracks(const std::vector<TrackItem>& tracks) = 0;
       virtual std::shared_ptr<Promise<std::vector<TrackItem>>> getTracksById(const std::vector<std::string>& trackIds) = 0;

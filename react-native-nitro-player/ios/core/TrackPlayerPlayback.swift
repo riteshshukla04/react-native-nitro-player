@@ -80,6 +80,8 @@ extension TrackPlayerCore {
     if !isCasting, previousMode != mode, player?.currentItem != nil {
       rebuildAVQueueFromCurrentPosition()
     }
+    // The lock screen's repeat button shows the current mode
+    if previousMode != mode { refreshMediaSession() }
     NitroPlayerLogger.log("TrackPlayerCore", "🔁 setRepeatMode: \(mode)")
   }
   func setRepeatMode(mode: RepeatMode) async {
@@ -105,7 +107,8 @@ extension TrackPlayerCore {
     androidAutoEnabled: Bool?, carPlayEnabled: Bool?,
     showInNotification: Bool?, lookaheadCount: Int?,
     remoteSkipForwardInterval: Double?, remoteSkipBackwardInterval: Double?,
-    preferRemoteSkipIntervals: Bool?
+    preferRemoteSkipIntervals: Bool?,
+    notificationButtons: IOSButtonConfig? = nil
   ) {
     if let la = lookaheadCount {
       self.lookaheadCount = la
@@ -122,6 +125,9 @@ extension TrackPlayerCore {
         preferRemoteSkipIntervals: preferRemoteSkipIntervals,
         playbackSpeed: playbackSpeed
       )
+      if let notificationButtons = notificationButtons {
+        self?.mediaSessionManager?.setNotificationButtons(notificationButtons)
+      }
     }
   }
   func configure(
@@ -176,7 +182,7 @@ extension TrackPlayerCore {
     let position = player.currentTime().seconds
     guard position.isFinite else { return }
     var target = max(0, position + offset)
-    if let duration = player.currentItem?.duration.seconds, duration > 0, duration.isFinite {
+    if let duration = player.currentItem?.readyDurationSeconds, duration > 0, duration.isFinite {
       target = min(target, duration)
     }
     seekInternal(position: target)
@@ -197,6 +203,7 @@ extension TrackPlayerCore {
 
   func playInternal() {
     NitroPlayerLogger.log("TrackPlayerCore", "▶️ play() called")
+    replacePlayerIfFailed(restoringQueue: true)
     activateAudioSessionIfNeeded()
     self.intendedToPlay = true
     // An explicit play() is the ground truth for intent — clear any stale
@@ -233,6 +240,13 @@ extension TrackPlayerCore {
 
   func seekInternal(position: Double) {
     guard let player = self.player else { return }
+    // Seeking a loading item makes AVFoundation wait on the media server for its duration; a slow
+    // stream runs that wait out and iOS kills the server, failing every player. Seek once ready.
+    if let item = player.currentItem, item.status != .readyToPlay {
+      NitroPlayerLogger.log("TrackPlayerCore", "⏳ Seek to \(Int(position))s waits for the item to load")
+      seekWhenReady(item, to: position)
+      return
+    }
     self.isManuallySeeked = true
     let time = CMTime(seconds: position, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
     player.seek(to: time) { _ in
@@ -287,6 +301,7 @@ extension TrackPlayerCore {
     }
 
     if queuePlayer.items().count > 1 {
+      selfInitiatedItemChange = true
       queuePlayer.advanceToNextItem()
     } else if currentRepeatMode == .playlist, !currentTracks.isEmpty {
       // Manual skip at the last track wraps, matching natural-end behavior
@@ -299,17 +314,32 @@ extension TrackPlayerCore {
     checkUpcomingTracksForUrls(lookahead: lookaheadCount)
   }
 
+  /// Anything but a live stream can go back to its start; restarting a live stream only reconnects.
+  private func canRestartCurrentItem(_ player: AVQueuePlayer) -> Bool {
+    if let duration = player.currentItem?.duration.seconds, duration.isFinite, duration > 0 {
+      return true
+    }
+    guard let trackId = player.currentItem?.trackId else { return false }
+    let track =
+      currentTracks.first { $0.id == trackId } ?? playNextStack.first { $0.id == trackId }
+      ?? upNextQueue.first { $0.id == trackId }
+    return (track?.duration ?? 0) > 0
+  }
+
   func skipToPreviousInternal() {
     guard let queuePlayer = self.player else { return }
 
     let currentTime = queuePlayer.currentTime()
-    if currentTime.seconds > Constants.skipToPreviousThreshold {
-      // If more than threshold seconds in, restart current track
-      queuePlayer.seek(to: .zero)
+    if currentTime.seconds > Constants.skipToPreviousThreshold
+      && canRestartCurrentItem(queuePlayer)
+    {
+      // If more than threshold seconds in, restart current track. Through seekInternal so the
+      // lock screen's elapsed time resets too; a bare seek left it counting from the old position.
+      seekInternal(position: 0)
     } else if self.currentTemporaryType != .none {
       // No playlist track to return to (all removed): restart the temp without touching its list.
       if currentTracks.isEmpty {
-        queuePlayer.seek(to: .zero)
+        seekInternal(position: 0)
         checkUpcomingTracksForUrls(lookahead: lookaheadCount)
         return
       }
@@ -328,9 +358,12 @@ extension TrackPlayerCore {
     } else if self.currentTrackIndex > 0 {
       // Go to previous track in original playlist
       _ = rebuildQueueFromPlaylistIndex(index: self.currentTrackIndex - 1)
+    } else if currentTrackIndex == 0, currentRepeatMode == .playlist, currentTracks.count > 1 {
+      // At the first track under playlist repeat, wrap to the last
+      _ = rebuildQueueFromPlaylistIndex(index: currentTracks.count - 1)
     } else {
       // Already at first track, restart it
-      queuePlayer.seek(to: .zero)
+      seekInternal(position: 0)
     }
 
     checkUpcomingTracksForUrls(lookahead: lookaheadCount)
@@ -414,5 +447,7 @@ extension TrackPlayerCore {
 
     NitroPlayerLogger.log("TrackPlayerCore", "▶️ Playing from index: \(songIndex)")
     self.playFromIndexInternal(index: songIndex)
+    // A song without a URL plays once onTracksNeedUpdate answers; nothing else asks for it here
+    checkUpcomingTracksForUrls(lookahead: lookaheadCount)
   }
 }

@@ -36,6 +36,7 @@ npm install react-native-nitro-modules
 | `usePlaylist`                 | Both     | Manages playlist state, providing access to all playlists and tracks.           |
 | `useEqualizer`                | Both     | Controls the 5-band equalizer, including presets and individual band gains.     |
 | `useAndroidAutoConnection`    | Both     | Monitors Android Auto connection status.                                        |
+| `useCarPlayConnection`        | iOS      | Monitors CarPlay connection status.                                             |
 | `useAudioDevices`             | Android  | Returns list of available audio output devices.                                 |
 | `useDownloadProgress`         | Both     | Tracks download progress for tracks. Returns progress map and overall status.   |
 | `useDownloadedTracks`         | Both     | Returns all downloaded tracks and playlists with query helpers.                 |
@@ -49,8 +50,8 @@ Command-style methods return **`Promise<void>`** (or another **`Promise`**) and 
 | `play()`                    | Both     | **Async**. Resumes playback.                                        |
 | `pause()`                   | Both     | **Async**. Pauses playback.                                         |
 | `playSong(id, playlistId?)` | Both     | **Async**. Plays a specific song, optionally from a playlist.       |
-| `skipToNext()`              | Both     | **Async**. Skips to the next track in the queue.                    |
-| `skipToPrevious()`          | Both     | **Async**. Skips to the previous track.                             |
+| `skipToNext()`              | Both     | **Async**. Skips to the next track in the queue. Wraps to the first under `'Playlist'` repeat (restarts a single-track queue). |
+| `skipToPrevious()`          | Both     | **Async**. Skips to the previous track, or restarts it past 2 seconds. Wraps to the last under `'Playlist'` repeat. |
 | `seek(position)`            | Both     | **Async**. Seeks to a specific time position in seconds.           |
 | `setPlaybackSpeed(speed)`   | Both     | **Async**. Sets playback speed; rejects non-finite and non-positive values. |
 | `getPlaybackSpeed()`        | Both     | **Async**. Gets the current playback speed.                         |
@@ -96,6 +97,8 @@ Mutations return **`Promise<void>`** (or **`Promise<string>`** for `createPlayli
 | `Cast.isCasting()` / `useIsCasting()`    | iOS & Android | Whether playback is routed to a Cast device. |
 | `AndroidAutoMediaLibraryHelper.set(...)` | Android  | Sets custom folder structure for Android Auto.    |
 | `AndroidAutoMediaLibraryHelper.clear()`  | Android  | Resets Android Auto structure to default.         |
+| `CarPlayHelper.set(...)`                 | iOS      | Sets CarPlay tabs, lists, grids and Now Playing.  |
+| `CarPlayHelper.reload(templateId?)`      | iOS      | Loads lazy CarPlay templates again.               |
 
 ### DownloadManager Methods
 
@@ -139,6 +142,10 @@ await TrackPlayer.configure({
 ```
 
 Remote skip intervals are in seconds. iOS uses them for AirPods/Control Center fixed skip buttons and exposes remote playback rates `0.5, 1.0, 1.25, 1.5, 1.75, 2.0`; Android uses them for the Media3 seek back/forward notification buttons and does not expose a playback-rate media button. Press-and-hold continuous seek is not implemented on either platform. Custom intervals apply to local playback; during a Google Cast session the receiver skips by a fixed 15 seconds.
+
+The skip buttons are left out for a live stream or any track that can't seek, and previous/next are left out when they could do nothing, for example on a live stream with no other track to move to. On Android, set `androidShowRemoteSkipButtons: false` to hide the skip buttons for every track.
+
+On Android, playback keeps going when the app is swiped away from recent apps. Set `androidStopOnTaskRemoved: true` to pause playback and remove the notification instead; the queue and position are kept, so a headset play button can resume it. It doesn't apply while casting or while Android Auto is connected, and iOS ignores it.
 
 ### 2. Create Playlists
 
@@ -1236,6 +1243,25 @@ AndroidAutoMediaLibraryHelper.set({
 - List layout is best for song lists
 - Only available on Android (use `isAvailable()` to check)
 
+## CarPlay
+
+Add the CarPlay scene to `Info.plist` with `NitroPlayerCarPlaySceneDelegate` as its delegate (no Swift changes), then describe the screens from JS at module scope. CarPlay plays through the same player as your app, starts your JS when the car opens the app without its phone UI, and keeps lists filled from `PlayerQueue` in sync.
+
+```typescript
+import { CarPlayHelper } from 'react-native-nitro-player'
+
+CarPlayHelper.set({
+  templates: [
+    { type: 'list', id: 'library', title: 'Library', source: 'playlists', tab: { systemItem: 'favorites' } },
+    { type: 'grid', id: 'browse', title: 'Browse', buttons: [{ id: 'jazz', title: 'Jazz', image: 'music.quarternote.3', loadTemplate: true }] },
+    { type: 'list', id: 'queue', title: 'Queue', source: 'queue', tab: { title: 'Queue', image: 'list.bullet' } },
+  ],
+  nowPlaying: { upNextTitle: 'Queue', albumArtist: true },
+})
+```
+
+See the [CarPlay guide](https://nitroplayer.riteshshukla.in/docs/guides/carplay) for the Info.plist entry, artwork grids and cards, actions, lazy screens, translated texts and Now Playing buttons.
+
 ## Features
 
 - ✅ **Playlist Management**: Create, update, and manage multiple playlists
@@ -1245,11 +1271,27 @@ AndroidAutoMediaLibraryHelper.set({
 - ✅ **React Hooks**: Built-in hooks for reactive state management
 - ✅ **Event Listeners**: Listen to track changes, state changes, and more
 - ✅ **Android Auto Support**: Control playback from Android Auto with customizable UI
-- ✅ **CarPlay Support**: Control playback from CarPlay (iOS)
+- ✅ **CarPlay Support**: Tabs, lists, artwork grids, cards, grids and Now Playing buttons driven from JS, working without the app open (iOS)
 - ✅ **Notification Controls**: Show playback controls in notifications
 - ✅ **Progress Tracking**: Real-time playback progress updates
 - ✅ **Offline Downloads**: Download tracks and playlists for offline playback
 - ✅ **Google Cast**: Seamless casting to Chromecast / Google TV (iOS & Android)
+
+## Testing
+
+The package ships a Jest mock covering every native method, hook and component. Add this to a Jest setup file:
+
+```ts
+jest.mock('react-native-nitro-player', () =>
+  require('react-native-nitro-player/mock')
+)
+```
+
+Each method is a `jest.fn()` resolving to an empty value, so override it per test with `mockResolvedValue` / `mockReturnValue`.
+
+Import from `react-native-nitro-player/mock` in tests to get the mocks typed. If you use `resetMocks: true`, add `beforeEach(() => resetNitroPlayerMock())` to restore the defaults.
+
+Add `react-native-nitro-player` to `transformIgnorePatterns` so Jest transforms the mock, for example `'node_modules/(?!((jest-)?react-native|@react-native(-community)?|react-native-nitro-player)/)'`.
 
 ## TypeScript Support
 
@@ -1290,4 +1332,4 @@ import type {
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).

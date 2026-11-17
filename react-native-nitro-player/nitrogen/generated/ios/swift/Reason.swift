@@ -17,6 +17,8 @@ public extension Reason {
    */
   init?(fromString string: String) {
     switch string {
+      case "repeat":
+        self = .repeat
       case "user_action":
         self = .userAction
       case "skip":
@@ -25,8 +27,6 @@ public extension Reason {
         self = .end
       case "error":
         self = .error
-      case "repeat":
-        self = .repeat
       default:
         return nil
     }
@@ -37,6 +37,8 @@ public extension Reason {
    */
   var stringValue: String {
     switch self {
+      case .repeat:
+        return "repeat"
       case .userAction:
         return "user_action"
       case .skip:
@@ -45,8 +47,6 @@ public extension Reason {
         return "end"
       case .error:
         return "error"
-      case .repeat:
-        return "repeat"
     }
   }
 }

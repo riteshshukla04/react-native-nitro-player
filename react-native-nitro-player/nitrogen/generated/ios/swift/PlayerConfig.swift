@@ -18,7 +18,7 @@ public extension PlayerConfig {
   /**
    * Create a new instance of `PlayerConfig`.
    */
-  init(androidAutoEnabled: Bool?, carPlayEnabled: Bool?, showInNotification: Bool?, remoteSkipForwardInterval: Double?, remoteSkipBackwardInterval: Double?, preferRemoteSkipIntervals: Bool?, lookaheadCount: Double?, androidNotificationIcon: String?, androidAudioFocus: AndroidAudioFocusMode?) {
+  init(androidAutoEnabled: Bool?, carPlayEnabled: Bool?, showInNotification: Bool?, remoteSkipForwardInterval: Double?, remoteSkipBackwardInterval: Double?, preferRemoteSkipIntervals: Bool?, androidShowRemoteSkipButtons: Bool?, lookaheadCount: Double?, androidNotificationIcon: String?, androidAudioFocus: AndroidAudioFocusMode?, androidStopOnTaskRemoved: Bool?, notificationButtons: NotificationButtons?) {
     self.init({ () -> bridge.std__optional_bool_ in
       if let __unwrappedValue = androidAutoEnabled {
         return bridge.create_std__optional_bool_(__unwrappedValue)
@@ -55,6 +55,12 @@ public extension PlayerConfig {
       } else {
         return .init()
       }
+    }(), { () -> bridge.std__optional_bool_ in
+      if let __unwrappedValue = androidShowRemoteSkipButtons {
+        return bridge.create_std__optional_bool_(__unwrappedValue)
+      } else {
+        return .init()
+      }
     }(), { () -> bridge.std__optional_double_ in
       if let __unwrappedValue = lookaheadCount {
         return bridge.create_std__optional_double_(__unwrappedValue)
@@ -70,6 +76,18 @@ public extension PlayerConfig {
     }(), { () -> bridge.std__optional_AndroidAudioFocusMode_ in
       if let __unwrappedValue = androidAudioFocus {
         return bridge.create_std__optional_AndroidAudioFocusMode_(__unwrappedValue)
+      } else {
+        return .init()
+      }
+    }(), { () -> bridge.std__optional_bool_ in
+      if let __unwrappedValue = androidStopOnTaskRemoved {
+        return bridge.create_std__optional_bool_(__unwrappedValue)
+      } else {
+        return .init()
+      }
+    }(), { () -> bridge.std__optional_NotificationButtons_ in
+      if let __unwrappedValue = notificationButtons {
+        return bridge.create_std__optional_NotificationButtons_(__unwrappedValue)
       } else {
         return .init()
       }
@@ -149,6 +167,18 @@ public extension PlayerConfig {
   }
   
   @inline(__always)
+  var androidShowRemoteSkipButtons: Bool? {
+    return { () -> Bool? in
+      if bridge.has_value_std__optional_bool_(self.__androidShowRemoteSkipButtons) {
+        let __unwrapped = bridge.get_std__optional_bool_(self.__androidShowRemoteSkipButtons)
+        return __unwrapped
+      } else {
+        return nil
+      }
+    }()
+  }
+  
+  @inline(__always)
   var lookaheadCount: Double? {
     return { () -> Double? in
       if bridge.has_value_std__optional_double_(self.__lookaheadCount) {
@@ -175,5 +205,22 @@ public extension PlayerConfig {
   @inline(__always)
   var androidAudioFocus: AndroidAudioFocusMode? {
     return self.__androidAudioFocus.value
+  }
+  
+  @inline(__always)
+  var androidStopOnTaskRemoved: Bool? {
+    return { () -> Bool? in
+      if bridge.has_value_std__optional_bool_(self.__androidStopOnTaskRemoved) {
+        let __unwrapped = bridge.get_std__optional_bool_(self.__androidStopOnTaskRemoved)
+        return __unwrapped
+      } else {
+        return nil
+      }
+    }()
+  }
+  
+  @inline(__always)
+  var notificationButtons: NotificationButtons? {
+    return self.__notificationButtons.value
   }
 }
