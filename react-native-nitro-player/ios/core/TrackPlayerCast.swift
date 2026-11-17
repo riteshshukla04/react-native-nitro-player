@@ -141,6 +141,8 @@ extension TrackPlayerCore {
         self.player?.rate = Float(self.currentPlaybackSpeed)
       }
       if self.player?.currentItem?.trackId == remoteTrackId { self.backendTransferTargetId = nil }
+      // The rebuild's queued item-change callbacks run after this; they are not a track change
+      self.lastHandledItem = self.player?.currentItem
     }
   }
 

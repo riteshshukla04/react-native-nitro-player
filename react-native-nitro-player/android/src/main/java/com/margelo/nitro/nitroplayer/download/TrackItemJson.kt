@@ -4,6 +4,7 @@ import com.margelo.nitro.JNIOnLoad
 import com.margelo.nitro.core.AnyMap
 import com.margelo.nitro.nitroplayer.TrackItem
 import com.margelo.nitro.nitroplayer.Variant_NullType_String
+import com.margelo.nitro.nitroplayer.storage.toAnyMap
 import org.json.JSONObject
 
 // Survives process death inside the worker's inputData so a completed
@@ -33,23 +34,7 @@ internal object TrackItemJson {
         try {
             val obj = JSONObject(json)
             val artworkStr = obj.optString("artwork")
-            val extraPayload: AnyMap? =
-                if (obj.has("extraPayload")) {
-                    val extraObj = obj.getJSONObject("extraPayload")
-                    val map = AnyMap()
-                    val keys = extraObj.keys()
-                    while (keys.hasNext()) {
-                        val key = keys.next()
-                        when (val value = extraObj.get(key)) {
-                            is String -> map.setString(key, value)
-                            is Number -> map.setDouble(key, value.toDouble())
-                            is Boolean -> map.setBoolean(key, value)
-                        }
-                    }
-                    map
-                } else {
-                    null
-                }
+            val extraPayload: AnyMap? = obj.optJSONObject("extraPayload")?.toAnyMap()
             TrackItem(
                 id = obj.getString("id"),
                 title = obj.getString("title"),

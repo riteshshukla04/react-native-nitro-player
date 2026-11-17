@@ -8,6 +8,7 @@ import com.margelo.nitro.nitroplayer.TrackItem
 import com.margelo.nitro.nitroplayer.Variant_NullType_String
 import com.margelo.nitro.nitroplayer.media.NitroPlayerMediaBrowserService
 import com.margelo.nitro.nitroplayer.storage.NitroPlayerStorage
+import com.margelo.nitro.nitroplayer.storage.toAnyMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -465,7 +466,8 @@ class PlaylistManager private constructor(
                                     put("album", track.album)
                                     put("duration", track.duration)
                                     put("url", track.url)
-                                    track.artwork?.let { put("artwork", it) }
+                                    // Save the URL, not the variant: put() would store its toString(), "Second(value=…)"
+                                    track.artwork?.asSecondOrNull()?.let { put("artwork", it) }
                                     track.extraPayload?.let { payload ->
                                         val extraPayloadMap = payload.toHashMap()
                                         val extraPayloadJson = JSONObject(extraPayloadMap)
@@ -543,30 +545,14 @@ class PlaylistManager private constructor(
             val tracksArray = jsonObject.getJSONArray("tracks")
             for (j in 0 until tracksArray.length()) {
                 val trackObj = tracksArray.getJSONObject(j)
-                val artworkStr = trackObj.optString("artwork")
+                val artworkStr = savedArtworkUrl(trackObj.optString("artwork"))
                 val artwork: Variant_NullType_String? =
                     if (!artworkStr.isNullOrEmpty()) {
                         Variant_NullType_String.create(artworkStr)
                     } else {
                         null
                     }
-                val extraPayload: AnyMap? =
-                    if (trackObj.has("extraPayload")) {
-                        val extraPayloadJson = trackObj.getJSONObject("extraPayload")
-                        val map = AnyMap()
-                        val keyIterator = extraPayloadJson.keys()
-                        while (keyIterator.hasNext()) {
-                            val key = keyIterator.next()
-                            when (val value = extraPayloadJson.get(key)) {
-                                is String -> map.setString(key, value)
-                                is Number -> map.setDouble(key, value.toDouble())
-                                is Boolean -> map.setBoolean(key, value)
-                            }
-                        }
-                        map
-                    } else {
-                        null
-                    }
+                val extraPayload: AnyMap? = trackObj.optJSONObject("extraPayload")?.toAnyMap()
                 tracks.add(
                     TrackItem(
                         id = trackObj.getString("id"),
@@ -592,5 +578,20 @@ class PlaylistManager private constructor(
                 )
             playlists[playlist.id] = playlist
         }
+    }
+}
+
+private val SAVED_ARTWORK_VARIANT = Regex("^(First|Second)\\(value=(.*)\\)$")
+
+/**
+ * Repairs artwork saved by older versions as the variant's toString(): "Second(value=<url>)", or
+ * "First(value=…)" for null. Each load-and-save on those versions wrapped it again, so unwrap all layers.
+ */
+private fun savedArtworkUrl(saved: String): String? {
+    var value = saved
+    while (true) {
+        val match = SAVED_ARTWORK_VARIANT.matchEntire(value) ?: return value
+        if (match.groupValues[1] == "First") return null
+        value = match.groupValues[2]
     }
 }

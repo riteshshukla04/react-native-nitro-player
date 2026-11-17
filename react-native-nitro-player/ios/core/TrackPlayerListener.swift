@@ -404,6 +404,8 @@ extension TrackPlayerCore {
     // don't reset per-track state that recovery still depends on.
     let isRecoveryReplace = suppressTrackChangeEmit
     suppressTrackChangeEmit = false
+    let isSelfInitiated = selfInitiatedItemChange
+    selfInitiatedItemChange = false
 
     if !isRecoveryReplace {
       // Genuine new track — reset per-track state.
@@ -456,6 +458,8 @@ extension TrackPlayerCore {
       && currentItem.trackId == lastCurrentItemTrackId
     let previousItemTrackId = lastCurrentItemTrackId
     lastCurrentItemTrackId = currentItem.trackId
+    let isSameItem = currentItem === lastHandledItem
+    lastHandledItem = currentItem
 
     #if DEBUG
     NitroPlayerLogger.log("TrackPlayerCore", "\n" + String(repeating: "▶", count: Constants.separatorLineLength))
@@ -520,7 +524,7 @@ extension TrackPlayerCore {
       // through the queue, including onto a back-to-back copy, searches past it.
       let matchesIndex = currentTracks[safe: currentTrackIndex]?.id == trackId
       let ontoNextCopy = currentTracks[safe: currentTrackIndex + 1]?.id == trackId
-        && !(isRecoveryReplace || isRepeatLoop || isBackendTransfer)
+        && !(isRecoveryReplace || isRepeatLoop || isBackendTransfer || isSameItem)
         && (previousItemTrackId == trackId || previousTemporaryType != .none)
       let indexHint = matchesIndex && !ontoNextCopy ? currentTrackIndex : currentTrackIndex + 1
 
@@ -529,13 +533,13 @@ extension TrackPlayerCore {
         if currentTemporaryType == .playNext { tempTrack = playNextStack.first(where: { $0.id == trackId }) }
         else if currentTemporaryType == .upNext { tempTrack = upNextQueue.first(where: { $0.id == trackId }) }
         if let track = tempTrack {
-          if isRecoveryReplace || isRepeatLoop || isBackendTransfer {
+          if isRecoveryReplace || isRepeatLoop || isBackendTransfer || isSameItem {
             NitroPlayerLogger.log("TrackPlayerCore",
               "   ♻️ Same-track transition for '\(track.title)' — suppressing onChangeTrack")
           } else {
             NitroPlayerLogger.log("TrackPlayerCore", "   🎵 Temporary track: \(track.title) - \(track.artist)")
             NitroPlayerLogger.log("TrackPlayerCore", "   📢 Emitting onChangeTrack for temporary track")
-            notifyTrackChange(track, .skip)
+            notifyTrackChange(track, isSelfInitiated ? .skip : .end)
           }
         }
       } else if let index = currentTrackIndexOf(trackId, from: indexHint) {
@@ -551,7 +555,7 @@ extension TrackPlayerCore {
             NitroPlayerLogger.log("TrackPlayerCore", "   📢 Emitting onChangeTrack (index changed from \(oldIndex) to \(index))")
             let wrappedToStart =
               currentRepeatMode == .playlist && index == 0 && oldIndex == currentTracks.count - 1
-            notifyTrackChange(track, wrappedToStart ? .repeat : .skip)
+            notifyTrackChange(track, wrappedToStart ? .repeat : (isSelfInitiated ? .skip : .end))
           } else {
             NitroPlayerLogger.log("TrackPlayerCore", "   ⏭️ Skipping onChangeTrack emission (index unchanged)")
           }
