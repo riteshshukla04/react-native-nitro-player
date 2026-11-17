@@ -8,6 +8,7 @@ import com.margelo.nitro.nitroplayer.TrackItem
 import com.margelo.nitro.nitroplayer.Variant_NullType_String
 import com.margelo.nitro.nitroplayer.media.NitroPlayerMediaBrowserService
 import com.margelo.nitro.nitroplayer.storage.NitroPlayerStorage
+import com.margelo.nitro.nitroplayer.storage.toAnyMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -550,23 +551,7 @@ class PlaylistManager private constructor(
                     } else {
                         null
                     }
-                val extraPayload: AnyMap? =
-                    if (trackObj.has("extraPayload")) {
-                        val extraPayloadJson = trackObj.getJSONObject("extraPayload")
-                        val map = AnyMap()
-                        val keyIterator = extraPayloadJson.keys()
-                        while (keyIterator.hasNext()) {
-                            val key = keyIterator.next()
-                            when (val value = extraPayloadJson.get(key)) {
-                                is String -> map.setString(key, value)
-                                is Number -> map.setDouble(key, value.toDouble())
-                                is Boolean -> map.setBoolean(key, value)
-                            }
-                        }
-                        map
-                    } else {
-                        null
-                    }
+                val extraPayload: AnyMap? = trackObj.optJSONObject("extraPayload")?.toAnyMap()
                 tracks.add(
                     TrackItem(
                         id = trackObj.getString("id"),
