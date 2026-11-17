@@ -15,6 +15,8 @@
 
 // Forward declaration of `CastState` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class CastState; }
+// Forward declaration of `TrackItem` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct TrackItem; }
 
 #include <NitroModules/Promise.hpp>
 #include <string>
@@ -23,6 +25,9 @@ namespace margelo::nitro::nitroplayer { enum class CastState; }
 #include <NitroModules/Null.hpp>
 #include <variant>
 #include <functional>
+#include "TrackItem.hpp"
+#include <vector>
+#include <unordered_map>
 
 namespace margelo::nitro::nitroplayer {
 
@@ -62,6 +67,8 @@ namespace margelo::nitro::nitroplayer {
       virtual void showCastPicker() = 0;
       virtual std::shared_ptr<Promise<void>> endCastSession() = 0;
       virtual void onCastStateChange(const std::function<void(CastState /* state */, const std::optional<std::variant<nitro::NullType, std::string>>& /* deviceName */)>& callback) = 0;
+      virtual void onTracksNeedCastUrls(const std::function<void(const std::vector<TrackItem>& /* tracks */)>& callback) = 0;
+      virtual std::shared_ptr<Promise<void>> setCastUrls(const std::unordered_map<std::string, std::string>& urls) = 0;
 
     protected:
       // Hybrid Setup

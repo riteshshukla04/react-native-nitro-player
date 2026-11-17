@@ -227,6 +227,8 @@ export const Cast: MockedHybridObject<CastType> = {
   showCastPicker: noop(),
   endCastSession: resolved(undefined),
   onCastStateChange: noop(),
+  onTracksNeedCastUrls: noop(),
+  setCastUrls: resolved(undefined),
 }
 
 export const DownloadManager: MockedHybridObject<DownloadManagerType> = {

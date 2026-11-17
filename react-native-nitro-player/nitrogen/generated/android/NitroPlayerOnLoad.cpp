@@ -22,6 +22,7 @@
 #include "JHybridAudioDevicesSpec.hpp"
 #include "JHybridCastSpec.hpp"
 #include "JFunc_void_CastState_std__optional_std__variant_nitro__NullType__std__string__.hpp"
+#include "JFunc_void_std__vector_TrackItem_.hpp"
 #include "JHybridDownloadManagerSpec.hpp"
 #include "JFunc_void_DownloadProgress.hpp"
 #include "JFunc_void_std__string_std__string_DownloadState_std__optional_DownloadError_.hpp"
@@ -122,6 +123,7 @@ void registerAllNatives() {
   margelo::nitro::nitroplayer::JHybridAudioDevicesSpec::CxxPart::registerNatives();
   margelo::nitro::nitroplayer::JHybridCastSpec::CxxPart::registerNatives();
   margelo::nitro::nitroplayer::JFunc_void_CastState_std__optional_std__variant_nitro__NullType__std__string___cxx::registerNatives();
+  margelo::nitro::nitroplayer::JFunc_void_std__vector_TrackItem__cxx::registerNatives();
   margelo::nitro::nitroplayer::JHybridDownloadManagerSpec::CxxPart::registerNatives();
   margelo::nitro::nitroplayer::JFunc_void_DownloadProgress_cxx::registerNatives();
   margelo::nitro::nitroplayer::JFunc_void_std__string_std__string_DownloadState_std__optional_DownloadError__cxx::registerNatives();

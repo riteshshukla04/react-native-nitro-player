@@ -168,6 +168,7 @@ namespace NitroPlayer { class HybridTrackPlayerSpec_cxx; }
 #include <memory>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -437,6 +438,64 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     return Func_void_CastState_std__optional_std__variant_nitro__NullType__std__string___Wrapper(std::move(value));
   }
   
+  // pragma MARK: std::vector<TrackItem>
+  /**
+   * Specialized version of `std::vector<TrackItem>`.
+   */
+  using std__vector_TrackItem_ = std::vector<TrackItem>;
+  inline std::vector<TrackItem> create_std__vector_TrackItem_(size_t size) noexcept {
+    std::vector<TrackItem> vector;
+    vector.reserve(size);
+    return vector;
+  }
+  
+  // pragma MARK: std::function<void(const std::vector<TrackItem>& /* tracks */)>
+  /**
+   * Specialized version of `std::function<void(const std::vector<TrackItem>&)>`.
+   */
+  using Func_void_std__vector_TrackItem_ = std::function<void(const std::vector<TrackItem>& /* tracks */)>;
+  /**
+   * Wrapper class for a `std::function<void(const std::vector<TrackItem>& / * tracks * /)>`, this can be used from Swift.
+   */
+  class Func_void_std__vector_TrackItem__Wrapper final {
+  public:
+    explicit Func_void_std__vector_TrackItem__Wrapper(std::function<void(const std::vector<TrackItem>& /* tracks */)>&& func): _function(std::make_unique<std::function<void(const std::vector<TrackItem>& /* tracks */)>>(std::move(func))) {}
+    inline void call(std::vector<TrackItem> tracks) const noexcept {
+      _function->operator()(tracks);
+    }
+  private:
+    std::unique_ptr<std::function<void(const std::vector<TrackItem>& /* tracks */)>> _function;
+  } SWIFT_NONCOPYABLE;
+  Func_void_std__vector_TrackItem_ create_Func_void_std__vector_TrackItem_(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_std__vector_TrackItem__Wrapper wrap_Func_void_std__vector_TrackItem_(Func_void_std__vector_TrackItem_ value) noexcept {
+    return Func_void_std__vector_TrackItem__Wrapper(std::move(value));
+  }
+  
+  // pragma MARK: std::unordered_map<std::string, std::string>
+  /**
+   * Specialized version of `std::unordered_map<std::string, std::string>`.
+   */
+  using std__unordered_map_std__string__std__string_ = std::unordered_map<std::string, std::string>;
+  inline std::unordered_map<std::string, std::string> create_std__unordered_map_std__string__std__string_(size_t size) noexcept {
+    std::unordered_map<std::string, std::string> map;
+    map.reserve(size);
+    return map;
+  }
+  inline std::vector<std::string> get_std__unordered_map_std__string__std__string__keys(const std__unordered_map_std__string__std__string_& map) noexcept {
+    std::vector<std::string> keys;
+    keys.reserve(map.size());
+    for (const auto& entry : map) {
+      keys.push_back(entry.first);
+    }
+    return keys;
+  }
+  inline std::string get_std__unordered_map_std__string__std__string__value(const std__unordered_map_std__string__std__string_& map, const std::string& key) noexcept {
+    return map.find(key)->second;
+  }
+  inline void emplace_std__unordered_map_std__string__std__string_(std__unordered_map_std__string__std__string_& map, const std::string& key, const std::string& value) noexcept {
+    map.emplace(key, value);
+  }
+  
   // pragma MARK: std::shared_ptr<HybridCastSpec>
   /**
    * Specialized version of `std::shared_ptr<HybridCastSpec>`.
@@ -598,17 +657,6 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
   Func_void_std__vector_std__string_ create_Func_void_std__vector_std__string_(void* NON_NULL swiftClosureWrapper) noexcept;
   inline Func_void_std__vector_std__string__Wrapper wrap_Func_void_std__vector_std__string_(Func_void_std__vector_std__string_ value) noexcept {
     return Func_void_std__vector_std__string__Wrapper(std::move(value));
-  }
-  
-  // pragma MARK: std::vector<TrackItem>
-  /**
-   * Specialized version of `std::vector<TrackItem>`.
-   */
-  using std__vector_TrackItem_ = std::vector<TrackItem>;
-  inline std::vector<TrackItem> create_std__vector_TrackItem_(size_t size) noexcept {
-    std::vector<TrackItem> vector;
-    vector.reserve(size);
-    return vector;
   }
   
   // pragma MARK: std::variant<nitro::NullType, double>
@@ -1631,28 +1679,6 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
   }
   inline PromiseHolder<std::vector<TrackItem>> wrap_std__shared_ptr_Promise_std__vector_TrackItem___(std::shared_ptr<Promise<std::vector<TrackItem>>> promise) noexcept {
     return PromiseHolder<std::vector<TrackItem>>(std::move(promise));
-  }
-  
-  // pragma MARK: std::function<void(const std::vector<TrackItem>& /* result */)>
-  /**
-   * Specialized version of `std::function<void(const std::vector<TrackItem>&)>`.
-   */
-  using Func_void_std__vector_TrackItem_ = std::function<void(const std::vector<TrackItem>& /* result */)>;
-  /**
-   * Wrapper class for a `std::function<void(const std::vector<TrackItem>& / * result * /)>`, this can be used from Swift.
-   */
-  class Func_void_std__vector_TrackItem__Wrapper final {
-  public:
-    explicit Func_void_std__vector_TrackItem__Wrapper(std::function<void(const std::vector<TrackItem>& /* result */)>&& func): _function(std::make_unique<std::function<void(const std::vector<TrackItem>& /* result */)>>(std::move(func))) {}
-    inline void call(std::vector<TrackItem> result) const noexcept {
-      _function->operator()(result);
-    }
-  private:
-    std::unique_ptr<std::function<void(const std::vector<TrackItem>& /* result */)>> _function;
-  } SWIFT_NONCOPYABLE;
-  Func_void_std__vector_TrackItem_ create_Func_void_std__vector_TrackItem_(void* NON_NULL swiftClosureWrapper) noexcept;
-  inline Func_void_std__vector_TrackItem__Wrapper wrap_Func_void_std__vector_TrackItem_(Func_void_std__vector_TrackItem_ value) noexcept {
-    return Func_void_std__vector_TrackItem__Wrapper(std::move(value));
   }
   
   // pragma MARK: std::variant<nitro::NullType, TrackItem>

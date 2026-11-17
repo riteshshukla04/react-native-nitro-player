@@ -62,6 +62,19 @@ abstract class HybridCastSpec: HybridObject() {
     val __result = onCastStateChange(callback)
     return __result
   }
+  
+  abstract fun onTracksNeedCastUrls(callback: (tracks: Array<TrackItem>) -> Unit): Unit
+  
+  @DoNotStrip
+  @Keep
+  private fun onTracksNeedCastUrls_cxx(callback: Func_void_std__vector_TrackItem_): Unit {
+    val __result = onTracksNeedCastUrls(callback)
+    return __result
+  }
+  
+  @DoNotStrip
+  @Keep
+  abstract fun setCastUrls(urls: Map<String, String>): Promise<Unit>
 
   // Default implementation of `HybridObject.toString()`
   override fun toString(): String {

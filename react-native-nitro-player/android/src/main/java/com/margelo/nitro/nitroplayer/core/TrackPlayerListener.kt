@@ -32,6 +32,16 @@ internal class TrackPlayerEventListener(
             // TRACK repeat: REPEAT_MODE_ONE fires this every loop — not a real track change
             if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT) return
             exo.holdLazyCurrent()
+            // While a new receiver queue is on its way, a move on the queue it replaces (an auto-advance, or a
+            // skip the receiver applied first) is ignored: the track picked meanwhile stays current
+            val castReport = castQueueReplaceInFlight()
+            if (castReport && !isCastLoadReport(mediaItem)) return
+            if (isCastingField && castLoadInFlight && castReloadDeferred) {
+                // A newer target waits on the change in flight, so whatever plays now is already superseded:
+                // its report sends that target (an edit's report arrives through onEvents)
+                if (castReport) finishCastLoad(receiverEmpty = mediaItem == null)
+                return
+            }
 
             // Remove the track that just finished/was skipped from temp lists
             if ((
@@ -73,13 +83,17 @@ internal class TrackPlayerEventListener(
             val wrappedToStart = currentRepeatMode == RepeatMode.PLAYLIST &&
                 currentTrackIndex == 0 && previousTrackIndex == currentTracks.size - 1
 
-            // Top up the windowed timeline — the item we just left freed a slot.
-            // Only when it is actually short: rebuildQueueFromCurrentPosition can fall
-            // into the substitute-jump path (setMediaItems), which re-enters this very
-            // callback. The length check makes any such re-entry a no-op and terminate.
-            if (mediaItem != null &&
+            if (castReport) {
+                // The receiver reported the new queue: apply what arrived meanwhile, once (instead of the
+                // top-up below, which would send the same change again)
+                finishCastLoad(receiverEmpty = mediaItem == null)
+            } else if (mediaItem != null &&
                 exo.mediaItemCount - exo.currentMediaItemIndex - 1 < QUEUE_WINDOW_SIZE
             ) {
+                // Top up the windowed timeline — the item we just left freed a slot.
+                // Only when it is actually short: rebuildQueueFromCurrentPosition can fall
+                // into the substitute-jump path (setMediaItems), which re-enters this very
+                // callback. The length check makes any such re-entry a no-op and terminate.
                 rebuildQueueFromCurrentPosition()
             }
 
@@ -141,6 +155,7 @@ internal class TrackPlayerEventListener(
         events: Player.Events,
     ) {
         core.reconcileStateChange()
+        if (events.contains(Player.EVENT_TIMELINE_CHANGED)) core.onCastTimelineEvents()
         // A live stream, a queue edge or a new timeline can change what previous / next / ±N skip can do
         if (events.containsAny(
                 Player.EVENT_TIMELINE_CHANGED,
@@ -198,7 +213,11 @@ internal class TrackPlayerEventListener(
         }
     }
 
-    override fun onPlayerError(error: PlaybackException) = core.handlePlayerError(error)
+    override fun onPlayerError(error: PlaybackException) {
+        // A failed receiver load never reports a transition
+        core.clearCastLoadInFlight()
+        core.handlePlayerError(error)
+    }
 
     override fun onAudioSessionIdChanged(audioSessionId: Int) {
         if (audioSessionId != 0) {

@@ -120,6 +120,8 @@ class TrackPlayerCore private constructor(
         ListenerRegistry<(TimedMetadata) -> Unit>()
     internal val onCastStateChangeListeners =
         ListenerRegistry<(com.margelo.nitro.nitroplayer.CastState, String?) -> Unit>()
+    internal val onTracksNeedCastUrlsListeners =
+        ListenerRegistry<(List<TrackItem>) -> Unit>()
     internal val onNotificationLaunchListeners =
         ListenerRegistry<(TrackItem) -> Unit>()
     internal val onNotificationButtonPressListeners =
@@ -139,6 +141,46 @@ class TrackPlayerCore private constructor(
 
     /** Last track announced from a cast "waiting for URL" state — dedups onChangeTrack across updateTracks re-entries. */
     internal var lastCastWaitTrackId: String? = null
+
+    /** App-supplied URLs the receiver loads instead of `track.url`, keyed by track id. Cleared each session. */
+    internal val castUrls = HashMap<String, String>()
+
+    /** When each track was last asked for a Cast URL, so repeated queue events ask once. */
+    internal val castUrlRequestedAt = HashMap<String, Long>()
+
+    /** Where local playback was when the session started (track id to ms), applied once that track's Cast URL arrives. */
+    internal var castResume: Pair<String, Long>? = null
+
+    /** The current and upcoming tracks at connect, loaded once their Cast URLs arrive if the receiver started empty. */
+    internal var castPendingList: List<TrackItem>? = null
+
+    /** A queue change was sent to the receiver and it hasn't reported it yet; that report finishes it. */
+    internal var castLoadInFlight = false
+
+    /** What the queue change in flight does to the receiver's queue. */
+    internal var castLoadChange = CastQueueChange.LOAD
+
+    /** The receiver's item ids when that change was sent: its report shows new ones (or, for a clear, none). */
+    internal var castLoadStaleUids: Set<Any> = emptySet()
+
+    /** A rebuild (an edit, a URL answer, a top-up) waited on the report. */
+    internal var castRebuildDeferred = false
+
+    /** A new target (a pick, a new playlist) waited on the report; it supersedes the queue that report brings. */
+    internal var castReloadDeferred = false
+
+    /** For an edit in flight: the receiver item ids it removes and how many items it inserts. */
+    internal var castEditRemovedUids: Set<Any> = emptySet()
+    internal var castEditInsertCount = 0
+
+    /** Whether an unreported receiver load was already retried once since the receiver last reported. */
+    internal var castLoadRetried = false
+
+    /** Ends an in-flight receiver load that never reported (a rejected LOAD sends no status). */
+    internal val castLoadTimeoutRunnable = Runnable { onCastLoadTimeout() }
+
+    /** Asks again while the receiver waits on the current track's Cast URL, in case the app never answers. */
+    internal val castUrlRetryRunnable = Runnable { checkUpcomingTracksForCastUrls(lookaheadCount) }
 
     /** The handed-off track (id) and whether it was playing, for a connect that had nothing castable yet. */
     internal var pendingCastAutoplay: Pair<String, Boolean>? = null
@@ -198,12 +240,31 @@ class TrackPlayerCore private constructor(
         playerHandler.removeCallbacks(updateCurrentPlaylistRunnable)
         val id = currentPlaylistId ?: return
         val playlist = playlistManager.getPlaylist(id) ?: return
-        assignCurrentTracks(playlist.tracks)
-        if (::exo.isInitialized &&
+        val anchor = assignCurrentTracks(playlist.tracks)
+        if (isCastingField && castLoadInFlight) {
+            // The receiver hasn't reported a queue change yet (its timeline is stale); that report applies this edit
+            castRebuildDeferred = true
+            // The target (loading, waited on, or still to be sent) was removed: the track that took its place becomes
+            // the target, sent on the report, and Next meanwhile steps on from it
+            if (anchor == AnchorOutcome.REMOVED && currentTemporaryType == TemporaryType.NONE && currentTracks.isNotEmpty()) {
+                currentTrackIndex = minOf(currentTrackIndex + 1, currentTracks.size - 1)
+                castReloadDeferred = true
+                // Like the substitute jump (playFromIndexInternal), moving on drops the temporary queues
+                playNextStack.clear()
+                upNextQueue.clear()
+            }
+        } else if (::exo.isInitialized &&
             exo.currentMediaItem != null &&
             exo.currentMediaItemIndex >= 0
         ) {
             rebuildQueueFromCurrentPosition()
+        } else if (isCastingField && castPendingList != null) {
+            // Still waiting on Cast URLs for the connect-time queue: follow the edit, the check below asks for what's missing
+            refreshCastPendingList()
+        } else if (anchor != AnchorOutcome.NONE && isCastWaitingOnUrl()) {
+            // The receiver sits empty waiting on the picked track's Cast URL: keep waiting, or move on to the track that
+            // took its place if it was removed (not back to the playlist's start)
+            if (anchor == AnchorOutcome.REMOVED) rebuildQueueAndPlayFromIndex(minOf(currentTrackIndex + 1, currentTracks.size - 1))
         } else {
             updatePlayerQueue(playlist.tracks)
         }
@@ -478,6 +539,18 @@ class TrackPlayerCore private constructor(
     }
 
     fun removeOnTracksNeedUpdateListener(id: Long): Boolean = onTracksNeedUpdateListeners.remove(id)
+
+    fun addOnTracksNeedCastUrlsListener(cb: (List<TrackItem>) -> Unit): Long {
+        val id = onTracksNeedCastUrlsListeners.add(cb)
+        // A session may already be waiting on Cast URLs
+        enqueue {
+            castUrlRequestedAt.clear()
+            checkUpcomingTracksForCastUrls(lookaheadCount)
+        }
+        return id
+    }
+
+    fun removeOnTracksNeedCastUrlsListener(id: Long): Boolean = onTracksNeedCastUrlsListeners.remove(id)
 
     fun addOnTemporaryQueueChangeListener(cb: (List<TrackItem>, List<TrackItem>) -> Unit): Long = onTemporaryQueueChangeListeners.add(cb)
 

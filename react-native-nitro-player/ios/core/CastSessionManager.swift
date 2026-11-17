@@ -35,6 +35,7 @@ final class CastSessionManager: NSObject {
   private var _lastKnownRemoteDuration: Double = 0
   private var cachedState: CastState = .noDevicesAvailable
   private var cachedDeviceName: String?
+  private var _castUrls: [String: String] = [:]
 
   // MARK: - Receiver queue reconciliation (main thread only)
 
@@ -90,6 +91,19 @@ final class CastSessionManager: NSObject {
   func setExpectedCurrentTrack(_ trackId: String?) {
     stateLock.lock(); defer { stateLock.unlock() }
     _lastCurrentTrackId = trackId
+  }
+
+  /// The app-supplied URL the receiver loads for `trackId`, if any (see `Cast.setCastUrls`).
+  func castUrl(for trackId: String) -> String? {
+    withState { _castUrls[trackId] }
+  }
+
+  func setCastUrls(_ urls: [String: String]) {
+    withState { _castUrls.merge(urls) { _, new in new } }
+  }
+
+  func clearCastUrls() {
+    withState { _castUrls.removeAll() }
   }
 
   private func withState<T>(_ body: () -> T) -> T {
@@ -290,7 +304,8 @@ final class CastSessionManager: NSObject {
 
   private func makeQueueItem(for track: TrackItem, autoplay: Bool) -> GCKMediaQueueItem? {
     // The receiver fetches media itself — only remote URLs are playable (callers pre-filter with isTrackCastable).
-    let urlString = track.url
+    // When the app supplies Cast URLs, a track without one is not loadable (never fall back to the phone's URL)
+    let urlString = castUrl(for: track.id) ?? ((core?.suppliesCastUrls ?? false) ? "" : track.url)
     guard !urlString.isEmpty, let contentURL = URL(string: urlString) else { return nil }
 
     let metadata = GCKMediaMetadata(metadataType: .musicTrack)

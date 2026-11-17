@@ -20,6 +20,8 @@ public protocol HybridCastSpec_protocol: HybridObject {
   func showCastPicker() throws -> Void
   func endCastSession() throws -> Promise<Void>
   func onCastStateChange(callback: @escaping (_ state: CastState, _ deviceName: Variant_NullType_String?) -> Void) throws -> Void
+  func onTracksNeedCastUrls(callback: @escaping (_ tracks: [TrackItem]) -> Void) throws -> Void
+  func setCastUrls(urls: Dictionary<String, String>) throws -> Promise<Void>
 }
 
 public extension HybridCastSpec_protocol {
