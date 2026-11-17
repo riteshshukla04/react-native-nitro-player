@@ -47,7 +47,7 @@ internal object CastSessionFactory {
                 localSessionPlayer = localSessionPlayer,
                 mediaSession = mediaSession,
                 mainHandler = mainHandler,
-                mediaRouter = MediaRouter.getInstance(context),
+                mediaRouter = MediaRouter.getInstance(context.applicationContext),
             )
         } catch (e: Exception) {
             NitroPlayerLogger.log("PlaybackService") { "Cast unavailable: ${e.message}" }

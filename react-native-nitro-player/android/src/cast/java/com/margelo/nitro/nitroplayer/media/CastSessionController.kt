@@ -10,6 +10,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.mediarouter.app.MediaRouteChooserDialog
 import androidx.mediarouter.app.MediaRouteControllerDialog
+import androidx.mediarouter.media.MediaRouteSelector
 import androidx.mediarouter.media.MediaRouter
 import com.google.android.gms.cast.framework.CastContext
 import com.google.android.gms.cast.framework.CastStateListener
@@ -45,7 +46,7 @@ class CastSessionController(
     private var core: TrackPlayerCore? = null
 
     // Set by release(); a route callback registration still queued on the main thread then does nothing
-    @Volatile private var released = false
+    private var released = false
 
     // Cast SDK reads (castState, current session) MUST happen on the main thread —
     // it throws IllegalStateException otherwise. Nitro sync getters run on the JS
@@ -72,18 +73,23 @@ class CastSessionController(
             override fun onRouteAdded(
                 router: MediaRouter,
                 route: MediaRouter.RouteInfo,
-            ) = onRoutesChanged()
+            ) = onRouteEvent(route)
 
             override fun onRouteChanged(
                 router: MediaRouter,
                 route: MediaRouter.RouteInfo,
-            ) = onRoutesChanged()
+            ) = onRouteEvent(route)
 
             override fun onRouteRemoved(
                 router: MediaRouter,
                 route: MediaRouter.RouteInfo,
-            ) = onRoutesChanged()
+            ) = onRouteEvent(route)
         }
+
+    // The phone's own and Bluetooth routes never count as Cast devices; skip their frequent volume changes
+    private fun onRouteEvent(route: MediaRouter.RouteInfo) {
+        if (!route.isDefaultOrBluetooth) onRoutesChanged()
+    }
 
     private fun onRoutesChanged() {
         val c = core ?: return
@@ -123,10 +129,13 @@ class CastSessionController(
         mainHandler.post {
             if (released) return@post
             try {
-                // Unfiltered: a route that stops matching the selector still refreshes the state
-                castContext.mergedSelector?.let {
-                    mediaRouter.addCallback(it, routeCallback, MediaRouter.CALLBACK_FLAG_UNFILTERED_EVENTS)
-                }
+                // An observer only: the empty selector adds nothing to discovery, and unfiltered events
+                // include a route that stops matching the Cast selector
+                mediaRouter.addCallback(
+                    MediaRouteSelector.EMPTY,
+                    routeCallback,
+                    MediaRouter.CALLBACK_FLAG_UNFILTERED_EVENTS,
+                )
             } catch (e: Exception) {
                 NitroPlayerLogger.log("CastSessionController") { "Route callback unavailable: ${e.message}" }
             }
