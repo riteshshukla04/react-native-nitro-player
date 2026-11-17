@@ -69,7 +69,6 @@ internal fun TrackPlayerCore.switchToCastPlayer() {
     } else {
         // Nothing castable yet (lazy queue) — request URLs; updateTracks will load, with this autoplay intent.
         pendingCastAutoplay = wasPlaying
-        controller.castPlayer.repeatMode = repeat
         checkUpcomingTracksForUrls(lookaheadCount)
     }
 
