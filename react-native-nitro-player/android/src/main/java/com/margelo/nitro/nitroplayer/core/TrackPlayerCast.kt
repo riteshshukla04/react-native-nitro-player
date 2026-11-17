@@ -46,6 +46,7 @@ internal fun TrackPlayerCore.switchToCastPlayer() {
     castUrlRequestedAt.clear()
     castResume = null
     castPendingList = null
+    castLoadInFlight = false
     exo = ExoPlayerCore(controller.castPlayer)
     playerListener?.let { controller.castPlayer.addListener(it) }
     setMediaSessionPlayer(controller.castPlayer)
