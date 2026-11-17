@@ -73,6 +73,12 @@ internal class TrackPlayerEventListener(
             val wrappedToStart = currentRepeatMode == RepeatMode.PLAYLIST &&
                 currentTrackIndex == 0 && previousTrackIndex == currentTracks.size - 1
 
+            // The receiver reported a load sent while URLs or edits kept arriving: apply them once
+            if (isCastingField && castLoadInFlight) {
+                castLoadInFlight = false
+                rebuildQueueFromCurrentPosition()
+            }
+
             // Top up the windowed timeline — the item we just left freed a slot.
             // Only when it is actually short: rebuildQueueFromCurrentPosition can fall
             // into the substitute-jump path (setMediaItems), which re-enters this very
@@ -198,7 +204,11 @@ internal class TrackPlayerEventListener(
         }
     }
 
-    override fun onPlayerError(error: PlaybackException) = core.handlePlayerError(error)
+    override fun onPlayerError(error: PlaybackException) {
+        // A failed receiver load never reports a transition
+        core.castLoadInFlight = false
+        core.handlePlayerError(error)
+    }
 
     override fun onAudioSessionIdChanged(audioSessionId: Int) {
         if (audioSessionId != 0) {

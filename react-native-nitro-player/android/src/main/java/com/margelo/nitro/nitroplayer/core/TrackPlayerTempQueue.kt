@@ -67,7 +67,7 @@ internal fun TrackPlayerCore.playNextInternal(trackId: String) {
         findTrackById(trackId)
             ?: throw IllegalArgumentException("Track $trackId not found")
     playNextStack.add(0, track)
-    if (isExoInitialized && exo.currentMediaItem != null) rebuildQueueFromCurrentPosition()
+    syncQueueAfterTempEdit()
     notifyTemporaryQueueChange()
 }
 
@@ -80,7 +80,7 @@ internal fun TrackPlayerCore.addToUpNextInternal(trackId: String) {
         findTrackById(trackId)
             ?: throw IllegalArgumentException("Track $trackId not found")
     upNextQueue.add(track)
-    if (isExoInitialized && exo.currentMediaItem != null) rebuildQueueFromCurrentPosition()
+    syncQueueAfterTempEdit()
     notifyTemporaryQueueChange()
 }
 
@@ -92,7 +92,7 @@ internal fun TrackPlayerCore.removeFromPlayNextOnQueue(trackId: String): Boolean
     val idx = playNextStack.indexOfFirst { it.id == trackId }
     if (idx < 0) return false
     playNextStack.removeAt(idx)
-    if (isExoInitialized && exo.currentMediaItem != null) rebuildQueueFromCurrentPosition()
+    syncQueueAfterTempEdit()
     notifyTemporaryQueueChange()
     return true
 }
@@ -103,7 +103,7 @@ internal fun TrackPlayerCore.removeFromUpNextOnQueue(trackId: String): Boolean {
     val idx = upNextQueue.indexOfFirst { it.id == trackId }
     if (idx < 0) return false
     upNextQueue.removeAt(idx)
-    if (isExoInitialized && exo.currentMediaItem != null) rebuildQueueFromCurrentPosition()
+    syncQueueAfterTempEdit()
     notifyTemporaryQueueChange()
     return true
 }
@@ -112,7 +112,7 @@ suspend fun TrackPlayerCore.clearPlayNext() = withPlayerContext { clearPlayNextO
 
 internal fun TrackPlayerCore.clearPlayNextOnQueue() {
     playNextStack.clear()
-    if (isExoInitialized && exo.currentMediaItem != null) rebuildQueueFromCurrentPosition()
+    syncQueueAfterTempEdit()
     notifyTemporaryQueueChange()
 }
 
@@ -120,7 +120,7 @@ suspend fun TrackPlayerCore.clearUpNext() = withPlayerContext { clearUpNextOnQue
 
 internal fun TrackPlayerCore.clearUpNextOnQueue() {
     upNextQueue.clear()
-    if (isExoInitialized && exo.currentMediaItem != null) rebuildQueueFromCurrentPosition()
+    syncQueueAfterTempEdit()
     notifyTemporaryQueueChange()
 }
 
@@ -153,7 +153,7 @@ internal fun TrackPlayerCore.reorderTemporaryTrackOnQueue(
     playNextStack.addAll(combined.take(pnSize))
     upNextQueue.addAll(combined.drop(pnSize))
 
-    if (isExoInitialized && exo.currentMediaItem != null) rebuildQueueFromCurrentPosition()
+    syncQueueAfterTempEdit()
     notifyTemporaryQueueChange()
     return true
 }
@@ -163,3 +163,14 @@ internal fun TrackPlayerCore.reorderTemporaryTrackOnQueue(
 suspend fun TrackPlayerCore.getPlayNextQueue(): List<TrackItem> = withPlayerContext { playNextStack.toList() }
 
 suspend fun TrackPlayerCore.getUpNextQueue(): List<TrackItem> = withPlayerContext { upNextQueue.toList() }
+
+/** Applies a temporary-queue edit to the live queue, or to the Cast queue still waiting on its URLs. */
+private fun TrackPlayerCore.syncQueueAfterTempEdit() {
+    if (!isExoInitialized) return
+    when {
+        exo.currentMediaItem != null -> rebuildQueueFromCurrentPosition()
+        // The first transition of an in-flight receiver load rebuilds the queue with this edit
+        isCastingField && castLoadInFlight -> Unit
+        isCastingField && castPendingList != null -> refreshCastPendingList()
+    }
+}

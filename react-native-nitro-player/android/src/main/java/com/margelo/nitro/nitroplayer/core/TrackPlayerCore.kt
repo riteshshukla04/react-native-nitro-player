@@ -154,6 +154,9 @@ class TrackPlayerCore private constructor(
     /** The current and upcoming tracks at connect, loaded once their Cast URLs arrive if the receiver started empty. */
     internal var castPendingList: List<TrackItem>? = null
 
+    /** A queue load was sent to the receiver and it hasn't reported it yet; the first item transition finishes it. */
+    internal var castLoadInFlight = false
+
     /** Asks again while the receiver waits on the current track's Cast URL, in case the app never answers. */
     internal val castUrlRetryRunnable = Runnable { checkUpcomingTracksForCastUrls(lookaheadCount) }
 
@@ -218,6 +221,8 @@ class TrackPlayerCore private constructor(
             exo.currentMediaItemIndex >= 0
         ) {
             rebuildQueueFromCurrentPosition()
+        } else if (isCastingField && castLoadInFlight) {
+            // The receiver hasn't reported its first load yet; that first transition rebuilds the queue with this edit
         } else if (isCastingField && castPendingList != null) {
             // Still waiting on Cast URLs for the connect-time queue: follow the edit, the check below asks for what's missing
             refreshCastPendingList()
