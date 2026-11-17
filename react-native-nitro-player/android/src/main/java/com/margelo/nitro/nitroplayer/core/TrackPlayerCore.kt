@@ -244,9 +244,11 @@ class TrackPlayerCore private constructor(
         if (isCastingField && castLoadInFlight) {
             // The receiver hasn't reported a queue change yet (its timeline is stale); that report applies this edit
             castRebuildDeferred = true
-            // A target still to be loaded was removed: wait on the track that took its place, not the one before it
-            if ((castReloadDeferred || castLoadChange == CastQueueChange.CLEAR) && anchor == AnchorOutcome.REMOVED && currentTracks.isNotEmpty()) {
+            // The target (loading, waited on, or still to be sent) was removed: the track that took its place becomes
+            // the target, sent on the report, and Next meanwhile steps on from it
+            if (anchor == AnchorOutcome.REMOVED && currentTemporaryType == TemporaryType.NONE && currentTracks.isNotEmpty()) {
                 currentTrackIndex = minOf(currentTrackIndex + 1, currentTracks.size - 1)
+                castReloadDeferred = true
             }
         } else if (::exo.isInitialized &&
             exo.currentMediaItem != null &&
@@ -256,6 +258,10 @@ class TrackPlayerCore private constructor(
         } else if (isCastingField && castPendingList != null) {
             // Still waiting on Cast URLs for the connect-time queue: follow the edit, the check below asks for what's missing
             refreshCastPendingList()
+        } else if (isCastWaitingOnUrl()) {
+            // The receiver sits empty waiting on the picked track's Cast URL: keep waiting, or move on to the track that
+            // took its place if it was removed (not back to the playlist's start)
+            if (anchor == AnchorOutcome.REMOVED) rebuildQueueAndPlayFromIndex(minOf(currentTrackIndex + 1, currentTracks.size - 1))
         } else {
             updatePlayerQueue(playlist.tracks)
         }

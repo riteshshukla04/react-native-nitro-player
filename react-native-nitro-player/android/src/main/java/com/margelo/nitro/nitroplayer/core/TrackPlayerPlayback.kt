@@ -54,7 +54,8 @@ suspend fun TrackPlayerCore.skipToNext() = withPlayerContext { skipToNextOnQueue
 internal fun TrackPlayerCore.skipToNextOnQueue() {
     // Until the receiver reports a queue change the timeline is stale (a jump would name an item it no longer
     // has), so step through the playlist instead: the next track becomes the target sent on that report
-    if (isCastingField && castLoadInFlight && playNextStack.isEmpty() && upNextQueue.isEmpty() && currentTracks.isNotEmpty()) {
+    // (likewise while the receiver sits empty waiting on a Cast URL: there is nothing to jump within)
+    if (isCastingField && (castLoadInFlight || isCastWaitingOnUrl()) && playNextStack.isEmpty() && upNextQueue.isEmpty() && currentTracks.isNotEmpty()) {
         val next = currentTrackIndex + 1
         if (next < currentTracks.size) {
             playFromIndexInternal(next)

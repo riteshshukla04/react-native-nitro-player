@@ -263,6 +263,10 @@ internal fun TrackPlayerCore.deferCastReload(): Boolean {
     return true
 }
 
+/** The receiver is empty, waiting on a picked track's app-supplied Cast URL. */
+internal fun TrackPlayerCore.isCastWaitingOnUrl(): Boolean =
+    isCastingField && suppliesCastUrls && lastCastWaitTrackId != null && isExoInitialized && exo.mediaItemCount == 0 && currentTracks.isNotEmpty()
+
 /** A load or clear in flight, which replaces the whole receiver queue. */
 internal fun TrackPlayerCore.castQueueReplaceInFlight(): Boolean = isCastingField && castLoadInFlight && castLoadChange != CastQueueChange.EDIT
 
