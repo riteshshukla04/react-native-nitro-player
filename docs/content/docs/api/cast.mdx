@@ -162,7 +162,7 @@ Cast.onCastStateChange((state, deviceName) => {
 | `state` | `CastState` | The new connection state |
 | `deviceName` | `string \| null` | Connected device name, `null` when not connected |
 
-Prefer the [hooks](#hooks) in React components — they manage subscriptions for you.
+Each call adds a listener, and there is no way to remove one, so call it once (for example at app start), not in a component effect. Prefer the [hooks](#hooks) in React components — they manage subscriptions for you, and calling `onCastStateChange` never affects them.
 
 ---
 

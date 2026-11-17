@@ -1742,5 +1742,25 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             const state = await waitForState(s => s.currentTrack?.id === '2', 30000);
             expect(state.currentTrack?.id).toBe('2');
         });
+
+        it('should resume when play() is called after a media session stop', async () => {
+            if (Platform.OS !== 'android') return;
+
+            await PlayerQueue.loadPlaylist(playlist1Id);
+            await TrackPlayer.playSong('1', playlist1Id);
+            await TrackPlayer.play();
+            expect((await waitForPlaying()).currentState).toBe('playing');
+
+            // Dismissing the notification sends the same stop: ExoPlayer goes idle, queue kept.
+            announceReady('stop');
+
+            const stopped = await waitForState(s => s.currentState === 'stopped', 30000);
+            expect(stopped.currentState).toBe('stopped');
+
+            await TrackPlayer.play();
+            const state = await waitForState(s => s.currentState === 'playing', 30000);
+            expect(state.currentState).toBe('playing');
+            expect(state.currentTrack?.id).toBe('1');
+        });
     });
 });
