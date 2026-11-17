@@ -277,8 +277,9 @@ extension TrackPlayerCore {
     guard isCasting, suppliesCastUrls, let cast = castManager else { return }
 
     let current = getCurrentTrack()
-    // The receiver waits on a current track without a Cast URL; ask again later in case this request goes unanswered
-    if let current, cast.castUrl(for: current.id) == nil {
+    let candidates = (current.map { [$0] } ?? []) + getNextTracksInternal(count: lookahead)
+    // The receiver's queue stops at the first track without a Cast URL; ask again later in case this request goes unanswered
+    if candidates.contains(where: { cast.castUrl(for: $0.id) == nil }) {
       let work = DispatchWorkItem { [weak self] in
         guard let self else { return }
         self.checkUpcomingTracksForCastUrls(lookahead: self.lookaheadCount)
@@ -288,7 +289,6 @@ extension TrackPlayerCore {
     }
 
     let now = ProcessInfo.processInfo.systemUptime
-    let candidates = (current.map { [$0] } ?? []) + getNextTracksInternal(count: lookahead)
     let ask = candidates
       .filter { cast.castUrl(for: $0.id) == nil }
       .filter { castUrlRequestedAt[$0.id].map { now - $0 >= Constants.castUrlRequestInterval } ?? true }

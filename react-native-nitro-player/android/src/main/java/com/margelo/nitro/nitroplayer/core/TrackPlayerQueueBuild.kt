@@ -83,6 +83,9 @@ internal fun TrackPlayerCore.rebuildQueueAndPlayFromIndex(index: Int) {
     if (index < 0 || index >= currentTracks.size) return
 
     if (isCastingField) {
+        // A new target replaces whatever was pending from the connect
+        castPendingList = null
+        castResume = null
         currentTrackIndex = index
         val target = currentTracks[index]
         val castTracks = castableUpcoming(currentTracks.subList(index, currentTracks.size))
@@ -259,6 +262,9 @@ internal fun TrackPlayerCore.updatePlayerQueue(tracks: List<TrackItem>) {
     currentTracks = tracks
 
     if (isCastingField) {
+        // A new queue replaces whatever was pending from the connect
+        castPendingList = null
+        castResume = null
         currentTrackIndex = 0
         val castTracks = castableUpcoming(tracks)
         if (castTracks.isEmpty()) {

@@ -64,7 +64,7 @@ extension TrackPlayerCore {
       let rawPosition = self.player?.currentTime().seconds ?? 0
       let position = rawPosition.isFinite ? rawPosition : 0
 
-      // A resumed session (network blip, relaunch with a live session) keeps its Cast URLs and receiver queue
+      // A resumed session (network blip, relaunch with a live session) keeps its Cast URLs instead of asking again
       if self.isCasting, self.suppliesCastUrls {
         self.syncCastQueueAfterCurrent()
         return
@@ -237,8 +237,10 @@ extension TrackPlayerCore {
     let urls = urls.filter { !$0.value.isEmpty }
     guard !urls.isEmpty, let cast = castManager else { return }
 
+    // The playing track keeps its URL (a fresh signed URL on a re-ask must not restart it); only upcoming ones reload
+    let playingId = getCurrentTrack()?.id
     let changedOnReceiver = cast.loadedTrackIds.contains { id in
-      urls[id].map { $0 != cast.castUrl(for: id) } ?? false
+      id != playingId && (urls[id].map { $0 != cast.castUrl(for: id) } ?? false)
     }
     cast.setCastUrls(urls)
     for id in urls.keys { castUrlRequestedAt.removeValue(forKey: id) }
