@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'react-native-harness';
+import { Platform } from 'react-native';
 import {
   Cast,
   AudioDevices,
@@ -8,8 +9,8 @@ import {
 } from 'react-native-nitro-player';
 import { sampleTracks1 } from '../../src/data/sampleTracks';
 
-// AudioDevices and AndroidAutoMediaLibrary are Android-only, AudioRoutePicker iOS-only;
-// the others are null on the wrong platform, so each suite checks before it runs.
+// AndroidAutoMediaLibrary is Android-only and AudioRoutePicker iOS-only (null on the other platform);
+// AudioDevices exists on both, but its device list is Android-only. Each suite checks before it runs.
 
 describe('Cast', () => {
   const wait = (ms = 300) => new Promise<void>(resolve => setTimeout(resolve, ms));
@@ -51,22 +52,76 @@ describe('Cast', () => {
   });
 });
 
-describe('AudioDevices (Android only)', () => {
+const OUTPUT_TYPES = [
+  'built_in_speaker',
+  'built_in_earpiece',
+  'wired_headphones',
+  'line_out',
+  'bluetooth',
+  'usb',
+  'airplay',
+  'car_audio',
+  'hdmi',
+  'unknown',
+];
+
+describe('AudioDevices: current outputs', () => {
+  const wait = (ms = 300) => new Promise<void>(resolve => setTimeout(resolve, ms));
+
+  it('should report the output media plays through', () => {
+    const outputs = AudioDevices.getCurrentOutputs();
+
+    expect(outputs.length > 0).toBe(true);
+    for (const output of outputs) {
+      expect(output.id.length > 0).toBe(true);
+      expect(output.name.length > 0).toBe(true);
+      expect(OUTPUT_TYPES).toContain(output.type);
+    }
+  });
+
+  it('should report the same outputs on every read', () => {
+    const ids = (list: { id: string }[]) => list.map(o => o.id).join(',');
+
+    expect(ids(AudioDevices.getCurrentOutputs())).toBe(
+      ids(AudioDevices.getCurrentOutputs())
+    );
+  });
+
+  it('should stay quiet after registering while the outputs are unchanged', async () => {
+    // Android reports every connected device as added on registration; that must not count as a change
+    const reasons: string[] = [];
+    AudioDevices.onOutputsChange((_outputs, reason) => {
+      reasons.push(reason);
+    });
+    await wait(1000);
+
+    expect(reasons.length).toBe(0);
+  });
+
+  it('should have no devices to select on iOS', async () => {
+    if (Platform.OS !== 'ios') return;
+
+    expect(AudioDevices.getAudioDevices().length).toBe(0);
+    await expect(AudioDevices.setAudioDevice(1)).rejects.toBeDefined();
+  });
+});
+
+describe('AudioDevices: device list (Android only)', () => {
   it('should list at least the built-in output', () => {
-    if (!AudioDevices) return;
+    if (Platform.OS !== 'android') return;
 
     expect(AudioDevices.getAudioDevices().length > 0).toBe(true);
   });
 
   it('should keep at most one device active', () => {
-    if (!AudioDevices) return;
+    if (Platform.OS !== 'android') return;
 
     const active = AudioDevices.getAudioDevices().filter(d => d.isActive);
     expect(active.length <= 1).toBe(true);
   });
 
   it('should reject an unknown device id and leave the selection alone', async () => {
-    if (!AudioDevices) return;
+    if (Platform.OS !== 'android') return;
 
     const before = AudioDevices.getAudioDevices().find(d => d.isActive)?.id;
     await expect(AudioDevices.setAudioDevice(999999)).rejects.toBeDefined();

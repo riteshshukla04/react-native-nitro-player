@@ -9,6 +9,7 @@ package com.margelo.nitro.nitroplayer
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 
 
 /**
@@ -34,6 +35,26 @@ data class TimedMetadata(
   val artworkUrl: String?
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is TimedMetadata) return false
+    return Objects.deepEquals(this.title, other.title)
+      && Objects.deepEquals(this.artist, other.artist)
+      && Objects.deepEquals(this.album, other.album)
+      && Objects.deepEquals(this.url, other.url)
+      && Objects.deepEquals(this.artworkUrl, other.artworkUrl)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      title,
+      artist,
+      album,
+      url,
+      artworkUrl
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

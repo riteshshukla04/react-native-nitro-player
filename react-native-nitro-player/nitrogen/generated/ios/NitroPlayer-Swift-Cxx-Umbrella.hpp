@@ -48,6 +48,8 @@ namespace margelo::nitro::nitroplayer { struct EqualizerPreset; }
 namespace margelo::nitro::nitroplayer { struct EqualizerState; }
 // Forward declaration of `GainRange` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct GainRange; }
+// Forward declaration of `HybridAudioDevicesSpec` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { class HybridAudioDevicesSpec; }
 // Forward declaration of `HybridAudioRoutePickerSpec` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { class HybridAudioRoutePickerSpec; }
 // Forward declaration of `HybridCarPlaySpec` to properly resolve imports.
@@ -94,6 +96,14 @@ namespace margelo::nitro::nitroplayer { enum class RepeatMode; }
 namespace margelo::nitro::nitroplayer { struct ShufflePlaylistOptions; }
 // Forward declaration of `StorageLocation` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class StorageLocation; }
+// Forward declaration of `TAudioDevice` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct TAudioDevice; }
+// Forward declaration of `TAudioOutputChangeReason` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class TAudioOutputChangeReason; }
+// Forward declaration of `TAudioOutputType` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class TAudioOutputType; }
+// Forward declaration of `TAudioOutput` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct TAudioOutput; }
 // Forward declaration of `TimedMetadata` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct TimedMetadata; }
 // Forward declaration of `TrackItem` to properly resolve imports.
@@ -122,6 +132,7 @@ namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 #include "EqualizerPreset.hpp"
 #include "EqualizerState.hpp"
 #include "GainRange.hpp"
+#include "HybridAudioDevicesSpec.hpp"
 #include "HybridAudioRoutePickerSpec.hpp"
 #include "HybridCarPlaySpec.hpp"
 #include "HybridCastSpec.hpp"
@@ -145,6 +156,10 @@ namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 #include "RepeatMode.hpp"
 #include "ShufflePlaylistOptions.hpp"
 #include "StorageLocation.hpp"
+#include "TAudioDevice.hpp"
+#include "TAudioOutput.hpp"
+#include "TAudioOutputChangeReason.hpp"
+#include "TAudioOutputType.hpp"
 #include "TimedMetadata.hpp"
 #include "TrackItem.hpp"
 #include "TrackPlayerState.hpp"
@@ -171,6 +186,8 @@ namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 #include <NitroModules/DateToChronoDate.hpp>
 
 // Forward declarations of Swift defined types
+// Forward declaration of `HybridAudioDevicesSpec_cxx` to properly resolve imports.
+namespace NitroPlayer { class HybridAudioDevicesSpec_cxx; }
 // Forward declaration of `HybridAudioRoutePickerSpec_cxx` to properly resolve imports.
 namespace NitroPlayer { class HybridAudioRoutePickerSpec_cxx; }
 // Forward declaration of `HybridCarPlaySpec_cxx` to properly resolve imports.

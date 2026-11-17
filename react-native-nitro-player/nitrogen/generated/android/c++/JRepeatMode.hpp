@@ -15,7 +15,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ enum "RepeatMode" and the the Kotlin enum "RepeatMode".
+   * The C++ JNI bridge between the C++ enum "RepeatMode" and the Kotlin enum "RepeatMode".
    */
   struct JRepeatMode final: public jni::JavaClass<JRepeatMode> {
   public:

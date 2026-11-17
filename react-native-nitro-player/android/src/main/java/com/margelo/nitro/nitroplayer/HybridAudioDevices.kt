@@ -10,7 +10,9 @@ import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
 import com.margelo.nitro.NitroModules
 import com.margelo.nitro.core.Promise
+import com.margelo.nitro.nitroplayer.audio.AudioOutputMonitor
 import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
+import java.util.concurrent.CopyOnWriteArrayList
 
 @DoNotStrip
 @Keep
@@ -99,6 +101,21 @@ class HybridAudioDevices : HybridAudioDevicesSpec() {
                 throw e
             }
         }
+
+    // ── Current outputs ────────────────────────────────────────────────────
+    private val outputListenerIds = CopyOnWriteArrayList<Long>()
+
+    override fun getCurrentOutputs(): Array<TAudioOutput> = AudioOutputMonitor.currentOutputs()
+
+    override fun onOutputsChange(callback: (outputs: Array<TAudioOutput>, reason: TAudioOutputChangeReason) -> Unit) {
+        outputListenerIds.add(AudioOutputMonitor.addListener(callback))
+    }
+
+    override fun dispose() {
+        super.dispose()
+        outputListenerIds.forEach { AudioOutputMonitor.removeListener(it) }
+        outputListenerIds.clear()
+    }
 
     private fun getDeviceTypeName(type: Int): String =
         when (type) {

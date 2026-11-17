@@ -9,6 +9,7 @@ package com.margelo.nitro.nitroplayer
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 import com.margelo.nitro.core.NullType
 
 /**
@@ -28,6 +29,22 @@ data class EqualizerState(
   val currentPreset: Variant_NullType_String?
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is EqualizerState) return false
+    return Objects.deepEquals(this.enabled, other.enabled)
+      && Objects.deepEquals(this.bands, other.bands)
+      && Objects.deepEquals(this.currentPreset, other.currentPreset)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      enabled,
+      bands,
+      currentPreset
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

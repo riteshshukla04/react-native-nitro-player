@@ -19,7 +19,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "NotificationButtonState" and the the Kotlin data class "NotificationButtonState".
+   * The C++ JNI bridge between the C++ struct "NotificationButtonState" and the Kotlin data class "NotificationButtonState".
    */
   struct JNotificationButtonState final: public jni::JavaClass<JNotificationButtonState> {
   public:
@@ -41,16 +41,16 @@ namespace margelo::nitro::nitroplayer {
       jboolean isActive = this->getFieldValue(fieldIsActive);
       return NotificationButtonState(
         buttonId->toStdString(),
-        trackIds != nullptr ? std::make_optional([&]() {
-          size_t __size = trackIds->size();
+        trackIds != nullptr ? std::make_optional([&](auto&& __input) {
+          size_t __size = __input->size();
           std::vector<std::string> __vector;
           __vector.reserve(__size);
           for (size_t __i = 0; __i < __size; __i++) {
-            auto __element = trackIds->getElement(__i);
+            auto __element = __input->getElement(__i);
             __vector.push_back(__element->toStdString());
           }
           return __vector;
-        }()) : std::nullopt,
+        }(trackIds)) : std::nullopt,
         static_cast<bool>(isActive)
       );
     }
@@ -67,16 +67,16 @@ namespace margelo::nitro::nitroplayer {
       return create(
         clazz,
         jni::make_jstring(value.buttonId),
-        value.trackIds.has_value() ? [&]() {
-          size_t __size = value.trackIds.value().size();
+        value.trackIds.has_value() ? [&](auto&& __input) {
+          size_t __size = __input.size();
           jni::local_ref<jni::JArrayClass<jni::JString>> __array = jni::JArrayClass<jni::JString>::newArray(__size);
           for (size_t __i = 0; __i < __size; __i++) {
-            const auto& __element = value.trackIds.value()[__i];
+            const auto& __element = __input[__i];
             auto __elementJni = jni::make_jstring(__element);
             __array->setElement(__i, *__elementJni);
           }
           return __array;
-        }() : nullptr,
+        }(value.trackIds.value()) : nullptr,
         value.isActive
       );
     }

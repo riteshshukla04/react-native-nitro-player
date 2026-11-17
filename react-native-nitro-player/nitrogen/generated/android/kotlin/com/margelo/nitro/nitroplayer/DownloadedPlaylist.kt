@@ -9,6 +9,7 @@ package com.margelo.nitro.nitroplayer
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 
 
 /**
@@ -37,6 +38,28 @@ data class DownloadedPlaylist(
   val isComplete: Boolean
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is DownloadedPlaylist) return false
+    return Objects.deepEquals(this.playlistId, other.playlistId)
+      && Objects.deepEquals(this.originalPlaylist, other.originalPlaylist)
+      && Objects.deepEquals(this.downloadedTracks, other.downloadedTracks)
+      && Objects.deepEquals(this.totalSize, other.totalSize)
+      && Objects.deepEquals(this.downloadedAt, other.downloadedAt)
+      && Objects.deepEquals(this.isComplete, other.isComplete)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      playlistId,
+      originalPlaylist,
+      downloadedTracks,
+      totalSize,
+      downloadedAt,
+      isComplete
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

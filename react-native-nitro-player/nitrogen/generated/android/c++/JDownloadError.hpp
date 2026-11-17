@@ -19,7 +19,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "DownloadError" and the the Kotlin data class "DownloadError".
+   * The C++ JNI bridge between the C++ struct "DownloadError" and the Kotlin data class "DownloadError".
    */
   struct JDownloadError final: public jni::JavaClass<JDownloadError> {
   public:

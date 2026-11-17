@@ -17,7 +17,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "ShufflePlaylistOptions" and the the Kotlin data class "ShufflePlaylistOptions".
+   * The C++ JNI bridge between the C++ struct "ShufflePlaylistOptions" and the Kotlin data class "ShufflePlaylistOptions".
    */
   struct JShufflePlaylistOptions final: public jni::JavaClass<JShufflePlaylistOptions> {
   public:

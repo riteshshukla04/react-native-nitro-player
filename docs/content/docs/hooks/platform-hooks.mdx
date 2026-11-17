@@ -1,6 +1,6 @@
 ---
 title: Platform Hooks
-description: Hooks for Android Auto connection and audio device management
+description: Hooks for Android Auto connection, audio outputs and audio device management
 ---
 
 ## useAndroidAutoConnection
@@ -27,9 +27,35 @@ function AutoConnectionStatus() {
 
 ---
 
+## useAudioOutputs
+
+The devices media plays through, updated when they change: Bluetooth headphones connect, headphones are unplugged, and so on. **iOS and Android.** Backed by [`AudioDevices.getCurrentOutputs()` and `onOutputsChange()`](/docs/api/platform-specific#audiodevices).
+
+```tsx
+import { useAudioOutputs } from 'react-native-nitro-player';
+
+function OutputLabel() {
+  const { outputs } = useAudioOutputs();
+  const output = outputs[0];
+
+  if (!output) return null;
+
+  return <Text>Playing on {output.name}</Text>;
+}
+```
+
+### Return Type
+
+| Field | Type | Description |
+|---|---|---|
+| `outputs` | `TAudioOutput[]` | The devices media plays through right now, usually one |
+| `isReady` | `boolean` | `true` once the outputs have been read from native |
+
+---
+
 ## useAudioDevices
 
-List available audio output devices. **Android only.** Polls for device changes every 2 seconds. 
+List available audio output devices. **Android only**; returns an empty list on iOS. Polls for device changes every 2 seconds. 
 
 *This is highly beta feature and is not recommended to use in production unless you have tested it in all the OEMs yourself.*
 
@@ -45,7 +71,7 @@ function DevicePicker() {
       data={devices}
       renderItem={({ item }) => (
         <TouchableOpacity
-          onPress={() => AudioDevices?.setAudioDevice(item.id)}
+          onPress={() => AudioDevices.setAudioDevice(item.id)}
           style={{ opacity: item.isActive ? 1 : 0.6 }}
         >
           <Text>

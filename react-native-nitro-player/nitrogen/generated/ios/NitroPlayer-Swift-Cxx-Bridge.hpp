@@ -48,6 +48,8 @@ namespace margelo::nitro::nitroplayer { struct EqualizerPreset; }
 namespace margelo::nitro::nitroplayer { struct EqualizerState; }
 // Forward declaration of `GainRange` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct GainRange; }
+// Forward declaration of `HybridAudioDevicesSpec` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { class HybridAudioDevicesSpec; }
 // Forward declaration of `HybridAudioRoutePickerSpec` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { class HybridAudioRoutePickerSpec; }
 // Forward declaration of `HybridCarPlaySpec` to properly resolve imports.
@@ -90,6 +92,14 @@ namespace margelo::nitro::nitroplayer { enum class RepeatMode; }
 namespace margelo::nitro::nitroplayer { struct ShufflePlaylistOptions; }
 // Forward declaration of `StorageLocation` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { enum class StorageLocation; }
+// Forward declaration of `TAudioDevice` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct TAudioDevice; }
+// Forward declaration of `TAudioOutputChangeReason` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class TAudioOutputChangeReason; }
+// Forward declaration of `TAudioOutputType` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { enum class TAudioOutputType; }
+// Forward declaration of `TAudioOutput` to properly resolve imports.
+namespace margelo::nitro::nitroplayer { struct TAudioOutput; }
 // Forward declaration of `TimedMetadata` to properly resolve imports.
 namespace margelo::nitro::nitroplayer { struct TimedMetadata; }
 // Forward declaration of `TrackItem` to properly resolve imports.
@@ -98,6 +108,8 @@ namespace margelo::nitro::nitroplayer { struct TrackItem; }
 namespace margelo::nitro::nitroplayer { enum class TrackPlayerState; }
 
 // Forward declarations of Swift defined types
+// Forward declaration of `HybridAudioDevicesSpec_cxx` to properly resolve imports.
+namespace NitroPlayer { class HybridAudioDevicesSpec_cxx; }
 // Forward declaration of `HybridAudioRoutePickerSpec_cxx` to properly resolve imports.
 namespace NitroPlayer { class HybridAudioRoutePickerSpec_cxx; }
 // Forward declaration of `HybridCarPlaySpec_cxx` to properly resolve imports.
@@ -134,6 +146,7 @@ namespace NitroPlayer { class HybridTrackPlayerSpec_cxx; }
 #include "EqualizerPreset.hpp"
 #include "EqualizerState.hpp"
 #include "GainRange.hpp"
+#include "HybridAudioDevicesSpec.hpp"
 #include "HybridAudioRoutePickerSpec.hpp"
 #include "HybridCarPlaySpec.hpp"
 #include "HybridCastSpec.hpp"
@@ -155,6 +168,10 @@ namespace NitroPlayer { class HybridTrackPlayerSpec_cxx; }
 #include "RepeatMode.hpp"
 #include "ShufflePlaylistOptions.hpp"
 #include "StorageLocation.hpp"
+#include "TAudioDevice.hpp"
+#include "TAudioOutput.hpp"
+#include "TAudioOutputChangeReason.hpp"
+#include "TAudioOutputType.hpp"
 #include "TimedMetadata.hpp"
 #include "TrackItem.hpp"
 #include "TrackPlayerState.hpp"
@@ -178,6 +195,154 @@ namespace NitroPlayer { class HybridTrackPlayerSpec_cxx; }
  */
 namespace margelo::nitro::nitroplayer::bridge::swift {
 
+  // pragma MARK: std::vector<TAudioDevice>
+  /**
+   * Specialized version of `std::vector<TAudioDevice>`.
+   */
+  using std__vector_TAudioDevice_ = std::vector<TAudioDevice>;
+  inline std::vector<TAudioDevice> create_std__vector_TAudioDevice_(size_t size) noexcept {
+    std::vector<TAudioDevice> vector;
+    vector.reserve(size);
+    return vector;
+  }
+  
+  // pragma MARK: std::shared_ptr<Promise<void>>
+  /**
+   * Specialized version of `std::shared_ptr<Promise<void>>`.
+   */
+  using std__shared_ptr_Promise_void__ = std::shared_ptr<Promise<void>>;
+  inline std::shared_ptr<Promise<void>> create_std__shared_ptr_Promise_void__() noexcept {
+    return Promise<void>::create();
+  }
+  inline PromiseHolder<void> wrap_std__shared_ptr_Promise_void__(std::shared_ptr<Promise<void>> promise) noexcept {
+    return PromiseHolder<void>(std::move(promise));
+  }
+  
+  // pragma MARK: std::function<void()>
+  /**
+   * Specialized version of `std::function<void()>`.
+   */
+  using Func_void = std::function<void()>;
+  /**
+   * Wrapper class for a `std::function<void()>`, this can be used from Swift.
+   */
+  class Func_void_Wrapper final {
+  public:
+    explicit Func_void_Wrapper(std::function<void()>&& func): _function(std::make_unique<std::function<void()>>(std::move(func))) {}
+    inline void call() const noexcept {
+      _function->operator()();
+    }
+  private:
+    std::unique_ptr<std::function<void()>> _function;
+  } SWIFT_NONCOPYABLE;
+  Func_void create_Func_void(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_Wrapper wrap_Func_void(Func_void value) noexcept {
+    return Func_void_Wrapper(std::move(value));
+  }
+  
+  // pragma MARK: std::function<void(const std::exception_ptr& /* error */)>
+  /**
+   * Specialized version of `std::function<void(const std::exception_ptr&)>`.
+   */
+  using Func_void_std__exception_ptr = std::function<void(const std::exception_ptr& /* error */)>;
+  /**
+   * Wrapper class for a `std::function<void(const std::exception_ptr& / * error * /)>`, this can be used from Swift.
+   */
+  class Func_void_std__exception_ptr_Wrapper final {
+  public:
+    explicit Func_void_std__exception_ptr_Wrapper(std::function<void(const std::exception_ptr& /* error */)>&& func): _function(std::make_unique<std::function<void(const std::exception_ptr& /* error */)>>(std::move(func))) {}
+    inline void call(std::exception_ptr error) const noexcept {
+      _function->operator()(error);
+    }
+  private:
+    std::unique_ptr<std::function<void(const std::exception_ptr& /* error */)>> _function;
+  } SWIFT_NONCOPYABLE;
+  Func_void_std__exception_ptr create_Func_void_std__exception_ptr(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_std__exception_ptr_Wrapper wrap_Func_void_std__exception_ptr(Func_void_std__exception_ptr value) noexcept {
+    return Func_void_std__exception_ptr_Wrapper(std::move(value));
+  }
+  
+  // pragma MARK: std::vector<TAudioOutput>
+  /**
+   * Specialized version of `std::vector<TAudioOutput>`.
+   */
+  using std__vector_TAudioOutput_ = std::vector<TAudioOutput>;
+  inline std::vector<TAudioOutput> create_std__vector_TAudioOutput_(size_t size) noexcept {
+    std::vector<TAudioOutput> vector;
+    vector.reserve(size);
+    return vector;
+  }
+  
+  // pragma MARK: std::function<void(const std::vector<TAudioOutput>& /* outputs */, TAudioOutputChangeReason /* reason */)>
+  /**
+   * Specialized version of `std::function<void(const std::vector<TAudioOutput>&, TAudioOutputChangeReason)>`.
+   */
+  using Func_void_std__vector_TAudioOutput__TAudioOutputChangeReason = std::function<void(const std::vector<TAudioOutput>& /* outputs */, TAudioOutputChangeReason /* reason */)>;
+  /**
+   * Wrapper class for a `std::function<void(const std::vector<TAudioOutput>& / * outputs * /, TAudioOutputChangeReason / * reason * /)>`, this can be used from Swift.
+   */
+  class Func_void_std__vector_TAudioOutput__TAudioOutputChangeReason_Wrapper final {
+  public:
+    explicit Func_void_std__vector_TAudioOutput__TAudioOutputChangeReason_Wrapper(std::function<void(const std::vector<TAudioOutput>& /* outputs */, TAudioOutputChangeReason /* reason */)>&& func): _function(std::make_unique<std::function<void(const std::vector<TAudioOutput>& /* outputs */, TAudioOutputChangeReason /* reason */)>>(std::move(func))) {}
+    inline void call(std::vector<TAudioOutput> outputs, int reason) const noexcept {
+      _function->operator()(outputs, static_cast<TAudioOutputChangeReason>(reason));
+    }
+  private:
+    std::unique_ptr<std::function<void(const std::vector<TAudioOutput>& /* outputs */, TAudioOutputChangeReason /* reason */)>> _function;
+  } SWIFT_NONCOPYABLE;
+  Func_void_std__vector_TAudioOutput__TAudioOutputChangeReason create_Func_void_std__vector_TAudioOutput__TAudioOutputChangeReason(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_std__vector_TAudioOutput__TAudioOutputChangeReason_Wrapper wrap_Func_void_std__vector_TAudioOutput__TAudioOutputChangeReason(Func_void_std__vector_TAudioOutput__TAudioOutputChangeReason value) noexcept {
+    return Func_void_std__vector_TAudioOutput__TAudioOutputChangeReason_Wrapper(std::move(value));
+  }
+  
+  // pragma MARK: std::shared_ptr<HybridAudioDevicesSpec>
+  /**
+   * Specialized version of `std::shared_ptr<HybridAudioDevicesSpec>`.
+   */
+  using std__shared_ptr_HybridAudioDevicesSpec_ = std::shared_ptr<HybridAudioDevicesSpec>;
+  std::shared_ptr<HybridAudioDevicesSpec> create_std__shared_ptr_HybridAudioDevicesSpec_(void* NON_NULL swiftUnsafePointer) noexcept;
+  void* NON_NULL get_std__shared_ptr_HybridAudioDevicesSpec_(std__shared_ptr_HybridAudioDevicesSpec_ cppType);
+  
+  // pragma MARK: std::weak_ptr<HybridAudioDevicesSpec>
+  using std__weak_ptr_HybridAudioDevicesSpec_ = std::weak_ptr<HybridAudioDevicesSpec>;
+  inline std__weak_ptr_HybridAudioDevicesSpec_ weakify_std__shared_ptr_HybridAudioDevicesSpec_(const std::shared_ptr<HybridAudioDevicesSpec>& strong) noexcept { return strong; }
+  
+  // pragma MARK: Result<std::vector<TAudioDevice>>
+  using Result_std__vector_TAudioDevice__ = Result<std::vector<TAudioDevice>>;
+  inline Result_std__vector_TAudioDevice__ create_Result_std__vector_TAudioDevice__(const std::vector<TAudioDevice>& value) noexcept {
+    return Result<std::vector<TAudioDevice>>::withValue(value);
+  }
+  inline Result_std__vector_TAudioDevice__ create_Result_std__vector_TAudioDevice__(const std::exception_ptr& error) noexcept {
+    return Result<std::vector<TAudioDevice>>::withError(error);
+  }
+  
+  // pragma MARK: Result<std::shared_ptr<Promise<void>>>
+  using Result_std__shared_ptr_Promise_void___ = Result<std::shared_ptr<Promise<void>>>;
+  inline Result_std__shared_ptr_Promise_void___ create_Result_std__shared_ptr_Promise_void___(const std::shared_ptr<Promise<void>>& value) noexcept {
+    return Result<std::shared_ptr<Promise<void>>>::withValue(value);
+  }
+  inline Result_std__shared_ptr_Promise_void___ create_Result_std__shared_ptr_Promise_void___(const std::exception_ptr& error) noexcept {
+    return Result<std::shared_ptr<Promise<void>>>::withError(error);
+  }
+  
+  // pragma MARK: Result<std::vector<TAudioOutput>>
+  using Result_std__vector_TAudioOutput__ = Result<std::vector<TAudioOutput>>;
+  inline Result_std__vector_TAudioOutput__ create_Result_std__vector_TAudioOutput__(const std::vector<TAudioOutput>& value) noexcept {
+    return Result<std::vector<TAudioOutput>>::withValue(value);
+  }
+  inline Result_std__vector_TAudioOutput__ create_Result_std__vector_TAudioOutput__(const std::exception_ptr& error) noexcept {
+    return Result<std::vector<TAudioOutput>>::withError(error);
+  }
+  
+  // pragma MARK: Result<void>
+  using Result_void_ = Result<void>;
+  inline Result_void_ create_Result_void_() noexcept {
+    return Result<void>::withValue();
+  }
+  inline Result_void_ create_Result_void_(const std::exception_ptr& error) noexcept {
+    return Result<void>::withError(error);
+  }
+  
   // pragma MARK: std::shared_ptr<HybridAudioRoutePickerSpec>
   /**
    * Specialized version of `std::shared_ptr<HybridAudioRoutePickerSpec>`.
@@ -189,15 +354,6 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
   // pragma MARK: std::weak_ptr<HybridAudioRoutePickerSpec>
   using std__weak_ptr_HybridAudioRoutePickerSpec_ = std::weak_ptr<HybridAudioRoutePickerSpec>;
   inline std__weak_ptr_HybridAudioRoutePickerSpec_ weakify_std__shared_ptr_HybridAudioRoutePickerSpec_(const std::shared_ptr<HybridAudioRoutePickerSpec>& strong) noexcept { return strong; }
-  
-  // pragma MARK: Result<void>
-  using Result_void_ = Result<void>;
-  inline Result_void_ create_Result_void_() noexcept {
-    return Result<void>::withValue();
-  }
-  inline Result_void_ create_Result_void_(const std::exception_ptr& error) noexcept {
-    return Result<void>::withError(error);
-  }
   
   // pragma MARK: std::optional<std::string>
   /**
@@ -360,62 +516,6 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
     return Result<bool>::withError(error);
   }
   
-  // pragma MARK: std::shared_ptr<Promise<void>>
-  /**
-   * Specialized version of `std::shared_ptr<Promise<void>>`.
-   */
-  using std__shared_ptr_Promise_void__ = std::shared_ptr<Promise<void>>;
-  inline std::shared_ptr<Promise<void>> create_std__shared_ptr_Promise_void__() noexcept {
-    return Promise<void>::create();
-  }
-  inline PromiseHolder<void> wrap_std__shared_ptr_Promise_void__(std::shared_ptr<Promise<void>> promise) noexcept {
-    return PromiseHolder<void>(std::move(promise));
-  }
-  
-  // pragma MARK: std::function<void()>
-  /**
-   * Specialized version of `std::function<void()>`.
-   */
-  using Func_void = std::function<void()>;
-  /**
-   * Wrapper class for a `std::function<void()>`, this can be used from Swift.
-   */
-  class Func_void_Wrapper final {
-  public:
-    explicit Func_void_Wrapper(std::function<void()>&& func): _function(std::make_unique<std::function<void()>>(std::move(func))) {}
-    inline void call() const noexcept {
-      _function->operator()();
-    }
-  private:
-    std::unique_ptr<std::function<void()>> _function;
-  } SWIFT_NONCOPYABLE;
-  Func_void create_Func_void(void* NON_NULL swiftClosureWrapper) noexcept;
-  inline Func_void_Wrapper wrap_Func_void(Func_void value) noexcept {
-    return Func_void_Wrapper(std::move(value));
-  }
-  
-  // pragma MARK: std::function<void(const std::exception_ptr& /* error */)>
-  /**
-   * Specialized version of `std::function<void(const std::exception_ptr&)>`.
-   */
-  using Func_void_std__exception_ptr = std::function<void(const std::exception_ptr& /* error */)>;
-  /**
-   * Wrapper class for a `std::function<void(const std::exception_ptr& / * error * /)>`, this can be used from Swift.
-   */
-  class Func_void_std__exception_ptr_Wrapper final {
-  public:
-    explicit Func_void_std__exception_ptr_Wrapper(std::function<void(const std::exception_ptr& /* error */)>&& func): _function(std::make_unique<std::function<void(const std::exception_ptr& /* error */)>>(std::move(func))) {}
-    inline void call(std::exception_ptr error) const noexcept {
-      _function->operator()(error);
-    }
-  private:
-    std::unique_ptr<std::function<void(const std::exception_ptr& /* error */)>> _function;
-  } SWIFT_NONCOPYABLE;
-  Func_void_std__exception_ptr create_Func_void_std__exception_ptr(void* NON_NULL swiftClosureWrapper) noexcept;
-  inline Func_void_std__exception_ptr_Wrapper wrap_Func_void_std__exception_ptr(Func_void_std__exception_ptr value) noexcept {
-    return Func_void_std__exception_ptr_Wrapper(std::move(value));
-  }
-  
   // pragma MARK: std::function<void(CastState /* state */, const std::optional<std::variant<nitro::NullType, std::string>>& /* deviceName */)>
   /**
    * Specialized version of `std::function<void(CastState, const std::optional<std::variant<nitro::NullType, std::string>>&)>`.
@@ -507,15 +607,6 @@ namespace margelo::nitro::nitroplayer::bridge::swift {
   // pragma MARK: std::weak_ptr<HybridCastSpec>
   using std__weak_ptr_HybridCastSpec_ = std::weak_ptr<HybridCastSpec>;
   inline std__weak_ptr_HybridCastSpec_ weakify_std__shared_ptr_HybridCastSpec_(const std::shared_ptr<HybridCastSpec>& strong) noexcept { return strong; }
-  
-  // pragma MARK: Result<std::shared_ptr<Promise<void>>>
-  using Result_std__shared_ptr_Promise_void___ = Result<std::shared_ptr<Promise<void>>>;
-  inline Result_std__shared_ptr_Promise_void___ create_Result_std__shared_ptr_Promise_void___(const std::shared_ptr<Promise<void>>& value) noexcept {
-    return Result<std::shared_ptr<Promise<void>>>::withValue(value);
-  }
-  inline Result_std__shared_ptr_Promise_void___ create_Result_std__shared_ptr_Promise_void___(const std::exception_ptr& error) noexcept {
-    return Result<std::shared_ptr<Promise<void>>>::withError(error);
-  }
   
   // pragma MARK: Result<CastState>
   using Result_CastState_ = Result<CastState>;

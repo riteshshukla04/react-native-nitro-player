@@ -20,6 +20,7 @@
 #include "JFunc_void_std__string.hpp"
 #include "JFunc_void.hpp"
 #include "JHybridAudioDevicesSpec.hpp"
+#include "JFunc_void_std__vector_TAudioOutput__TAudioOutputChangeReason.hpp"
 #include "JHybridCastSpec.hpp"
 #include "JFunc_void_CastState_std__optional_std__variant_nitro__NullType__std__string__.hpp"
 #include "JFunc_void_std__vector_TrackItem_.hpp"
@@ -121,6 +122,7 @@ void registerAllNatives() {
   margelo::nitro::nitroplayer::JFunc_void_std__string_cxx::registerNatives();
   margelo::nitro::nitroplayer::JFunc_void_cxx::registerNatives();
   margelo::nitro::nitroplayer::JHybridAudioDevicesSpec::CxxPart::registerNatives();
+  margelo::nitro::nitroplayer::JFunc_void_std__vector_TAudioOutput__TAudioOutputChangeReason_cxx::registerNatives();
   margelo::nitro::nitroplayer::JHybridCastSpec::CxxPart::registerNatives();
   margelo::nitro::nitroplayer::JFunc_void_CastState_std__optional_std__variant_nitro__NullType__std__string___cxx::registerNatives();
   margelo::nitro::nitroplayer::JFunc_void_std__vector_TrackItem__cxx::registerNatives();

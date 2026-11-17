@@ -15,7 +15,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ enum "CurrentPlayingType" and the the Kotlin enum "CurrentPlayingType".
+   * The C++ JNI bridge between the C++ enum "CurrentPlayingType" and the Kotlin enum "CurrentPlayingType".
    */
   struct JCurrentPlayingType final: public jni::JavaClass<JCurrentPlayingType> {
   public:

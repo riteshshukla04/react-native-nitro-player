@@ -9,6 +9,7 @@ package com.margelo.nitro.nitroplayer
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 
 
 /**
@@ -31,6 +32,24 @@ data class EqualizerBand(
   val frequencyLabel: String
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is EqualizerBand) return false
+    return Objects.deepEquals(this.index, other.index)
+      && Objects.deepEquals(this.centerFrequency, other.centerFrequency)
+      && Objects.deepEquals(this.gainDb, other.gainDb)
+      && Objects.deepEquals(this.frequencyLabel, other.frequencyLabel)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      index,
+      centerFrequency,
+      gainDb,
+      frequencyLabel
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

@@ -9,6 +9,7 @@ package com.margelo.nitro.nitroplayer
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 
 
 /**
@@ -31,6 +32,24 @@ data class DownloadError(
   val isRetryable: Boolean
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is DownloadError) return false
+    return Objects.deepEquals(this.code, other.code)
+      && Objects.deepEquals(this.message, other.message)
+      && Objects.deepEquals(this.reason, other.reason)
+      && Objects.deepEquals(this.isRetryable, other.isRetryable)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      code,
+      message,
+      reason,
+      isRetryable
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

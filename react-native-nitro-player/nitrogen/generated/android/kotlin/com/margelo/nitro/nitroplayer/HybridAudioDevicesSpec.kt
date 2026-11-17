@@ -36,6 +36,19 @@ abstract class HybridAudioDevicesSpec: HybridObject() {
   @DoNotStrip
   @Keep
   abstract fun setAudioDevice(deviceId: Double): Promise<Unit>
+  
+  @DoNotStrip
+  @Keep
+  abstract fun getCurrentOutputs(): Array<TAudioOutput>
+  
+  abstract fun onOutputsChange(callback: (outputs: Array<TAudioOutput>, reason: TAudioOutputChangeReason) -> Unit): Unit
+  
+  @DoNotStrip
+  @Keep
+  private fun onOutputsChange_cxx(callback: Func_void_std__vector_TAudioOutput__TAudioOutputChangeReason): Unit {
+    val __result = onOutputsChange(callback)
+    return __result
+  }
 
   // Default implementation of `HybridObject.toString()`
   override fun toString(): String {

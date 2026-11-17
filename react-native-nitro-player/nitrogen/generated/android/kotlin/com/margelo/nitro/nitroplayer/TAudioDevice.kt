@@ -9,6 +9,7 @@ package com.margelo.nitro.nitroplayer
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 
 
 /**
@@ -31,6 +32,24 @@ data class TAudioDevice(
   val isActive: Boolean
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is TAudioDevice) return false
+    return Objects.deepEquals(this.id, other.id)
+      && Objects.deepEquals(this.name, other.name)
+      && Objects.deepEquals(this.type, other.type)
+      && Objects.deepEquals(this.isActive, other.isActive)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      id,
+      name,
+      type,
+      isActive
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

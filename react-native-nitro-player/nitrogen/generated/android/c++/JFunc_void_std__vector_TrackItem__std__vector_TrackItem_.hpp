@@ -42,25 +42,25 @@ namespace margelo::nitro::nitroplayer {
      */
     void invoke(const std::vector<TrackItem>& playNextQueue, const std::vector<TrackItem>& upNextQueue) const {
       static const auto method = javaClassStatic()->getMethod<void(jni::alias_ref<jni::JArrayClass<JTrackItem>> /* playNextQueue */, jni::alias_ref<jni::JArrayClass<JTrackItem>> /* upNextQueue */)>("invoke");
-      method(self(), [&]() {
-        size_t __size = playNextQueue.size();
+      method(self(), [&](auto&& __input) {
+        size_t __size = __input.size();
         jni::local_ref<jni::JArrayClass<JTrackItem>> __array = jni::JArrayClass<JTrackItem>::newArray(__size);
         for (size_t __i = 0; __i < __size; __i++) {
-          const auto& __element = playNextQueue[__i];
+          const auto& __element = __input[__i];
           auto __elementJni = JTrackItem::fromCpp(__element);
           __array->setElement(__i, *__elementJni);
         }
         return __array;
-      }(), [&]() {
-        size_t __size = upNextQueue.size();
+      }(playNextQueue), [&](auto&& __input) {
+        size_t __size = __input.size();
         jni::local_ref<jni::JArrayClass<JTrackItem>> __array = jni::JArrayClass<JTrackItem>::newArray(__size);
         for (size_t __i = 0; __i < __size; __i++) {
-          const auto& __element = upNextQueue[__i];
+          const auto& __element = __input[__i];
           auto __elementJni = JTrackItem::fromCpp(__element);
           __array->setElement(__i, *__elementJni);
         }
         return __array;
-      }());
+      }(upNextQueue));
     }
   };
 
@@ -78,25 +78,25 @@ namespace margelo::nitro::nitroplayer {
      * Invokes the C++ `std::function<...>` this `JFunc_void_std__vector_TrackItem__std__vector_TrackItem__cxx` instance holds.
      */
     void invoke_cxx(jni::alias_ref<jni::JArrayClass<JTrackItem>> playNextQueue, jni::alias_ref<jni::JArrayClass<JTrackItem>> upNextQueue) {
-      _func([&]() {
-              size_t __size = playNextQueue->size();
-              std::vector<TrackItem> __vector;
-              __vector.reserve(__size);
-              for (size_t __i = 0; __i < __size; __i++) {
-                auto __element = playNextQueue->getElement(__i);
-                __vector.push_back(__element->toCpp());
-              }
-              return __vector;
-            }(), [&]() {
-              size_t __size = upNextQueue->size();
-              std::vector<TrackItem> __vector;
-              __vector.reserve(__size);
-              for (size_t __i = 0; __i < __size; __i++) {
-                auto __element = upNextQueue->getElement(__i);
-                __vector.push_back(__element->toCpp());
-              }
-              return __vector;
-            }());
+      _func([&](auto&& __input) {
+        size_t __size = __input->size();
+        std::vector<TrackItem> __vector;
+        __vector.reserve(__size);
+        for (size_t __i = 0; __i < __size; __i++) {
+          auto __element = __input->getElement(__i);
+          __vector.push_back(__element->toCpp());
+        }
+        return __vector;
+      }(playNextQueue), [&](auto&& __input) {
+        size_t __size = __input->size();
+        std::vector<TrackItem> __vector;
+        __vector.reserve(__size);
+        for (size_t __i = 0; __i < __size; __i++) {
+          auto __element = __input->getElement(__i);
+          __vector.push_back(__element->toCpp());
+        }
+        return __vector;
+      }(upNextQueue));
     }
 
   public:

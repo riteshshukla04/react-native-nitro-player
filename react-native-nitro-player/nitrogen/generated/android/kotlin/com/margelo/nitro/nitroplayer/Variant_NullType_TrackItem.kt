@@ -21,6 +21,22 @@ sealed class Variant_NullType_TrackItem {
   @DoNotStrip
   data class Second(@DoNotStrip val value: TrackItem): Variant_NullType_TrackItem()
 
+  inline fun <reified T> asType(): T? {
+    return when (this) {
+      is First -> (value) as? T
+      is Second -> (value) as? T
+    }
+  }
+  inline fun <reified T> isType(): Boolean {
+    return asType<T>() != null
+  }
+  inline fun <R> match(first: (NullType) -> R, second: (TrackItem) -> R): R {
+    return when (this) {
+      is First -> first(value)
+      is Second -> second(value)
+    }
+  }
+
   val isFirst: Boolean
     get() = this is First
   val isSecond: Boolean
@@ -33,13 +49,6 @@ sealed class Variant_NullType_TrackItem {
   fun asSecondOrNull(): TrackItem? {
     val value = (this as? Second)?.value ?: return null
     return value
-  }
-
-  inline fun <R> match(first: (NullType) -> R, second: (TrackItem) -> R): R {
-    return when (this) {
-      is First -> first(value)
-      is Second -> second(value)
-    }
   }
 
   companion object {

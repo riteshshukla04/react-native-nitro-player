@@ -20,7 +20,7 @@ namespace margelo::nitro::nitroplayer {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "LockScreenButton" and the the Kotlin data class "LockScreenButton".
+   * The C++ JNI bridge between the C++ struct "LockScreenButton" and the Kotlin data class "LockScreenButton".
    */
   struct JLockScreenButton final: public jni::JavaClass<JLockScreenButton> {
   public:
