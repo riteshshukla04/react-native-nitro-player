@@ -94,7 +94,9 @@ class DownloadWorker(
                     }
 
                 if (localPath != null) {
-                    val fallbackTrack = inputData.getString(KEY_TRACK_JSON)?.let { TrackItemJson.fromJson(it) }
+                    val fallbackTrack =
+                        inputData.getString(KEY_TRACK_JSON)?.let { TrackItemJson.fromJson(it) }
+                            ?: buildLegacyTrackFromInput(trackId, trackTitle, urlString)
                     downloadManager.onComplete(downloadId, trackId, localPath, fallbackTrack)
                     showCompletionNotification(trackTitle)
                     Result.success()
@@ -140,6 +142,27 @@ class DownloadWorker(
                 handleError(downloadId, trackId, trackTitle, error)
             }
         }
+
+    // WorkManager retains inputData across app upgrades. Older jobs may have
+    // scalar metadata instead of track_json; recover the available fields so
+    // completed downloads remain discoverable after an upgrade/process restart.
+    internal fun buildLegacyTrackFromInput(
+        trackId: String,
+        trackTitle: String,
+        urlString: String,
+    ): TrackItem {
+        val artwork = inputData.getString("track_artwork")?.takeIf { it.isNotEmpty() }
+        return TrackItem(
+            id = trackId,
+            title = trackTitle,
+            artist = inputData.getString("track_artist") ?: "",
+            album = inputData.getString("track_album") ?: "",
+            duration = inputData.getDouble("track_duration", 0.0),
+            url = urlString,
+            artwork = artwork?.let { Variant_NullType_String.create(it) },
+            extraPayload = null,
+        )
+    }
 
     // Single retry owner: WorkManager reschedules via Result.retry(); the manager
     // only records state, never enqueues a competing request.
