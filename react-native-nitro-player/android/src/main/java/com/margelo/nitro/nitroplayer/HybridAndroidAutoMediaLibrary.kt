@@ -59,7 +59,10 @@ class HybridAndroidAutoMediaLibrary : HybridAndroidAutoMediaLibrarySpec() {
         core.enqueue { core.mediaSessionManager?.onSessionButtonPress = callback }
     }
 
-    override fun onPlaybackResumption(callback: () -> Unit) = core.mediaLibraryManager.setResumptionRequester(callback)
+    override fun onPlaybackResumption(callback: () -> Unit) {
+        core.mediaLibraryManager.setResumptionRequester(callback)
+        NitroPlayerMediaBrowserService.setResumptionSupported(core.context, true)
+    }
 
     private companion object {
         val ICONS =

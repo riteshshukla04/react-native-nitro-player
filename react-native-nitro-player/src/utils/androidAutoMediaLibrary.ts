@@ -105,7 +105,10 @@ export const AndroidAutoMediaLibraryHelper = {
     AndroidAutoMediaLibraryModule?.onSessionButtonPress(callback)
   },
 
-  /** Car auto-play or play-on-connect found nothing loaded: restore your last queue (playback starts once it is loaded). */
+  /**
+   * Car auto-play, play-on-connect or the phone's media resume button found nothing loaded: restore your last
+   * queue (playback starts once it is loaded). Registering this also lets Android show the resume button.
+   */
   onPlaybackResumption: (callback: () => void): void => {
     AndroidAutoMediaLibraryModule?.onPlaybackResumption(callback)
   },

@@ -31,6 +31,7 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
         private const val KEY_ENABLED = "enabled"
         private const val KEY_SEARCH = "search"
         private const val KEY_LAST_TRACK = "lastTrackId"
+        private const val KEY_RESUMPTION = "resumption"
 
         var isAndroidAutoConnected: Boolean = false
 
@@ -54,6 +55,14 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
             supported: Boolean,
         ) {
             prefs(context).edit().putBoolean(KEY_SEARCH, supported).apply()
+        }
+
+        // Persisted: SystemUI asks for a resumable item at boot, long before JS registers its handler
+        fun setResumptionSupported(
+            context: Context,
+            supported: Boolean,
+        ) {
+            prefs(context).edit().putBoolean(KEY_RESUMPTION, supported).apply()
         }
 
         // Playlists are saved but not the position in them; a recent-media request needs the track without JS
@@ -109,9 +118,11 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
 
         if (clientPackageName == ANDROID_AUTO_PACKAGE) core.onAndroidAutoBrowserConnected()
 
-        // SystemUI's media resumption (and other clients) ask for one playable recent item, without JS running
+        // SystemUI's media resumption asks for one playable recent item, without JS running, and only shows
+        // its resume card when it gets one. Its play button then sends play() to the session, which media3
+        // turns into onPlaybackResumption. So only offer an item when the app handles that.
         if (rootHints?.getBoolean(BrowserRoot.EXTRA_RECENT) == true) {
-            if (recentTrack() == null) return null
+            if (!prefs(this).getBoolean(KEY_RESUMPTION, false) || recentTrack() == null) return null
             return BrowserRoot(RECENT_ROOT_ID, Bundle().apply { putBoolean(BrowserRoot.EXTRA_RECENT, true) })
         }
 
@@ -141,7 +152,7 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
         NitroPlayerLogger.log("MediaBrowserService", "📂 NitroPlayerMediaBrowserService: onLoadChildren called for parentId: $parentId")
 
         if (parentId == RECENT_ROOT_ID) {
-            // Playing it ("playlistId:trackId") loads the saved queue natively and starts JS
+            // The item only fills the resume card; resuming goes through onPlaybackResumption, not this id
             val recent = recentTrack()
             result.sendResult(recent?.let { (playlist, track) -> mutableListOf(recentMediaItem(playlist, track)) } ?: mutableListOf())
             return
