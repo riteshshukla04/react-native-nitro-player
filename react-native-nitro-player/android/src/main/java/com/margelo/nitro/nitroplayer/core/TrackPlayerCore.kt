@@ -240,10 +240,14 @@ class TrackPlayerCore private constructor(
         playerHandler.removeCallbacks(updateCurrentPlaylistRunnable)
         val id = currentPlaylistId ?: return
         val playlist = playlistManager.getPlaylist(id) ?: return
-        assignCurrentTracks(playlist.tracks)
+        val anchor = assignCurrentTracks(playlist.tracks)
         if (isCastingField && castLoadInFlight) {
             // The receiver hasn't reported a queue change yet (its timeline is stale); that report applies this edit
             castRebuildDeferred = true
+            // A target still to be loaded was removed: wait on the track that took its place, not the one before it
+            if ((castReloadDeferred || castLoadChange == CastQueueChange.CLEAR) && anchor == AnchorOutcome.REMOVED && currentTracks.isNotEmpty()) {
+                currentTrackIndex = minOf(currentTrackIndex + 1, currentTracks.size - 1)
+            }
         } else if (::exo.isInitialized &&
             exo.currentMediaItem != null &&
             exo.currentMediaItemIndex >= 0

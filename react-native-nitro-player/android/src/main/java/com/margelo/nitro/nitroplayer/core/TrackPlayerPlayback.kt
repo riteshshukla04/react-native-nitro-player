@@ -52,6 +52,17 @@ internal fun TrackPlayerCore.seekOnQueue(position: Double) {
 suspend fun TrackPlayerCore.skipToNext() = withPlayerContext { skipToNextOnQueue() }
 
 internal fun TrackPlayerCore.skipToNextOnQueue() {
+    // Until the receiver reports a queue change the timeline is stale (a jump would name an item it no longer
+    // has), so step through the playlist instead: the next track becomes the target sent on that report
+    if (isCastingField && castLoadInFlight && playNextStack.isEmpty() && upNextQueue.isEmpty() && currentTracks.isNotEmpty()) {
+        val next = currentTrackIndex + 1
+        if (next < currentTracks.size) {
+            playFromIndexInternal(next)
+        } else if (currentRepeatMode == RepeatMode.PLAYLIST) {
+            playFromIndexInternal(0)
+        }
+        return
+    }
     // The timeline is windowed, so hasNextMediaItem() is not the logical answer —
     // top up first when more tracks remain in currentTracks / the temp queues.
     if (!exo.hasNextMediaItem()) rebuildQueueFromCurrentPosition()
