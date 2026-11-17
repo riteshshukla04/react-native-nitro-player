@@ -6,6 +6,7 @@ import androidx.media3.cast.CastPlayer
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaSession
+import androidx.mediarouter.media.MediaRouter
 import com.google.android.gms.cast.framework.CastContext
 import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
 
@@ -46,6 +47,7 @@ internal object CastSessionFactory {
                 localSessionPlayer = localSessionPlayer,
                 mediaSession = mediaSession,
                 mainHandler = mainHandler,
+                mediaRouter = MediaRouter.getInstance(context.applicationContext),
             )
         } catch (e: Exception) {
             NitroPlayerLogger.log("PlaybackService") { "Cast unavailable: ${e.message}" }

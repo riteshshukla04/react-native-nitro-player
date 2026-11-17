@@ -10,6 +10,8 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.mediarouter.app.MediaRouteChooserDialog
 import androidx.mediarouter.app.MediaRouteControllerDialog
+import androidx.mediarouter.media.MediaRouteSelector
+import androidx.mediarouter.media.MediaRouter
 import com.google.android.gms.cast.framework.CastContext
 import com.google.android.gms.cast.framework.CastStateListener
 import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
@@ -39,8 +41,12 @@ class CastSessionController(
     val localSessionPlayer: Player,
     val mediaSession: MediaSession,
     private val mainHandler: Handler,
+    private val mediaRouter: MediaRouter,
 ) {
     private var core: TrackPlayerCore? = null
+
+    // Set by release(); a route callback registration still queued on the main thread then does nothing
+    private var released = false
 
     // Cast SDK reads (castState, current session) MUST happen on the main thread —
     // it throws IllegalStateException otherwise. Nitro sync getters run on the JS
@@ -56,6 +62,41 @@ class CastSessionController(
                 c.notifyCastStateChange(cachedState, cachedDeviceName)
             }
         }
+
+    // The Cast SDK misses routes that only start matching its selector after being added: Play services
+    // publishes a device with the bare Cast category first and adds the receiver app's category a moment
+    // later, MediaRouter then reports onRouteChanged, and the SDK ignores that for unselected routes. Its
+    // CastState stays NO_DEVICES_AVAILABLE until the routes are rebuilt. So route changes are watched here
+    // too, without requesting discovery of our own (the SDK owns it), and also count as available devices.
+    private val routeCallback =
+        object : MediaRouter.Callback() {
+            override fun onRouteAdded(
+                router: MediaRouter,
+                route: MediaRouter.RouteInfo,
+            ) = onRouteEvent(route)
+
+            override fun onRouteChanged(
+                router: MediaRouter,
+                route: MediaRouter.RouteInfo,
+            ) = onRouteEvent(route)
+
+            override fun onRouteRemoved(
+                router: MediaRouter,
+                route: MediaRouter.RouteInfo,
+            ) = onRouteEvent(route)
+        }
+
+    // The phone's own and Bluetooth routes never count as Cast devices; skip their frequent volume changes
+    private fun onRouteEvent(route: MediaRouter.RouteInfo) {
+        if (!route.isDefaultOrBluetooth) onRoutesChanged()
+    }
+
+    private fun onRoutesChanged() {
+        val c = core ?: return
+        val before = cachedState
+        refreshCacheOnMain()
+        if (cachedState != before) c.notifyCastStateChange(cachedState, cachedDeviceName)
+    }
 
     private val sessionAvailabilityListener =
         object : SessionAvailabilityListener {
@@ -86,6 +127,18 @@ class CastSessionController(
         }
         // Emit the current state so JS reflects reality immediately.
         mainHandler.post {
+            if (released) return@post
+            try {
+                // An observer only: the empty selector adds nothing to discovery, and unfiltered events
+                // include a route that stops matching the Cast selector
+                mediaRouter.addCallback(
+                    MediaRouteSelector.EMPTY,
+                    routeCallback,
+                    MediaRouter.CALLBACK_FLAG_UNFILTERED_EVENTS,
+                )
+            } catch (e: Exception) {
+                NitroPlayerLogger.log("CastSessionController") { "Route callback unavailable: ${e.message}" }
+            }
             refreshCacheOnMain()
             core.notifyCastStateChange(cachedState, cachedDeviceName)
         }
@@ -101,7 +154,9 @@ class CastSessionController(
     private fun refreshCacheOnMain() {
         cachedState =
             try {
-                mapCastState(castContext.castState)
+                mapCastState(castContext.castState).let {
+                    if (it == CastState.NO_DEVICES_AVAILABLE && hasCastRoute()) CastState.NOT_CONNECTED else it
+                }
             } catch (_: Exception) {
                 cachedState
             }
@@ -111,6 +166,15 @@ class CastSessionController(
             } catch (_: Exception) {
                 null
             }
+    }
+
+    private fun hasCastRoute(): Boolean {
+        val selector = castContext.mergedSelector ?: return false
+        // REQUIRE_MATCH: without it MediaRouter answers true on low-RAM devices whatever routes exist
+        return mediaRouter.isRouteAvailable(
+            selector,
+            MediaRouter.AVAILABILITY_FLAG_IGNORE_DEFAULT_ROUTE or MediaRouter.AVAILABILITY_FLAG_REQUIRE_MATCH,
+        )
     }
 
     fun endCurrentSession() {
@@ -144,6 +208,11 @@ class CastSessionController(
     }
 
     fun release() {
+        released = true
+        try {
+            mediaRouter.removeCallback(routeCallback)
+        } catch (_: Exception) {
+        }
         try {
             castPlayer.setSessionAvailabilityListener(null)
             castContext.removeCastStateListener(castStateListener)
