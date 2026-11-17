@@ -300,6 +300,7 @@ extension TrackPlayerCore {
     }
 
     if queuePlayer.items().count > 1 {
+      selfInitiatedItemChange = true
       queuePlayer.advanceToNextItem()
     } else if currentRepeatMode == .playlist, !currentTracks.isEmpty {
       // Manual skip at the last track wraps, matching natural-end behavior
