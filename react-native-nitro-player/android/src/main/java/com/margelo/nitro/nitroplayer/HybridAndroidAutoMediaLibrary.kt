@@ -24,6 +24,8 @@ class HybridAndroidAutoMediaLibrary : HybridAndroidAutoMediaLibrarySpec() {
             NitroModules.applicationContext
                 ?: throw IllegalStateException("React Context is not initialized")
         core = TrackPlayerCore.getInstance(context)
+        // Created when JS starts, before the app registers its handlers: resumption is offered again only if it does
+        NitroPlayerMediaBrowserService.setResumptionSupported(core.context, false)
     }
 
     override fun setMediaLibrary(libraryJson: String): Promise<Unit> = Promise.async { core.setAndroidAutoMediaLibrary(libraryJson) }
@@ -59,7 +61,10 @@ class HybridAndroidAutoMediaLibrary : HybridAndroidAutoMediaLibrarySpec() {
         core.enqueue { core.mediaSessionManager?.onSessionButtonPress = callback }
     }
 
-    override fun onPlaybackResumption(callback: () -> Unit) = core.mediaLibraryManager.setResumptionRequester(callback)
+    override fun onPlaybackResumption(callback: () -> Unit) {
+        core.mediaLibraryManager.setResumptionRequester(callback)
+        NitroPlayerMediaBrowserService.setResumptionSupported(core.context, true)
+    }
 
     private companion object {
         val ICONS =

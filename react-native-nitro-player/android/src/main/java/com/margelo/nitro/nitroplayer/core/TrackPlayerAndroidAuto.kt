@@ -2,6 +2,7 @@
 
 package com.margelo.nitro.nitroplayer.core
 
+import com.margelo.nitro.nitroplayer.TrackItem
 import com.margelo.nitro.nitroplayer.connection.AndroidAutoConnectionDetector
 import com.margelo.nitro.nitroplayer.media.MediaItem
 import com.margelo.nitro.nitroplayer.media.MediaLibraryParser
@@ -76,3 +77,13 @@ suspend fun TrackPlayerCore.clearAndroidAutoMediaLibrary() =
         mediaLibraryManager.clear()
         NitroPlayerMediaBrowserService.getInstance()?.onLibraryUpdated(previous + mediaLibraryManager.loadedFolderIds)
     }
+
+/** Keeps the track that just started for the phone's resume card (see NitroPlayerMediaBrowserService). */
+internal fun TrackPlayerCore.rememberRecentTrack(track: TrackItem) {
+    val mediaId = currentPlaylistId?.let { "$it:${track.id}" } ?: track.id
+    // A metadata update keeps the media id, so the title and artwork are compared too
+    val snapshot = "$mediaId|${track.title}|${track.artist}|${track.artwork?.asSecondOrNull()}"
+    if (snapshot == lastRecentSnapshot) return
+    lastRecentSnapshot = snapshot
+    NitroPlayerMediaBrowserService.rememberRecentTrack(context, mediaId, track)
+}

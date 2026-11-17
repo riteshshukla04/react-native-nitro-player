@@ -24,11 +24,18 @@ import kotlinx.coroutines.launch
 class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
     companion object {
         private const val ROOT_ID = "root"
+        // Reserved: an app's own browse folder can't take this id
+        private const val RECENT_ROOT_ID = "__nitro_recent__"
         private const val PLAYLIST_PREFIX = "playlist_"
         private const val ANDROID_AUTO_PACKAGE = "com.google.android.projection.gearhead"
         private const val PREFS_NAME = "NitroPlayerAndroidAuto"
         private const val KEY_ENABLED = "enabled"
         private const val KEY_SEARCH = "search"
+        private const val KEY_RESUMPTION = "resumption"
+        private const val KEY_RECENT_MEDIA_ID = "recentMediaId"
+        private const val KEY_RECENT_TITLE = "recentTitle"
+        private const val KEY_RECENT_ARTIST = "recentArtist"
+        private const val KEY_RECENT_ARTWORK = "recentArtwork"
 
         var isAndroidAutoConnected: Boolean = false
 
@@ -53,6 +60,32 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
         ) {
             prefs(context).edit().putBoolean(KEY_SEARCH, supported).apply()
         }
+
+        // Persisted: SystemUI asks for a resumable item at boot, long before JS registers its handler. Reset each
+        // time JS starts (before the app registers), so an app that stops handling resumption stops offering it.
+        fun setResumptionSupported(
+            context: Context,
+            supported: Boolean,
+        ) {
+            prefs(context).edit().putBoolean(KEY_RESUMPTION, supported).apply()
+        }
+
+        // What played last, for the resume card: SystemUI asks without JS, possibly at boot before any playlist loads
+        fun rememberRecentTrack(
+            context: Context,
+            mediaId: String,
+            track: TrackItem,
+        ) {
+            prefs(context)
+                .edit()
+                .putString(KEY_RECENT_MEDIA_ID, mediaId)
+                .putString(KEY_RECENT_TITLE, track.title)
+                .putString(KEY_RECENT_ARTIST, track.artist)
+                .putString(KEY_RECENT_ARTWORK, track.artwork?.asSecondOrNull())
+                .apply()
+        }
+
+        fun isResumptionSupported(context: Context): Boolean = prefs(context).getBoolean(KEY_RESUMPTION, false)
 
         private fun prefs(context: Context) = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
@@ -99,6 +132,14 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
 
         if (clientPackageName == ANDROID_AUTO_PACKAGE) core.onAndroidAutoBrowserConnected()
 
+        // SystemUI's media resumption asks for one playable recent item, without JS running, and only shows
+        // its resume card when it gets one. Its play button then sends play() to the session, which media3
+        // turns into onPlaybackResumption. So only offer an item when the app handles that (see onLoadChildren).
+        // Never null: that refuses the whole connection, and some clients (Android Auto) send this hint too.
+        if (rootHints?.getBoolean(BrowserRoot.EXTRA_RECENT) == true) {
+            return BrowserRoot(RECENT_ROOT_ID, Bundle().apply { putBoolean(BrowserRoot.EXTRA_RECENT, true) })
+        }
+
         // Always the real root: enabling later only has to refresh it, not reconnect the car
         val extras =
             Bundle().apply {
@@ -123,6 +164,13 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
         result: Result<MutableList<MediaBrowserCompat.MediaItem>>,
     ) {
         NitroPlayerLogger.log("MediaBrowserService", "📂 NitroPlayerMediaBrowserService: onLoadChildren called for parentId: $parentId")
+
+        if (parentId == RECENT_ROOT_ID) {
+            // The item only fills the resume card; resuming goes through onPlaybackResumption, not this id
+            result.sendResult(recentMediaItem()?.let { mutableListOf(it) } ?: mutableListOf())
+            return
+        }
+
         startJsOnDemand()
 
         if (!isAndroidAutoEnabled) {
@@ -297,6 +345,26 @@ class NitroPlayerMediaBrowserService : MediaBrowserServiceCompat() {
         } catch (e: Exception) {
             NitroPlayerLogger.log("MediaBrowserService", "⚠️ NitroPlayerMediaBrowserService: Error notifying playlist changed: ${e.message}")
         }
+    }
+
+    /** The last played track as a playable item, when the app can resume it (see onLoadChildren). */
+    private fun recentMediaItem(): MediaBrowserCompat.MediaItem? {
+        val prefs = prefs(this)
+        if (!prefs.getBoolean(KEY_RESUMPTION, false)) return null
+        // MediaItem refuses an empty id, and throwing here would crash the app on every boot
+        val mediaId = prefs.getString(KEY_RECENT_MEDIA_ID, null)?.takeIf { it.isNotEmpty() } ?: return null
+        // SystemUI drops a card without a title
+        val title = prefs.getString(KEY_RECENT_TITLE, null)?.takeIf { it.isNotBlank() } ?: applicationInfo.loadLabel(packageManager)
+        val description =
+            MediaDescriptionCompat
+                .Builder()
+                .setMediaId(mediaId)
+                .setTitle(title)
+                .setSubtitle(prefs.getString(KEY_RECENT_ARTIST, null))
+                // SystemUI only shows content://, android.resource:// and file:// artwork on a resume card
+                .setIconUri(prefs.getString(KEY_RECENT_ARTWORK, null)?.takeIf { it.isNotEmpty() }?.let { Uri.parse(it) })
+                .build()
+        return MediaBrowserCompat.MediaItem(description, MediaBrowserCompat.MediaItem.FLAG_PLAYABLE)
     }
 
     // Apps may delete the playlists a published library points at; hide those, but keep empty ones so the user still finds them

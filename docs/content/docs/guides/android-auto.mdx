@@ -159,6 +159,24 @@ Some phones (Samsung One UI) stop React Native's JS timers while your app is in 
 
 When the car sends play on connect ("Start music automatically"), Nitro Player waits up to 10s for your app to restore a queue and resumes it.
 
+## Resuming From the Phone's Media Controls
+
+After playback ends and the app's process is gone, Android can keep a card for your app in Quick Settings and on the lock screen, with a play button that resumes it. Nitro Player offers that card when your app handles resumption:
+
+```typescript
+// index.js, at module scope like the rest of this page
+AndroidAutoMediaLibraryHelper.onPlaybackResumption(() => {
+  // Restore from your own saved state: in a freshly started process nothing is loaded yet
+  const playlistId = getLastPlaylistIdFromStorage();
+  if (playlistId) PlayerQueue.loadPlaylist(playlistId);
+});
+```
+
+- The card needs the `NitroPlayerMediaBrowserService` `<service>` element from [AndroidManifest Setup](#media-browser-service), even in an app that doesn't target cars. Such an app should leave out the `com.google.android.gms.car.application` meta-data, which is what lists it in Android Auto.
+- It shows the track that played last. Artwork only shows for `content://` and `android.resource://` URLs, or a `file://` path the system can read (not one in your app's private storage), so a track with web artwork gets a card without its picture.
+- Pressing play starts your app's JavaScript in the background and calls the handler. Playback starts once it loads a queue; after 10s with nothing loaded, the press is dropped.
+- Without a handler there is nothing to resume, so Android shows no resume button. The handler is the same one the car's "Start music automatically" uses.
+
 ## Loading Folders on Demand
 
 Large libraries do not fit in one published tree (Android Auto caps a single result at ~1 MB). Publish a folder with `children: []` and supply its children when the car opens it:

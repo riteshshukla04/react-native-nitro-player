@@ -19,6 +19,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
 import com.margelo.nitro.nitroplayer.TrackItem
 import com.margelo.nitro.nitroplayer.core.NitroPlayerLogger
+import com.margelo.nitro.nitroplayer.core.TrackPlayerCore
 import com.margelo.nitro.nitroplayer.playlist.Playlist
 import com.margelo.nitro.nitroplayer.playlist.PlaylistManager
 import kotlinx.coroutines.CoroutineScope
@@ -161,13 +162,21 @@ object MediaSessionCallbackFactory {
                 )
             }
 
-            // Car "start music automatically" on a cold start: play what the app restores once its JS is up
+            // Play with nothing loaded (car "start music automatically", the phone's resume card, a headset button):
+            // play what the app restores once its JS is up
             override fun onPlaybackResumption(
                 mediaSession: MediaSession,
                 controller: MediaSession.ControllerInfo,
                 isForPlayback: Boolean,
             ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
-                service.trackPlayerCore?.startJsRuntimeIfNeeded()
+                // A process the system started just for this session (a service restarted after the app was
+                // killed, a headset button) has no player core yet. Create it, which also starts the runtime, only
+                // for an app that handles resumption; otherwise a stray play would just leave JS running.
+                val core =
+                    service.trackPlayerCore
+                        ?: TrackPlayerCore.getInstance(service.applicationContext)
+                            .takeIf { NitroPlayerMediaBrowserService.isResumptionSupported(service) }
+                core?.startJsRuntimeIfNeeded()
                 MediaLibraryManager.getInstance(service).requestResumption()
                 val future = SettableFuture.create<MediaSession.MediaItemsWithStartPosition>()
                 val player = mediaSession.player
@@ -181,6 +190,8 @@ object MediaSessionCallbackFactory {
                     if (item != null) {
                         future.set(MediaSession.MediaItemsWithStartPosition(listOf(item), 0, player.currentPosition))
                     } else {
+                        // A handler that registers after this gave up must not load a queue nobody asked to play
+                        MediaLibraryManager.getInstance(service).cancelPendingResumption()
                         future.setException(UnsupportedOperationException("Nothing to resume"))
                     }
                 }

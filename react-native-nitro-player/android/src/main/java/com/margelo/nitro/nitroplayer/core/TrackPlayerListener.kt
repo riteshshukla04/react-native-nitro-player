@@ -108,6 +108,7 @@ internal class TrackPlayerEventListener(
                 }
             notifyTrackChange(track, r)
             mediaSessionManager?.onTrackChanged(track)
+            rememberRecentTrack(track)
             checkUpcomingTracksForUrls(lookaheadCount)
             notifyTemporaryQueueChange()
         }
