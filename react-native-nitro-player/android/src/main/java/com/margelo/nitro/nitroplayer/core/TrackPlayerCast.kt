@@ -3,7 +3,9 @@
 package com.margelo.nitro.nitroplayer.core
 
 import android.app.Activity
+import androidx.media3.common.C
 import androidx.media3.common.Player
+import androidx.media3.common.Timeline
 import com.margelo.nitro.nitroplayer.CastState
 import com.margelo.nitro.nitroplayer.TrackItem
 import com.margelo.nitro.nitroplayer.media.NitroCastConfig
@@ -34,8 +36,9 @@ internal fun TrackPlayerCore.switchToCastPlayer() {
     val currentTrack = getCurrentTrack() ?: currentTracks.getOrNull(currentTrackIndex)
     val upcoming = buildUpcomingQueueTracks(currentId)
     val positionMs = local.currentPosition.coerceAtLeast(0L)
-    // A live/unseekable stream's position is just time listened — there is nothing at that offset to resume.
-    val canResumePosition = local.isCurrentMediaItemSeekable && !local.isCurrentMediaItemLive
+    // A live or open-ended stream's position is just time listened, so there is nothing at that offset to resume.
+    // An item that hasn't loaded yet (placeholder window) keeps its position.
+    val canResumePosition = !isOpenEndedStream(local)
     val wasPlaying = local.playWhenReady
     val repeat = local.repeatMode
 
@@ -47,10 +50,6 @@ internal fun TrackPlayerCore.switchToCastPlayer() {
     playerListener?.let { controller.castPlayer.addListener(it) }
     setMediaSessionPlayer(controller.castPlayer)
 
-    // Set before any load: the cast load reads playWhenReady as its autoplay flag, and a play sent
-    // while the receiver has no media yet is dropped. Also covers the lazy load from updateTracks.
-    controller.castPlayer.playWhenReady = wasPlaying
-
     val castList = ArrayList<TrackItem>()
     currentTrack?.let { castList.add(it) }
     castList.addAll(upcoming)
@@ -61,11 +60,16 @@ internal fun TrackPlayerCore.switchToCastPlayer() {
         val items = playable.map { makeMediaItem(it, mediaIdFor(it)) }
         // Resume mid-track only when the receiver starts on the locally playing track.
         val resumeFromCurrent = canResumePosition && currentTrack != null && playable.first().id == currentTrack.id
-        controller.castPlayer.setMediaItems(items, 0, if (resumeFromCurrent) positionMs else 0L)
+        // Set right before the load: the cast load reads both, and a play sent while the receiver has no
+        // media yet is dropped. Not earlier, so reattaching to a playing receiver with nothing to load leaves it alone.
         controller.castPlayer.repeatMode = repeat
+        controller.castPlayer.playWhenReady = wasPlaying
+        controller.castPlayer.setMediaItems(items, 0, if (resumeFromCurrent) positionMs else 0L)
         controller.castPlayer.prepare()
     } else {
-        // Nothing castable yet (lazy queue) — request URLs; updateTracks will load.
+        // Nothing castable yet (lazy queue) — request URLs; updateTracks will load, with this autoplay intent.
+        pendingCastAutoplay = wasPlaying
+        controller.castPlayer.repeatMode = repeat
         checkUpcomingTracksForUrls(lookaheadCount)
     }
 
@@ -82,7 +86,8 @@ internal fun TrackPlayerCore.switchToLocalPlayer() {
     val currentId = cast.currentMediaItem?.mediaId?.let { extractTrackId(it) }
     val currentTrack = getCurrentTrack() ?: currentTracks.getOrNull(currentTrackIndex)
     val upcoming = buildUpcomingQueueTracks(currentId)
-    val positionMs = cast.currentPosition.coerceAtLeast(0L)
+    // A live stream's receiver position is just time listened; start it fresh on the phone.
+    val positionMs = if (isOpenEndedStream(cast)) 0L else cast.currentPosition.coerceAtLeast(0L)
     val wasPlaying = cast.playWhenReady
     val repeat = cast.repeatMode
 
@@ -91,6 +96,7 @@ internal fun TrackPlayerCore.switchToLocalPlayer() {
 
     isCastingField = false // before building items so makeMediaItem restores download paths
     lastCastWaitTrackId = null
+    pendingCastAutoplay = null
     exo = ExoPlayerCore(controller.localPlayer)
     playerListener?.let { controller.localPlayer.addListener(it) }
     setMediaSessionPlayer(controller.localSessionPlayer)
@@ -108,6 +114,21 @@ internal fun TrackPlayerCore.switchToLocalPlayer() {
     }
 
     notifyCastStateChange(controller.getCastState(), controller.currentDeviceName())
+}
+
+/** A live stream, or one with no known duration: its position can't be carried to another player. */
+private fun isOpenEndedStream(player: Player): Boolean {
+    val timeline = player.currentTimeline
+    if (timeline.isEmpty) return false
+    val window = timeline.getWindow(player.currentMediaItemIndex, Timeline.Window())
+    return !window.isPlaceholder && (window.isLive || window.durationUs == C.TIME_UNSET)
+}
+
+/** Applies the autoplay intent from a connect that had nothing castable yet, just before the deferred cast load. */
+internal fun TrackPlayerCore.applyPendingCastAutoplay() {
+    val autoplay = pendingCastAutoplay ?: return
+    pendingCastAutoplay = null
+    exo.player.playWhenReady = autoplay
 }
 
 private fun TrackPlayerCore.setMediaSessionPlayer(target: Player) {

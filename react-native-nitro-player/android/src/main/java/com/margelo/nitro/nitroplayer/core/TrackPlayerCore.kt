@@ -140,6 +140,9 @@ class TrackPlayerCore private constructor(
     /** Last track announced from a cast "waiting for URL" state — dedups onChangeTrack across updateTracks re-entries. */
     internal var lastCastWaitTrackId: String? = null
 
+    /** Whether the receiver should autoplay once a connect that had nothing castable yet finally loads. */
+    internal var pendingCastAutoplay: Boolean? = null
+
     // ── Progress & playlist-update runnables ───────────────────────────────
 
     /**
