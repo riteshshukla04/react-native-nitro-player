@@ -200,7 +200,9 @@ final class DownloadManagerCore: NSObject {
 
   func retryDownload(downloadId: String) {
     queue.async(flags: .barrier) {
+      // Only a stopped download is retried; a pending or running one already has its task
       guard let metadata = self.taskMetadata[downloadId],
+        metadata.state == .failed || metadata.state == .paused,
         let track = self.trackMetadata[metadata.trackId],
         let url = URL(string: track.url)
       else { return }
@@ -209,10 +211,19 @@ final class DownloadManagerCore: NSObject {
       task.taskDescription = "\(downloadId)|\(metadata.trackId)"
 
       self.activeTasks[downloadId] = task
-      self.taskMetadata[downloadId]?.state = .downloading
       self.taskMetadata[downloadId]?.retryCount += 1
       self.taskMetadata[downloadId]?.error = nil
+      self.taskMetadata[downloadId]?.resumeData = nil
 
+      // With every slot taken, wait in the queue like a new download
+      guard self.hasFreeDownloadSlot() else {
+        self.taskMetadata[downloadId]?.state = .pending
+        self.notifyStateChange(
+          downloadId: downloadId, trackId: metadata.trackId, state: .pending, error: nil)
+        return
+      }
+
+      self.taskMetadata[downloadId]?.state = .downloading
       task.resume()
 
       self.notifyStateChange(

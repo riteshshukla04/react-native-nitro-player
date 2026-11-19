@@ -143,4 +143,53 @@ describe('DownloadManager - queue advances when a slot is freed', () => {
       console.warn(`B is ${stateB}, not downloading - nothing to check`);
     }
   });
+
+  it('should keep a retried download pending while every slot is taken', async () => {
+    if (!aIsDownloading) {
+      console.warn('No download progress within 15 seconds - skipping test');
+      return;
+    }
+    await DownloadManager.pauseDownload(downloadIdA);
+    if ((await waitForLeavingPending(downloadIdB, 20000)) !== 'downloading') {
+      console.warn('B did not start downloading - skipping test');
+      return;
+    }
+
+    await DownloadManager.retryDownload(downloadIdA);
+    await wait(1000);
+
+    const stateA = DownloadManager.getDownloadTask(downloadIdA)?.state;
+    const stateB = DownloadManager.getDownloadTask(downloadIdB)?.state;
+    console.log(`[queue-advance] after retry: A is ${stateA}, B is ${stateB}`);
+
+    // B still holds the only slot, so A has to wait for it
+    if (stateB === 'downloading') {
+      expect(stateA).toBe('pending');
+    } else {
+      console.warn(`B is ${stateB}, not downloading - nothing to check`);
+    }
+  });
+
+  it('should leave a pending download in the queue when it is retried', async () => {
+    if (!aIsDownloading) {
+      console.warn('No download progress within 15 seconds - skipping test');
+      return;
+    }
+
+    await DownloadManager.retryDownload(downloadIdB);
+    await wait(1000);
+
+    const stateA = DownloadManager.getDownloadTask(downloadIdA)?.state;
+    const stateB = DownloadManager.getDownloadTask(downloadIdB)?.state;
+    console.log(
+      `[queue-advance] after retrying pending B: A is ${stateA}, B is ${stateB}`,
+    );
+
+    // A still holds the only slot, so B keeps waiting
+    if (stateA === 'downloading') {
+      expect(stateB).toBe('pending');
+    } else {
+      console.warn(`A is ${stateA}, not downloading - nothing to check`);
+    }
+  });
 });
