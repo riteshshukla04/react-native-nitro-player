@@ -61,6 +61,13 @@ final class CastQueueReconciler {
 
   var hasInFlightRequest: Bool { busy != nil }
 
+  /// A load is waiting to be sent, or sent and not yet answered by the receiver.
+  var hasUnfinishedLoad: Bool {
+    if case .load = pendingLoad { return true }
+    if let busy, case .load = busy.kind, !busy.completed { return true }
+    return false
+  }
+
   // MARK: - Inputs
 
   func desired(ids: [String], currentId: String) -> CastQueueEffect {
