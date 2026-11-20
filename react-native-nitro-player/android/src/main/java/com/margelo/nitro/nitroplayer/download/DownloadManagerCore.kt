@@ -127,6 +127,7 @@ class DownloadManagerCore private constructor(
         downloadId: String,
         track: TrackItem,
         playlistId: String?,
+        policy: ExistingWorkPolicy = ExistingWorkPolicy.KEEP,
     ) {
         val constraints =
             Constraints
@@ -155,7 +156,7 @@ class DownloadManagerCore private constructor(
                 .addTag("track_${track.id}")
                 .build()
 
-        workManager.enqueueUniqueWork("download_$downloadId", ExistingWorkPolicy.KEEP, downloadRequest)
+        workManager.enqueueUniqueWork("download_$downloadId", policy, downloadRequest)
     }
 
     // Frees this download's concurrency slot and launches the next queued one
@@ -197,6 +198,8 @@ class DownloadManagerCore private constructor(
 
     fun resumeDownload(downloadId: String) {
         activeTasks[downloadId]?.let { metadata ->
+            // Only a stopped download resumes; a queued or running one would be queued twice
+            if (!metadata.isStopped()) return
             val track = trackMetadata[metadata.trackId] ?: return
             val playlistId = playlistAssociations[downloadId]
 
@@ -209,7 +212,9 @@ class DownloadManagerCore private constructor(
                 }
                 runningDownloads.add(downloadId)
             }
-            enqueueDownloadWork(downloadId, track, playlistId)
+            // Any work left for a stopped download is stale: a worker that just reported a failure
+            // is still running until it returns, and KEEP would drop this request in its favour
+            enqueueDownloadWork(downloadId, track, playlistId, ExistingWorkPolicy.REPLACE)
 
             metadata.state = DownloadState.DOWNLOADING
             notifyStateChange(downloadId, metadata.trackId, DownloadState.DOWNLOADING, null)
@@ -233,6 +238,7 @@ class DownloadManagerCore private constructor(
 
     fun retryDownload(downloadId: String) {
         activeTasks[downloadId]?.let { metadata ->
+            if (!metadata.isStopped()) return
             metadata.retryCount++
             metadata.error = null
             resumeDownload(downloadId)
@@ -384,7 +390,8 @@ class DownloadManagerCore private constructor(
         activeTasks[downloadId]?.let { metadata ->
             metadata.bytesDownloaded = bytesDownloaded.toDouble()
             metadata.totalBytes = totalBytes.toDouble()
-            metadata.state = DownloadState.DOWNLOADING
+            // Cancelling the work is async, so a paused worker can report once more; keep it paused
+            if (!metadata.isStopped()) metadata.state = DownloadState.DOWNLOADING
         }
 
         val progress =
@@ -451,6 +458,8 @@ class DownloadManagerCore private constructor(
         willRetry: Boolean = false,
     ) {
         activeTasks[downloadId]?.let { metadata ->
+            // A worker stopped by a pause can still fail on its way out; the pause stands
+            if (metadata.state == DownloadState.PAUSED) return
             metadata.error = error
 
             if (willRetry) {
@@ -493,6 +502,9 @@ internal data class DownloadTaskMetadata(
     var totalBytes: Double? = null,
     var error: DownloadError? = null,
 ) {
+    // Paused or failed: waiting for a resume or retry, with nothing queued for it
+    fun isStopped(): Boolean = state == DownloadState.PAUSED || state == DownloadState.FAILED
+
     fun toDownloadTask(): DownloadTask {
         val progress =
             DownloadProgress(

@@ -200,35 +200,23 @@ final class DownloadManagerCore: NSObject {
 
   func retryDownload(downloadId: String) {
     queue.async(flags: .barrier) {
-      // Only a stopped download is retried; a pending or running one already has its task
-      guard let metadata = self.taskMetadata[downloadId],
-        metadata.state == .failed || metadata.state == .paused,
-        let track = self.trackMetadata[metadata.trackId],
-        let url = URL(string: track.url)
-      else { return }
-
-      let task = self.backgroundSession.downloadTask(with: url)
-      task.taskDescription = "\(downloadId)|\(metadata.trackId)"
-
-      self.activeTasks[downloadId] = task
-      self.taskMetadata[downloadId]?.retryCount += 1
-      self.taskMetadata[downloadId]?.error = nil
-      self.taskMetadata[downloadId]?.resumeData = nil
-
-      // With every slot taken, wait in the queue like a new download
-      guard self.hasFreeDownloadSlot() else {
-        self.taskMetadata[downloadId]?.state = .pending
-        self.notifyStateChange(
-          downloadId: downloadId, trackId: metadata.trackId, state: .pending, error: nil)
-        return
-      }
-
-      self.taskMetadata[downloadId]?.state = .downloading
-      task.resume()
-
-      self.notifyStateChange(
-        downloadId: downloadId, trackId: metadata.trackId, state: .downloading, error: nil)
+      self._retryDownloadUnsafe(downloadId: downloadId)
     }
+  }
+
+  private func _retryDownloadUnsafe(downloadId: String) {
+    // Only a stopped download is retried; a pending or running one already has its task.
+    // The retry restarts from the track URL, so leave the download untouched without one.
+    guard let metadata = self.taskMetadata[downloadId],
+      metadata.state == .failed || metadata.state == .paused,
+      let track = self.trackMetadata[metadata.trackId],
+      URL(string: track.url) != nil
+    else { return }
+    self.taskMetadata[downloadId]?.retryCount += 1
+    self.taskMetadata[downloadId]?.error = nil
+    // A retry starts over, so resume from a fresh request rather than the saved data
+    self.taskMetadata[downloadId]?.resumeData = nil
+    self._resumeDownloadUnsafe(downloadId: downloadId)
   }
 
   private func _pauseDownloadUnsafe(downloadId: String) {
@@ -236,6 +224,9 @@ final class DownloadManagerCore: NSObject {
     task.cancel(byProducingResumeData: { resumeData in
       // Runs on the URLSession delegate queue — hop back for the shared dict
       self.queue.async(flags: .barrier) {
+        // Keep it only for the task it came from, which a resume or retry may have replaced
+        // by now. Skip nil so pausing the same task again can't wipe data already saved.
+        guard let resumeData, self.activeTasks[downloadId] === task else { return }
         self.taskMetadata[downloadId]?.resumeData = resumeData
       }
     })
@@ -994,8 +985,10 @@ extension DownloadManagerCore: URLSessionDownloadDelegate {
         let retryCount = self.taskMetadata[downloadId]?.retryCount,
         retryCount < Int(self.config.maxRetryAttempts ?? 3)
       {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-          self.retryDownload(downloadId: downloadId)
+        self.queue.asyncAfter(deadline: .now() + 2.0, flags: .barrier) {
+          // A pause during the wait wins over the automatic retry
+          guard self.taskMetadata[downloadId]?.state == .failed else { return }
+          self._retryDownloadUnsafe(downloadId: downloadId)
         }
       } else {
         self.notifyStateChange(
