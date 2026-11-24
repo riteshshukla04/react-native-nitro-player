@@ -656,7 +656,15 @@ final class DownloadManagerCore: NSObject {
 
   /// Clean up persisted metadata for completed/cancelled downloads
   private func cleanupPersistedMetadata(trackId: String, downloadId: String) {
-    trackMetadata.removeValue(forKey: trackId)
+    // The track is shared by every download of it. Keep it while another one is still
+    // unfinished: a completion without it is never saved, and a retry can't start without it.
+    let trackStillNeeded = taskMetadata.contains { id, metadata in
+      id != downloadId && metadata.trackId == trackId
+        && metadata.state != .completed && metadata.state != .cancelled
+    }
+    if !trackStillNeeded {
+      trackMetadata.removeValue(forKey: trackId)
+    }
     playlistAssociations.removeValue(forKey: downloadId)
     savePersistedMetadata()
   }
