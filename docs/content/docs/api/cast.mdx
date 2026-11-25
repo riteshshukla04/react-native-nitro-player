@@ -127,7 +127,8 @@ const name = Cast.getCastDeviceName(); // "Living Room TV" or null
 
 Present the native Cast dialog: the device chooser when not connected, or the
 cast controls / disconnect dialog when already connected. Mirrors the standard
-platform Cast button behaviour.
+platform Cast button behaviour. The dialog's Stop Casting button ends the
+session and stops playback on the receiver, like `endCastSession()`.
 
 ```typescript
 Cast.showCastPicker();
@@ -137,7 +138,8 @@ Cast.showCastPicker();
 
 ### `endCastSession()`
 
-End the current Cast session and resume local playback. No-op when not connected.
+End the current Cast session, stop playback on the receiver and resume local
+playback. No-op when not connected.
 
 ```typescript
 await Cast.endCastSession();

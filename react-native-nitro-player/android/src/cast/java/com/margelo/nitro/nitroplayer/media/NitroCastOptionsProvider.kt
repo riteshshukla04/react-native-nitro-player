@@ -24,6 +24,9 @@ class NitroCastOptionsProvider : OptionsProvider {
             // playback control survives notification/lock-screen interaction.
             .setResumeSavedSession(true)
             .setEnableReconnectionService(true)
+            // Off by default: the Cast dialog's Stop Casting button would then end the session
+            // but leave the receiver app playing.
+            .setStopReceiverApplicationWhenEndingSession(true)
             .build()
 
     override fun getAdditionalSessionProviders(context: Context): List<SessionProvider>? = null

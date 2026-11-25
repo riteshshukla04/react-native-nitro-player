@@ -123,6 +123,9 @@ final class CastSessionManager: NSObject {
       let criteria = GCKDiscoveryCriteria(applicationID: appId)
       let options = GCKCastOptions(discoveryCriteria: criteria)
       options.suspendSessionsWhenBackgrounded = false
+      // Off by default: the Cast dialog's Stop Casting button would then end the session but
+      // leave the receiver app playing.
+      options.stopReceiverApplicationWhenEndingSession = true
       // We expose a custom Cast button (not GCKUICastButton), so device discovery
       // must begin immediately instead of waiting for a tap on a GCKUICastButton —
       // otherwise no devices are ever found.
