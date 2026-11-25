@@ -17,6 +17,8 @@ await TrackPlayer.configure({
 
 ## AndroidManifest Setup
 
+> With Expo, the [config plugin](/docs/guides/expo#android-options) makes these changes: set `android.androidAutoEnabled` to `true`, and `android.voiceSearchEnabled` for [voice search](#voice-search-google-assistant--gemini).
+
 Add the following to your `android/app/src/main/AndroidManifest.xml`. Make sure the root `<manifest>` tag declares the `tools` namespace:
 
 ```xml

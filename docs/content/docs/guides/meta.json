@@ -1,6 +1,7 @@
 {
   "title": "Guides",
   "pages": [
+    "expo",
     "queue-management",
     "offline-playback",
     "android-auto",

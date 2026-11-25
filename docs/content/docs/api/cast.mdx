@@ -37,6 +37,8 @@ Android needs nothing — the library ships the Cast SDK dependencies and regist
 its own `OptionsProvider`. If your app already ships its own Cast
 `OptionsProvider`, override the library's manifest entry with `tools:replace`.
 
+With Expo, the [config plugin](/docs/guides/expo) adds these keys for you.
+
 Cast has no simulator/emulator support — testing needs a real Chromecast device
 on the same network.
 
@@ -51,7 +53,9 @@ nitroPlayerCastEnabled=false
 ```
 
 or pass `-PnitroPlayerCastEnabled=false` to Gradle (handy for a one-off flavor
-build in CI). The library then compiles
+build in CI). With Expo, set `android.castEnabled` to `false` in the
+[config plugin](/docs/guides/expo#android-options), which writes the property on
+prebuild. The library then compiles
 without `play-services-cast-framework`, `media3-cast` and `mediarouter`, and the
 `Cast` API stays callable as inert no-ops: `getCastState()` reports
 `'no_devices_available'`, `isCasting()` is `false`, and `showCastPicker()` does
