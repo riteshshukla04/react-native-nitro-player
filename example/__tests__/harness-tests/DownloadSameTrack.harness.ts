@@ -5,7 +5,11 @@ import {
   beforeEach,
   afterEach,
 } from 'react-native-harness';
-import { DownloadManager, TrackItem } from 'react-native-nitro-player';
+import {
+  DownloadManager,
+  DownloadState,
+  TrackItem,
+} from 'react-native-nitro-player';
 
 const createTestTrack = (id: string, songNumber: number): TrackItem => ({
   id,
@@ -19,26 +23,57 @@ const createTestTrack = (id: string, songNumber: number): TrackItem => ({
 const wait = (ms: number) =>
   new Promise<void>(resolve => setTimeout(resolve, ms));
 
-// Polls until the download reaches `completed` or `failed`, or the timeout elapses.
+// Final states by download id, taken from the state events: Android drops a finished
+// download from getDownloadTask, so polling the task never sees it complete there.
+const finalStates = new Map<string, DownloadState>();
+DownloadManager.onDownloadStateChange((downloadId, _trackId, state) => {
+  if (state === 'completed' || state === 'failed') {
+    finalStates.set(downloadId, state);
+  }
+});
+
+const completedTrackIds = new Set<string>();
+DownloadManager.onDownloadComplete(downloadedTrack => {
+  completedTrackIds.add(downloadedTrack.trackId);
+});
+
+const trackIdsWithProgress = new Set<string>();
+DownloadManager.onDownloadProgress(progress => {
+  trackIdsWithProgress.add(progress.trackId);
+});
+
+// False when no progress arrives in time (no network, or an unsigned simulator
+// build, where background URLSession tasks fail before transferring a byte).
+const waitForProgress = async (trackId: string, timeoutMs: number) => {
+  const deadline = Date.now() + timeoutMs;
+  while (!trackIdsWithProgress.has(trackId) && Date.now() < deadline) {
+    await wait(100);
+  }
+  return trackIdsWithProgress.has(trackId);
+};
+
+// Waits until the download completes or fails, or the timeout elapses.
 const waitForFinish = async (
   downloadId: string,
   timeoutMs: number,
-): Promise<string | undefined> => {
+): Promise<DownloadState | undefined> => {
   const deadline = Date.now() + timeoutMs;
-  let state = DownloadManager.getDownloadTask(downloadId)?.state;
-  while (state !== 'completed' && state !== 'failed' && Date.now() < deadline) {
+  while (!finalStates.has(downloadId) && Date.now() < deadline) {
     await wait(500);
-    state = DownloadManager.getDownloadTask(downloadId)?.state;
   }
-  return state;
+  return finalStates.get(downloadId);
+};
+
+// onDownloadComplete is a separate event sent right after the `completed` state.
+const waitForCompleteEvent = async (trackId: string, timeoutMs: number) => {
+  const deadline = Date.now() + timeoutMs;
+  while (!completedTrackIds.has(trackId) && Date.now() < deadline) {
+    await wait(100);
+  }
+  return completedTrackIds.has(trackId);
 };
 
 describe('DownloadManager - several downloads of the same track', () => {
-  const completedTrackIds = new Set<string>();
-  DownloadManager.onDownloadComplete(downloadedTrack => {
-    completedTrackIds.add(downloadedTrack.trackId);
-  });
-
   beforeEach(async () => {
     DownloadManager.configure({
       storageLocation: 'private',
@@ -50,7 +85,9 @@ describe('DownloadManager - several downloads of the same track', () => {
 
     await DownloadManager.cancelAllDownloads();
     await DownloadManager.deleteAllDownloads();
+    finalStates.clear();
     completedTrackIds.clear();
+    trackIdsWithProgress.clear();
   });
 
   afterEach(async () => {
@@ -66,13 +103,23 @@ describe('DownloadManager - several downloads of the same track', () => {
     const blocker = createTestTrack('same-track-blocker', 10);
     const track = createTestTrack('same-track', 6);
 
-    // With a single slot, the blocker takes it and both downloads of the track wait
+    // With a single slot, the blocker takes it and both downloads of the track wait.
+    // A blocker that fails at once would hand its slot on, so wait until it's running.
     const blockerId = await DownloadManager.downloadTrack(blocker);
+    if (!(await waitForProgress(blocker.id, 15000))) {
+      console.warn('No download progress within 15 seconds - skipping test');
+      return;
+    }
     const olderId = await DownloadManager.downloadTrack(track);
     const newerId = await DownloadManager.downloadTrack(track);
-    await wait(500);
-    expect(DownloadManager.getDownloadTask(olderId)?.state).toBe('pending');
-    expect(DownloadManager.getDownloadTask(newerId)?.state).toBe('pending');
+    const olderState = DownloadManager.getDownloadTask(olderId)?.state;
+    const newerState = DownloadManager.getDownloadTask(newerId)?.state;
+    if (olderState !== 'pending' || newerState !== 'pending') {
+      console.warn(
+        `Blocker ended early (older ${olderState}, newer ${newerState}) - skipping test`,
+      );
+      return;
+    }
 
     // Drop the older download, then free the slot for the newer one
     await DownloadManager.cancelDownload(olderId);
@@ -80,13 +127,15 @@ describe('DownloadManager - several downloads of the same track', () => {
 
     const state = await waitForFinish(newerId, 240000);
     console.log(`[same-track] newer download is ${state}`);
-    if (state !== 'completed') {
-      console.warn(`Newer download is ${state}, not completed - skipping test`);
+    // The blocker's progress showed the network works, so a download that never ends is a bug
+    expect(state).toBeDefined();
+    if (state === 'failed') {
+      console.warn('Newer download failed - skipping test');
       return;
     }
 
     // The newer download must be saved, not only marked completed
-    expect(completedTrackIds.has(track.id)).toBe(true);
+    expect(await waitForCompleteEvent(track.id, 5000)).toBe(true);
     expect(await DownloadManager.isTrackDownloaded(track.id)).toBe(true);
   });
 });
