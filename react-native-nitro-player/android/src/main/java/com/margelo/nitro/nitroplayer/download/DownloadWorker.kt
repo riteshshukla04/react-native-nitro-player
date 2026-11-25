@@ -262,8 +262,9 @@ class DownloadWorker(
 
                 destinationFile.absolutePath
             } catch (e: CancellationException) {
-                // Keep the partial file — pause resumes from this offset via Range;
-                // an explicit cancel deletes it in DownloadManagerCore.cancelDownload
+                // Keep the partial file — pause resumes from this offset via Range; an explicit
+                // cancel deletes it in DownloadManagerCore.cancelDownload unless another
+                // download of the track still needs it
                 throw e
             } catch (e: Exception) {
                 throw e

@@ -227,14 +227,22 @@ class DownloadManagerCore private constructor(
             metadata.state = DownloadState.CANCELLED
             notifyStateChange(downloadId, metadata.trackId, DownloadState.CANCELLED, null)
             activeTasks.remove(downloadId)
-            // Drop the partial file (pause keeps it for Range resume), but never
-            // a previously completed download's file
-            if (!database.isTrackDownloaded(metadata.trackId)) {
+            // Drop the partial file (pause keeps it for Range resume), but never a previously
+            // completed download's file. Files are named by track id, so other downloads of the
+            // track write or resume from the same one: keep it while any of them is unfinished.
+            // Check the siblings first: a sibling finishing meanwhile is saved before it leaves
+            // activeTasks, so the database check that follows still sees its file.
+            if (!hasUnfinishedDownload(metadata.trackId) && !database.isTrackDownloaded(metadata.trackId)) {
                 fileManager.getLocalPath(metadata.trackId)?.let { fileManager.deleteFile(it) }
             }
         }
         releaseDownloadSlot(downloadId)
     }
+
+    private fun hasUnfinishedDownload(trackId: String): Boolean =
+        activeTasks.values.any {
+            it.trackId == trackId && it.state != DownloadState.COMPLETED && it.state != DownloadState.CANCELLED
+        }
 
     fun retryDownload(downloadId: String) {
         activeTasks[downloadId]?.let { metadata ->

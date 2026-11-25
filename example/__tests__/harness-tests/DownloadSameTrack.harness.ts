@@ -38,8 +38,10 @@ DownloadManager.onDownloadComplete(downloadedTrack => {
 });
 
 const trackIdsWithProgress = new Set<string>();
+const downloadIdsWithProgress = new Set<string>();
 DownloadManager.onDownloadProgress(progress => {
   trackIdsWithProgress.add(progress.trackId);
+  downloadIdsWithProgress.add(progress.downloadId);
 });
 
 // False when no progress arrives in time (no network, or an unsigned simulator
@@ -50,6 +52,20 @@ const waitForProgress = async (trackId: string, timeoutMs: number) => {
     await wait(100);
   }
   return trackIdsWithProgress.has(trackId);
+};
+
+// Like waitForProgress, for every one of the given downloads.
+const waitForDownloadsProgress = async (
+  downloadIds: string[],
+  timeoutMs: number,
+) => {
+  const allHaveProgress = () =>
+    downloadIds.every(id => downloadIdsWithProgress.has(id));
+  const deadline = Date.now() + timeoutMs;
+  while (!allHaveProgress() && Date.now() < deadline) {
+    await wait(100);
+  }
+  return allHaveProgress();
 };
 
 // Waits until the download completes or fails, or the timeout elapses.
@@ -88,6 +104,7 @@ describe('DownloadManager - several downloads of the same track', () => {
     finalStates.clear();
     completedTrackIds.clear();
     trackIdsWithProgress.clear();
+    downloadIdsWithProgress.clear();
   });
 
   afterEach(async () => {
@@ -135,6 +152,49 @@ describe('DownloadManager - several downloads of the same track', () => {
     }
 
     // The newer download must be saved, not only marked completed
+    expect(await waitForCompleteEvent(track.id, 5000)).toBe(true);
+    expect(await DownloadManager.isTrackDownloaded(track.id)).toBe(true);
+  });
+
+  it('should still record a running download after another running one of the same track is cancelled', async () => {
+    // Two slots, so both downloads of the track run at once. A large file keeps them
+    // running long enough to cancel one mid-download.
+    DownloadManager.configure({
+      storageLocation: 'private',
+      maxConcurrentDownloads: 2,
+      backgroundDownloadsEnabled: true,
+      downloadArtwork: false,
+      wifiOnlyDownloads: false,
+    });
+    const track = createTestTrack('same-track-running', 17);
+
+    const cancelledId = await DownloadManager.downloadTrack(track);
+    const keptId = await DownloadManager.downloadTrack(track);
+    if (!(await waitForDownloadsProgress([cancelledId, keptId], 15000))) {
+      console.warn('No download progress within 15 seconds - skipping test');
+      return;
+    }
+    const cancelledState = DownloadManager.getDownloadTask(cancelledId)?.state;
+    const keptState = DownloadManager.getDownloadTask(keptId)?.state;
+    if (cancelledState !== 'downloading' || keptState !== 'downloading') {
+      console.warn(
+        `Downloads not both running (cancelled ${cancelledState}, kept ${keptState}) - skipping test`,
+      );
+      return;
+    }
+
+    // Cancelling one download must leave the file the other is still writing
+    await DownloadManager.cancelDownload(cancelledId);
+
+    const state = await waitForFinish(keptId, 240000);
+    console.log(`[same-track] kept download is ${state}`);
+    // Both downloads were transferring, so a download that never ends is a bug
+    expect(state).toBeDefined();
+    if (state === 'failed') {
+      console.warn('Kept download failed - skipping test');
+      return;
+    }
+
     expect(await waitForCompleteEvent(track.id, 5000)).toBe(true);
     expect(await DownloadManager.isTrackDownloaded(track.id)).toBe(true);
   });
