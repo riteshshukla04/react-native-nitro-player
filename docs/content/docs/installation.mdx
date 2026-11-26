@@ -46,6 +46,20 @@ Add these to your `android/app/src/main/AndroidManifest.xml` for background play
 
 If you plan to use offline downloads, see the [Offline Playback](/docs/guides/offline-playback) guide for additional permissions and WorkManager setup.
 
+## Expo
+
+If Expo generates your native projects (`expo prebuild`), add the config plugin instead of editing `Info.plist`, `AndroidManifest.xml` or `gradle.properties` by hand:
+
+```json
+{
+  "expo": {
+    "plugins": ["react-native-nitro-player"]
+  }
+}
+```
+
+See the [Expo guide](/docs/guides/expo) for its options: Cast, Android Auto, voice search and CarPlay.
+
 ## Configuration
 
 Configure the player early in your app lifecycle (e.g., in your root component):

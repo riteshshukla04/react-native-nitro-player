@@ -20,6 +20,28 @@ Make sure you have these installed:
 npm install react-native-nitro-modules
 ```
 
+### Expo
+
+If Expo generates your native projects (`expo prebuild`), add the config plugin to your app config. It adds iOS background audio and the Google Cast `Info.plist` keys, and with options sets up Android Auto, voice search and CarPlay, or builds Android without Google Cast:
+
+```json
+{
+  "expo": {
+    "plugins": [
+      [
+        "react-native-nitro-player",
+        {
+          "android": { "castEnabled": false, "androidAutoEnabled": true },
+          "ios": { "carPlayEnabled": true }
+        }
+      ]
+    ]
+  }
+}
+```
+
+See the [Expo guide](https://nitroplayer.riteshshukla.in/docs/guides/expo) for every option.
+
 ## API Reference
 
 

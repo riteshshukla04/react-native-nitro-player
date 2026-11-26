@@ -1,0 +1,83 @@
+---
+title: Expo
+description: Set up the native projects with the config plugin when Expo generates them
+---
+
+When Expo generates `android/` and `ios/` for you (`expo prebuild`, also called Continuous Native Generation), hand edits to `AndroidManifest.xml`, `Info.plist` or `gradle.properties` are lost on the next prebuild. Add the library's config plugin to your app config instead, and it makes those changes on every prebuild.
+
+Nitro Player has native code, so it runs in a [development build](https://docs.expo.dev/develop/development-builds/introduction/), not in Expo Go.
+
+On Expo SDK 58 (React Native 0.88), install `react-native-nitro-modules` 0.37 or later. With 0.35, the iOS app stops at launch with `Failed to install Nitro`.
+
+## Add the plugin
+
+```json title="app.json"
+{
+  "expo": {
+    "plugins": ["react-native-nitro-player"]
+  }
+}
+```
+
+With no options, the plugin only changes `Info.plist`:
+
+- It adds `audio` to `UIBackgroundModes`, so playback continues in the background.
+- It adds the [Google Cast](/docs/api/cast#setup) keys: `NSLocalNetworkUsageDescription` and `NSBonjourServices` for the Default Media Receiver.
+
+Android needs nothing by default. The library's own manifest declares the playback service, the permissions and the Cast setup, and the build merges it into your app.
+
+Pass options to turn on more:
+
+```json title="app.json"
+{
+  "expo": {
+    "plugins": [
+      [
+        "react-native-nitro-player",
+        {
+          "android": {
+            "castEnabled": false,
+            "androidAutoEnabled": true,
+            "voiceSearchEnabled": true
+          },
+          "ios": {
+            "castReceiverApplicationId": "ABCD1234",
+            "carPlayEnabled": true
+          }
+        }
+      ]
+    ]
+  }
+}
+```
+
+Then generate the native projects again:
+
+```bash
+npx expo prebuild --clean
+```
+
+## Android options
+
+| Option | Default | What the plugin does |
+|---|---|---|
+| `castEnabled` | Not written, so Cast stays on | Writes `nitroPlayerCastEnabled` to `gradle.properties`. `false` builds without the Google Cast SDK, for stores such as F-Droid. See [Building without Google Cast](/docs/api/cast#building-without-google-cast-android) |
+| `androidAutoEnabled` | `false` | Adds the `NitroPlayerMediaBrowserService` service, the `com.google.android.gms.car.application` meta-data and `res/xml/automotive_app_desc.xml` from the [Android Auto setup](/docs/guides/android-auto#androidmanifest-setup). You still call `TrackPlayer.configure({ androidAutoEnabled: true })` |
+| `playbackResumptionEnabled` | `false` | Adds only the `NitroPlayerMediaBrowserService` service, so an app that isn't in Android Auto can [resume from the phone's media controls](/docs/guides/android-auto#resuming-from-the-phones-media-controls). `androidAutoEnabled` already adds the service |
+| `voiceSearchEnabled` | `false` | Adds the `MEDIA_PLAY_FROM_SEARCH` intent filter to your launcher activity, for [voice search](/docs/guides/android-auto#voice-search-google-assistant--gemini) by app name |
+
+## iOS options
+
+| Option | Default | What the plugin does |
+|---|---|---|
+| `castEnabled` | `true` | Adds `NSLocalNetworkUsageDescription` and `NSBonjourServices` (`_googlecast._tcp` and the receiver's own service). With `false` the plugin leaves them out, and Cast finds no devices. The Cast SDK is still linked on iOS |
+| `castReceiverApplicationId` | `CC1AD845` | The receiver app ID in `NSBonjourServices`. Set it to the ID you pass to [`Cast.configure`](/docs/api/cast#configurereceiverapplicationid) when you use a custom receiver |
+| `localNetworkUsageDescription` | Your existing text, else _"$(PRODUCT_NAME) uses the local network to discover Cast devices."_ | The text of the local network permission prompt |
+| `carPlayEnabled` | `false` | Adds the `com.apple.developer.carplay-audio` entitlement and the CarPlay scene from the [CarPlay setup](/docs/guides/carplay#1-native-setup), and turns on `UIApplicationSupportsMultipleScenes` |
+
+## Notes
+
+- **CarPlay needs Expo SDK 58 or later.** From SDK 58 the iOS project uses scenes, and the CarPlay scene goes next to the phone's scene. On an older SDK the plugin stops prebuild with an error, because a CarPlay scene without a phone scene leaves the phone screen blank. Apple also has to grant the CarPlay audio entitlement to your bundle ID before a signed build can use it.
+- **Typos stop prebuild.** An option the plugin doesn't know, or a value of the wrong type, fails with an error that lists the valid options. A misspelled `castEnabled` can't silently leave Cast on.
+- **Your own entries stay.** If your project already declares the browser service, the car meta-data or `automotive_app_desc.xml`, the plugin keeps yours.
+- **Cast has an option per platform** because only Android can build without the Cast SDK. An F-Droid build can drop Cast on Android while the iOS app keeps it.

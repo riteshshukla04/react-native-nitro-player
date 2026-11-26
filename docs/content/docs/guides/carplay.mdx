@@ -16,6 +16,8 @@ CarPlay is iOS only. On Android every `CarPlayHelper` call does nothing; see [An
 
 You don't write any Swift for CarPlay or change Swift interop settings. Only the entitlement and `Info.plist` change.
 
+With Expo SDK 58 or later, set `ios.carPlayEnabled` to `true` in the [config plugin](/docs/guides/expo#ios-options), which adds the entitlement, the scene and background audio for you.
+
 **Entitlement.** Request the CarPlay audio entitlement from Apple, then add it to your app's entitlements file:
 
 ```xml

@@ -26,6 +26,7 @@
     "ios/**/*.cpp",
     "ios/**/*.swift",
     "app.plugin.js",
+    "plugin",
     "nitro.json",
     "*.podspec",
     "README.md",
@@ -91,6 +92,20 @@
     ],
     "plugins": [
       "prettier"
+    ],
+    "overrides": [
+      {
+        "files": [
+          "app.plugin.js",
+          "plugin/**/*.js"
+        ],
+        "env": {
+          "node": true
+        },
+        "parserOptions": {
+          "requireConfigFile": false
+        }
+      }
     ],
     "rules": {
       "prettier/prettier": [
