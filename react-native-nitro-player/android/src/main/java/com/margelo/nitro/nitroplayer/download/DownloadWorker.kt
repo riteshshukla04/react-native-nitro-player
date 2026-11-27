@@ -17,7 +17,6 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import java.io.BufferedInputStream
-import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
@@ -166,11 +165,12 @@ class DownloadWorker(
             var connection: HttpURLConnection? = null
             var inputStream: BufferedInputStream? = null
             var outputStream: FileOutputStream? = null
-            var destinationFile: File? = null
 
             try {
-                val partialPath = fileManager.getLocalPath(trackId)
-                val existingBytes = partialPath?.let { File(it).length() } ?: 0L
+                // This download's own partial file: other downloads of the track write theirs,
+                // so resuming never picks up bytes this download didn't write
+                val partialFile = fileManager.getPartialFile(downloadId, storageLocation)
+                val existingBytes = partialFile.length()
 
                 val url = URL(urlString)
                 connection = url.openConnection() as HttpURLConnection
@@ -184,13 +184,13 @@ class DownloadWorker(
                 val responseCode = connection.responseCode
                 if (responseCode == 416) {
                     // Partial file is at or past the server's length — start clean next attempt
-                    partialPath?.let { File(it).delete() }
+                    partialFile.delete()
                     throw Exception("Server returned HTTP 416 for resume, restarting download")
                 }
                 if (responseCode != HttpURLConnection.HTTP_OK && responseCode != HttpURLConnection.HTTP_PARTIAL) {
                     throw Exception("Server returned HTTP $responseCode")
                 }
-                val resuming = responseCode == HttpURLConnection.HTTP_PARTIAL && existingBytes > 0 && partialPath != null
+                val resuming = responseCode == HttpURLConnection.HTTP_PARTIAL && existingBytes > 0
                 // Determine extension
                 var extension = MimeTypeMap.getFileExtensionFromUrl(urlString)
 
@@ -217,17 +217,10 @@ class DownloadWorker(
 
                 val finalExtension = if (extension.isNullOrEmpty()) "mp3" else extension
 
-                // Create destination file — appending to the partial file when the
-                // server honored the Range request, truncating otherwise
-                destinationFile =
-                    if (resuming) {
-                        File(partialPath!!)
-                    } else {
-                        fileManager.createDownloadFile(trackId, storageLocation, finalExtension)
-                    }
-
+                // Append to the partial file when the server honored the Range request,
+                // truncate it otherwise
                 inputStream = BufferedInputStream(connection.inputStream)
-                outputStream = FileOutputStream(destinationFile, resuming)
+                outputStream = FileOutputStream(partialFile, resuming)
 
                 val startOffset = if (resuming) existingBytes else 0L
                 val totalBytes =
@@ -256,10 +249,15 @@ class DownloadWorker(
                 }
 
                 outputStream.flush()
+                outputStream.fd.sync()
+                outputStream.close()
 
                 // Final progress update
                 downloadManager.onProgress(downloadId, trackId, bytesDownloaded, totalBytes)
 
+                // Only a finished download takes the track's file name
+                val destinationFile = fileManager.createDownloadFile(trackId, storageLocation, finalExtension)
+                fileManager.commitPartialFile(partialFile, destinationFile)
                 destinationFile.absolutePath
             } catch (e: CancellationException) {
                 // Keep the partial file — pause resumes from this offset via Range;

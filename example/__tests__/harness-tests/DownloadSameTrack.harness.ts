@@ -38,8 +38,15 @@ DownloadManager.onDownloadComplete(downloadedTrack => {
 });
 
 const trackIdsWithProgress = new Set<string>();
+const downloadIdsWithProgress = new Set<string>();
+// The size of the whole file, as each download last reported it
+const reportedTotals = new Map<string, number>();
 DownloadManager.onDownloadProgress(progress => {
   trackIdsWithProgress.add(progress.trackId);
+  downloadIdsWithProgress.add(progress.downloadId);
+  if (progress.totalBytes > 0) {
+    reportedTotals.set(progress.downloadId, progress.totalBytes);
+  }
 });
 
 // False when no progress arrives in time (no network, or an unsigned simulator
@@ -50,6 +57,20 @@ const waitForProgress = async (trackId: string, timeoutMs: number) => {
     await wait(100);
   }
   return trackIdsWithProgress.has(trackId);
+};
+
+// Like waitForProgress, for every one of the given downloads.
+const waitForDownloadsProgress = async (
+  downloadIds: string[],
+  timeoutMs: number,
+) => {
+  const allHaveProgress = () =>
+    downloadIds.every(id => downloadIdsWithProgress.has(id));
+  const deadline = Date.now() + timeoutMs;
+  while (!allHaveProgress() && Date.now() < deadline) {
+    await wait(100);
+  }
+  return allHaveProgress();
 };
 
 // Waits until the download completes or fails, or the timeout elapses.
@@ -88,6 +109,8 @@ describe('DownloadManager - several downloads of the same track', () => {
     finalStates.clear();
     completedTrackIds.clear();
     trackIdsWithProgress.clear();
+    downloadIdsWithProgress.clear();
+    reportedTotals.clear();
   });
 
   afterEach(async () => {
@@ -137,5 +160,135 @@ describe('DownloadManager - several downloads of the same track', () => {
     // The newer download must be saved, not only marked completed
     expect(await waitForCompleteEvent(track.id, 5000)).toBe(true);
     expect(await DownloadManager.isTrackDownloaded(track.id)).toBe(true);
+  });
+
+  it('should still record a running download after another running one of the same track is cancelled', async () => {
+    // Two slots, so both downloads of the track run at once. A large file keeps them
+    // running long enough to cancel one mid-download.
+    DownloadManager.configure({
+      storageLocation: 'private',
+      maxConcurrentDownloads: 2,
+      backgroundDownloadsEnabled: true,
+      downloadArtwork: false,
+      wifiOnlyDownloads: false,
+    });
+    const track = createTestTrack('same-track-running', 17);
+
+    const cancelledId = await DownloadManager.downloadTrack(track);
+    const keptId = await DownloadManager.downloadTrack(track);
+    if (!(await waitForDownloadsProgress([cancelledId, keptId], 15000))) {
+      console.warn('No download progress within 15 seconds - skipping test');
+      return;
+    }
+    const cancelledState = DownloadManager.getDownloadTask(cancelledId)?.state;
+    const keptState = DownloadManager.getDownloadTask(keptId)?.state;
+    if (cancelledState !== 'downloading' || keptState !== 'downloading') {
+      console.warn(
+        `Downloads not both running (cancelled ${cancelledState}, kept ${keptState}) - skipping test`,
+      );
+      return;
+    }
+
+    // Cancelling one download must leave the file the other is still writing
+    await DownloadManager.cancelDownload(cancelledId);
+
+    const state = await waitForFinish(keptId, 240000);
+    console.log(`[same-track] kept download is ${state}`);
+    // Both downloads were transferring, so a download that never ends is a bug
+    expect(state).toBeDefined();
+    if (state === 'failed') {
+      console.warn('Kept download failed - skipping test');
+      return;
+    }
+
+    expect(await waitForCompleteEvent(track.id, 5000)).toBe(true);
+    expect(await DownloadManager.isTrackDownloaded(track.id)).toBe(true);
+  });
+
+  // Two running downloads of one track, the second started once the first has written
+  // bytes, so neither can mistake the other's bytes for its own. Undefined when they
+  // don't both get going (no network, or the file finished too fast).
+  const startOverlappingDownloads = async (track: TrackItem) => {
+    // Two slots, so both run at once. A large file keeps them running together.
+    DownloadManager.configure({
+      storageLocation: 'private',
+      maxConcurrentDownloads: 2,
+      backgroundDownloadsEnabled: true,
+      downloadArtwork: false,
+      wifiOnlyDownloads: false,
+    });
+    const firstId = await DownloadManager.downloadTrack(track);
+    if (!(await waitForDownloadsProgress([firstId], 15000))) {
+      console.warn('No download progress within 15 seconds - skipping test');
+      return undefined;
+    }
+    const secondId = await DownloadManager.downloadTrack(track);
+    if (!(await waitForDownloadsProgress([secondId], 15000))) {
+      console.warn('No progress for the second download - skipping test');
+      return undefined;
+    }
+    const firstState = DownloadManager.getDownloadTask(firstId)?.state;
+    const secondState = DownloadManager.getDownloadTask(secondId)?.state;
+    if (firstState !== 'downloading' || secondState !== 'downloading') {
+      console.warn(
+        `Downloads not both running (first ${firstState}, second ${secondState}) - skipping test`,
+      );
+      return undefined;
+    }
+    return { firstId, secondId };
+  };
+
+  // The saved file must be exactly the file the download fetched
+  const expectSavedFileSize = async (trackId: string, downloadId: string) => {
+    const total = reportedTotals.get(downloadId);
+    const saved = await DownloadManager.getDownloadedTrack(trackId);
+    console.log(
+      `[same-track] saved ${saved?.fileSize} bytes, download reported ${total}`,
+    );
+    expect(total).toBeGreaterThan(0);
+    expect(saved?.fileSize).toBe(total);
+  };
+
+  it('should save the whole file when one of two overlapping downloads of a track is cancelled', async () => {
+    const track = createTestTrack('same-track-overlap-cancel', 17);
+    const ids = await startOverlappingDownloads(track);
+    if (!ids) return;
+
+    await DownloadManager.cancelDownload(ids.firstId);
+
+    const state = await waitForFinish(ids.secondId, 240000);
+    console.log(`[same-track] remaining download is ${state}`);
+    expect(state).toBeDefined();
+    if (state === 'failed') {
+      console.warn('Remaining download failed - skipping test');
+      return;
+    }
+
+    expect(await waitForCompleteEvent(track.id, 5000)).toBe(true);
+    await expectSavedFileSize(track.id, ids.secondId);
+  });
+
+  it('should save the whole file when two overlapping downloads of a track both finish', async () => {
+    const track = createTestTrack('same-track-overlap-both', 17);
+    const ids = await startOverlappingDownloads(track);
+    if (!ids) return;
+
+    const firstState = await waitForFinish(ids.firstId, 240000);
+    const secondState = await waitForFinish(ids.secondId, 240000);
+    console.log(
+      `[same-track] first download is ${firstState}, second is ${secondState}`,
+    );
+    expect(firstState).toBeDefined();
+    expect(secondState).toBeDefined();
+    if (firstState === 'failed' || secondState === 'failed') {
+      console.warn('A download failed - skipping test');
+      return;
+    }
+
+    expect(await waitForCompleteEvent(track.id, 5000)).toBe(true);
+    expect(reportedTotals.get(ids.firstId)).toBe(
+      reportedTotals.get(ids.secondId),
+    );
+    await expectSavedFileSize(track.id, ids.secondId);
   });
 });

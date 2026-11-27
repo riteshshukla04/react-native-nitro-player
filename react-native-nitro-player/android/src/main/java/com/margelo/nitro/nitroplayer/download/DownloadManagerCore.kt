@@ -227,12 +227,10 @@ class DownloadManagerCore private constructor(
             metadata.state = DownloadState.CANCELLED
             notifyStateChange(downloadId, metadata.trackId, DownloadState.CANCELLED, null)
             activeTasks.remove(downloadId)
-            // Drop the partial file (pause keeps it for Range resume), but never
-            // a previously completed download's file
-            if (!database.isTrackDownloaded(metadata.trackId)) {
-                fileManager.getLocalPath(metadata.trackId)?.let { fileManager.deleteFile(it) }
-            }
         }
+        // Drop this download's partial file (pause keeps it for Range resume). Other downloads
+        // of the track write their own, and a finished track's file is never a partial one.
+        fileManager.deletePartialFiles(downloadId)
         releaseDownloadSlot(downloadId)
     }
 
@@ -348,9 +346,31 @@ class DownloadManagerCore private constructor(
     /** Validates all downloads and cleans up orphaned records */
     fun syncDownloads(): Int {
         val removedCount = database.syncDownloads()
-        val bytesFreed = fileManager.cleanupOrphanedFiles(database.getAllDownloadedTracks().map { it.trackId }.toSet())
+        val bytesFreed =
+            fileManager.cleanupOrphanedFiles(database.getAllDownloadedTracks().map { it.trackId }.toSet()) +
+                fileManager.cleanupStalePartialFiles(::unfinishedDownloadIds)
         NitroPlayerLogger.log("DownloadManagerCore", "syncDownloads: removed $removedCount orphaned records, freed $bytesFreed bytes")
         return removedCount
+    }
+
+    /**
+     * Downloads that may still write or resume a partial file, or null when that can't be told.
+     * Besides this process's downloads, WorkManager may be running or retrying ones that an
+     * earlier process started.
+     */
+    private fun unfinishedDownloadIds(): Set<String>? {
+        val ids = activeTasks.keys.toMutableSet()
+        return try {
+            workManager
+                .getWorkInfos(WorkQuery.fromStates(WorkInfo.State.ENQUEUED, WorkInfo.State.RUNNING, WorkInfo.State.BLOCKED))
+                .get()
+                .flatMap { it.tags }
+                .filter { it.startsWith("download_") }
+                .mapTo(ids) { it.removePrefix("download_") }
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not list unfinished download work", e)
+            null
+        }
     }
 
     // Playback Source Preference
