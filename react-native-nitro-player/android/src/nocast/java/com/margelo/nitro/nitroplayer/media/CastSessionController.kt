@@ -25,6 +25,8 @@ class CastSessionController private constructor(
 
     fun currentDeviceName(): String? = null
 
+    fun onCastLoadStarting() = Unit
+
     fun endCurrentSession() = Unit
 
     fun showCastPicker(activity: Activity) = Unit

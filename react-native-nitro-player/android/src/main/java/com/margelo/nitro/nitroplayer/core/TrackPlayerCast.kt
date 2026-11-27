@@ -64,6 +64,7 @@ internal fun TrackPlayerCore.switchToCastPlayer() {
     val playable = castableUpcoming(castList)
 
     if (playable.isNotEmpty()) {
+        controller.onCastLoadStarting()
         lastCastWaitTrackId = null
         val items = playable.map { makeMediaItem(it, mediaIdFor(it)) }
         // Resume mid-track only when the receiver starts on the locally playing track.
@@ -200,6 +201,7 @@ internal fun TrackPlayerCore.setCastUrlsOnQueue(urls: Map<String, String>) {
         val items = playable.map { makeMediaItem(it, mediaIdFor(it)) }
         // The deferred hand-off load: it carries the play state the phone had at connect
         applyPendingCastAutoplay(playable.first().id)
+        controller.onCastLoadStarting()
         markCastLoadInFlight(CastQueueChange.LOAD)
         controller.castPlayer.setMediaItems(items, 0, resume)
         controller.castPlayer.prepare()

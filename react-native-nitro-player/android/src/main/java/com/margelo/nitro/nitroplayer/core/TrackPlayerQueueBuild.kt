@@ -110,6 +110,7 @@ internal fun TrackPlayerCore.rebuildQueueAndPlayFromIndex(index: Int) {
             checkUpcomingTracksForUrls(lookaheadCount)
             return
         }
+        castSessionController?.onCastLoadStarting()
         // Single atomic queueLoad — no separate clear (each queue op is a receiver RPC).
         val castItems = castTracks.map { makeMediaItem(it, mediaIdFor(it)) }
         applyPendingCastAutoplay(castTracks.first().id)
@@ -310,6 +311,7 @@ internal fun TrackPlayerCore.updatePlayerQueue(tracks: List<TrackItem>) {
         }
         lastCastWaitTrackId = null
         if (deferred) return
+        castSessionController?.onCastLoadStarting()
         val castItems = castTracks.map { makeMediaItem(it, mediaIdFor(it)) }
         applyPendingCastAutoplay(castTracks.first().id)
         markCastLoadInFlight(CastQueueChange.LOAD)

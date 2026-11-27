@@ -44,6 +44,11 @@ final class CastSessionManager: NSObject {
   private var catalog: [String: TrackItem] = [:]
   private var watchdog: DispatchWorkItem?
   private static let requestTimeout: TimeInterval = 10
+  // A play()/pause() sent while a load is unanswered reaches the receiver's previous media (or none) and
+  // is lost; the new media starts with the load's autoplay flag. So the last one is kept and applied to the
+  // load: as its autoplay if it hasn't been sent yet, otherwise re-sent once the load completes.
+  private var playIntentDuringLoad: Bool?
+  private var loadRequestId: Int?
 
   /// Track ID playing on the receiver (or expected to, right after a locally-initiated jump).
   var currentRemoteTrackId: String? {
@@ -193,13 +198,19 @@ final class CastSessionManager: NSObject {
 
   func play() {
     #if canImport(GoogleCast)
-    onMain { self.remoteClient?.play() }
+    onMain {
+      if self.reconciler.hasUnfinishedLoad { self.playIntentDuringLoad = true }
+      self.remoteClient?.play()
+    }
     #endif
   }
 
   func pause() {
     #if canImport(GoogleCast)
-    onMain { self.remoteClient?.pause() }
+    onMain {
+      if self.reconciler.hasUnfinishedLoad { self.playIntentDuringLoad = false }
+      self.remoteClient?.pause()
+    }
     #endif
   }
 
@@ -505,7 +516,9 @@ extension CastSessionManager {
 
   private func sendLoad(_ load: CastQueueLoad) {
     guard let client = remoteClient else { return recover("no client") }
-    let items = load.tracks.compactMap { makeQueueItem(for: $0, autoplay: load.autoplay) }
+    let autoplay = playIntentDuringLoad ?? load.autoplay
+    playIntentDuringLoad = nil
+    let items = load.tracks.compactMap { makeQueueItem(for: $0, autoplay: autoplay) }
     guard items.count == load.tracks.count else { return recover("uncastable item") }
     let options = GCKMediaQueueLoadOptions()
     options.startIndex = UInt(load.startIndex)
@@ -515,7 +528,9 @@ extension CastSessionManager {
     case .playlist: options.repeatMode = .all
     default: options.repeatMode = .off
     }
-    track(client.queueLoad(items, with: options))
+    let request = client.queueLoad(items, with: options)
+    loadRequestId = request.requestID
+    track(request)
   }
 
   /// Bounds the wait so a lost callback cannot stall the queue.
@@ -586,14 +601,31 @@ extension CastSessionManager: GCKRequestDelegate {
     watchdog = nil
     run(reconciler.requestCompleted(request.requestID))
     if let client = remoteClient { observeReceiverQueue(client) }
+    // The load has created the receiver's new media: a play/pause made meanwhile can reach it now.
+    if request.requestID == loadRequestId {
+      loadRequestId = nil
+      if let intent = playIntentDuringLoad {
+        playIntentDuringLoad = nil
+        if intent { remoteClient?.play() } else { remoteClient?.pause() }
+      }
+    }
   }
 
   func request(_ request: GCKRequest, didFailWithError error: GCKError) {
+    clearLoadIntent(request)
     run(reconciler.requestFailed(request.requestID, reason: "request failed: \(error.code)"))
   }
 
   func request(_ request: GCKRequest, didAbortWith abortReason: GCKRequestAbortReason) {
+    clearLoadIntent(request)
     run(reconciler.requestFailed(request.requestID, reason: "request aborted: \(abortReason.rawValue)"))
+  }
+
+  /// A failed load is reloaded by recovery with the core's current play intent, so drop ours.
+  private func clearLoadIntent(_ request: GCKRequest) {
+    guard request.requestID == loadRequestId else { return }
+    loadRequestId = nil
+    playIntentDuringLoad = nil
   }
 }
 
@@ -636,6 +668,8 @@ extension CastSessionManager: GCKSessionManagerListener {
       trackId: currentRemoteTrackId, position: lastKnownRemotePosition)
     reconciler.sessionEnded()
     catalog = [:]
+    playIntentDuringLoad = nil
+    loadRequestId = nil
     withState {
       _lastCurrentTrackId = nil
       _loadedTracks = []
@@ -652,6 +686,8 @@ extension CastSessionManager: GCKSessionManagerListener {
     (session as? GCKCastSession)?.remoteMediaClient?.mediaQueue.add(self)
     reconciler.sessionEnded()
     catalog = [:]
+    playIntentDuringLoad = nil
+    loadRequestId = nil
     startProgressTimer()
     core?.handleCastConnected()
     emitCastState()
