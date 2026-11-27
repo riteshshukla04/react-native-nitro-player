@@ -1,6 +1,6 @@
 import React from 'react';
-import { Text } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { Text, StyleSheet } from 'react-native';
+import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import PlayerScreen from '../screens/PlayerScreen';
 import PlaylistsScreen from '../screens/PlaylistsScreen';
@@ -9,24 +9,38 @@ import DownloadsScreen from '../screens/DownloadsScreen';
 import MoreScreen from '../screens/MoreScreen';
 import { colors } from '../styles/theme';
 
+const navTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    primary: colors.primary,
+    background: colors.background,
+    card: colors.surface,
+    text: colors.text,
+    border: colors.border,
+  },
+};
+
 const Tab = createBottomTabNavigator();
 
 export default function AppNavigator() {
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={navTheme}>
       <Tab.Navigator
         screenOptions={{
           tabBarActiveTintColor: colors.primary,
-          tabBarInactiveTintColor: '#8E8E93',
+          tabBarInactiveTintColor: colors.textTertiary,
           headerStyle: {
-            backgroundColor: '#f8f9fa',
+            backgroundColor: colors.surface,
           },
           headerTitleStyle: {
-            fontWeight: '600',
+            fontWeight: '700',
+            color: colors.text,
           },
+          headerShadowVisible: false,
           tabBarStyle: {
-            backgroundColor: colors.white,
-            borderTopWidth: 1,
+            backgroundColor: colors.surface,
+            borderTopWidth: StyleSheet.hairlineWidth,
             borderTopColor: colors.border,
           },
         }}>
