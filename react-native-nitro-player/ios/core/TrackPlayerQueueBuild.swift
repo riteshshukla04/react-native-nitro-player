@@ -503,8 +503,14 @@ extension TrackPlayerCore {
   }
 
   /// Builds AVURLAsset options, attaching custom HTTP headers for remote (non-local) tracks.
-  private func assetOptions(for track: TrackItem, isLocal: Bool) -> [String: Any] {
-    var options: [String: Any] = [AVURLAssetPreferPreciseDurationAndTimingKey: true]
+  /// Precise timing can make AVFoundation read a remote file to the end before playback starts,
+  /// so for remote tracks it follows `preciseRemoteTiming`. Local files always use it.
+  private func assetOptions(
+    for track: TrackItem, isLocal: Bool, preciseRemoteTiming: Bool
+  ) -> [String: Any] {
+    var options: [String: Any] = [
+      AVURLAssetPreferPreciseDurationAndTimingKey: isLocal || preciseRemoteTiming
+    ]
     if !isLocal, let headers = httpHeaders(for: track) {
       // AVURLAssetHTTPHeaderFieldsKey is the de-facto mechanism for per-asset request
       // headers (also used by react-native-track-player). Applies to non-DRM HTTP(S).
@@ -516,8 +522,13 @@ extension TrackPlayerCore {
   /// Builds the AVURLAsset for a track URL. Cleartext-`http` remote URLs are routed through
   /// `redirectResolver` so AVFoundation follows http→https redirects it would otherwise drop
   /// (issue #111). HTTPS and local URLs load natively, unchanged.
-  func makeAsset(for track: TrackItem, url: URL, isLocal: Bool) -> AVURLAsset {
-    let options = assetOptions(for: track, isLocal: isLocal)
+  /// `preciseRemoteTiming` is passed in rather than read here, because the preloader calls this
+  /// off `playerQueue`, which owns the setting.
+  func makeAsset(
+    for track: TrackItem, url: URL, isLocal: Bool, preciseRemoteTiming: Bool
+  ) -> AVURLAsset {
+    let options = assetOptions(
+      for: track, isLocal: isLocal, preciseRemoteTiming: preciseRemoteTiming)
     guard !isLocal, let wrappedURL = TrackPlayerRedirectResolver.wrap(url) else {
       return AVURLAsset(url: url, options: options)
     }
@@ -568,7 +579,8 @@ extension TrackPlayerCore {
       asset = preloadedAsset
       NitroPlayerLogger.log("TrackPlayerCore", "🚀 Using preloaded asset for \(track.title)")
     } else {
-      asset = makeAsset(for: track, url: url, isLocal: isLocal)
+      asset = makeAsset(
+        for: track, url: url, isLocal: isLocal, preciseRemoteTiming: preciseRemoteTiming)
     }
 
     let item = AVPlayerItem(asset: asset)
@@ -604,6 +616,7 @@ extension TrackPlayerCore {
     // Swift Array/Dictionary are not safe for concurrent access.
     let queuedTrackIds = Set(player?.items().compactMap { $0.trackId } ?? [])
     let alreadyPreloaded = Set(preloadedAssets.keys)
+    let preciseRemoteTiming = self.preciseRemoteTiming
     let generation = preloadGeneration
     let wraps = currentRepeatMode == .playlist && !currentTracks.isEmpty
     let available =
@@ -632,7 +645,8 @@ extension TrackPlayerCore {
           url = remoteUrl
         }
 
-        let asset = self.makeAsset(for: track, url: url, isLocal: isLocal)
+        let asset = self.makeAsset(
+          for: track, url: url, isLocal: isLocal, preciseRemoteTiming: preciseRemoteTiming)
 
         asset.loadValuesAsynchronously(forKeys: Constants.preloadAssetKeys) { [weak self] in
           var allKeysLoaded = true

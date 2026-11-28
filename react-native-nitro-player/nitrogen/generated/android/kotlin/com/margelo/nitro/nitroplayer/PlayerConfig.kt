@@ -41,6 +41,9 @@ data class PlayerConfig(
   val androidShowRemoteSkipButtons: Boolean?,
   @DoNotStrip
   @Keep
+  val preciseRemoteTiming: Boolean?,
+  @DoNotStrip
+  @Keep
   val lookaheadCount: Double?,
   @DoNotStrip
   @Keep
@@ -67,6 +70,7 @@ data class PlayerConfig(
       && Objects.deepEquals(this.remoteSkipBackwardInterval, other.remoteSkipBackwardInterval)
       && Objects.deepEquals(this.preferRemoteSkipIntervals, other.preferRemoteSkipIntervals)
       && Objects.deepEquals(this.androidShowRemoteSkipButtons, other.androidShowRemoteSkipButtons)
+      && Objects.deepEquals(this.preciseRemoteTiming, other.preciseRemoteTiming)
       && Objects.deepEquals(this.lookaheadCount, other.lookaheadCount)
       && Objects.deepEquals(this.androidNotificationIcon, other.androidNotificationIcon)
       && Objects.deepEquals(this.androidAudioFocus, other.androidAudioFocus)
@@ -83,6 +87,7 @@ data class PlayerConfig(
       remoteSkipBackwardInterval,
       preferRemoteSkipIntervals,
       androidShowRemoteSkipButtons,
+      preciseRemoteTiming,
       lookaheadCount,
       androidNotificationIcon,
       androidAudioFocus,
@@ -99,8 +104,8 @@ data class PlayerConfig(
     @Keep
     @Suppress("unused")
     @JvmStatic
-    private fun fromCpp(androidAutoEnabled: Boolean?, carPlayEnabled: Boolean?, showInNotification: Boolean?, remoteSkipForwardInterval: Double?, remoteSkipBackwardInterval: Double?, preferRemoteSkipIntervals: Boolean?, androidShowRemoteSkipButtons: Boolean?, lookaheadCount: Double?, androidNotificationIcon: String?, androidAudioFocus: AndroidAudioFocusMode?, androidStopOnTaskRemoved: Boolean?, notificationButtons: NotificationButtons?): PlayerConfig {
-      return PlayerConfig(androidAutoEnabled, carPlayEnabled, showInNotification, remoteSkipForwardInterval, remoteSkipBackwardInterval, preferRemoteSkipIntervals, androidShowRemoteSkipButtons, lookaheadCount, androidNotificationIcon, androidAudioFocus, androidStopOnTaskRemoved, notificationButtons)
+    private fun fromCpp(androidAutoEnabled: Boolean?, carPlayEnabled: Boolean?, showInNotification: Boolean?, remoteSkipForwardInterval: Double?, remoteSkipBackwardInterval: Double?, preferRemoteSkipIntervals: Boolean?, androidShowRemoteSkipButtons: Boolean?, preciseRemoteTiming: Boolean?, lookaheadCount: Double?, androidNotificationIcon: String?, androidAudioFocus: AndroidAudioFocusMode?, androidStopOnTaskRemoved: Boolean?, notificationButtons: NotificationButtons?): PlayerConfig {
+      return PlayerConfig(androidAutoEnabled, carPlayEnabled, showInNotification, remoteSkipForwardInterval, remoteSkipBackwardInterval, preferRemoteSkipIntervals, androidShowRemoteSkipButtons, preciseRemoteTiming, lookaheadCount, androidNotificationIcon, androidAudioFocus, androidStopOnTaskRemoved, notificationButtons)
     }
   }
 }

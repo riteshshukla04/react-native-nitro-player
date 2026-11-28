@@ -95,6 +95,14 @@ export interface PlayerConfig {
    */
   androidShowRemoteSkipButtons?: boolean
   /**
+   * iOS only, ignored on Android: ask AVFoundation for precise duration and timing on remote tracks
+   * (default: true). It can read the whole file before playback starts, which on a large MP3 with no
+   * duration header delays the start until the download is done. `false` starts sooner; the
+   * duration and seeks of a variable-bitrate file without such a header are then estimated.
+   * Downloaded and local files always use precise timing. Applies to tracks loaded after the call.
+   */
+  preciseRemoteTiming?: boolean
+  /**
    * Number of upcoming tracks to preload URLs for (default: 5)
    * Higher values = more proactive loading, but more network requests
    */

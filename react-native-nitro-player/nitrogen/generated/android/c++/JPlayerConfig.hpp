@@ -63,6 +63,8 @@ namespace margelo::nitro::nitroplayer {
       jni::local_ref<jni::JBoolean> preferRemoteSkipIntervals = this->getFieldValue(fieldPreferRemoteSkipIntervals);
       static const auto fieldAndroidShowRemoteSkipButtons = clazz->getField<jni::JBoolean>("androidShowRemoteSkipButtons");
       jni::local_ref<jni::JBoolean> androidShowRemoteSkipButtons = this->getFieldValue(fieldAndroidShowRemoteSkipButtons);
+      static const auto fieldPreciseRemoteTiming = clazz->getField<jni::JBoolean>("preciseRemoteTiming");
+      jni::local_ref<jni::JBoolean> preciseRemoteTiming = this->getFieldValue(fieldPreciseRemoteTiming);
       static const auto fieldLookaheadCount = clazz->getField<jni::JDouble>("lookaheadCount");
       jni::local_ref<jni::JDouble> lookaheadCount = this->getFieldValue(fieldLookaheadCount);
       static const auto fieldAndroidNotificationIcon = clazz->getField<jni::JString>("androidNotificationIcon");
@@ -81,6 +83,7 @@ namespace margelo::nitro::nitroplayer {
         remoteSkipBackwardInterval != nullptr ? std::make_optional(remoteSkipBackwardInterval->value()) : std::nullopt,
         preferRemoteSkipIntervals != nullptr ? std::make_optional(static_cast<bool>(preferRemoteSkipIntervals->value())) : std::nullopt,
         androidShowRemoteSkipButtons != nullptr ? std::make_optional(static_cast<bool>(androidShowRemoteSkipButtons->value())) : std::nullopt,
+        preciseRemoteTiming != nullptr ? std::make_optional(static_cast<bool>(preciseRemoteTiming->value())) : std::nullopt,
         lookaheadCount != nullptr ? std::make_optional(lookaheadCount->value()) : std::nullopt,
         androidNotificationIcon != nullptr ? std::make_optional(androidNotificationIcon->toStdString()) : std::nullopt,
         androidAudioFocus != nullptr ? std::make_optional(androidAudioFocus->toCpp()) : std::nullopt,
@@ -95,7 +98,7 @@ namespace margelo::nitro::nitroplayer {
      */
     [[maybe_unused]]
     static jni::local_ref<JPlayerConfig::javaobject> fromCpp(const PlayerConfig& value) {
-      using JSignature = JPlayerConfig(jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JDouble>, jni::alias_ref<jni::JDouble>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JDouble>, jni::alias_ref<jni::JString>, jni::alias_ref<JAndroidAudioFocusMode>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<JNotificationButtons>);
+      using JSignature = JPlayerConfig(jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JDouble>, jni::alias_ref<jni::JDouble>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JDouble>, jni::alias_ref<jni::JString>, jni::alias_ref<JAndroidAudioFocusMode>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<JNotificationButtons>);
       static const auto clazz = javaClassStatic();
       static const auto create = clazz->getStaticMethod<JSignature>("fromCpp");
       return create(
@@ -107,6 +110,7 @@ namespace margelo::nitro::nitroplayer {
         value.remoteSkipBackwardInterval.has_value() ? jni::JDouble::valueOf(value.remoteSkipBackwardInterval.value()) : nullptr,
         value.preferRemoteSkipIntervals.has_value() ? jni::JBoolean::valueOf(value.preferRemoteSkipIntervals.value()) : nullptr,
         value.androidShowRemoteSkipButtons.has_value() ? jni::JBoolean::valueOf(value.androidShowRemoteSkipButtons.value()) : nullptr,
+        value.preciseRemoteTiming.has_value() ? jni::JBoolean::valueOf(value.preciseRemoteTiming.value()) : nullptr,
         value.lookaheadCount.has_value() ? jni::JDouble::valueOf(value.lookaheadCount.value()) : nullptr,
         value.androidNotificationIcon.has_value() ? jni::make_jstring(value.androidNotificationIcon.value()) : nullptr,
         value.androidAudioFocus.has_value() ? JAndroidAudioFocusMode::fromCpp(value.androidAudioFocus.value()) : nullptr,

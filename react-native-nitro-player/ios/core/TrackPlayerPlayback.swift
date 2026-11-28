@@ -108,11 +108,15 @@ extension TrackPlayerCore {
     showInNotification: Bool?, lookaheadCount: Int?,
     remoteSkipForwardInterval: Double?, remoteSkipBackwardInterval: Double?,
     preferRemoteSkipIntervals: Bool?,
+    preciseRemoteTiming: Bool? = nil,
     notificationButtons: IOSButtonConfig? = nil
   ) {
     if let la = lookaheadCount {
       self.lookaheadCount = la
       NitroPlayerLogger.log("TrackPlayerCore", "🔄 Lookahead count set to: \(la)")
+    }
+    if let preciseRemoteTiming = preciseRemoteTiming {
+      self.preciseRemoteTiming = preciseRemoteTiming
     }
     let playbackSpeed = currentPlaybackSpeed
     DispatchQueue.main.async { [weak self] in

@@ -63,6 +63,8 @@ class TrackPlayerCore: NSObject {
   internal var currentRepeatMode: RepeatMode = .off
   internal var currentPlaybackSpeed: Double = 1.0
   internal var lookaheadCount: Int = 5
+  // PlayerConfig.preciseRemoteTiming. playerQueue-owned; applies to assets created after it changes.
+  internal var preciseRemoteTiming = true
   internal var boundaryTimeObserver: Any?
   internal var currentItemObservers: [NSKeyValueObservation] = []
 
