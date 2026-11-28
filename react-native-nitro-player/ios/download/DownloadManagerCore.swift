@@ -7,6 +7,7 @@
 
 import Foundation
 import NitroModules
+import UIKit
 
 /// Core download manager using URLSession background transfers
 final class DownloadManagerCore: NSObject {
@@ -61,6 +62,14 @@ final class DownloadManagerCore: NSObject {
   /// Cached parsed (downloadId, trackId) tuples per task description to avoid repeated string splitting
   private var parsedDescriptionCache: [String: (downloadId: String, trackId: String)] = [:]
 
+  /// Queued downloads whose task iOS started, cancelled to hold them, keyed by task identifier
+  private struct RequeuedTask {
+    var resumeData: Data?
+    var resumeDataDelivered = false
+    var cancelled = false
+  }
+  private var requeuedTasks: [Int: RequeuedTask] = [:]
+
   /// Background completion handler from AppDelegate
   var backgroundCompletionHandler: (() -> Void)?
 
@@ -85,6 +94,7 @@ final class DownloadManagerCore: NSObject {
     loadPersistedMetadata()
     // Restore any pending downloads
     restorePendingDownloads()
+    observeAppLifecycle()
   }
 
   // MARK: - Configuration
@@ -764,6 +774,114 @@ final class DownloadManagerCore: NSObject {
     return downloading < Int(config.maxConcurrentDownloads ?? 3)
   }
 
+  // MARK: - Concurrency limit after the app returns to the foreground
+
+  // A queued download keeps a never-resumed task in the background session. Once the app
+  // leaves the foreground, iOS starts those tasks by itself and keeps them running after the
+  // app returns, while `task.state` still reads `.suspended` and the download still reads
+  // `.pending`. Nothing then holds them back, so every queued download runs at once.
+  private func observeAppLifecycle() {
+    NotificationCenter.default.addObserver(
+      forName: UIApplication.willEnterForegroundNotification, object: nil, queue: nil
+    ) { [weak self] _ in
+      self?.queue.async(flags: .barrier) { self?.enforceConcurrencyLimit() }
+    }
+  }
+
+  // A queued download whose task iOS may be running.
+  private func isQueued(_ downloadId: String, _ task: URLSessionDownloadTask) -> Bool {
+    return task.state == .suspended && taskMetadata[downloadId]?.state == .pending
+  }
+
+  // Keeps `maxConcurrentDownloads` transfers going, downloading ones first, then the earliest
+  // created. Call on `queue`.
+  private func enforceConcurrencyLimit() {
+    let limit = Int(config.maxConcurrentDownloads ?? 3)
+    // Slots are counted from our own state, as in hasFreeDownloadSlot: a task resumed a moment
+    // ago may not report `.running` yet. Ordered by download, not by task: a requeued download
+    // gets a new task identifier.
+    let isDownloading = { (downloadId: String) in
+      self.taskMetadata[downloadId]?.state == .downloading
+    }
+    let createdAt = { (downloadId: String) in self.taskMetadata[downloadId]?.createdAt ?? 0 }
+    let inFlight =
+      activeTasks
+      .filter { isDownloading($0.key) || isQueued($0.key, $0.value) }
+      .sorted {
+        (isDownloading($0.key) ? 0 : 1, createdAt($0.key))
+          < (isDownloading($1.key) ? 0 : 1, createdAt($1.key))
+      }
+    // The queued ones that fit keep running, and count as downloading from now on
+    for (downloadId, task) in inFlight.prefix(limit)
+    where taskMetadata[downloadId]?.state == .pending {
+      task.resume()
+      taskMetadata[downloadId]?.state = .downloading
+      taskMetadata[downloadId]?.startedAt = Date().timeIntervalSince1970
+      if let trackId = taskMetadata[downloadId]?.trackId {
+        notifyStateChange(downloadId: downloadId, trackId: trackId, state: .downloading, error: nil)
+      }
+    }
+    for (downloadId, task) in inFlight.dropFirst(limit) {
+      requeue(downloadId: downloadId, task: task)
+    }
+    startNextPendingDownload()
+  }
+
+  // Puts a download back in the queue behind a fresh, never-resumed task, which iOS leaves
+  // alone while the app is in the foreground. `suspend()` is no way to hold it: it does nothing
+  // on a task iOS started (its local state already reads `.suspended`). And in testing, tasks
+  // held by `resume()` then `suspend()` stalled the running download from the same HTTP/2
+  // host. The replacement is made once the cancelled task has completed, so a task that
+  // finished in the background before the cancel took effect completes as usual instead.
+  // Call on `queue`.
+  private func requeue(downloadId: String, task: URLSessionDownloadTask) {
+    requeuedTasks[task.taskIdentifier] = RequeuedTask()
+    task.cancel(byProducingResumeData: { resumeData in
+      self.queue.async(flags: .barrier) {
+        guard var requeued = self.requeuedTasks[task.taskIdentifier] else { return }
+        requeued.resumeData = requeued.resumeData ?? resumeData
+        requeued.resumeDataDelivered = true
+        self.requeuedTasks[task.taskIdentifier] = requeued
+        self.replaceRequeuedTaskIfDone(downloadId: downloadId, task: task)
+      }
+    })
+    if taskMetadata[downloadId]?.state != .pending {
+      taskMetadata[downloadId]?.state = .pending
+      if let trackId = taskMetadata[downloadId]?.trackId {
+        notifyStateChange(downloadId: downloadId, trackId: trackId, state: .pending, error: nil)
+      }
+    }
+  }
+
+  // Runs once both the resume data and the task's cancellation have arrived. Call on `queue`.
+  private func replaceRequeuedTaskIfDone(downloadId: String, task: URLSessionDownloadTask) {
+    guard let requeued = requeuedTasks[task.taskIdentifier],
+      requeued.resumeDataDelivered, requeued.cancelled
+    else { return }
+    requeuedTasks.removeValue(forKey: task.taskIdentifier)
+    // A cancel or retry in the meantime has dealt with this download already
+    guard activeTasks[downloadId] === task, let metadata = taskMetadata[downloadId] else { return }
+    // Paused in the meantime: the pause found this task already cancelling, so it got no
+    // resume data of its own
+    if metadata.state == .paused {
+      if let resumeData = requeued.resumeData { taskMetadata[downloadId]?.resumeData = resumeData }
+      return
+    }
+    guard metadata.state == .pending || metadata.state == .downloading else { return }
+    let replacement: URLSessionDownloadTask
+    if let resumeData = requeued.resumeData {
+      replacement = backgroundSession.downloadTask(withResumeData: resumeData)
+    } else if let track = trackMetadata[metadata.trackId], let url = URL(string: track.url) {
+      replacement = backgroundSession.downloadTask(with: url)
+    } else {
+      return
+    }
+    replacement.taskDescription = task.taskDescription
+    activeTasks[downloadId] = replacement
+    // A slot freed meanwhile may have started it already
+    if metadata.state == .downloading { replacement.resume() }
+  }
+
   private func startNextPendingDownload() {
     queue.async(flags: .barrier) {
       while self.hasFreeDownloadSlot(),
@@ -949,13 +1067,27 @@ extension DownloadManagerCore: URLSessionDownloadDelegate {
     let downloadId = parsed.downloadId
     let trackId = parsed.trackId
 
-    guard let error = error else { return }  // Success case handled in didFinishDownloadingTo
+    guard let error = error else {
+      // Success case handled in didFinishDownloadingTo, also for a requeued task that finished
+      // before its cancel took effect
+      queue.async(flags: .barrier) { self.requeuedTasks.removeValue(forKey: task.taskIdentifier) }
+      return
+    }
 
     queue.async(flags: .barrier) {
       let nsError = error as NSError
 
       // Check if this is a cancellation
       if nsError.code == NSURLErrorCancelled {
+        // Held back by enforceConcurrencyLimit: replace it with a queued task
+        if var requeued = self.requeuedTasks[task.taskIdentifier] {
+          requeued.cancelled = true
+          requeued.resumeData =
+            requeued.resumeData ?? (nsError.userInfo[NSURLSessionDownloadTaskResumeData] as? Data)
+          self.requeuedTasks[task.taskIdentifier] = requeued
+          self.replaceRequeuedTaskIfDone(downloadId: downloadId, task: downloadTask)
+          return
+        }
         // Check if we have resume data (pause)
         if self.taskMetadata[downloadId]?.resumeData != nil {
           return  // Already handled in pauseDownload
@@ -963,6 +1095,9 @@ extension DownloadManagerCore: URLSessionDownloadDelegate {
         // Otherwise it's a cancellation
         return
       }
+
+      // A requeued task that failed before its cancel took effect fails as usual
+      self.requeuedTasks.removeValue(forKey: task.taskIdentifier)
 
       // Determine error reason
       let errorReason: DownloadErrorReason
