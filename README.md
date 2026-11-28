@@ -170,6 +170,8 @@ Remote skip intervals are in seconds. iOS uses them for AirPods/Control Center f
 
 The skip buttons are left out for a live stream or any track that can't seek, and previous/next are left out when they could do nothing, for example on a live stream with no other track to move to. On Android, set `androidShowRemoteSkipButtons: false` to hide the skip buttons for every track.
 
+On iOS, remote tracks load with precise duration and timing by default. AVFoundation can read the whole file for that before playback starts, so a large MP3 with no duration header only starts once it has been downloaded. Set `preciseRemoteTiming: false` to start sooner; a variable-bitrate file without that header then gets an estimated duration and seeks. Local and downloaded files always use precise timing.
+
 On Android, playback keeps going when the app is swiped away from recent apps. Set `androidStopOnTaskRemoved: true` to pause playback and remove the notification instead; the queue and position are kept, so a headset play button can resume it. It doesn't apply while casting or while Android Auto is connected, and iOS ignores it.
 
 ### 2. Create Playlists

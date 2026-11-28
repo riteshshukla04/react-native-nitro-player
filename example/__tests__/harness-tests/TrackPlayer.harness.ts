@@ -1348,6 +1348,28 @@ describe('TrackPlayer - Comprehensive Tests', () => {
             expect(state.currentTrack?.id).toBe('2');
             await TrackPlayer.pause();
         });
+
+        it('should play a remote track with preciseRemoteTiming off', async () => {
+            await TrackPlayer.configure({ preciseRemoteTiming: false });
+            try {
+                // A playlist of its own, so no other remote track is preloaded beside it
+                const singleId = await PlayerQueue.createPlaylist('Precise timing off', '');
+                createdPlaylistIds.push(singleId);
+                await PlayerQueue.addTracksToPlaylist(singleId, [
+                    createTestTrack('precise-off', 'Precise timing off', 7),
+                ]);
+                await PlayerQueue.loadPlaylist(singleId);
+                await TrackPlayer.playSong('precise-off', singleId);
+                await TrackPlayer.play();
+
+                const state = await waitForPlaying();
+                expect(state.currentState).toBe('playing');
+                expect(state.currentTrack?.id).toBe('precise-off');
+            } finally {
+                await TrackPlayer.configure({ preciseRemoteTiming: true });
+                await TrackPlayer.pause();
+            }
+        });
     });
 
     describe('Notification Buttons', () => {
